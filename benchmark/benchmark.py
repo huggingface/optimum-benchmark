@@ -1,6 +1,4 @@
-import copy
 import pickle
-from tqdm import tqdm
 from torch.utils.benchmark import Timer, Compare
 from .config import BenchmarkConfig
 from transformers import AutoModel
@@ -92,7 +90,7 @@ class PytorchBenchmark:
                             num_run_times=self.config.num_run_times,
 
                             label=self.benchmark_label,
-                            description=model_name,
+                            description=f"{model_name} ({device})",
                             sub_label=sub_label,
                             num_threads=th,
                         )

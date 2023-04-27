@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 
 import torch
 import logging
+from typing import Optional
 
 
 @dataclass
@@ -23,16 +24,20 @@ class BenchmarkConfig:
     DEVICES: list = field(default_factory=lambda: ['cpu'])
     THREADS: list = field(default_factory=lambda: [1])
 
-    # used to control the duration of a benchmark
-    total_duration: int = 60
-    min_run_time: int = None
-    num_run_times: int = None
-
     # a function that takes model and inputs to run the model
-    run_func: callable = None
+    run_func: callable = field(default_factory=lambda: lambda model, inputs: model(**inputs))
 
     # a function that takes batch size and sequence length to generate dummy inputs
-    dummy_inputs_func: callable = None
+    dummy_inputs_func: callable = field(default_factory=lambda: lambda bs, sl, sp: {
+        'input_ids': torch.randint(0, 1000, (bs, sl)),
+        'attention_mask': torch.ones((bs, sl)),
+        'token_type_ids': torch.zeros((bs, sl)),
+    })
+
+    # used to control the duration of a benchmark
+    total_duration: Optional[int] = None
+    min_run_time: Optional[int] = None
+    num_run_times: Optional[int] = None
 
     def __post_init__(self):
 
@@ -68,5 +73,5 @@ class BenchmarkConfig:
             self.use_blocked_autorange = False
             self.num_run_times = 1
             logging.warning(
-                'total_duration, min_run_time or num_run_times should be given in the benchmark_config.'
+                'total_duration, min_run_time or num_run_times should be given in the benchmark_config.\n'
                 'num_run_times is set to 1 by default which means every configuration will be run once.')
