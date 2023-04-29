@@ -1,0 +1,24 @@
+defaults:
+  - backend: pytorch
+
+hydra:
+  run:
+    dir:
+      outputs/${experiment_name}/${experiment_id}/${instance_id}
+  sweep:
+    dir: 
+      outputs/${experiment_name}/${experiment_id}/${instance_id}
+  job:
+    env_set:
+      TOKENIZERS_PARALLELISM: "false"
+
+experiment_name: default
+
+model: bert-base-cased
+task: sequence-classification
+
+batch_size: 1
+sequence_length: 128
+
+benchmark_duration: 5
+warmup_runs: 5
