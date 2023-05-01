@@ -16,22 +16,25 @@ from omegaconf import OmegaConf
 from logging import getLogger
 from typing import Type
 
-from hydra import main, __version__ as hydra_version
+from hydra import main #, __version__ as hydra_version
 from hydra.core.config_store import ConfigStore
 from hydra.utils import get_class
 
-from backend.base import Backend
-from backend.pytorch import PyTorchConfig
+from backends.base import Backend
+from backends.pytorch import PyTorchConfig
+from backends.onnxruntime import ORTConfig
 from benchmark.config import BenchmarkConfig
 
 
 # Register resolvers
 OmegaConf.register_new_resolver("pytorch_version", PyTorchConfig.version)
+OmegaConf.register_new_resolver("onnxruntime_version", ORTConfig.version)
 
 # Register configurations
 cs = ConfigStore.instance()
 cs.store(name="benchmark", node=BenchmarkConfig)
-cs.store(group="backend", name="pytorch_backend", node=PyTorchConfig)
+cs.store(group="backends", name="pytorch_backend", node=PyTorchConfig)
+cs.store(group="backends", name="onnxruntime_backend", node=ORTConfig)
 
 LOGGER = getLogger("benchmark")
 

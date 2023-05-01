@@ -1,0 +1,6 @@
+_target_: backends.onnxruntime.ORTBackend
+
+name: onnxruntime
+version: ${onnxruntime_version:}
+
+device: cpu

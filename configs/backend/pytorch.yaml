@@ -1,8 +1,9 @@
-_target_: backend.pytorch.PyTorchBackend
+_target_: backends.pytorch.PyTorchBackend
 
 name: pytorch
 version: ${pytorch_version:}
 
-use_bettertransformer: false
-use_compile: false
+bettertransformer: false
+compile: false
+no_grad: true
 device: cpu

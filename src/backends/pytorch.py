@@ -12,24 +12,24 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import Dict, Set, Tuple
+from typing import Set, Tuple
 from dataclasses import dataclass
 from logging import getLogger
-
 
 from tqdm import trange
 
 import torch
 import numpy as np
+from transformers import AutoModel, AutoTokenizer
 from optimum.bettertransformer import BetterTransformer
 
-from backend.base import Backend
-from backend.config import BackendConfig
+from backends.base import Backend
+from backends.config import BackendConfig
 
 from benchmark.base import Benchmark
 from benchmark.config import BenchmarkConfig
 
-from utils import TASK_TO_AUTOMODEL
+from utils import INPUT_GENERATORS
 
 BACKEND_NAME = "pytorch"
 
@@ -40,8 +40,9 @@ LOGGER = getLogger(BACKEND_NAME)
 class PyTorchConfig(BackendConfig):
     name: str = BACKEND_NAME
 
-    use_besttransformer: bool = False
-    use_compile: bool = False
+    bettertransformer: bool = False
+    compile: bool = False
+    no_grad: bool = True
     device: str = "cpu"
 
     @staticmethod
@@ -50,88 +51,74 @@ class PyTorchConfig(BackendConfig):
 
     @staticmethod
     def supported_keys() -> Set[str]:
-        return BackendConfig.supported_keys().union({'use_bettertransformer', 'use_compile', 'device'})
+        return BackendConfig.supported_keys().union(
+            {'bettertransformer', 'compile', 'no_grad', 'device'}
+        )
 
 
 class PyTorchBackend(Backend[PyTorchConfig]):
     NAME = BACKEND_NAME
 
-    def __init__(self, model: str, task: str):
-        super().__init__(model, task)
-        
-        self.pretrained_model = TASK_TO_AUTOMODEL[task].from_pretrained(model)
+    def __init__(self, model: str):
+        super().__init__(model)
+
+        self.pretrained_model = AutoModel.from_pretrained(model)
+        self.input_names = AutoTokenizer.from_pretrained(
+            model).model_input_names
 
         LOGGER.info(
-            f"Allocated PyTorch Backend for model: {model} on task: {task}")
+            f"Allocated PyTorch Backend for model: {model}")
 
     @classmethod
-    def allocate(cls, config: BenchmarkConfig):
-        backend = cls(config.model, config.task)
-        backend.configure(config.backend)
+    def allocate(cls, benchmark_config: BenchmarkConfig):
+        backend = cls(benchmark_config.model)
+        backend.configure(benchmark_config.backend)
 
         return backend
 
-    def configure(self, config: PyTorchConfig):
-        # super().configure(config)
-
+    def configure(self, backend_config: PyTorchConfig):
         LOGGER.info("Configuring PyTorch Benchmark:")
 
         # Move model to device
-        self.pretrained_model.to(config.device)
-        LOGGER.info(f"\t+ Moved Module to device {config.device}")
+        self.pretrained_model.to(backend_config.device)
+        LOGGER.info(f"\t+ Moved Module to device {backend_config.device}")
 
         # Disable gradients
-        torch.set_grad_enabled(False)
-        LOGGER.info("\t+ Disabled gradients")
+        if backend_config.no_grad:
+            torch.set_grad_enabled(False)
+            LOGGER.info("\t+ Disabled gradients")
 
         # Turn on eval mode
         self.pretrained_model.eval()
         LOGGER.info("\t+ Turning eval mode on Module")
 
         # Turn on better transformer inference
-        if config.use_bettertransformer:
+        if backend_config.bettertransformer:
             LOGGER.info("\t+ Using BetterTransformer")
             self.pretrained_model = BetterTransformer.transform(
                 self.pretrained_model, keep_original_model=False)
 
         # Compile model
-        if config.use_compile:
+        if backend_config.compile:
             LOGGER.info("\t+ Using compiled Module")
             self.pretrained_model = torch.compile(self.pretrained_model)
-
-    def get_dummy_inputs(self, config: BenchmarkConfig) -> Dict[str, torch.Tensor]:
-        if self.task == "sequence-classification":
-            input_ids = torch.randint(
-                low=0,
-                high=self.pretrained_model.config.vocab_size,
-                size=(config.batch_size, config.sequence_length),
-                dtype=torch.long,
-                device=config.backend.device,
-            )
-
-            attention_mask = torch.ones(
-                config.batch_size,
-                config.sequence_length,
-                dtype=torch.long,
-                device=config.backend.device,
-            )
-            return {
-                "input_ids": input_ids,
-                "attention_mask": attention_mask,
-            }
 
     def execute(self, config: BenchmarkConfig) -> Tuple[Benchmark, np.ndarray]:
         LOGGER.info("Running PyTorch benchmark")
         benchmark = Benchmark()
 
-        dummy_inputs = self.get_dummy_inputs(config=config)
+        dummy_inputs = {
+            input_name: INPUT_GENERATORS[input_name](config)
+            for input_name in self.input_names
+        }
 
         # Warmup
         outputs = []
         for _ in trange(config.warmup_runs, desc="Warming up"):
             output = self.pretrained_model(
-                **dummy_inputs, output_hidden_states=True)
-            outputs.append(output.hidden_states[-1].cpu().numpy())
+                **dummy_inputs,
+            )
+            outputs.append(output)
 
         # Run benchmark
         while sum(benchmark.latencies) < config.benchmark_duration:

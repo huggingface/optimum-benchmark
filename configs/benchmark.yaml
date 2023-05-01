@@ -15,7 +15,6 @@ hydra:
 experiment_name: default
 
 model: bert-base-cased
-task: sequence-classification
 
 batch_size: 1
 sequence_length: 128

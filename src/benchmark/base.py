@@ -29,42 +29,6 @@ class Benchmark:
     latencies: List[float] = field(default_factory=list)
     throughput: Optional[float] = float('-inf')
 
-    @contextmanager
-    def track_cpu_latency(self):
-        start = time.perf_counter_ns()
-        yield
-        end = time.perf_counter_ns()
-
-        latency_ns = end - start
-        latency = latency_ns / 1e9
-
-        self.latencies.append(latency)
-
-        LOGGER.debug(
-            f'Tracked function took: {latency}s)')
-
-    @contextmanager
-    def track_cuda_latency(self):
-        start_event = torch.cuda.Event(enable_timing=True)
-        end_event = torch.cuda.Event(enable_timing=True)
-
-        start_event.record()
-        yield
-        end_event.record()
-
-        torch.cuda.synchronize()  # Wait for the events to be recorded!
-
-        latency_ms = start_event.elapsed_time(end_event)
-        latency = latency_ms / 1e3
-
-        self.latencies.append(latency)
-
-        LOGGER.debug(
-            f'Tracked function took: {latency}s)')
-
-    def finalize(self, benchmark_duration: int):
-        self.throughput = self.num_runs / benchmark_duration
-
     @property
     def num_runs(self) -> int:
         return len(self.latencies)
@@ -85,6 +49,43 @@ class Benchmark:
         return DataFrame({
             "latencies": self.latencies,
         }, index=range(self.num_runs))
+
+    @contextmanager
+    def track_cpu_latency(self):
+        
+        start = time.perf_counter_ns()
+        yield
+        end = time.perf_counter_ns()
+
+        latency_ns = end - start
+        latency = latency_ns / 1e9
+
+        self.latencies.append(latency)
+
+        LOGGER.debug(
+            f'Tracked CPU latency took: {latency}s)')
+
+    @contextmanager
+    def track_cuda_latency(self):
+        start_event = torch.cuda.Event(enable_timing=True)
+        end_event = torch.cuda.Event(enable_timing=True)
+
+        start_event.record()
+        yield
+        end_event.record()
+
+        torch.cuda.synchronize()  # Wait for the events to be recorded!
+
+        latency_ms = start_event.elapsed_time(end_event)
+        latency = latency_ms / 1e3
+
+        self.latencies.append(latency)
+
+        LOGGER.debug(
+            f'Tracked CUDA latency took: {latency}s)')
+
+    def finalize(self, benchmark_duration: int):
+        self.throughput = self.num_runs / benchmark_duration
 
     @staticmethod
     def merge(benchmarks: List['Benchmark']) -> 'Benchmark':

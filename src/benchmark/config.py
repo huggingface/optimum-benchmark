@@ -4,11 +4,11 @@ from logging import getLogger
 from binascii import hexlify
 from random import getrandbits
 
+from platform import python_version
 from transformers import __version__ as transformers_version
 from optimum.version import __version__ as optimum_version
-from platform import python_version
 
-from backend.config import BackendConfig
+from backends.config import BackendConfig
 
 LOGGER = getLogger("benchmark")
 
@@ -18,8 +18,6 @@ class BenchmarkConfig:
     # MODEL & TASK CONFIGURATION
     # Name of the model used for the benchmark
     model: str = MISSING
-    # Name of the task used for the benchmark
-    task: str = MISSING
 
     # BENCHMARK CONFIGURATION
     # Number of forward pass to run before recording any performance counters.
@@ -41,8 +39,7 @@ class BenchmarkConfig:
     # Experiment name
     experiment_name: str = 'default'
     # Experiment identifier
-    experiment_id: str = hexlify(getrandbits(
-        32).to_bytes(4, 'big')).decode('ascii')
+    experiment_id: str = hexlify(getrandbits(32).to_bytes(4, 'big')).decode('ascii')
     # Instance identifier
     instance_id: int = 0
     
