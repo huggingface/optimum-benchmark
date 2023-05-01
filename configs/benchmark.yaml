@@ -1,10 +1,11 @@
 defaults:
   - backend: pytorch
+  - _self_
 
 hydra:
   run:
     dir:
-      outputs/${experiment_name}/${experiment_id}/${instance_id}
+      outputs/${experiment_name}/${experiment_id}
   sweep:
     dir: 
       outputs/${experiment_name}/${experiment_id}/${instance_id}
