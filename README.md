@@ -13,4 +13,6 @@ python src/main.py --multirun backend=pytorch,onnxruntime backend.device=cpu,cud
 - [ ] Add support for sparse inputs (zeros in the attention mask)
 - [ ] Add support for onnxruntime optimizations (graph optimization, quantization, etc.)
 - [ ] Add support for other model inputs (pixels, decoder_inputs, etc.)
+- [ ] Add support for more metrics (memory usage, node execution time, etc.)
+- [ ] Gather report data from an experiment and visualize it
 - [ ] ...
