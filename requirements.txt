@@ -1,0 +1,10 @@
+transformers==4.28.1
+optimum==1.8.2
+
+torch==2.0.0
+
+onnx==1.13.1
+onnxruntime==1.14.1
+onnxruntime-gpu==1.14.1
+
+hydra-core==1.1
