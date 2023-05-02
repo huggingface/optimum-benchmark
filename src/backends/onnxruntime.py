@@ -1,21 +1,12 @@
-from typing import Set, Tuple
 from dataclasses import dataclass
 from logging import getLogger
+from typing import Set
 
-from tqdm import trange
-
-import torch
 import onnxruntime
-from transformers import AutoTokenizer
-from optimum.exporters import TasksManager
+from optimum.onnxruntime.trainer import ORTFeaturesManager
 
 from src.backends.base import Backend
 from src.backends.config import BackendConfig
-
-from src.benchmark.base import Benchmark
-from src.benchmark.config import BenchmarkConfig
-
-from src.utils import INPUT_GENERATORS
 
 BACKEND_NAME = 'onnxruntime'
 
@@ -26,7 +17,9 @@ LOGGER = getLogger(BACKEND_NAME)
 class ORTConfig(BackendConfig):
     name: str = BACKEND_NAME
 
-    device: str = "cpu"
+    optimization_level: int = 1
+    enable_transformers_specific_optimizations: bool = True
+    optimize_for_gpu: bool = False
 
     @staticmethod
     def version() -> str:
@@ -34,62 +27,60 @@ class ORTConfig(BackendConfig):
 
     @staticmethod
     def supported_keys() -> Set[str]:
-        return BackendConfig.supported_keys().union({'device'})
+        return BackendConfig.supported_keys().union({
+            'optimization_level',
+            'enable_transformers_specific_optimizations',
+            'optimize_for_gpu'
+        })
 
 
 class ORTBackend(Backend[ORTConfig]):
     NAME = BACKEND_NAME
 
-    def __init__(self, model: str):
-        super().__init__(model)
+    def configure(self, backend_config: ORTConfig):
+        LOGGER.info("Configuring onnxruntime backend:")
+        super().configure(backend_config)
 
-        task = TasksManager.infer_task_from_model(model)
-        model_class = TasksManager.get_model_class_for_task(task)
-        self.pretrained_model = model_class.from_pretrained(model)
-        self.input_names = AutoTokenizer.from_pretrained(
-            model).model_input_names
+        session_options = onnxruntime.SessionOptions()
 
-        LOGGER.info(
-            f"Allocated PyTorch Backend for model: {model}")
-
-    @classmethod
-    def allocate(cls, config: BenchmarkConfig):
-        backend = cls(config.model)
-        backend.configure(config.backend)
-
-        return backend
-
-    def configure(self, config: ORTConfig):
-        LOGGER.info("Configuring OnnxRuntime Benchmark:")
-
-        # Move model to device
-        self.pretrained_model.to(config.device)
-        LOGGER.info(f"\t+ Moved Module to device {config.device}")
-
-    def execute(self, config: BenchmarkConfig) -> Tuple[Benchmark, torch.Tensor]:
-        LOGGER.info("Running OnnxRuntime benchmark")
-        benchmark = Benchmark()
-
-        dummy_inputs = {
-            input_name: INPUT_GENERATORS[input_name](config)
-            for input_name in self.input_names
-        }
-
-        # Warmup
-        outputs = []
-        for _ in trange(config.warmup_runs, desc="Warming up"):
-            output = self.pretrained_model(
-                **dummy_inputs
+        if backend_config.intra_op_num_threads is not None:
+            LOGGER.info(
+                f"\t+ Setting onnxruntime intra_op_num_threads({session_options.intra_op_num_threads})"
             )
-            outputs.append(output[-1])
+            session_options.intra_op_num_threads = backend_config.intra_op_num_threads
 
-        # Run benchmark
-        while sum(benchmark.latencies) < config.benchmark_duration:
-            with benchmark.track(device=config.backend.device):
-                self.pretrained_model(
-                    **dummy_inputs
-                )
-        
-        benchmark.finalize(config.benchmark_duration)
+        if backend_config.inter_op_num_threads is not None:
+            LOGGER.info(
+                f"\t+ Setting onnxruntime inter_op_num_threads({session_options.inter_op_num_threads})"
+            )
+            session_options.inter_op_num_threads = backend_config.inter_op_num_threads
 
-        return benchmark, torch.stack(outputs)
+        ortmodel_class = ORTFeaturesManager.get_model_class_for_feature(
+            self.task)
+        LOGGER.info(f"\t+ Loading model {self.model} for task {self.task}")
+        self.pretrained_model = ortmodel_class.from_pretrained(
+            self.model, session_options=session_options, export=True)
+
+        # Move model to device (can be done when loading the model)
+        LOGGER.info(
+            f"\t+ Moving module to {backend_config.device} execution provider")
+        self.pretrained_model.to(backend_config.device)
+
+        # Optimize model
+        # LOGGER.info("\t+ Optimizing model")
+        # optimizer = ORTOptimizer.from_pretrained(self.model)
+        # optimization_config = OptimizationConfig(
+        #     optimization_level=backend_config.optimization_level,
+        #     enable_transformers_specific_optimizations=backend_config.enable_transformers_specific_optimizations,
+        #     optimize_for_gpu=backend_config.optimize_for_gpu
+        # )
+        # with TemporaryDirectory() as tmpdirname:
+        #     optimizer.optimize(
+        #         save_dir=f'{tmpdirname}/{self.model}',
+        #         optimization_config=optimization_config
+        #     )
+
+        #     self.pretrained_model = ortmodel_class.from_pretrained(
+        #         f'{tmpdirname}/{self.model}',
+        #         session_options=session_options,
+        #     )

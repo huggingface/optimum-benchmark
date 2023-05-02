@@ -9,7 +9,6 @@ from hydra.core.config_store import ConfigStore
 from src.backends.base import Backend
 from src.backends.pytorch import PyTorchConfig
 from src.backends.onnxruntime import ORTConfig
-
 from src.benchmark.config import BenchmarkConfig
 
 # Register resolvers
@@ -34,7 +33,7 @@ def run(config: BenchmarkConfig) -> None:
     backend: Backend = backend_factory.allocate(config)
 
     # Run benchmark and reference
-    benchmark, benchmrk_outputs = backend.execute(config)
+    benchmark, benchmark_outputs = backend.execute(config)
 
     # Save the resolved config
     OmegaConf.save(config, ".hydra/config.yaml", resolve=True)
