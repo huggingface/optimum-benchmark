@@ -4,5 +4,10 @@ name: onnxruntime
 version: ${onnxruntime_version:}
 
 device: cpu
-num_threads: null
-num_interops_threads: null
+inference: true
+inter_op_num_threads: null
+intra_op_num_threads: null
+
+optimization_level: 1
+enable_transformers_specific_optimizations: true
+optimize_for_gpu: false

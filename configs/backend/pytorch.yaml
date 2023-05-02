@@ -3,9 +3,11 @@ _target_: src.backends.pytorch.PyTorchBackend
 name: pytorch
 version: ${pytorch_version:}
 
+device: cpu
+inference: true
+inter_op_num_threads: null
+intra_op_num_threads: null
+
 bettertransformer: true
 torch_compile: false
 no_grad: true
-device: cpu
-num_threads: null
-num_interops_threads: null
