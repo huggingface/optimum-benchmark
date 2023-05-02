@@ -2,6 +2,8 @@ defaults:
   - backend: pytorch
   - base_benchmark
   - _self_
+  - override hydra/job_logging: colorlog
+  - override hydra/hydra_logging: colorlog
 
 hydra:
   run:
