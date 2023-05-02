@@ -35,7 +35,7 @@ python src/main.py -m backend=pytorch,onnxruntime backend.device=cpu,cuda
 
 ## Notes
 
-For now only `device` is supported as a multi backend parameter since it's supported by both pytorch and onnxruntime. When `backend.compile` is specified, for example, with a multirun `backenc=pytorch,onnxruntime`, it raises an error.
+For now only `device` is supported as a multi backend parameter since it's supported by both pytorch and onnxruntime. When `backend.torch_compile` is specified, for example, with a multirun `backenc=pytorch,onnxruntime`, it raises an error.
 
 ## TODO
 - [x] Add support for sparse inputs (zeros in the attention mask)
