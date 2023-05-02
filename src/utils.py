@@ -26,11 +26,10 @@ def get_attention_mask(config: BenchmarkConfig) -> Dict[str, torch.Tensor]:
     )
     
     if config.sparsity > 0:
-        # apply mask
+        # apply sparse mask
         mask = torch.rand((config.batch_size, config.sequence_length), device=config.backend.device)
         attention_mask[mask < config.sparsity] = 0
         attention_mask, _ = attention_mask.sort(dim=-1, descending=True)
-        print(attention_mask)
 
     return attention_mask
 
