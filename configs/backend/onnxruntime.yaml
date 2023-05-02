@@ -4,3 +4,5 @@ name: onnxruntime
 version: ${onnxruntime_version:}
 
 device: cpu
+num_threads: null
+num_interops_threads: null
