@@ -41,7 +41,7 @@ class PyTorchConfig(BackendConfig):
     name: str = BACKEND_NAME
 
     bettertransformer: bool = False
-    compile: bool = False
+    torch_compile: bool = False
     no_grad: bool = True
     device: str = "cpu"
 
@@ -52,9 +52,8 @@ class PyTorchConfig(BackendConfig):
     @staticmethod
     def supported_keys() -> Set[str]:
         return BackendConfig.supported_keys().union(
-            {'bettertransformer', 'compile', 'no_grad', 'device'}
+            {'bettertransformer', 'torch_compile', 'no_grad', 'device'}
         )
-
 
 class PyTorchBackend(Backend[PyTorchConfig]):
     NAME = BACKEND_NAME
@@ -99,7 +98,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 self.pretrained_model, keep_original_model=False)
 
         # Compile model
-        if backend_config.compile:
+        if backend_config.torch_compile:
             LOGGER.info("\t+ Using compiled Module")
             self.pretrained_model = torch.compile(self.pretrained_model)
 

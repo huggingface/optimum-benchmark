@@ -1,15 +1,17 @@
 defaults:
   - backend: pytorch
+  - base_benchmark
   - _self_
 
 hydra:
   run:
     dir:
-      outputs/${experiment_name}/${experiment_id}
+      runs/${experiment_name}/${experiment_id}
   sweep:
     dir: 
-      outputs/${experiment_name}/${experiment_id}/${instance_id}
+      sweeps/${experiment_name}/${experiment_id}
   job:
+    chdir: true
     env_set:
       TOKENIZERS_PARALLELISM: "false"
 

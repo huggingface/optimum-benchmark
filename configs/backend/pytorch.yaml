@@ -4,6 +4,6 @@ name: pytorch
 version: ${pytorch_version:}
 
 bettertransformer: false
-compile: false
+torch_compile: false
 no_grad: true
 device: cpu
