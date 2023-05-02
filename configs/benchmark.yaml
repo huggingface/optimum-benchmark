@@ -22,7 +22,7 @@ experiment_name: default
 model: bert-base-cased
 
 batch_size: 4
-sequence_length: 10
+sequence_length: 96
 sparsity: 0.5
 
 benchmark_duration: 5

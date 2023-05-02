@@ -1,11 +1,8 @@
 from dataclasses import MISSING, dataclass
 from logging import getLogger
-
-from binascii import hexlify
-from random import getrandbits
+import time
 
 from platform import python_version
-import time
 from transformers import __version__ as transformers_version
 from optimum.version import __version__ as optimum_version
 
