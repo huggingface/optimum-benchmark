@@ -1,4 +1,4 @@
-_target_: backends.pytorch.PyTorchBackend
+_target_: src.backends.pytorch.PyTorchBackend
 
 name: pytorch
 version: ${pytorch_version:}

@@ -1,27 +1,11 @@
-#  Copyright 2021 Hugging Face Inc.
-#
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  you may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-
-from abc import ABC, abstractmethod
 from logging import getLogger
-from typing import Dict, Generic, TypeVar, ClassVar, Tuple
+from abc import ABC, abstractmethod
+from typing import Generic, TypeVar, ClassVar, Tuple
 
-# import torch
+import torch
 
-from benchmark.base import Benchmark
-from backends.config import BackendConfig
-
-import numpy as np
+from src.benchmark.base import Benchmark
+from src.backends.config import BackendConfig
 
 LOGGER = getLogger('backend')
 BackendConfigT = TypeVar('BackendConfigT', bound=BackendConfig)
@@ -33,10 +17,6 @@ class Backend(Generic[BackendConfigT], ABC):
     def __init__(self, model: str):
         self.model = model
 
-    @abstractmethod
-    def execute(self, config: 'BenchmarkConfig') -> Tuple[Benchmark, np.ndarray]:
-        raise NotImplementedError()
-
     @classmethod
     @abstractmethod
     def allocate(cls, config: 'BenchmarkConfig') -> 'Backend':
@@ -44,4 +24,8 @@ class Backend(Generic[BackendConfigT], ABC):
 
     @abstractmethod
     def configure(self, config: BackendConfigT) -> None:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def execute(self, config: 'BenchmarkConfig') -> Tuple[Benchmark, torch.Tensor]:
         raise NotImplementedError()

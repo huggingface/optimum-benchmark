@@ -1,5 +1,6 @@
 # inference-benchmark
 A repository for benchmarking optimum's inference optimizations on different supported backends.
+The configuration management is handled by [hydra](https://hydra.cc/) and based on [tune](https://github.com/huggingface/tune).
 
 ## Quickstart
 Start by installing the required dependencies:
@@ -11,7 +12,7 @@ python -m pip install -r requirements.txt
 Then, run the benchmark:
 
 ```
-python src/main.py
+python main.py
 ```
 
 The default behavior of the benchmark is determined by `configs/benchmark.yaml`.
@@ -37,7 +38,7 @@ python src/main.py -m backend=pytorch,onnxruntime backend.device=cpu,cuda
 For now only `device` is supported as a multi backend parameter since it's supported by both pytorch and onnxruntime. When `backend.compile` is specified, for example, with a multirun `backenc=pytorch,onnxruntime`, it raises an error.
 
 ## TODO
-- [ ] Add support for sparse inputs (zeros in the attention mask)
+- [x] Add support for sparse inputs (zeros in the attention mask)
 - [ ] Add support for onnxruntime optimizations (graph optimization, quantization, etc.)
 - [ ] Add support for other model inputs (pixels, decoder_inputs, etc.)
 - [ ] Add support for more metrics (memory usage, node execution time, etc.)
