@@ -5,7 +5,6 @@ from logging import getLogger
 from tqdm import trange
 
 import torch
-import numpy as np
 from transformers import AutoModel, AutoTokenizer
 from optimum.bettertransformer import BetterTransformer
 
@@ -40,6 +39,7 @@ class PyTorchConfig(BackendConfig):
         return BackendConfig.supported_keys().union(
             {'bettertransformer', 'torch_compile', 'no_grad', 'device'}
         )
+
 
 class PyTorchBackend(Backend[PyTorchConfig]):
     NAME = BACKEND_NAME
@@ -88,7 +88,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             LOGGER.info("\t+ Using compiled Module")
             self.pretrained_model = torch.compile(self.pretrained_model)
 
-    def execute(self, config: BenchmarkConfig) -> Tuple[Benchmark, np.ndarray]:
+    def execute(self, config: BenchmarkConfig) -> Tuple[Benchmark, torch.Tensor]:
         LOGGER.info("Running PyTorch benchmark")
         benchmark = Benchmark()
 
@@ -103,20 +103,15 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             output = self.pretrained_model(
                 **dummy_inputs,
             )
-            outputs.append(output)
+            outputs.append(output[-1])
 
         # Run benchmark
         while sum(benchmark.latencies) < config.benchmark_duration:
-            if config.backend.device == "cpu":
-                with benchmark.track_cpu_latency():
-                    self.pretrained_model(**dummy_inputs)
-            elif config.backend.device == "cuda":
-                with benchmark.track_cuda_latency():
-                    self.pretrained_model(**dummy_inputs)
-            else:
-                raise ValueError(
-                    f"Unsupported device type {config.backend.device}")
+            with benchmark.track(device=config.backend.device):
+                self.pretrained_model(
+                    **dummy_inputs,
+                )
 
         benchmark.finalize(config.benchmark_duration)
 
-        return benchmark, np.stack(outputs)
+        return benchmark, torch.stack(outputs)

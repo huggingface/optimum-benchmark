@@ -37,38 +37,40 @@ class Benchmark:
         }, index=range(self.num_runs))
 
     @contextmanager
-    def track_cpu_latency(self):
+    def track(self, device: str):
+        if device == "cpu":
+            start = time.perf_counter_ns()
+            yield
+            end = time.perf_counter_ns()
+
+            latency_ns = end - start
+            latency = latency_ns / 1e9
+
+            self.latencies.append(latency)
+
+            LOGGER.debug(
+                f'Tracked CPU latency took: {latency}s)')
         
-        start = time.perf_counter_ns()
-        yield
-        end = time.perf_counter_ns()
+        elif device == "cuda":
+            start_event = torch.cuda.Event(enable_timing=True)
+            end_event = torch.cuda.Event(enable_timing=True)
 
-        latency_ns = end - start
-        latency = latency_ns / 1e9
+            start_event.record()
+            yield
+            end_event.record()
 
-        self.latencies.append(latency)
+            torch.cuda.synchronize()
+            
+            latency_ms = start_event.elapsed_time(end_event)
+            latency = latency_ms / 1e3
 
-        LOGGER.debug(
-            f'Tracked CPU latency took: {latency}s)')
+            self.latencies.append(latency)
 
-    @contextmanager
-    def track_cuda_latency(self):
-        start_event = torch.cuda.Event(enable_timing=True)
-        end_event = torch.cuda.Event(enable_timing=True)
-
-        start_event.record()
-        yield
-        end_event.record()
-
-        torch.cuda.synchronize()  # Wait for the events to be recorded!
-
-        latency_ms = start_event.elapsed_time(end_event)
-        latency = latency_ms / 1e3
-
-        self.latencies.append(latency)
-
-        LOGGER.debug(
-            f'Tracked CUDA latency took: {latency}s)')
+            LOGGER.debug(
+                f'Tracked CUDA latency took: {latency}s)')
+        else:
+            raise ValueError(
+                f"Unsupported device type {device}")
 
     def finalize(self, benchmark_duration: int):
         self.throughput = self.num_runs / benchmark_duration

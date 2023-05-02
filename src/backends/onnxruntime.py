@@ -4,8 +4,8 @@ from logging import getLogger
 
 from tqdm import trange
 
+import torch
 import onnxruntime
-import numpy as np
 from transformers import AutoTokenizer
 from optimum.exporters import TasksManager
 
@@ -65,7 +65,7 @@ class ORTBackend(Backend[ORTConfig]):
         self.pretrained_model.to(config.device)
         LOGGER.info(f"\t+ Moved Module to device {config.device}")
 
-    def execute(self, config: BenchmarkConfig) -> Tuple[Benchmark, np.ndarray]:
+    def execute(self, config: BenchmarkConfig) -> Tuple[Benchmark, torch.Tensor]:
         LOGGER.info("Running OnnxRuntime benchmark")
         benchmark = Benchmark()
 
@@ -96,4 +96,4 @@ class ORTBackend(Backend[ORTConfig]):
 
         benchmark.finalize(config.benchmark_duration)
 
-        return benchmark, np.stack(outputs)
+        return benchmark, torch.stack(outputs)
