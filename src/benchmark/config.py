@@ -8,7 +8,7 @@ from platform import python_version
 from transformers import __version__ as transformers_version
 from optimum.version import __version__ as optimum_version
 
-from backends.config import BackendConfig
+from src.backends.config import BackendConfig
 
 LOGGER = getLogger("benchmark")
 
@@ -26,10 +26,12 @@ class BenchmarkConfig:
     benchmark_duration: int = MISSING
 
     # INPUTS CONFIGURATION
-    # Number of sample given to the model at each forward
+    # Number of samples given to the model at each forward
     batch_size: int = MISSING
     # The length of the sequence (in tokens) given to the model
     sequence_length: int = MISSING
+    # Attention mask sparsity ratio (0.0 <= sparsity <= 1.0)
+    sparsity: float = MISSING
 
     # BACKEND CONFIGURATION
     # The backend to use for recording timing (pytorch, optimum-onnxruntime)
@@ -40,8 +42,6 @@ class BenchmarkConfig:
     experiment_name: str = 'default'
     # Experiment identifier
     experiment_id: str = hexlify(getrandbits(32).to_bytes(4, 'big')).decode('ascii')
-    # Instance identifier
-    instance_id: int = 0
     
     # ENVIRONMENT CONFIGURATION
     # Python interpreter version

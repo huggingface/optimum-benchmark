@@ -1,26 +1,11 @@
 import torch
 from typing import Dict
-from benchmark.config import BenchmarkConfig
+from src.benchmark.config import BenchmarkConfig
 
 from transformers import AutoConfig
-from transformers import AutoModelForSequenceClassification, \
-    AutoModelForAudioClassification
-
-from optimum.onnxruntime import ORTModelForSequenceClassification, \
-    ORTModelForAudioClassification
-
-TASK_TO_AUTOMODEL = {
-    "sequence-classification": AutoModelForSequenceClassification,
-    "audio-classification": AutoModelForAudioClassification
-}
-
-TASK_TO_ORTMODEL = {
-    "sequence-classification": ORTModelForSequenceClassification,
-    "audio-classification": ORTModelForAudioClassification
-}
-
 
 def get_input_ids(config: BenchmarkConfig) -> Dict[str, torch.Tensor]:
+    """Generate random input ids"""
     return torch.randint(
         low=0,
         high=AutoConfig.from_pretrained(config.model).vocab_size,
@@ -31,15 +16,24 @@ def get_input_ids(config: BenchmarkConfig) -> Dict[str, torch.Tensor]:
 
 
 def get_attention_mask(config: BenchmarkConfig) -> Dict[str, torch.Tensor]:
-    return torch.ones(
+    """Generate random attention mask"""
+    mask = torch.ones(
         config.batch_size,
         config.sequence_length,
         dtype=torch.long,
         device=config.backend.device,
     )
+    
+    # masking out a certain ratio (config.sparsity) of tokens
+    mask = mask * torch.distributions.Bernoulli(
+        torch.tensor([config.sparsity], device=config.backend.device)
+    ).sample((config.batch_size, config.sequence_length)).long()
+
+    return mask
 
 
 def get_token_ids(config: BenchmarkConfig) -> Dict[str, torch.Tensor]:
+    """Generate random token type ids"""
     return torch.ones(
         config.batch_size,
         config.sequence_length,
