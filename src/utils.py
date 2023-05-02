@@ -4,6 +4,7 @@ from transformers import AutoConfig
 
 from src.benchmark.config import BenchmarkConfig
 
+
 def get_input_ids(config: BenchmarkConfig) -> Dict[str, torch.Tensor]:
     """Generate random input ids"""
     return torch.randint(
@@ -16,20 +17,22 @@ def get_input_ids(config: BenchmarkConfig) -> Dict[str, torch.Tensor]:
 
 
 def get_attention_mask(config: BenchmarkConfig) -> Dict[str, torch.Tensor]:
-    """Generate random attention mask"""
-    mask = torch.ones(
+    """Generate random attention mask with config.sparsity ratio of upper triangular values set to 0"""
+    attention_mask = torch.ones(
         config.batch_size,
         config.sequence_length,
-        dtype=torch.long,
+        dtype=torch.float,
         device=config.backend.device,
     )
     
-    # masking out a certain ratio (config.sparsity) of tokens
-    mask = mask * torch.distributions.Bernoulli(
-        torch.tensor([config.sparsity], device=config.backend.device)
-    ).sample((config.batch_size, config.sequence_length)).long()
+    if config.sparsity > 0:
+        # apply mask
+        mask = torch.rand((config.batch_size, config.sequence_length), device=config.backend.device)
+        attention_mask[mask < config.sparsity] = 0
+        attention_mask, _ = attention_mask.sort(dim=-1, descending=True)
+        print(attention_mask)
 
-    return mask
+    return attention_mask
 
 
 def get_token_ids(config: BenchmarkConfig) -> Dict[str, torch.Tensor]:
