@@ -5,6 +5,7 @@ from binascii import hexlify
 from random import getrandbits
 
 from platform import python_version
+import time
 from transformers import __version__ as transformers_version
 from optimum.version import __version__ as optimum_version
 
@@ -40,8 +41,8 @@ class BenchmarkConfig:
     # EXPERIMENT CONFIGURATION
     # Experiment name
     experiment_name: str = 'default'
-    # Experiment identifier
-    experiment_id: str = hexlify(getrandbits(32).to_bytes(4, 'big')).decode('ascii')
+    # Experiment datetime
+    experiment_datetime_id: int = int(time.time_ns())
     
     # ENVIRONMENT CONFIGURATION
     # Python interpreter version

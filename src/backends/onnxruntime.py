@@ -46,7 +46,8 @@ class ORTBackend(Backend[ORTConfig]):
         task = TasksManager.infer_task_from_model(model)
         model_class = TasksManager.get_model_class_for_task(task)
         self.pretrained_model = model_class.from_pretrained(model)
-        self.input_names = AutoTokenizer.from_pretrained(model).model_input_names
+        self.input_names = AutoTokenizer.from_pretrained(
+            model).model_input_names
 
         LOGGER.info(
             f"Allocated PyTorch Backend for model: {model}")
@@ -80,20 +81,15 @@ class ORTBackend(Backend[ORTConfig]):
             output = self.pretrained_model(
                 **dummy_inputs
             )
-            outputs.append(output)
+            outputs.append(output[-1])
 
         # Run benchmark
         while sum(benchmark.latencies) < config.benchmark_duration:
-            if config.backend.device == "cpu":
-                with benchmark.track_cpu_latency():
-                    self.pretrained_model(**dummy_inputs)
-            elif config.backend.device == "cuda":
-                with benchmark.track_cuda_latency():
-                    self.pretrained_model(**dummy_inputs)
-            else:
-                raise ValueError(
-                    f"Unsupported device type {config.backend.device}")
-
+            with benchmark.track(device=config.backend.device):
+                self.pretrained_model(
+                    **dummy_inputs
+                )
+        
         benchmark.finalize(config.benchmark_duration)
 
         return benchmark, torch.stack(outputs)

@@ -8,10 +8,10 @@ defaults:
 hydra:
   run:
     dir:
-      runs/${experiment_name}/${experiment_id}
+      runs/${experiment_name}/${experiment_datetime_id}
   sweep:
     dir: 
-      sweeps/${experiment_name}/${experiment_id}
+      sweeps/${experiment_name}/${experiment_datetime_id}
   job:
     chdir: true
     env_set:
@@ -21,9 +21,9 @@ experiment_name: default
 
 model: bert-base-cased
 
-batch_size: 1
-sequence_length: 128
+batch_size: 4
+sequence_length: 10
 sparsity: 0.5
 
-benchmark_duration: 10
+benchmark_duration: 5
 warmup_runs: 5
