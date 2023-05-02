@@ -21,21 +21,29 @@ The default behavior of the benchmark is determined by `configs/benchmark.yaml`.
 It's easy to override the default behavior of your benchmark from the command line.
 
 ```
-python src/main.py experiment_name=my-new-gpu-experiment model=bert-base-uncased backend=pytorch backend.device=cuda
+python main.py experiment_name=my-new-gpu-experiment model=bert-base-uncased backend=pytorch backend.device=cuda
 ```
 
-Results (`perfs.csv` and `details.csv`) will be stored in `outputs/{experiment_name}/{experiment_id}`, along with the program logs `main.log`, the configuration that's been used `.hydra/config.yaml` and overriden parameters `.hydra/overrides.yaml`.
+Results (`perfs.csv` and `details.csv`) will be stored in `outputs/{experiment_name}/{experiment_datetime_id}`, along with the program logs `main.log`, the configuration that's been used `.hydra/config.yaml` and overriden parameters `.hydra/overrides.yaml`.
 
 ## Multirun configuration sweeps
 You can easily run configuration sweeps using the `-m` or `--multirun` option. By default, configurations will be executed serially.
 
 ```
-python src/main.py -m backend=pytorch,onnxruntime backend.device=cpu,cuda
+python main.py -m backend=pytorch,onnxruntime backend.device=cpu,cuda
 ```
+
+Moreover, for integer parameters like `batch_size`, one can specify a range of values to sweep over:
+
+```
+python main.py -m backend=pytorch,onnxruntime backend.device=cpu,cuda batch_size='range(1, 10, step=2)'
+```
+
+Other features like log scaling a range of values are also supported through plugins.
 
 ## Notes
 
-For now only `device` is supported as a multi backend parameter since it's supported by both pytorch and onnxruntime. When `backend.torch_compile` is specified, for example, with a multirun `backenc=pytorch,onnxruntime`, it raises an error.
+For now, sweeps can only run over parameters that are supported by both pytorch and onnxruntime (like `device`, `num_threads`, etc). When, for example, `backend.torch_compile` is specified on a multi backend sweep (i.e. `backend=pytorch,onnxruntime`), it raises an error.
 
 ## TODO
 - [x] Add support for sparse inputs (zeros in the attention mask)
