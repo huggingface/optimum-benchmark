@@ -9,13 +9,13 @@ Start by installing the required dependencies:
 python -m pip install -r requirements.txt
 ```
 
-Then, run the benchmark:
+Then, run the default benchmark:
 
 ```
 python main.py
 ```
 
-The default behavior of the benchmark is determined by `configs/benchmark.yaml`.
+The default behavior is determined by `configs/benchmark.yaml`.
 
 ## Command-line configuration overrides
 It's easy to override the default behavior of your benchmark from the command line.
@@ -27,19 +27,19 @@ python main.py experiment_name=my-new-gpu-experiment model=bert-base-uncased bac
 Results (`perfs.csv` and `details.csv`) will be stored in `outputs/{experiment_name}/{experiment_datetime_id}`, along with the program logs `main.log`, the configuration that's been used `.hydra/config.yaml` and overriden parameters `.hydra/overrides.yaml`.
 
 ## Multirun configuration sweeps
-You can easily run configuration sweeps using the `-m` or `--multirun` option. By default, configurations will be executed serially.
+You can easily run configuration sweeps using the `-m` or `--multirun` option. By default, configurations will be executed serially but other kinds of executions will are supported with hydra's launcher plugins : `hydra/launcher=submitit`, `hydra/launcher=slurm`, `hydra/launcher=joblib`, etc.
 
 ```
 python main.py -m backend=pytorch,onnxruntime backend.device=cpu,cuda
 ```
 
-Moreover, for integer parameters like `batch_size`, one can specify a range of values to sweep over:
+Also, for integer parameters like `batch_size`, one can specify a range of values to sweep over:
 
 ```
 python main.py -m backend=pytorch,onnxruntime backend.device=cpu,cuda batch_size='range(1, 10, step=2)'
 ```
 
-Other features like log scaling a range of values are also supported through plugins.
+And other features like log scaling a range of values are also supported through sweeper plugins: `hydra/sweeper=log`, `hydra/sweeper=bayesian`, `hydra/sweeper=optuna`, etc.
 
 ## Notes
 
@@ -47,8 +47,9 @@ For now, sweeps can only run over parameters that are supported by both pytorch 
 
 ## TODO
 - [x] Add support for sparse inputs (zeros in the attention mask)
-- [ ] Add support for onnxruntime optimizations (graph optimization, quantization, etc.)
+- [ ] Add support for omptimum optimizations (graph optimization, quantization, etc.)
 - [ ] Add support for other model inputs (pixels, decoder_inputs, etc.)
 - [ ] Add support for more metrics (memory usage, node execution time, etc.)
-- [ ] Gather report data from an experiment and visualize it
+- [ ] Gather report data from an experiment directory.
+- [ ] Visualize the report data.
 - [ ] ...
