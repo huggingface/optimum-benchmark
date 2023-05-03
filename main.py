@@ -1,6 +1,7 @@
 from omegaconf import OmegaConf
 from logging import getLogger
 from typing import Type
+from json import dumps
 
 import hydra
 from hydra.utils import get_class
@@ -38,8 +39,13 @@ def run(config: BenchmarkConfig) -> None:
     # Save the resolved config
     OmegaConf.save(config, ".hydra/config.yaml", resolve=True)
 
-    benchmark.perfs.to_csv("perfs.csv", index_label="id")
-    benchmark.details.to_csv("details.csv", index_label="id")
+    # Save the benchmark results
+    stats_dict = benchmark.stats_dict
+    with open("stats.json", "w") as f:
+        f.write(dumps(stats_dict, indent=4))
+    
+    details_df = benchmark.details_df
+    details_df.to_csv("details.csv", index=False)
 
 
 if __name__ == '__main__':
