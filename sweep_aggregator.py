@@ -67,6 +67,8 @@ def gather_results(folder: Path) -> Tuple[dict, pd.DataFrame]:
     environment = report.loc[:, report.nunique(
     ) == 1].drop_duplicates().to_dict(orient='records')[0]
     report = report.loc[:, report.nunique() > 1]
+    report = report.sort_values(
+        by=['mean_latency', 'throughput'], ascending=False)
 
     return environment, report
 
@@ -107,7 +109,7 @@ def show_results_in_console(environement: dict, report: pd.DataFrame) -> None:
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument(
-        '--folder', '-f', type=Path, default='sweeps/',
+        '--folder', '-f', type=Path, default='sweeps/onnxruntime-optimization',
         help="The folder containing the results of the benchmark."
     )
     args = parser.parse_args()
