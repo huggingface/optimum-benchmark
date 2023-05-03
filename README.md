@@ -65,7 +65,7 @@ For now, sweeps can only run over one backend because backends don't share the s
 
 ## TODO
 - [x] Add support for sparse inputs (zeros in the attention mask)
-- [-] Add support for omptimum optimizations (graph optimization, quantization, etc.)
+- [x] Add support for omptimum optimizations (graph optimization, quantization, etc.)
 - [ ] Add support for other model inputs (pixels, decoder_inputs, etc.)
 - [ ] Add support for more metrics (memory usage, node execution time, etc.)
 - [x] Gather report data from an experiment directory.
