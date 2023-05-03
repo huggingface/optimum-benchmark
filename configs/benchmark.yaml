@@ -14,16 +14,14 @@ hydra:
       sweeps/${experiment_name}/${experiment_datetime_id}
   job:
     chdir: true
-    env_set:
-      TOKENIZERS_PARALLELISM: "false"
 
 experiment_name: default
 
-model: "distilbert-base-uncased-finetuned-sst-2-english"
+model: distilbert-base-uncased-finetuned-sst-2-english
 
 batch_size: 4
 sequence_length: 96
-sparsity: 0.5
+sparsity: 0
 
 benchmark_duration: 5
 warmup_runs: 5
