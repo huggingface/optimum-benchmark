@@ -3,6 +3,8 @@ from logging import getLogger
 from typing import Set
 
 import onnxruntime
+from tempfile import TemporaryDirectory
+from optimum.onnxruntime import ORTOptimizer, OptimizationConfig
 from optimum.onnxruntime.trainer import ORTFeaturesManager
 
 from src.backends.base import Backend
@@ -37,6 +39,12 @@ class ORTConfig(BackendConfig):
 class ORTBackend(Backend[ORTConfig]):
     NAME = BACKEND_NAME
 
+    def __init__(self, model: str):
+        super().__init__(model)
+        LOGGER.info(
+            f"Allocated onnxruntime backend for model: {self.model} on task: {self.task}"
+        )
+
     def configure(self, backend_config: ORTConfig):
         LOGGER.info("Configuring onnxruntime backend:")
         super().configure(backend_config)
@@ -67,20 +75,20 @@ class ORTBackend(Backend[ORTConfig]):
         self.pretrained_model.to(backend_config.device)
 
         # Optimize model
-        # LOGGER.info("\t+ Optimizing model")
-        # optimizer = ORTOptimizer.from_pretrained(self.model)
-        # optimization_config = OptimizationConfig(
-        #     optimization_level=backend_config.optimization_level,
-        #     enable_transformers_specific_optimizations=backend_config.enable_transformers_specific_optimizations,
-        #     optimize_for_gpu=backend_config.optimize_for_gpu
-        # )
-        # with TemporaryDirectory() as tmpdirname:
-        #     optimizer.optimize(
-        #         save_dir=f'{tmpdirname}/{self.model}',
-        #         optimization_config=optimization_config
-        #     )
+        LOGGER.info("\t+ Optimizing model")
+        optimizer = ORTOptimizer.from_pretrained(self.pretrained_model)
+        optimization_config = OptimizationConfig(
+            optimization_level=backend_config.optimization_level,
+            enable_transformers_specific_optimizations=backend_config.enable_transformers_specific_optimizations,
+            optimize_for_gpu=backend_config.optimize_for_gpu
+        )
+        with TemporaryDirectory() as tmpdirname:
+            optimizer.optimize(
+                save_dir=f'{tmpdirname}/{self.model}.onnx',
+                optimization_config=optimization_config
+            )
 
-        #     self.pretrained_model = ortmodel_class.from_pretrained(
-        #         f'{tmpdirname}/{self.model}',
-        #         session_options=session_options,
-        #     )
+            self.pretrained_model = ortmodel_class.from_pretrained(
+                f'{tmpdirname}/{self.model}.onnx',
+                session_options=session_options,
+            )

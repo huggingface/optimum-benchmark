@@ -23,9 +23,6 @@ class Backend(Generic[BackendConfigT], ABC):
     def __init__(self, model: str):
         self.model = model
         self.task = TasksManager.infer_task_from_model(self.model)
-        LOGGER.info(
-            f"Allocated {self.NAME} Backend for model: {self.model} on task: {self.task}"
-        )
 
     @classmethod
     def allocate(cls, config: BenchmarkConfig) -> 'Backend':

@@ -38,6 +38,12 @@ class PyTorchConfig(BackendConfig):
 class PyTorchBackend(Backend[PyTorchConfig]):
     NAME = BACKEND_NAME
 
+    def __init__(self, model: str):
+        super().__init__(model)
+        LOGGER.info(
+            f"Allocated pytorch backend for model: {self.model} on task: {self.task}"
+        )
+
     def configure(self, backend_config: PyTorchConfig):
         LOGGER.info("Configuring pytorch Backend:")
         super().configure(backend_config)
