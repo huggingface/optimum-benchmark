@@ -9,3 +9,5 @@ onnxruntime-gpu==1.14.1
 
 hydra-core==1.3
 hydra_colorlog==1.2
+
+flatten_dict==0.4.2
