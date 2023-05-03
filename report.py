@@ -1,11 +1,16 @@
 import pandas as pd
+from typing import Tuple
 from pathlib import Path
+from pprint import pprint
 from omegaconf import OmegaConf
 from flatten_dict import flatten
 from flatten_dict.reducers import make_reducer
 
+from rich.console import Console
+from rich.table import Table
 
-def gather_results(folder: Path):
+
+def gather_results(folder: Path) -> Tuple[dict, pd.DataFrame]:
     """
     Gather all results and configs from the given folder.
 
@@ -16,17 +21,19 @@ def gather_results(folder: Path):
 
     Returns
     -------
+    environment : dict
+        The environment configuration represented by parameters that are the same for all runs
     report : pd.DataFrame
-        The report containing all results with their configurations in a single dataframe.
+        The report containing all stats with their corresponding configurations in a single dataframe.
     """
 
     # List all csv results
-    results_f = [f for f in folder.glob("**/perfs.csv")]
+    stats_f = [f for f in folder.glob("**/stats.json")]
     configs_f = [f for f in folder.glob("**/config.yaml")]
 
-    results_dfs = {
-        f.relative_to(folder).parent.as_posix(): pd.read_csv(f, index_col=0)
-        for f in results_f
+    stats_dfs = {
+        f.relative_to(folder).parent.as_posix(): pd.read_json(f, orient='index').transpose()
+        for f in stats_f
     }
 
     configs_dfs = {
@@ -39,28 +46,63 @@ def gather_results(folder: Path):
         for f in configs_f
     }
 
-    if len(results_dfs) == 0 or len(configs_dfs) == 0:
+    if len(stats_dfs) == 0 or len(configs_dfs) == 0:
         raise ValueError(f"No results found in {folder}")
 
     # Merge perfs dataframes with configs
     reports = {
         name: configs_dfs[name].merge(
-            results_dfs[name], left_index=True, right_index=True)
-        for name in results_dfs.keys()
+            stats_dfs[name], left_index=True, right_index=True)
+        for name in stats_dfs.keys()
     }
 
     report = pd.concat(reports.values(), axis=0, ignore_index=True)
 
     # remove unnecessary columns
-    report = report.drop(
-        columns=[
-            'backend._target_', 
-            'experiment_name', 
-            'experiment_datetime_id', 
-            'python_version', 
-            'transformers_version', 
-            'optimum_version'
-        ]
+    report.drop(
+        columns=[col for col in report.columns if '_target_' in col],
+        inplace=True
+    )
+    environment = report.loc[:, report.nunique(
+    ) == 1].drop_duplicates().to_dict(orient='records')[0]
+    report = report.loc[:, report.nunique() > 1]
+
+    return environment, report
+
+
+def show_results_in_console(environement: dict, report: pd.DataFrame) -> None:
+    """
+    Display the results in the console.
+
+    Parameters
+    ----------
+    environement : dict
+        The environment configuration represented by parameters that are the same for all runs
+    report : pd.DataFrame
+        The report containing all stats with their corresponding configurations in a single dataframe.
+    """
+
+    table = Table(
+        show_header=True, header_style="bold",
+        title="Stats per run",
     )
 
-    return report
+    # Define the columns
+    for col in report.columns:
+        table.add_column(col)
+
+    # Add rows
+    for row in report.itertuples(index=False):
+        # stringify the row
+        table.add_row(*[str(v) for v in row])
+
+    console = Console()
+    # Display environment
+    console.print('ENV:', environement)
+    # Display the table
+    console.print(table)
+
+
+if __name__ == '__main__':
+    environment, report = gather_results(Path("sweeps"))
+    show_results_in_console(environment, report)
