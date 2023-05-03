@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
+from typing import List, Optional, Dict
 from contextlib import contextmanager
-from typing import List, Optional
 from logging import getLogger
 
 from pandas import DataFrame
@@ -8,6 +8,7 @@ import torch
 import time
 
 LOGGER = getLogger("benchmark")
+
 
 @dataclass
 class Benchmark:
@@ -23,17 +24,15 @@ class Benchmark:
         return sum(self.latencies)
 
     @property
-    def perfs(self) -> DataFrame:
-        return DataFrame({
-            "mean_latency": self.runs_duration / self.num_runs,
+    def stats_dict(self) -> Dict:
+        return {
+            "mean_latency": self.mean_latency,
             "throughput": self.throughput
-        }, index=[0])
+        }
 
     @property
-    def details(self) -> DataFrame:
-        return DataFrame({
-            "latencies": self.latencies,
-        }, index=range(self.num_runs))
+    def details_df(self) -> DataFrame:
+        return DataFrame(self.latencies, columns=["latency"])
 
     @contextmanager
     def track(self, device: str):
@@ -66,3 +65,4 @@ class Benchmark:
 
     def finalize(self, benchmark_duration: int):
         self.throughput = self.num_runs / benchmark_duration
+        self.mean_latency = self.runs_duration / self.num_runs
