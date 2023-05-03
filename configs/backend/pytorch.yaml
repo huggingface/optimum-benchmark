@@ -1,13 +1,14 @@
-_target_: src.backends.pytorch.PyTorchBackend
+_target_: src.backend.pytorch.PyTorchBackend
 
 name: pytorch
 version: ${pytorch_version:}
 
 device: cpu
-inference: true
 inter_op_num_threads: null
 intra_op_num_threads: null
 
-bettertransformer: true
-torch_compile: false
-no_grad: true
+optimization:
+  bettertransformer: false
+  torch_compile: false
+  grad_enabled: false
+  eval_mode: false

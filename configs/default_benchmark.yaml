@@ -1,7 +1,10 @@
 defaults:
+  # default backend is pytorch
   - backend: pytorch
-  - base_benchmark
+  # default parameters are the ones defined in benchmark and this config
+  - benchmark
   - _self_
+  # override logging to use colorlog
   - override hydra/job_logging: colorlog
   - override hydra/hydra_logging: colorlog
 
@@ -13,15 +16,15 @@ hydra:
     dir: 
       sweeps/${experiment_name}/${experiment_datetime_id}
   job:
+    # enabling changing the working directory to the run directory
     chdir: true
 
-experiment_name: default
-
+experiment_name: default-benchmark
 model: distilbert-base-uncased-finetuned-sst-2-english
 
-batch_size: 4
+batch_size: 8
 sequence_length: 96
 sparsity: 0
 
-benchmark_duration: 5
 warmup_runs: 5
+benchmark_duration: 5

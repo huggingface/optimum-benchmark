@@ -6,14 +6,13 @@ from platform import python_version
 from transformers import __version__ as transformers_version
 from optimum.version import __version__ as optimum_version
 
-from src.backends.config import BackendConfig
+from src.backend.config import BackendConfig
 
 LOGGER = getLogger("benchmark")
 
-@dataclass()
+@dataclass
 class BenchmarkConfig:
-
-    # MODEL & TASK CONFIGURATION
+    # MODEL CONFIGURATION
     # Name of the model used for the benchmark
     model: str = MISSING
 

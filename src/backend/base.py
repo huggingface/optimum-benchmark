@@ -9,11 +9,12 @@ from transformers import AutoTokenizer
 from optimum.exporters import TasksManager
 
 from src.benchmark.base import Benchmark
-from src.backends.config import BackendConfig
 from src.benchmark.config import BenchmarkConfig
+from src.backend.config import BackendConfig
+
 from src.utils import INPUT_GENERATORS
 
-LOGGER = getLogger('backends')
+LOGGER = getLogger('backend')
 BackendConfigT = TypeVar('BackendConfigT', bound=BackendConfig)
 
 
@@ -63,8 +64,6 @@ class Backend(Generic[BackendConfigT], ABC):
                     **dummy_inputs,
                 )
 
-        # Compute statistics
-        benchmark.finalize(config.benchmark_duration)
         return benchmark, torch.stack(outputs)
 
     def get_dummy_inputs(self, config: BenchmarkConfig) -> Dict[str, torch.Tensor]:

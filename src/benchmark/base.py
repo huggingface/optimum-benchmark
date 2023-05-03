@@ -64,5 +64,7 @@ class Benchmark:
             raise ValueError(f"Unsupported device type {device}")
 
     def finalize(self, benchmark_duration: int):
-        self.throughput = self.num_runs / benchmark_duration
-        self.mean_latency = self.runs_duration / self.num_runs
+        self.throughput = self.num_runs / \
+            benchmark_duration if benchmark_duration else float('-inf')
+        self.mean_latency = self.runs_duration / \
+            self.num_runs if self.num_runs else float('inf')

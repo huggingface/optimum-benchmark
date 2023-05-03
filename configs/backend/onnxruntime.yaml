@@ -1,13 +1,31 @@
-_target_: src.backends.onnxruntime.ORTBackend
+_target_: src.backend.onnxruntime.ORTBackend
 
 name: onnxruntime
 version: ${onnxruntime_version:}
 
 device: cpu
-inference: true
 inter_op_num_threads: null
 intra_op_num_threads: null
 
-optimization_level: 1
-enable_transformers_specific_optimizations: true
-optimize_for_gpu: false
+optimization:
+  optimization_level: 0
+  optimize_for_gpu: false
+  fp16: false
+  enable_transformers_specific_optimizations: false
+  disable_gelu_fusion: false
+  disable_layer_norm_fusion: false
+  disable_attention_fusion: false
+  disable_skip_layer_norm_fusion: false
+  disable_bias_skip_layer_norm_fusion: false
+  disable_bias_gelu_fusion: false
+  disable_embed_layer_norm_fusion: false
+  enable_gelu_approximation: false
+  use_mask_index: false
+  no_attention_mask: false
+  disable_shape_inference: false
+  ## experimental options
+  # use_multi_head_attention: false
+  # enable_gemm_fast_gelu: false
+  # use_raw_attention_mask: false
+  # disable_group_norm: false
+  # disable_packed_kv: false

@@ -6,21 +6,24 @@ import torch
 from optimum.exporters import TasksManager
 from optimum.bettertransformer import BetterTransformer
 
-from src.backends.base import Backend
-from src.backends.config import BackendConfig
+from src.backend.base import Backend
+from src.backend.config import BackendConfig
 
 BACKEND_NAME = "pytorch"
 
 LOGGER = getLogger(BACKEND_NAME)
 
+@dataclass
+class PyTorchOptimizationConfig:
+    bettertransformer: bool = False
+    torch_compile: bool = False
+    grad_enabled: bool = False
+    eval_mode: bool = False
 
 @dataclass
 class PyTorchConfig(BackendConfig):
     name: str = BACKEND_NAME
-
-    bettertransformer: bool = False
-    torch_compile: bool = False
-    no_grad: bool = True
+    optimization: PyTorchOptimizationConfig = PyTorchOptimizationConfig()
 
     @staticmethod
     def version() -> str:
@@ -28,11 +31,9 @@ class PyTorchConfig(BackendConfig):
 
     @staticmethod
     def supported_keys() -> Set[str]:
-        return BackendConfig.supported_keys().union({
-            'bettertransformer',
-            'torch_compile',
-            'no_grad'
-        })
+        return BackendConfig.supported_keys().union(
+            set(PyTorchOptimizationConfig.__dataclass_fields__.keys())
+        )
 
 
 class PyTorchBackend(Backend[PyTorchConfig]):
@@ -44,21 +45,21 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             f"Allocated pytorch backend for model: {self.model} on task: {self.task}"
         )
 
-    def configure(self, backend_config: PyTorchConfig):
+    def configure(self, config: PyTorchConfig):
         LOGGER.info("Configuring pytorch Backend:")
-        super().configure(backend_config)
+        super().configure(config)
 
-        if backend_config.inter_op_num_threads is not None:
+        if config.inter_op_num_threads is not None:
             LOGGER.info(
-                f"\t+ Setting pytorch inter_op_num_threads({backend_config.inter_op_num_threads}))"
+                f"\t+ Setting pytorch inter_op_num_threads({config.inter_op_num_threads}))"
             )
-            torch.set_num_threads(backend_config.inter_op_num_threads)
+            torch.set_num_threads(config.inter_op_num_threads)
 
-        if backend_config.intra_op_num_threads is not None:
+        if config.intra_op_num_threads is not None:
             LOGGER.info(
-                f"\t+ Setting pytorch intra_op_num_threads({backend_config.intra_op_num_threads}))"
+                f"\t+ Setting pytorch intra_op_num_threads({config.intra_op_num_threads}))"
             )
-            torch.set_num_interop_threads(backend_config.intra_op_num_threads)
+            torch.set_num_interop_threads(config.intra_op_num_threads)
 
         # Load model
         automodel_class = TasksManager.get_model_class_for_task(self.task)
@@ -66,26 +67,26 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         self.pretrained_model = automodel_class.from_pretrained(self.model)
 
         # Move model to device
-        LOGGER.info(f"\t+ Moving Module to device {backend_config.device}")
-        self.pretrained_model.to(backend_config.device)
+        LOGGER.info(f"\t+ Moving Module to device {config.device}")
+        self.pretrained_model.to(config.device)
 
         # Disable gradients
-        if backend_config.no_grad:
+        if not config.optimization.grad_enabled:
             LOGGER.info("\t+ Disabling gradients")
             torch.set_grad_enabled(False)
 
         # Turn on eval mode
-        if backend_config.inference:
+        if config.optimization.eval_mode:
             LOGGER.info("\t+ Turning eval mode on Module")
             self.pretrained_model.eval()
 
         # Turn on better transformer inference
-        if backend_config.bettertransformer:
+        if config.optimization.bettertransformer:
             LOGGER.info("\t+ Using BetterTransformer fastpath")
             self.pretrained_model = BetterTransformer.transform(
                 self.pretrained_model, keep_original_model=False)
 
         # Compile model
-        if backend_config.torch_compile:
+        if config.optimization.torch_compile:
             LOGGER.info("\t+ Using compiled Module")
             self.pretrained_model = torch.compile(self.pretrained_model)
