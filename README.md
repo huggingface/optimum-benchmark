@@ -42,16 +42,16 @@ python main.py -m backend=pytorch,onnxruntime backend.device=cpu,cuda batch_size
 And other features like log scaling a range of values are also supported through sweeper plugins: `hydra/sweeper=log`, `hydra/sweeper=bayesian`, `hydra/sweeper=optuna`, etc.
 
 ## Visualizing results (WIP)
-To synthetize the results of a sweep or all sweeps, you can use the `report.py` script:
+To synthetize the results of a sweep or all sweeps, you can use the `sweep_aggregator.py` script:
 
 ```
-python report.py --folder sweeps/default
+python sweep_aggregator.py --folder sweeps/default
 ```
 
 You can also specify a directory containing multiple sweeps:
 
 ```
-python report.py --folder sweeps
+python sweep_aggregator.py --folder sweeps/
 ```
 
 The report output will be something like this:

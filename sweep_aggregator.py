@@ -1,4 +1,5 @@
 import pandas as pd
+from json import dumps
 from typing import Tuple
 from pathlib import Path
 from omegaconf import OmegaConf
@@ -8,8 +9,6 @@ from flatten_dict.reducers import make_reducer
 
 from rich.console import Console
 from rich.table import Table
-
-
 
 
 def gather_results(folder: Path) -> Tuple[dict, pd.DataFrame]:
@@ -108,10 +107,17 @@ def show_results_in_console(environement: dict, report: pd.DataFrame) -> None:
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument(
-        '--folder', type=Path, default='sweeps/',
+        '--folder', '-f', type=Path, default='sweeps/',
         help="The folder containing the results of the benchmark."
     )
     args = parser.parse_args()
 
     environment, report = gather_results(args.folder)
+
+    # Save aggregated results
+    with open(f'{args.folder}/environment.json', 'w') as f:
+        f.write(dumps(environment, indent=4))
+    report.to_csv(f'{args.folder}/report.csv', index=False)
+
+    # Display the results
     show_results_in_console(environment, report)
