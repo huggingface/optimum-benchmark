@@ -1,13 +1,15 @@
 import pandas as pd
 from typing import Tuple
 from pathlib import Path
-from pprint import pprint
 from omegaconf import OmegaConf
 from flatten_dict import flatten
+from argparse import ArgumentParser
 from flatten_dict.reducers import make_reducer
 
 from rich.console import Console
 from rich.table import Table
+
+
 
 
 def gather_results(folder: Path) -> Tuple[dict, pd.DataFrame]:
@@ -104,5 +106,12 @@ def show_results_in_console(environement: dict, report: pd.DataFrame) -> None:
 
 
 if __name__ == '__main__':
-    environment, report = gather_results(Path("sweeps"))
+    parser = ArgumentParser()
+    parser.add_argument(
+        '--folder', type=Path, default='sweeps/',
+        help="The folder containing the results of the benchmark."
+    )
+    args = parser.parse_args()
+
+    environment, report = gather_results(args.folder)
     show_results_in_console(environment, report)
