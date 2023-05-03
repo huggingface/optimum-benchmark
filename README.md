@@ -57,7 +57,7 @@ python sweep_aggregator.py --folder sweeps/
 This will generate `report.csv` and `environment` files in the specified directory. The `report.csv` file contains the aggregated sweep results of all the runs in the directory (only tracking sweep parameters). The `environment` file contains all parameters that didn't change during the sweep.
 
 The console output will be something like this:
-<img src='onnxruntime_report.png' alt='onnxruntime-report' style='display:block;margin-left:auto;margin-right:auto;'>
+<img src='images/onnxruntime_report.png' alt='onnxruntime-report' style='display:block;margin-left:auto;margin-right:auto;'>
 
 ## Notes
 
