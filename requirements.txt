@@ -1,5 +1,5 @@
 transformers==4.28.1
-optimum==1.8.2
+optimum==1.8.3
 
 torch==2.0.0
 
