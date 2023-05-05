@@ -1,5 +1,5 @@
 defaults:
-  - default_benchmark
+  - pytorch_text_benchmark
   - _self_
   - override backend: onnxruntime
 
@@ -26,10 +26,11 @@ hydra:
       backend.optimization.use_mask_index: true,false
       backend.optimization.no_attention_mask: true,false
       backend.optimization.disable_shape_inference: true,false
-      ## backend.optimization.use_multi_head_attention: true,false
-      ## backend.optimization.enable_gemm_fast_gelu: true,false
-      ## backend.optimization.use_raw_attention_mask: true,false
-      ## backend.optimization.disable_group_norm: true,false
-      ## backend.optimization.disable_packed_kv: true,false
+      ## experimental options
+      # backend.optimization.use_multi_head_attention: true,false
+      # backend.optimization.enable_gemm_fast_gelu: true,false
+      # backend.optimization.use_raw_attention_mask: true,false
+      # backend.optimization.disable_group_norm: true,false
+      # backend.optimization.disable_packed_kv: true,false
 
 experiment_name: exhaustive-ort-optimization

@@ -3,7 +3,6 @@ _target_: src.backend.pytorch.PyTorchBackend
 name: pytorch
 version: ${pytorch_version:}
 
-device: cpu
 inter_op_num_threads: null
 intra_op_num_threads: null
 

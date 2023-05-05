@@ -1,0 +1,32 @@
+defaults:
+  # default backend is pytorch
+  - backend: pytorch
+  # default input is text
+  - input: audio
+  # default benchmark is inference
+  - benchmark: inference
+  # other parameters are infered from:
+  # (dataclass with environment variables and an identifier)
+  - experiment
+  # (this config)
+  - _self_
+  # override logging to use colorlog (colorful logs)
+  - override hydra/job_logging: colorlog
+  - override hydra/hydra_logging: colorlog
+
+hydra:
+  run:
+    dir: runs/${experiment_name}/${experiment_time_id}
+  sweep:
+    dir: sweeps/${experiment_name}/${experiment_time_id}
+  job:
+    # enable changing the working directory
+    # to the run directory for files saving
+    chdir: true
+
+experiment_name: pytorch-audio-inference
+experiment_time_id: ???
+
+model: superb/wav2vec2-large-superb-ic
+task: ${task_from_model:${model}}
+device: cpu

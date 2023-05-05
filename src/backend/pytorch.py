@@ -1,51 +1,46 @@
 from dataclasses import dataclass
 from logging import getLogger
-from typing import Set
+from typing import Dict
 
-import torch
-from optimum.exporters import TasksManager
+from torch import Tensor, __version__ as torch_version
 from optimum.bettertransformer import BetterTransformer
+from optimum.exporters import TasksManager
+import torch
 
-from src.backend.base import Backend
-from src.backend.config import BackendConfig
+from src.backend.base import Backend, BackendConfig
 
 BACKEND_NAME = "pytorch"
 
 LOGGER = getLogger(BACKEND_NAME)
 
+
 @dataclass
 class PyTorchOptimizationConfig:
     bettertransformer: bool = False
-    torch_compile: bool = False
-    grad_enabled: bool = False
-    eval_mode: bool = False
+
 
 @dataclass
 class PyTorchConfig(BackendConfig):
     name: str = BACKEND_NAME
+    version: str = torch_version
+    device: str = 'cpu'
+
+    # base options
+    torch_compile: bool = False
+    grad_enabled: bool = False
+    eval_mode: bool = False
+
+    # graph optimization options
     optimization: PyTorchOptimizationConfig = PyTorchOptimizationConfig()
 
-    @staticmethod
-    def version() -> str:
-        return torch.__version__
 
-    @staticmethod
-    def supported_keys() -> Set[str]:
-        return BackendConfig.supported_keys().union(
-            set(PyTorchOptimizationConfig.__dataclass_fields__.keys())
-        )
-
-
-class PyTorchBackend(Backend[PyTorchConfig]):
+class PyTorchBackend(Backend):
     NAME = BACKEND_NAME
 
-    def __init__(self, model: str):
-        super().__init__(model)
-        LOGGER.info(
-            f"Allocated pytorch backend for model: {self.model} on task: {self.task}"
-        )
+    def __init__(self, model: str, task: str, device: str) -> None:
+        super().__init__(model, task, device)
 
-    def configure(self, config: PyTorchConfig):
+    def configure(self, config: PyTorchConfig) -> None:
         LOGGER.info("Configuring pytorch Backend:")
         super().configure(config)
 
@@ -67,8 +62,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         self.pretrained_model = automodel_class.from_pretrained(self.model)
 
         # Move model to device
-        LOGGER.info(f"\t+ Moving Module to device {config.device}")
-        self.pretrained_model.to(config.device)
+        LOGGER.info(f"\t+ Moving Module to device {self.device}")
+        self.pretrained_model.to(self.device)
 
         # Disable gradients
         if not config.optimization.grad_enabled:
@@ -90,3 +85,9 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         if config.optimization.torch_compile:
             LOGGER.info("\t+ Using compiled Module")
             self.pretrained_model = torch.compile(self.pretrained_model)
+
+    def run_inference(self, inputs: Dict[str, Tensor]) -> Dict[str, Tensor]:
+        return self.pretrained_model(**inputs)
+
+    def clean(self) -> None:
+        pass

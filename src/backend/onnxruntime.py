@@ -1,14 +1,12 @@
-from dataclasses import dataclass
 from logging import getLogger
-from typing import Set
-
-import onnxruntime
+from dataclasses import dataclass
 from tempfile import TemporaryDirectory
-from optimum.onnxruntime import ORTOptimizer, OptimizationConfig
+from optimum.onnxruntime import ORTOptimizer
 from optimum.onnxruntime.trainer import ORTFeaturesManager
+from optimum.onnxruntime.configuration import OptimizationConfig
+from onnxruntime import SessionOptions, __version__ as ort_version
 
-from src.backend.base import Backend
-from src.backend.config import BackendConfig
+from src.backend.base import Backend, BackendConfig
 
 BACKEND_NAME = 'onnxruntime'
 
@@ -43,45 +41,37 @@ class ORTOptimizationConfig:
 @dataclass
 class ORTConfig(BackendConfig):
     name: str = BACKEND_NAME
+    version: str = ort_version
+    device: str = 'cpu'
+
+    # basic options
+    use_io_binding: bool = False
+
+    # graph optimization options
     optimization: ORTOptimizationConfig = ORTOptimizationConfig()
 
-    @staticmethod
-    def version() -> str:
-        return onnxruntime.__version__
 
-    @staticmethod
-    def supported_keys() -> Set[str]:
-        return BackendConfig.supported_keys().union(
-            set(ORTOptimizationConfig.__dataclass_fields__.keys())
-        )
-
-
-class ORTBackend(Backend[ORTConfig]):
+class ORTBackend(Backend):
     NAME = BACKEND_NAME
 
-    def __init__(self, model: str):
-        super().__init__(model)
-        LOGGER.info(
-            f"Allocated onnxruntime backend for model: {self.model} on task: {self.task}"
-        )
+    def __init__(self, model: str, task: str, device: str) -> None:
+        super().__init__(model, task, device)
 
-    def configure(self, config: ORTConfig):
+    def configure(self, config: ORTConfig) -> None:
         LOGGER.info("Configuring onnxruntime backend:")
         super().configure(config)
 
-        print(type(config.optimization))
-
-        session_options = onnxruntime.SessionOptions()
+        session_options = SessionOptions()
 
         if config.intra_op_num_threads is not None:
             LOGGER.info(
-                f"\t+ Setting onnxruntime intra_op_num_threads({session_options.intra_op_num_threads})"
+                f"\t+ Setting onnxruntime intra_op_num_threads({config.intra_op_num_threads})"
             )
             session_options.intra_op_num_threads = config.intra_op_num_threads
 
         if config.inter_op_num_threads is not None:
             LOGGER.info(
-                f"\t+ Setting onnxruntime inter_op_num_threads({session_options.inter_op_num_threads})"
+                f"\t+ Setting onnxruntime inter_op_num_threads({config.inter_op_num_threads})"
             )
             session_options.inter_op_num_threads = config.inter_op_num_threads
 
@@ -89,7 +79,11 @@ class ORTBackend(Backend[ORTConfig]):
             self.task)
         LOGGER.info(f"\t+ Loading model {self.model} for task {self.task}")
         self.pretrained_model = ortmodel_class.from_pretrained(
-            self.model, session_options=session_options, export=True)
+            self.model,
+            session_options=session_options,
+            use_io_binding=config.use_io_binding,
+            export=True,
+        )
 
         # Move model to device (can be done when loading the model)
         LOGGER.info(
@@ -110,3 +104,10 @@ class ORTBackend(Backend[ORTConfig]):
                 f'{tmpdirname}/{self.model}.onnx',
                 session_options=session_options,
             )
+
+    def run_inference(self, inputs):
+        return self.pretrained_model(**inputs)
+
+    def clean(self) -> None:
+        LOGGER.info("Cleaning onnxruntime backend:")
+        pass

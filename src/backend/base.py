@@ -1,37 +1,28 @@
-from typing import Generic, TypeVar, ClassVar, Tuple, Dict
+from typing import ClassVar, Dict, Optional
+from abc import abstractmethod
 from logging import getLogger
 from psutil import cpu_count
 from abc import ABC
 
-import torch
-from tqdm import trange
-from transformers import AutoTokenizer
-from optimum.exporters import TasksManager
+from torch import Tensor
+from transformers import PreTrainedModel
 
-from src.benchmark.base import Benchmark
-from src.benchmark.config import BenchmarkConfig
 from src.backend.config import BackendConfig
 
-from src.utils import INPUT_GENERATORS
-
 LOGGER = getLogger('backend')
-BackendConfigT = TypeVar('BackendConfigT', bound=BackendConfig)
 
 
-class Backend(Generic[BackendConfigT], ABC):
+class Backend(ABC):
     NAME: ClassVar[str]
 
-    def __init__(self, model: str):
+    pretrained_model: Optional[PreTrainedModel] = None
+
+    def __init__(self, model: str, task: str, device: str) -> None:
         self.model = model
-        self.task = TasksManager.infer_task_from_model(self.model)
+        self.task = task
+        self.device = device
 
-    @classmethod
-    def allocate(cls, config: BenchmarkConfig) -> 'Backend':
-        backend = cls(config.model)
-        backend.configure(config.backend)
-        return backend
-
-    def configure(self, config: BackendConfigT) -> None:
+    def configure(self, config: BackendConfig) -> None:
         if config.inter_op_num_threads is not None:
             if config.inter_op_num_threads == -1:
                 config.inter_op_num_threads = cpu_count()
@@ -44,39 +35,16 @@ class Backend(Generic[BackendConfigT], ABC):
                 LOGGER.info(
                     f"\t+ Setting backend.intra_op_num_threads to {config.intra_op_num_threads}")
 
-    def execute(self, config: BenchmarkConfig) -> Tuple[Benchmark, torch.Tensor]:
-        LOGGER.info(f"Running {self.NAME} benchmark")
-        benchmark = Benchmark()
-        dummy_inputs = self.get_dummy_inputs(config)
-
-        # Warmup
-        outputs = []
-        for _ in trange(config.warmup_runs, desc="Warming up"):
-            output = self.pretrained_model(
-                **dummy_inputs,
-            )
-            outputs.append(output[-1])
-
-        # Run benchmark
-        while sum(benchmark.latencies) < config.benchmark_duration:
-            with benchmark.track(device=config.backend.device):
-                self.pretrained_model(
-                    **dummy_inputs,
-                )
-
-        return benchmark, torch.stack(outputs)
-
-    def get_dummy_inputs(self, config: BenchmarkConfig) -> Dict[str, torch.Tensor]:
+    @abstractmethod
+    def run_inference(self, inputs: Dict[str, Tensor]) -> Dict[str, Tensor]:
         """
-        Returns a dictionary of dummy inputs for the given benchmark configuration.
+        Run inference on the backend with the given inputs
         """
-        tokenizer = AutoTokenizer.from_pretrained(self.model)
-        input_names = tokenizer.model_input_names
+        raise NotImplementedError()
 
-        LOGGER.info(f"Generating dummy inputs for {input_names}")
-        dummy_inputs = {
-            input_name: INPUT_GENERATORS[input_name](config)
-            for input_name in input_names
-        }
-
-        return dummy_inputs
+    @abstractmethod
+    def clean(self) -> None:
+        """
+        Clean the backend after execution
+        """
+        raise NotImplementedError()
