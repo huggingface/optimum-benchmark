@@ -42,11 +42,9 @@ class ORTOptimizationConfig:
 class ORTConfig(BackendConfig):
     name: str = BACKEND_NAME
     version: str = ort_version
-    device: str = 'cpu'
 
     # basic options
     use_io_binding: bool = False
-
     # graph optimization options
     optimization: ORTOptimizationConfig = ORTOptimizationConfig()
 
@@ -56,39 +54,43 @@ class ORTBackend(Backend):
 
     def __init__(self, model: str, task: str, device: str) -> None:
         super().__init__(model, task, device)
+        self.session_options = SessionOptions()
 
     def configure(self, config: ORTConfig) -> None:
         LOGGER.info("Configuring onnxruntime backend:")
         super().configure(config)
 
-        session_options = SessionOptions()
-
         if config.intra_op_num_threads is not None:
             LOGGER.info(
                 f"\t+ Setting onnxruntime intra_op_num_threads({config.intra_op_num_threads})"
             )
-            session_options.intra_op_num_threads = config.intra_op_num_threads
+            self.session_options.intra_op_num_threads = config.intra_op_num_threads
 
         if config.inter_op_num_threads is not None:
             LOGGER.info(
                 f"\t+ Setting onnxruntime inter_op_num_threads({config.inter_op_num_threads})"
             )
-            session_options.inter_op_num_threads = config.inter_op_num_threads
+            self.session_options.inter_op_num_threads = config.inter_op_num_threads
 
-        ortmodel_class = ORTFeaturesManager.get_model_class_for_feature(
-            self.task)
+        try:
+            ortmodel_class = ORTFeaturesManager.get_model_class_for_feature(
+                self.task)
+        except KeyError:
+            raise NotImplementedError(
+                f"Task {self.task} not supported by onnxruntime backend (not really)")
+
         LOGGER.info(f"\t+ Loading model {self.model} for task {self.task}")
         self.pretrained_model = ortmodel_class.from_pretrained(
             self.model,
-            session_options=session_options,
+            session_options=self.session_options,
             use_io_binding=config.use_io_binding,
             export=True,
         )
 
         # Move model to device (can be done when loading the model)
         LOGGER.info(
-            f"\t+ Moving module to {config.device} execution provider")
-        self.pretrained_model.to(config.device)
+            f"\t+ Moving module to {self.device} execution provider")
+        self.pretrained_model.to(self.device)
 
         # Optimize model
         LOGGER.info("\t+ Optimizing model")
@@ -102,7 +104,7 @@ class ORTBackend(Backend):
 
             self.pretrained_model = ortmodel_class.from_pretrained(
                 f'{tmpdirname}/{self.model}.onnx',
-                session_options=session_options,
+                session_options=self.session_options,
             )
 
     def run_inference(self, inputs):

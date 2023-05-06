@@ -4,6 +4,9 @@ from typing import ClassVar, Dict
 from logging import getLogger
 from torch import Tensor
 
+from optimum.utils import NormalizedConfigManager
+from transformers import AutoConfig
+
 LOGGER = getLogger('input')
 
 

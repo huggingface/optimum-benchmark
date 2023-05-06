@@ -2,6 +2,6 @@ _target_: src.input.text.TextGenerator
 
 name: text
 
-batch_size: 4
-sequence_length: 96
+batch_size: 2
+sequence_length: 16
 num_choices: 2

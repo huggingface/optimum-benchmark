@@ -38,23 +38,21 @@ class InferenceBenchmark(Benchmark):
         self.benchmark_duration = config.benchmark_duration
 
     def execute(self, backend: Backend, input_generator: InputGenerator) -> None:
+        # Generate inputs
         inputs = input_generator.generate()
-        # TODO: get rid of this
-        for input_name, input_tensor in inputs.items():
-            inputs[input_name] = input_tensor.to(self.device)
 
-        # Warmup
+        # Warmup the backend
         for _ in trange(self.warmup_runs, desc="Warming up"):
             backend.run_inference(inputs)
 
-        # Run benchmark
+        # track inference latency
         while sum(self.latencies) < self.benchmark_duration:
-            with self.track_latency(device=self.device):
+            with self.track_latency():
                 backend.run_inference(inputs)
 
     @contextmanager
-    def track_latency(self, device: str):
-        if device == 'cpu':
+    def track_latency(self):
+        if self.device == 'cpu':
             start = time.perf_counter_ns()
             yield
             end = time.perf_counter_ns()
@@ -65,7 +63,7 @@ class InferenceBenchmark(Benchmark):
             self.latencies.append(latency)
             LOGGER.debug(f'Tracked CPU latency took: {latency}s)')
 
-        elif device == 'cuda':
+        elif self.device == 'cuda':
             start_event = torch.cuda.Event(enable_timing=True)
             end_event = torch.cuda.Event(enable_timing=True)
             start_event.record()
@@ -79,7 +77,7 @@ class InferenceBenchmark(Benchmark):
             self.latencies.append(latency)
             LOGGER.debug(f'Tracked CUDA latency took: {latency}s)')
         else:
-            raise ValueError(f"Unsupported device type {device}")
+            raise ValueError(f"Unknown device: {self.device}")
 
     @property
     def throughput(self) -> float:

@@ -5,7 +5,7 @@ from typing import Dict
 
 from torch import Tensor
 from transformers import AutoTokenizer, AutoConfig
-from optimum.utils import NormalizedTextConfig, DummyTextInputGenerator
+from optimum.utils import DummyTextInputGenerator, NormalizedTextConfig
 
 from src.input.base import InputGenerator, InputConfig
 
@@ -21,7 +21,6 @@ class TextConfig(InputConfig):
     batch_size: int = 8
     sequence_length: int = 96
     num_choices: int = 4
-    sparsity: float = 0.0
 
 
 class TextGenerator(InputGenerator):
@@ -29,20 +28,18 @@ class TextGenerator(InputGenerator):
 
     def __init__(self, model: str, task: str, device: str) -> None:
         super().__init__(model, task, device)
-
-    def configure(self, config: TextConfig) -> None:
-        normalized_config = NormalizedTextConfig(
+        self.normalized_config = NormalizedTextConfig(
             AutoConfig.from_pretrained(self.model))
-
         self.input_names = AutoTokenizer.from_pretrained(
             self.model).model_input_names
 
+    def configure(self, config: TextConfig) -> None:
         self.dummy_text_generator = DummyTextInputGenerator(
             task=self.task,
+            normalized_config=self.normalized_config,
             batch_size=config.batch_size,
             sequence_length=config.sequence_length,
-            # num_choices=config.num_choices,
-            normalized_config=normalized_config,
+            num_choices=config.num_choices,
         )
 
     def generate(self) -> Dict[str, Tensor]:
@@ -51,8 +48,7 @@ class TextGenerator(InputGenerator):
             dummy_input[input_name] = self.dummy_text_generator.generate(
                 input_name,
                 framework='pt'
-            )
-        return dummy_input
+            ).to(self.device)
 
         # if config.sparsity > 0:
         #     # apply sparse mask
@@ -61,3 +57,5 @@ class TextGenerator(InputGenerator):
         #     attention_mask[mask < config.sparsity] = 0
         #     # force right padding
         #     attention_mask, _ = attention_mask.sort(dim=-1, descending=True)
+
+        return dummy_input

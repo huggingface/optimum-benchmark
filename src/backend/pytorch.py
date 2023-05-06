@@ -1,10 +1,9 @@
-from dataclasses import dataclass
-from logging import getLogger
-from typing import Dict
-
 from torch import Tensor, __version__ as torch_version
 from optimum.bettertransformer import BetterTransformer
 from optimum.exporters import TasksManager
+from dataclasses import dataclass
+from logging import getLogger
+from typing import Dict
 import torch
 
 from src.backend.base import Backend, BackendConfig
@@ -23,7 +22,6 @@ class PyTorchOptimizationConfig:
 class PyTorchConfig(BackendConfig):
     name: str = BACKEND_NAME
     version: str = torch_version
-    device: str = 'cpu'
 
     # base options
     torch_compile: bool = False

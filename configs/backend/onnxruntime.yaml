@@ -3,11 +3,13 @@ _target_: src.backend.onnxruntime.ORTBackend
 name: onnxruntime
 version: ${onnxruntime_version:}
 
+use_io_binding: false
+
 inter_op_num_threads: null
 intra_op_num_threads: null
 
 optimization:
-  optimization_level: 0
+  optimization_level: 1
   optimize_for_gpu: false
   fp16: false
   enable_transformers_specific_optimizations: false
