@@ -1,5 +1,5 @@
 defaults:
-  - pytorch_text_benchmark
+  - pytorch_text_inference
   - _self_
   - override backend: onnxruntime
 
@@ -8,9 +8,9 @@ hydra:
     # this will allow hydra to start the sweep fatser instead of 
     # generating and validating all the generated configurations
     max_batch_size: 16
-    # search space generates 2^17=131072 configurations (too much ^^')
+    # search space generates 2^17=131072 configurations
+    # so this is just a demonstration of the sweeper capabilities
     params:
-      backend.device: cpu,cuda
       backend.optimization.optimization_level: 0,1,2,99
       backend.optimization.enable_transformers_specific_optimizations: true,false
       backend.optimization.optimize_for_gpu: true,false

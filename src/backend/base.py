@@ -1,4 +1,5 @@
 from typing import ClassVar, Dict, Optional
+from dataclasses import dataclass, MISSING
 from abc import abstractmethod
 from logging import getLogger
 from psutil import cpu_count
@@ -7,14 +8,22 @@ from abc import ABC
 from torch import Tensor
 from transformers import PreTrainedModel
 
-from src.backend.config import BackendConfig
-
 LOGGER = getLogger('backend')
+
+
+@dataclass
+class BackendConfig(ABC):
+    name: str = MISSING
+    version: str = MISSING
+
+    inter_op_num_threads: Optional[int] = None
+    intra_op_num_threads: Optional[int] = None
 
 
 class Backend(ABC):
     NAME: ClassVar[str]
 
+    # every backend will have a pretrained model
     pretrained_model: Optional[PreTrainedModel] = None
 
     def __init__(self, model: str, task: str, device: str) -> None:
