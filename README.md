@@ -43,10 +43,10 @@ python main.py -m backend=pytorch,onnxruntime backend.device=cpu,cuda input.batc
 Other features like intervals and log scale ranges of values are also supported through sweeper plugins: `hydra/sweeper=log`, `hydra/sweeper=bayesian`, `hydra/sweeper=optuna`, etc.
 
 ## Aggregating experiment results
-To aggregate the results of an experiment (run(s) or sweep(s)), you can use the `experiment_aggregator.py` script:
+To aggregate the results of an experiment (run(s) or sweep(s)), you can use the `aggregator.py` script:
 
 ```
-python experiment_aggregator.py --folder {folder_path}
+python aggregator.py --folder {folder_path}
 ```
 
 This will generate `report.csv` and `environment` files in the specified directory. The `report.csv` file contains the aggregated sweep results of all the runs in the directory (only tracking sweep parameters). The `environment` file contains all parameters that didn't change during the sweep.

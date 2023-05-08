@@ -65,7 +65,9 @@ def gather_results(folder: Path) -> Tuple[dict, pd.DataFrame]:
         inplace=True
     )
     environment = report.loc[:, report.nunique(
-    ) == 1].drop_duplicates().to_dict(orient='records')[0]
+    ) == 1]
+    print(environment)
+    environment = environment.drop_duplicates().to_dict(orient='records')[0]
     report = report.loc[:, report.nunique() > 1]
     report = report.sort_values(
         by=['latency.mean', 'throughput'], ascending=False)
