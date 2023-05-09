@@ -47,7 +47,7 @@ class VisionGenerator(InputGenerator):
     def generate(self) -> Dict[str, Tensor]:
         dummy_input = dict()
         for input_name in self.input_names:
-            # for now, since attention_mask is not suupported in this generator
+            # pixel_mask is still unsupported in ORTModelForxxx
             if input_name == 'pixel_mask':
                 continue
 

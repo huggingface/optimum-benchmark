@@ -4,29 +4,41 @@ name: onnxruntime
 version: ${onnxruntime_version:}
 
 use_io_binding: false
-
 inter_op_num_threads: null
 intra_op_num_threads: null
 
-optimization:
+optimization_strategy: null
+optimization_config:
   optimization_level: 1
   optimize_for_gpu: false
   fp16: false
-  enable_transformers_specific_optimizations: false
+  enable_transformers_specific_optimizations: true
   disable_gelu_fusion: false
   disable_layer_norm_fusion: false
   disable_attention_fusion: false
   disable_skip_layer_norm_fusion: false
   disable_bias_skip_layer_norm_fusion: false
   disable_bias_gelu_fusion: false
-  disable_embed_layer_norm_fusion: false
+  disable_embed_layer_norm_fusion: true
   enable_gelu_approximation: false
   use_mask_index: false
   no_attention_mask: false
   disable_shape_inference: false
-  ## experimental options
+  # experimental options
   # use_multi_head_attention: false
   # enable_gemm_fast_gelu: false
   # use_raw_attention_mask: false
-  # disable_group_norm: false
-  # disable_packed_kv: false
+  # disable_group_norm: true
+  # disable_packed_kv: true
+
+auto_quantization_strategy: null
+auto_quantization_config:
+    is_static: false
+    use_symmetric_activations: false
+    use_symmetric_weights: true
+    per_channel: true
+    nodes_to_quantize: null
+    nodes_to_exclude: null
+    operators_to_quantize:
+    - Add
+    - MatMul

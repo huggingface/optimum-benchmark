@@ -50,12 +50,4 @@ class TextGenerator(InputGenerator):
                 framework='pt'
             ).to(self.device)
 
-        # if config.sparsity > 0:
-        #     # apply sparse mask
-        #     mask = torch.rand(
-        #         (config.batch_size, config.sequence_length))
-        #     attention_mask[mask < config.sparsity] = 0
-        #     # force right padding
-        #     attention_mask, _ = attention_mask.sort(dim=-1, descending=True)
-
         return dummy_input
