@@ -1,0 +1,30 @@
+defaults:
+  - pytorch_text_inference
+  - _self_
+  - override backend: onnxruntime
+
+hydra:
+  sweeper:
+    # this will allow hydra to start the sweep fatser instead of 
+    # generating and validating all the generated configurations
+    max_batch_size: 16
+    # search space generates 2^17=131072 configurations
+    # so this is just a demonstration of the sweeper capabilities
+    params:
+      backend.auto_optimization_config.optimization_level: 0,1,2,99
+      backend.auto_optimization_config.enable_transformers_specific_optimizations: true,false
+      backend.auto_optimization_config.optimize_for_gpu: true,false
+      backend.auto_optimization_config.fp16: true,false
+      backend.auto_optimization_config.disable_gelu_fusion: true,false
+      backend.auto_optimization_config.disable_layer_norm_fusion: true,false
+      backend.auto_optimization_config.disable_attention_fusion: true,false
+      backend.auto_optimization_config.disable_skip_layer_norm_fusion: true,false
+      backend.auto_optimization_config.disable_bias_skip_layer_norm_fusion: true,false
+      backend.auto_optimization_config.disable_bias_gelu_fusion: true,false
+      backend.auto_optimization_config.disable_embed_layer_norm_fusion: true,false
+      backend.auto_optimization_config.enable_gelu_approximation: true,false
+      backend.auto_optimization_config.use_mask_index: true,false
+      backend.auto_optimization_config.no_attention_mask: true,false
+      backend.auto_optimization_config.disable_shape_inference: true,false
+
+experiment_name: exhaustive-ort-optimization

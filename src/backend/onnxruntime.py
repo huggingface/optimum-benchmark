@@ -18,40 +18,12 @@ LOGGER = getLogger(BACKEND_NAME)
 
 @dataclass
 class ORTOptimizationConfig:
-    # default options from optimum docs
-    optimization_level: int = 1
-    optimize_for_gpu: bool = False
-    fp16: bool = False
-    enable_transformers_specific_optimizations: bool = True
-    disable_gelu_fusion: bool = False
-    disable_layer_norm_fusion: bool = False
-    disable_attention_fusion: bool = False
-    disable_skip_layer_norm_fusion: bool = False
-    disable_bias_skip_layer_norm_fusion: bool = False
-    disable_bias_gelu_fusion: bool = False
-    disable_embed_layer_norm_fusion: bool = True
-    enable_gelu_approximation: bool = False
-    use_mask_index: bool = False
-    no_attention_mask: bool = False
-    disable_shape_inference: bool = False
-    # still experimental
-    # use_multi_head_attention: bool = False
-    # enable_gemm_fast_gelu: bool = False
-    # use_raw_attention_mask: bool = False
-    # disable_group_norm: bool = True
-    # disable_packed_kv: bool = True
+    pass
 
 
 @dataclass
 class ORTQuantizationConfig:
-    is_static: bool = False
-    use_symmetric_activations: bool = False
-    use_symmetric_weights: bool = True
-    per_channel: bool = True
-    nodes_to_quantize: Optional[List[str]] = None
-    nodes_to_exclude: Optional[List[str]] = None
-    operators_to_quantize: List[str] = field(
-        default_factory=lambda: ['MatMul', 'Add'])
+    pass
 
 
 @dataclass
@@ -62,8 +34,8 @@ class ORTConfig(BackendConfig):
     # basic options
     use_io_binding: bool = False
     # graph optimization options
-    optimization_strategy: Optional[str] = None
-    optimization_config: ORTOptimizationConfig = ORTOptimizationConfig()
+    auto_optimization_level: Optional[str] = None
+    auto_optimization_config: ORTOptimizationConfig = ORTOptimizationConfig()
     # auto quantization options
     auto_quantization_strategy: Optional[str] = None
     auto_quantization_config: ORTQuantizationConfig = ORTQuantizationConfig()
@@ -112,53 +84,87 @@ class ORTBackend(Backend):
             f"\t+ Moving module to {self.device} execution provider")
         self.pretrained_model.to(self.device)
 
-        LOGGER.info("\t+ Optimizing model")
-        optimizer = ORTOptimizer.from_pretrained(self.pretrained_model)
+        custom_opt_config = {
+            key: value
+            for (key, value)
+            in config.auto_optimization_config.items()
+            if value is not None
+        }
 
-        if config.optimization_strategy is not None:
-            LOGGER.info(
-                f"\t+ Setting onnxruntime optimization config with strategy {config.optimization_strategy}"
-            )
-            optimization_config = AutoOptimizationConfig.with_optimization_level(
-                optimization_level=config.optimization_strategy,
-                for_gpu=(self.device == 'cuda'),
-            )
-        else:
-            LOGGER.info(
-                f"\t+ Setting onnxruntime optimization config with custom config"
-            )
-            optimization_config = OptimizationConfig(
-                **config.optimization_config,
-            )
+        if (config.auto_optimization_level is not None) or custom_opt_config:
+            LOGGER.info("\t+ Optimizing model")
+            optimizer = ORTOptimizer.from_pretrained(self.pretrained_model)
 
-        with TemporaryDirectory() as tmpdirname:
-            optimizer.optimize(
-                save_dir=f'{tmpdirname}/{self.model}.onnx',
-                optimization_config=optimization_config,
-            )
+            if self.device == 'cuda' or config.auto_optimization_config.get('optimize_for_gpu'):
+                LOGGER.info(
+                    f"\t+ Enabling onnxruntime optimization for gpu (optimize_for_gpu=True)"
+                )
+                config.auto_optimization_config['optimize_for_gpu'] = True
+            else:
+                LOGGER.info(
+                    f"\t+ Disabling onnxruntime optimization for gpu (optimize_for_gpu=False)"
+                )
+                config.auto_optimization_config['optimize_for_gpu'] = False
 
-            self.pretrained_model = ortmodel_class.from_pretrained(
-                f'{tmpdirname}/{self.model}.onnx',
-                session_options=session_options,
-            )
+            if 'optimize_for_gpu' in custom_opt_config:
+                custom_opt_config['optimize_for_gpu'] = config.auto_optimization_config['optimize_for_gpu']
 
-        if config.auto_quantization_strategy is not None:
+            if config.auto_optimization_level is not None:
+                LOGGER.info(
+                    f"\t+ Setting onnxruntime optimization level with "
+                    f"backend.auto_optimization_level({config.auto_optimization_level}) "
+                    f"and overriding optimization config with custom "
+                    f"backend.auto_optimization_config({custom_opt_config})"
+                )
+                optimization_config = AutoOptimizationConfig.with_optimization_level(
+                    optimization_level=config.auto_optimization_level,
+                    for_gpu=config.auto_optimization_config['optimize_for_gpu'],
+                    **custom_opt_config
+                )
+            elif custom_opt_config:
+                LOGGER.info(
+                    f"\t+ Setting onnxruntime optimization config with custom "
+                    f"backend.auto_optimization_config({custom_opt_config})"
+                )
+                optimization_config = OptimizationConfig(
+                    **custom_opt_config,
+                )
+
+            with TemporaryDirectory() as tmpdirname:
+                optimizer.optimize(
+                    save_dir=f'{tmpdirname}/{self.model}.onnx',
+                    optimization_config=optimization_config,
+                )
+                self.pretrained_model = ortmodel_class.from_pretrained(
+                    f'{tmpdirname}/{self.model}.onnx',
+                    session_options=session_options,
+                )
+
+        custom_qnt_config = {
+            key: value
+            for (key, value)
+            in config.auto_quantization_config.items()
+            if value is not None
+        }
+
+        if (config.auto_quantization_strategy is not None) and custom_qnt_config:
             LOGGER.info("\t+ Quantizing model")
             quantizer = ORTQuantizer.from_pretrained(self.pretrained_model)
 
             LOGGER.info(
-                f"\t+ Setting onnxruntime quantization config with strategy {config.auto_quantization_strategy}"
+                f"\t+ Setting onnxruntime quantization strategy with "
+                f"backend.auto_quantization_strategy({config.auto_quantization_strategy})"
+                f"and overriding quantization config with custom "
+                f"backend.auto_quantization_config({custom_opt_config})"
             )
-            quantization_config = getattr(AutoQuantizationConfig, config.auto_quantization_strategy)(
-                **config.auto_quantization_config,
-            )
+            quantization_config = AutoQuantizationConfig.__getattribute__(
+                config.auto_quantization_strategy)(**custom_qnt_config)
 
             with TemporaryDirectory() as tmpdirname:
                 quantizer.quantize(
                     save_dir=f'{tmpdirname}/{self.model}.onnx',
                     quantization_config=quantization_config,
                 )
-
                 self.pretrained_model = ortmodel_class.from_pretrained(
                     f'{tmpdirname}/{self.model}.onnx',
                     session_options=session_options,
