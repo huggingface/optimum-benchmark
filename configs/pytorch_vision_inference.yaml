@@ -1,33 +1,8 @@
 defaults:
-  # default backend is pytorch
-  - backend: pytorch
-  # default input is text
-  - input: vision
-  # default benchmark is inference
-  - benchmark: inference
-  # other parameters are infered from:
-  # (dataclass with environment variables and an identifier)
-  - experiment
-  # (this config)
+  - pytorch_text_inference
   - _self_
-  # override logging to use colorlog (colorful logs)
-  - override hydra/job_logging: colorlog
-  - override hydra/hydra_logging: colorlog
-
-hydra:
-  run:
-    dir: runs/${experiment_name}/${experiment_time_id}
-  sweep:
-    dir: sweeps/${experiment_name}/${experiment_time_id}
-  job:
-    # enable changing the working directory
-    # to the run directory for files saving
-    chdir: true
+  - override input: vision
 
 experiment_name: pytorch-vision-inference
-# will be filled by composition with dataclass
-experiment_time_id: ???
 
 model: facebook/deit-base-distilled-patch16-224
-task: ${task_from_model:${model}}
-device: cpu

@@ -54,6 +54,26 @@ This will generate `report.csv` and `environment` files in the specified directo
 The console output will be something like this:
 <img src='text_inference.png' alt='text-inference-report' style='display:block;margin-left:auto;margin-right:auto;'>
 
+## Configurations structure
+You can create custom configuration files following the examples in `configs` directory.
+The easiest way to do so is by using `hydra`'s [composition](https://hydra.cc/docs/0.11/tutorial/composition/).
+
+The main configuration is `configs/pytorch_text_inference`. 
+To create one that inherits from it but uses a `wav2vec2` model and takes `audio` input, it's as easy as:
+
+```yaml
+defaults:
+  - pytorch_text_inference
+  - _self_
+  - override input: audio
+
+experiment_name: pytorch-audio-inference
+
+model: bookbot/distil-wav2vec2-adult-child-cls-37m
+```
+
+This is especially useful for creating sweeps, where the cli commands become too long. An example is provided in `configs/onnxruntime_exhaustive_optimization` for an exhaustive sweep over all possible cominations of `onnxruntime`'s graph optimizations.
+
 ## TODO
 - [x] Add support for other model inputs (vision, audio, etc.)
 - [x] Add support for omptimum optimizations (graph optimization, quantization, etc.)
