@@ -16,7 +16,7 @@ LOGGER = getLogger(BACKEND_NAME)
 @dataclass
 class PyTorchOptimizationConfig:
     bettertransformer: bool = False
-
+    torch_compile: bool = False
 
 @dataclass
 class PyTorchConfig(BackendConfig):
@@ -24,8 +24,7 @@ class PyTorchConfig(BackendConfig):
     version: str = torch_version
 
     # base options
-    torch_compile: bool = False
-    grad_enabled: bool = False
+    disable_grad: bool = False
     eval_mode: bool = False
 
     # graph optimization options
@@ -64,24 +63,24 @@ class PyTorchBackend(Backend):
         self.pretrained_model.to(self.device)
 
         # Disable gradients
-        if not config.optimization.grad_enabled:
+        if not config.disable_grad or config.eval_mode:
             LOGGER.info("\t+ Disabling gradients")
             torch.set_grad_enabled(False)
 
         # Turn on eval mode
-        if config.optimization.eval_mode:
+        if config.eval_mode:
             LOGGER.info("\t+ Turning eval mode on Module")
             self.pretrained_model.eval()
 
         # Turn on better transformer inference
         if config.optimization.bettertransformer:
-            LOGGER.info("\t+ Using BetterTransformer fastpath")
+            LOGGER.info("\t+ Using BetterTransformer Fastpath")
             self.pretrained_model = BetterTransformer.transform(
                 self.pretrained_model, keep_original_model=False)
 
         # Compile model
         if config.optimization.torch_compile:
-            LOGGER.info("\t+ Using compiled Module")
+            LOGGER.info("\t+ Using torch.compile")
             self.pretrained_model = torch.compile(self.pretrained_model)
 
     def run_inference(self, inputs: Dict[str, Tensor]) -> Dict[str, Tensor]:
