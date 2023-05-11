@@ -57,9 +57,9 @@ The console output will be something like this:
 ## TODO
 - [x] Add support for other model inputs (vision, audio, etc.)
 - [x] Add support for omptimum optimizations (graph optimization, quantization, etc.)
-- [x] Gather report data from an experiment directory.
+- [x] Add experiments aggregator to report on data from different experiments.
+- [ ] Add support for quantization calibration.
 - [ ] Add support for sparse inputs (zeros in the attention mask)
 - [ ] Add support for more metrics (memory usage, node execution time, etc.)
-
-- [ ] Dana benchmark regression and comparison system with dashboard
+- [ ] Dana benchmark regression and comparison system with dashboard [(WIP)](https://github.com/IlyasMoutawwakil/optimum-dana)
 - [ ] ...
