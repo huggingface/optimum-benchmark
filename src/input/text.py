@@ -1,3 +1,4 @@
+import torch
 from src.input.base import InputConfig
 from dataclasses import dataclass
 from logging import getLogger
@@ -49,5 +50,8 @@ class TextGenerator(InputGenerator):
                 input_name,
                 framework='pt'
             ).to(self.device)
+            
+            if input_name == 'attention_mask':
+                dummy_input[input_name] = torch.ones_like(dummy_input[input_name])
 
         return dummy_input
