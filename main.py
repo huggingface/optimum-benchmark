@@ -26,6 +26,10 @@ from optimum.exporters import TasksManager
 OmegaConf.register_new_resolver(
     "task_from_model", TasksManager.infer_task_from_model)
 OmegaConf.register_new_resolver(
+    'provider_from_device',
+    lambda device: f'{device.upper()}ExecutionProvider'
+)
+OmegaConf.register_new_resolver(
     'pytorch_version', lambda: PyTorchConfig.version)
 OmegaConf.register_new_resolver(
     'onnxruntime_version', lambda: ORTConfig.version)
@@ -36,7 +40,6 @@ cs = ConfigStore.instance()
 # This is the default config that comes with
 # an identifier and some environment variables
 cs.store(name="experiment", node=ExperimentConfig)
-
 cs.store(group="benchmark", name="inference_benchmark", node=InferenceConfig)
 
 cs.store(group="backend", name="pytorch_backend", node=PyTorchConfig)
@@ -50,7 +53,7 @@ LOGGER = getLogger(__name__)
 
 
 @hydra.main(config_path="configs", config_name="pytorch_text_inference", version_base=None)
-def run(config: ExperimentConfig) -> None:
+def run_experiment(config: ExperimentConfig) -> None:
     """
     Run the benchmark with the given configuration.
     """
@@ -85,4 +88,4 @@ def run(config: ExperimentConfig) -> None:
 
 
 if __name__ == '__main__':
-    run()
+    run_experiment()

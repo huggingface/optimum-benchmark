@@ -4,12 +4,14 @@ name: onnxruntime
 version: ${onnxruntime_version:}
 
 use_io_binding: false
+provider: ${provider_from_device:${device}}
 inter_op_num_threads: null
 intra_op_num_threads: null
 
-auto_optimization_level: null
-auto_optimization_config:
-  optimization_level: null
+# main optimizations: O1, O2, O3, O4.
+optimization_level: null
+# additional optimization configs, for example:
+optimization_parameters:
   optimize_for_gpu: null
   fp16: null
   enable_transformers_specific_optimizations: null
@@ -25,12 +27,11 @@ auto_optimization_config:
   no_attention_mask: null
   disable_shape_inference: null
 
-auto_quantization_strategy: null
-auto_quantization_config:
+# main quantization strategies: arm64, avx2, avx512, avx512_vnni, tensorrt.
+quantization_strategy: null
+# additional optimization configs, for example:
+quantization_parameters:
   is_static: null
   use_symmetric_activations: null
   use_symmetric_weights: null
   per_channel: null
-  nodes_to_quantize: null
-  nodes_to_exclude: null
-  operators_to_quantize: null

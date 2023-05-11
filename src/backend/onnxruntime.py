@@ -1,7 +1,8 @@
 from logging import getLogger
 from dataclasses import dataclass, field
+from omegaconf.dictconfig import DictConfig
 from tempfile import TemporaryDirectory
-from typing import List, Optional
+from typing import Dict, List, Optional
 from optimum.onnxruntime import ORTOptimizer, ORTQuantizer
 from optimum.onnxruntime.trainer import ORTFeaturesManager
 from optimum.onnxruntime.configuration import OptimizationConfig,  \
@@ -17,28 +18,19 @@ LOGGER = getLogger(BACKEND_NAME)
 
 
 @dataclass
-class ORTOptimizationConfig:
-    pass
-
-
-@dataclass
-class ORTQuantizationConfig:
-    pass
-
-
-@dataclass
 class ORTConfig(BackendConfig):
     name: str = BACKEND_NAME
     version: str = ort_version
 
     # basic options
     use_io_binding: bool = False
+    provider: str = 'CPUExecutionProvider'
     # graph optimization options
-    auto_optimization_level: Optional[str] = None
-    auto_optimization_config: ORTOptimizationConfig = ORTOptimizationConfig()
+    optimization_level: Optional[str] = None
+    optimization_parameters: DictConfig = DictConfig({})
     # auto quantization options
-    auto_quantization_strategy: Optional[str] = None
-    auto_quantization_config: ORTQuantizationConfig = ORTQuantizationConfig()
+    quantization_strategy: Optional[str] = None
+    quantization_parameters: DictConfig = DictConfig({})
 
 
 class ORTBackend(Backend):
@@ -77,54 +69,51 @@ class ORTBackend(Backend):
             self.model,
             session_options=session_options,
             use_io_binding=config.use_io_binding,
+            provider=config.provider,
             export=True,
         )
-
-        LOGGER.info(
-            f"\t+ Moving module to {self.device} execution provider")
-        self.pretrained_model.to(self.device)
 
         custom_opt_config = {
             key: value
             for (key, value)
-            in config.auto_optimization_config.items()
+            in config.optimization_parameters.items()
             if value is not None
         }
 
-        if (config.auto_optimization_level is not None) or custom_opt_config:
+        if (config.optimization_level is not None) or custom_opt_config:
             LOGGER.info("\t+ Optimizing model")
             optimizer = ORTOptimizer.from_pretrained(self.pretrained_model)
 
-            if self.device == 'cuda' or config.auto_optimization_config.get('optimize_for_gpu'):
+            if self.device == 'cuda' or config.optimization_parameters.get('optimize_for_gpu'):
                 LOGGER.info(
                     f"\t+ Enabling onnxruntime optimization for gpu (optimize_for_gpu=True)"
                 )
-                config.auto_optimization_config['optimize_for_gpu'] = True
+                config.optimization_parameters['optimize_for_gpu'] = True
             else:
                 LOGGER.info(
                     f"\t+ Disabling onnxruntime optimization for gpu (optimize_for_gpu=False)"
                 )
-                config.auto_optimization_config['optimize_for_gpu'] = False
+                config.optimization_parameters['optimize_for_gpu'] = False
 
             if 'optimize_for_gpu' in custom_opt_config:
-                custom_opt_config['optimize_for_gpu'] = config.auto_optimization_config['optimize_for_gpu']
+                custom_opt_config['optimize_for_gpu'] = config.optimization_parameters['optimize_for_gpu']
 
-            if config.auto_optimization_level is not None:
+            if config.optimization_level is not None:
                 LOGGER.info(
                     f"\t+ Setting onnxruntime optimization level with "
-                    f"backend.auto_optimization_level({config.auto_optimization_level}) "
+                    f"backend.optimization_level({config.optimization_level}) "
                     f"and overriding optimization config with custom "
-                    f"backend.auto_optimization_config({custom_opt_config})"
+                    f"backend.optimization_parameters({custom_opt_config})"
                 )
                 optimization_config = AutoOptimizationConfig.with_optimization_level(
-                    optimization_level=config.auto_optimization_level,
-                    for_gpu=config.auto_optimization_config['optimize_for_gpu'],
+                    optimization_level=config.optimization_level,
+                    for_gpu=config.optimization_parameters['optimize_for_gpu'],
                     **custom_opt_config
                 )
             elif custom_opt_config:
                 LOGGER.info(
                     f"\t+ Setting onnxruntime optimization config with custom "
-                    f"backend.auto_optimization_config({custom_opt_config})"
+                    f"backend.optimization_parameters({custom_opt_config})"
                 )
                 optimization_config = OptimizationConfig(
                     **custom_opt_config,
@@ -138,27 +127,28 @@ class ORTBackend(Backend):
                 self.pretrained_model = ortmodel_class.from_pretrained(
                     f'{tmpdirname}/{self.model}.onnx',
                     session_options=session_options,
+                    provider=config.provider,
                 )
 
         custom_qnt_config = {
             key: value
             for (key, value)
-            in config.auto_quantization_config.items()
+            in config.quantization_parameters.items()
             if value is not None
         }
 
-        if (config.auto_quantization_strategy is not None) and custom_qnt_config:
+        if (config.quantization_strategy is not None) and custom_qnt_config:
             LOGGER.info("\t+ Quantizing model")
             quantizer = ORTQuantizer.from_pretrained(self.pretrained_model)
 
             LOGGER.info(
                 f"\t+ Setting onnxruntime quantization strategy with "
-                f"backend.auto_quantization_strategy({config.auto_quantization_strategy})"
+                f"backend.quantization_strategy({config.quantization_strategy})"
                 f"and overriding quantization config with custom "
-                f"backend.auto_quantization_config({custom_opt_config})"
+                f"backend.quantization_parameters({custom_opt_config})"
             )
             quantization_config = AutoQuantizationConfig.__getattribute__(
-                config.auto_quantization_strategy)(**custom_qnt_config)
+                config.quantization_strategy)(**custom_qnt_config)
 
             with TemporaryDirectory() as tmpdirname:
                 quantizer.quantize(
@@ -168,6 +158,7 @@ class ORTBackend(Backend):
                 self.pretrained_model = ortmodel_class.from_pretrained(
                     f'{tmpdirname}/{self.model}.onnx',
                     session_options=session_options,
+                    provider=config.provider,
                 )
 
     def run_inference(self, inputs):
