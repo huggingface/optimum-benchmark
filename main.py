@@ -24,11 +24,13 @@ from optimum.exporters import TasksManager
 
 # Register resolvers
 OmegaConf.register_new_resolver(
-    "task_from_model", TasksManager.infer_task_from_model)
+    "infer_task", TasksManager.infer_task_from_model)
 OmegaConf.register_new_resolver(
-    'provider_from_device',
+    'infer_provider',
     lambda device: f'{device.upper()}ExecutionProvider'
 )
+OmegaConf.register_new_resolver(
+    'is_inference', lambda benchmark_name: benchmark_name == 'inference')
 OmegaConf.register_new_resolver(
     'pytorch_version', lambda: PyTorchConfig.version)
 OmegaConf.register_new_resolver(

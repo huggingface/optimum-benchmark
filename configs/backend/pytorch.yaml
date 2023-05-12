@@ -6,8 +6,8 @@ version: ${pytorch_version:}
 inter_op_num_threads: null
 intra_op_num_threads: null
 
-disable_grad: false
-eval_mode: false
+disable_grad: ${is_inference:${benchmark.name}}
+eval_mode: ${is_inference:${benchmark.name}}
 
 optimization:
   bettertransformer: false

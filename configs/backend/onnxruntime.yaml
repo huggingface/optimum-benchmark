@@ -4,7 +4,7 @@ name: onnxruntime
 version: ${onnxruntime_version:}
 
 use_io_binding: false
-provider: ${provider_from_device:${device}}
+provider: ${infer_provider:${device}}
 inter_op_num_threads: null
 intra_op_num_threads: null
 
