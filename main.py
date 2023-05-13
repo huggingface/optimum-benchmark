@@ -24,11 +24,11 @@ from optimum.exporters import TasksManager
 
 # Register resolvers
 OmegaConf.register_new_resolver(
+    "for_gpu", lambda device: device == 'cuda')
+OmegaConf.register_new_resolver(
     "infer_task", TasksManager.infer_task_from_model)
 OmegaConf.register_new_resolver(
-    'infer_provider',
-    lambda device: f'{device.upper()}ExecutionProvider'
-)
+    'infer_provider', lambda device: f'{device.upper()}ExecutionProvider')
 OmegaConf.register_new_resolver(
     'is_inference', lambda benchmark_name: benchmark_name == 'inference')
 OmegaConf.register_new_resolver(
@@ -54,7 +54,7 @@ cs.store(group="input", name="audio_input", node=AudioConfig)
 LOGGER = getLogger(__name__)
 
 
-@hydra.main(config_path="configs", config_name="pytorch_text_inference", version_base=None)
+@hydra.main(config_path="configs", config_name="base_experiment", version_base=None)
 def run_experiment(config: ExperimentConfig) -> None:
     """
     Run the benchmark with the given configuration.
@@ -87,6 +87,8 @@ def run_experiment(config: ExperimentConfig) -> None:
     with open("stats.json", "w") as f:
         f.write(dumps(benchmark.stats_dict, indent=4))
     benchmark.details_df.to_csv("details.csv", index=False)
+
+    return benchmark.stats_dict['latency.mean']
 
 
 if __name__ == '__main__':

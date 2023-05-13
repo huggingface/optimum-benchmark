@@ -21,7 +21,6 @@ class TextConfig(InputConfig):
 
     batch_size: int = 8
     sequence_length: int = 96
-    num_choices: int = 4
 
 
 class TextGenerator(InputGenerator):
@@ -40,7 +39,7 @@ class TextGenerator(InputGenerator):
             normalized_config=self.normalized_config,
             batch_size=config.batch_size,
             sequence_length=config.sequence_length,
-            num_choices=config.num_choices,
+            num_choices=2,
         )
 
     def generate(self) -> Dict[str, Tensor]:

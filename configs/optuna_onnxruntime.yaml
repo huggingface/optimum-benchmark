@@ -1,20 +1,21 @@
 defaults:
-  - pytorch_text_inference
+  - base_experiment
   - _self_
   - override backend: onnxruntime
+  - override hydra/sweeper: optuna
+  - override hydra/sweeper/sampler: tpe
 
 hydra:
   sweeper:
-    # this will allow hydra to start the sweep fatser instead of 
-    # generating and validating all the generated configurations
-    max_batch_size: 16
-    # search space generates 2^16=65536 configurations
-    # so this is just a demonstration of the sweeper capabilities
+    # Optuna parameters
+    study_name: onnxruntime_optimization_level
+    direction: minimize
+    n_trials: 5
+    n_jobs: 1
+    storage: null
     params:
       backend.optimization_level: O1,O2,O3,O4
-      backend.optimization_parameters.enable_transformers_specific_optimizations: true,false
-      backend.optimization_parameters.optimize_for_gpu: true,false
-      backend.optimization_parameters.fp16: true,false
+      backend.optimization_parameters.for_gpu: true,false
       backend.optimization_parameters.disable_gelu_fusion: true,false
       backend.optimization_parameters.disable_layer_norm_fusion: true,false
       backend.optimization_parameters.disable_attention_fusion: true,false
@@ -22,9 +23,7 @@ hydra:
       backend.optimization_parameters.disable_bias_skip_layer_norm_fusion: true,false
       backend.optimization_parameters.disable_bias_gelu_fusion: true,false
       backend.optimization_parameters.disable_embed_layer_norm_fusion: true,false
-      backend.optimization_parameters.enable_gelu_approximation: true,false
       backend.optimization_parameters.use_mask_index: true,false
-      backend.optimization_parameters.no_attention_mask: true,false
       backend.optimization_parameters.disable_shape_inference: true,false
 
-experiment_name: exhaustive-ort-optimization
+experiment_name: optuna-onnxruntime-optimization-level

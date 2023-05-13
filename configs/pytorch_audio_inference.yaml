@@ -1,5 +1,5 @@
 defaults:
-  - pytorch_text_inference
+  - base_experiment
   - _self_
   - override input: audio
 

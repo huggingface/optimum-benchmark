@@ -73,51 +73,27 @@ class ORTBackend(Backend):
             export=True,
         )
 
-        custom_opt_config = {
-            key: value
-            for (key, value)
-            in config.optimization_parameters.items()
-            if value is not None
-        }
-
-        if (config.optimization_level is not None) or custom_opt_config:
+        if config.optimization_level is not None:
             LOGGER.info("\t+ Optimizing model")
             optimizer = ORTOptimizer.from_pretrained(self.pretrained_model)
 
-            if self.device == 'cuda' or config.optimization_parameters.get('optimize_for_gpu'):
-                LOGGER.info(
-                    f"\t+ Enabling onnxruntime optimization for gpu (optimize_for_gpu=True)"
-                )
-                config.optimization_parameters['optimize_for_gpu'] = True
-            else:
-                LOGGER.info(
-                    f"\t+ Disabling onnxruntime optimization for gpu (optimize_for_gpu=False)"
-                )
-                config.optimization_parameters['optimize_for_gpu'] = False
+            custom_opt_config = {
+                key: value
+                for (key, value)
+                in config.optimization_parameters.items()
+                if value is not None
+            }
 
-            if 'optimize_for_gpu' in custom_opt_config:
-                custom_opt_config['optimize_for_gpu'] = config.optimization_parameters['optimize_for_gpu']
-
-            if config.optimization_level is not None:
-                LOGGER.info(
-                    f"\t+ Setting onnxruntime optimization level with "
-                    f"backend.optimization_level({config.optimization_level}) "
-                    f"and overriding optimization config with custom "
-                    f"backend.optimization_parameters({custom_opt_config})"
-                )
-                optimization_config = AutoOptimizationConfig.with_optimization_level(
-                    optimization_level=config.optimization_level,
-                    for_gpu=config.optimization_parameters['optimize_for_gpu'],
-                    **custom_opt_config
-                )
-            elif custom_opt_config:
-                LOGGER.info(
-                    f"\t+ Setting onnxruntime optimization config with custom "
-                    f"backend.optimization_parameters({custom_opt_config})"
-                )
-                optimization_config = OptimizationConfig(
-                    **custom_opt_config,
-                )
+            LOGGER.info(
+                f"\t+ Setting onnxruntime optimization level with "
+                f"backend.optimization_level({config.optimization_level}) "
+                f"and overriding optimization config with custom "
+                f"backend.optimization_parameters({custom_opt_config})"
+            )
+            optimization_config = AutoOptimizationConfig.with_optimization_level(
+                optimization_level=config.optimization_level,
+                **custom_opt_config
+            )
 
             with TemporaryDirectory() as tmpdirname:
                 optimizer.optimize(
@@ -130,16 +106,16 @@ class ORTBackend(Backend):
                     provider=config.provider,
                 )
 
-        custom_qnt_config = {
-            key: value
-            for (key, value)
-            in config.quantization_parameters.items()
-            if value is not None
-        }
-
-        if (config.quantization_strategy is not None) and custom_qnt_config:
+        if config.quantization_strategy is not None:
             LOGGER.info("\t+ Quantizing model")
             quantizer = ORTQuantizer.from_pretrained(self.pretrained_model)
+
+            custom_qnt_config = {
+                key: value
+                for (key, value)
+                in config.quantization_parameters.items()
+                if value is not None
+            }
 
             LOGGER.info(
                 f"\t+ Setting onnxruntime quantization strategy with "
@@ -147,6 +123,7 @@ class ORTBackend(Backend):
                 f"and overriding quantization config with custom "
                 f"backend.quantization_parameters({custom_opt_config})"
             )
+
             quantization_config = AutoQuantizationConfig.__getattribute__(
                 config.quantization_strategy)(**custom_qnt_config)
 
