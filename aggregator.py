@@ -22,18 +22,18 @@ def gather_results(folder: Path) -> Tuple[dict, pd.DataFrame]:
 
     Returns
     -------
-    environment : dict
-        The environment configuration represented by parameters that are the same for all runs
-    report : pd.DataFrame
-        The report containing all stats with their corresponding configurations in a single dataframe.
+    static_params : dict
+        The unchanging parameters of the benchmark.
+    bench_results : pd.DataFrame
+        The results of the benchmark with their corresponding changing parameters.
     """
 
     # List all csv results
-    stats_f = [f for f in folder.glob("**/stats.json")]
+    stats_f = [f for f in folder.glob("**/stats.csv")]
     configs_f = [f for f in folder.glob("**/config.yaml")]
 
     stats_dfs = {
-        f.relative_to(folder).parent.as_posix(): pd.read_json(f, orient='index').transpose()
+        f.relative_to(folder).parent.as_posix(): pd.read_csv(f, index_col=0)
         for f in stats_f
     }
 
@@ -57,6 +57,7 @@ def gather_results(folder: Path) -> Tuple[dict, pd.DataFrame]:
         for name in stats_dfs.keys()
     }
 
+    # Concatenate all reports
     report = pd.concat(reports.values(), axis=0, ignore_index=True)
 
     # remove unnecessary columns
@@ -64,27 +65,28 @@ def gather_results(folder: Path) -> Tuple[dict, pd.DataFrame]:
         columns=[col for col in report.columns if '_target_' in col],
         inplace=True
     )
-    environment = report.loc[:, report.nunique(
-    ) == 1]
-    print(environment)
-    environment = environment.drop_duplicates().to_dict(orient='records')[0]
-    report = report.loc[:, report.nunique() > 1]
-    report = report.sort_values(
-        by=['latency.mean', 'throughput'], ascending=False)
 
-    return environment, report
+    # extract static parameters
+    static_params = report.loc[:, report.nunique(
+    ) == 1].drop_duplicates().to_dict(orient='records')[0]
+
+    # extract benchmark parameters
+    bench_results = report.loc[:, report.nunique() > 1].sort_values(
+        by=[col for col in report.columns if 'latency mean' in col], ascending=True)
+
+    return static_params, bench_results
 
 
-def show_results_in_console(environement: dict, report: pd.DataFrame) -> None:
+def show_results_in_console(static_params: dict, bench_results: pd.DataFrame) -> None:
     """
     Display the results in the console.
 
     Parameters
     ----------
-    environement : dict
-        The environment configuration represented by parameters that are the same for all runs
-    report : pd.DataFrame
-        The report containing all stats with their corresponding configurations in a single dataframe.
+    static_params : dict
+        The unchanging parameters of the benchmark.
+    bench_results : pd.DataFrame
+        The results of the benchmark with their corresponding changing parameters.
     """
 
     table = Table(
@@ -93,17 +95,17 @@ def show_results_in_console(environement: dict, report: pd.DataFrame) -> None:
     )
 
     # Define the columns
-    for col in report.columns:
+    for col in bench_results.columns:
         table.add_column(col)
 
     # Add rows
-    for row in report.itertuples(index=False):
+    for row in bench_results.itertuples(index=False):
         # stringify the row
         table.add_row(*[str(v) for v in row])
 
     console = Console()
     # Display environment
-    console.print('ENV:', environement)
+    console.print('Static Parameters:', static_params)
     # Display the table
     console.print(table)
 
@@ -116,12 +118,12 @@ if __name__ == '__main__':
     )
     args = parser.parse_args()
 
-    environment, report = gather_results(args.folder)
+    static_params, bench_results = gather_results(args.folder)
 
     # Save aggregated results
-    with open(f'{args.folder}/environment.json', 'w') as f:
-        f.write(dumps(environment, indent=4))
-    report.to_csv(f'{args.folder}/report.csv', index=False)
+    with open(f'{args.folder}/static_params.json', 'w') as f:
+        f.write(dumps(static_params, indent=4))
+    bench_results.to_csv(f'{args.folder}/bench_results.csv', index=False)
 
     # Display the results
-    show_results_in_console(environment, report)
+    show_results_in_console(static_params, bench_results)

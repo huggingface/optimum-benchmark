@@ -10,22 +10,22 @@ python -m pip install -r requirements.txt
 ```
 
 Then, run one of the default benchmarks in `configs`.
-For example, to run the `pytorch_text_inference` (default) benchmark:
+For example, to run the default `base_experiment` benchmark:
 
 ```bash
-python main.py --config-name pytorch_text_inference
+python main.py
 ```
 
-Who's behavior is determined by `configs/pytorch_text_inference.yaml`.
+Who's behavior is determined by `configs/base_experiment.yaml`.
 
 ## Command-line configuration overrides
 It's easy to override the default behavior of your benchmark from the command line.
 
 ```
-python main.py experiment_name=my-cuda-experiment backend=pytorch device=cuda
+python main.py experiment_name=my-cuda-experiment device=cuda
 ```
 
-Results (`stats.json` and `details.csv`) will be stored in `runs/{experiment_name}/{experiment_datetime_id}`, along with the program logs `main.log`, the configuration that's been used `.hydra/config.yaml`.
+Results (`stats.json` and `details.csv` or `profiling.csv`) will be stored in `runs/{experiment_name}/{experiment_datetime_id}`, along with the program logs `main.log` and the configuration that's been used `.hydra/config.yaml`.
 
 ## Multirun configuration sweeps
 You can easily run configuration sweeps using the `-m` or `--multirun` option. By default, configurations will be executed serially but other kinds of executions are supported with hydra's launcher plugins : `hydra/launcher=submitit`, `hydra/launcher=slurm`, `hydra/launcher=joblib`, etc.
@@ -49,7 +49,7 @@ To aggregate the results of an experiment (run(s) or sweep(s)), you can use the 
 python aggregator.py --folder {folder_path}
 ```
 
-This will generate `report.csv` and `environment` files in the specified directory. The `report.csv` file contains the aggregated sweep results of all the runs in the directory (only tracking sweep parameters). The `environment` file contains all parameters that didn't change during the sweep.
+This will generate `static_params.json` and `bench_results.csv` files in the specified directory. The `bench_results.csv` file contains the aggregated sweep results of all the runs in the directory (only tracking changing parameters). While the `static_params.json` file contains all parameters that didn't change during the sweep.
 
 The console output will be something like this:
 <img src='text_inference.png' alt='text-inference-report' style='display:block;margin-left:auto;margin-right:auto;'>
@@ -59,7 +59,7 @@ You can create custom configuration files following the examples in `configs` di
 The easiest way to do so is by using `hydra`'s [composition](https://hydra.cc/docs/0.11/tutorial/composition/).
 
 The base configuration is `configs/base_experiment.yaml`. 
-For example, to create one that inherits from it but uses a `wav2vec2` model and takes `audio` inputs, it's as easy as:
+For example, to create a configuration that uses a `wav2vec2` model and takes `audio` inputs, it's as easy as:
 
 ```yaml
 defaults:
@@ -75,10 +75,11 @@ model: bookbot/distil-wav2vec2-adult-child-cls-37m
 This is especially useful for creating sweeps, where the cli commands become too long. An example is provided in `configs/optuna_onnxruntime.yaml` for an exhaustive sweep over all possible cominations of `onnxruntime`'s graph optimizations (leve, layer fusions, etc.). The command to run it is:
 
 ```bash
-python main.py -m configs=optuna_onnxruntime
+python main.py -m --config-name optuna_onnxruntime
 ```
 
-This example in particule doesn't use the basic sweeper plugin but a custom one that uses [optuna](https://optuna.org/) to find the best combination of optimizations reducing the latency (isn't that cool?).
+But in this example in particule we don't use the basic sweeper (that's used for testing all combinations) but rather a custom one that leverages [optuna](https://optuna.org/) to find the best combination in `n_trials` reducing the latency with bayesian optimization (isn't that cool?).
+
 At the end of it you get an additional `optimization_results.yaml` file that contains the best combination of optimizations found by optuna.
 
 ```yaml

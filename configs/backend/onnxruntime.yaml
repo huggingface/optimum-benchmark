@@ -9,7 +9,7 @@ inter_op_num_threads: null
 intra_op_num_threads: null
 
 optimization_level: null # O1, O2, O3, O4.
-# additional optimization configs:
+# additional optimization configs, for example:
 optimization_parameters:
   for_gpu: ${for_gpu:${device}}
   disable_gelu_fusion: null

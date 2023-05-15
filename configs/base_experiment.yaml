@@ -23,8 +23,9 @@ hydra:
     # enable changing the working directory to the run directory for files saving
     chdir: true
 
+# used for storing results
 experiment_name: pytorch-text-inference
-experiment_time_id: ??? # filled by dataclass
+experiment_time_id: ??? # resolved in dataclass
 
 model: distilbert-base-uncased-finetuned-sst-2-english
 task: ${infer_task:${model}}

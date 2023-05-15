@@ -25,7 +25,7 @@ class InferenceConfig(BenchmarkConfig):
     # Duration in seconds the benchmark will collect performance counters
     benchmark_duration: int = 5
     # Whether to use symbolic profiling or not
-    symbolic_profiling: bool = False
+    profiling: bool = False
 
 
 class InferenceBenchmark(Benchmark):
@@ -37,10 +37,10 @@ class InferenceBenchmark(Benchmark):
     def configure(self, config: InferenceConfig):
         self.model_latencies = []
         self.nodes_latencies = {}
-
+        
+        self.profiling = config.profiling
         self.warmup_runs = config.warmup_runs
         self.benchmark_duration = config.benchmark_duration
-        self.symbolic_profiling = config.symbolic_profiling
 
     def populate(self, backend: Backend, input_generator: InputGenerator) -> None:
         dummy_inputs = input_generator.generate()
@@ -56,7 +56,7 @@ class InferenceBenchmark(Benchmark):
             with self.track_latency():
                 backend.run_inference_with_model(dummy_inputs)
 
-        if self.symbolic_profiling:
+        if self.profiling:
             # Convert to symbolic one
             LOGGER.info("Converting model to symbolic")
             backend.symbolic_trace_model(
@@ -68,7 +68,7 @@ class InferenceBenchmark(Benchmark):
                 backend.run_inference_with_profiler(dummy_inputs)
 
             # Save nodes latencies
-            self.nodes_latencies.update(backend.profiler.nodes_latencies)
+            self.nodes_latencies = backend.profiler.nodes_latencies
 
     def save_results(self, path: str = '') -> None:
         self.stats_df.to_csv(path + 'stats.csv')
