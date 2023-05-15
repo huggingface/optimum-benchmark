@@ -4,3 +4,4 @@ name: inference
 
 warmup_runs: 10
 benchmark_duration: 5
+symbolic_profiling: false

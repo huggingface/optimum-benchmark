@@ -28,5 +28,5 @@ class Benchmark(ABC):
         raise NotImplementedError("Benchmark must implement configure method")
 
     @abstractmethod
-    def execute(self, backend: Backend, input_generator: InputGenerator) -> None:
-        raise NotImplementedError("Benchmark must implement execute method")
+    def populate(self, backend: Backend, input_generator: InputGenerator) -> None:
+        raise NotImplementedError("Benchmark must implement populate method")

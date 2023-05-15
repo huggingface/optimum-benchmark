@@ -1,12 +1,15 @@
-from torch import Tensor, __version__ as torch_version
-from optimum.bettertransformer import BetterTransformer
-from optimum.exporters import TasksManager
+from typing import Any, Dict, List
 from dataclasses import dataclass
 from logging import getLogger
-from typing import Dict
+
 import torch
+from torch import Tensor, __version__ as torch_version
+from transformers.utils.fx import symbolic_trace
+from optimum.bettertransformer import BetterTransformer
+from optimum.exporters import TasksManager
 
 from src.backend.base import Backend, BackendConfig
+from src.backend.utils import SymbolicProfiler
 
 BACKEND_NAME = "pytorch"
 
@@ -17,6 +20,7 @@ LOGGER = getLogger(BACKEND_NAME)
 class PyTorchOptimizationConfig:
     bettertransformer: bool = False
     torch_compile: bool = False
+
 
 @dataclass
 class PyTorchConfig(BackendConfig):
@@ -83,8 +87,19 @@ class PyTorchBackend(Backend):
             LOGGER.info("\t+ Using torch.compile")
             self.pretrained_model = torch.compile(self.pretrained_model)
 
-    def run_inference(self, inputs: Dict[str, Tensor]) -> Dict[str, Tensor]:
+    def run_inference_with_model(self, inputs: Dict[str, Tensor]) -> Dict[str, Tensor]:
         return self.pretrained_model(**inputs)
 
-    def clean(self) -> None:
-        pass
+    def symbolic_trace_model(self, inputs: Dict[str, Tensor], warmup_runs: int) -> None:
+        self.pretrained_model = symbolic_trace(
+            self.pretrained_model,
+            input_names=list(inputs.keys()),
+        )
+
+        for _ in range(warmup_runs):
+            self.run_inference_with_model(inputs)
+
+        self.profiler = SymbolicProfiler(self.pretrained_model)
+
+    def run_inference_with_profiler(self, inputs: Dict[str, Tensor]) -> Dict[str, Tensor]:
+        return self.profiler.run(*tuple(inputs.values()))

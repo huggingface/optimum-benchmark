@@ -29,6 +29,6 @@ class InputGenerator(ABC):
             'InputGenerator must implement configure method')
 
     @abstractmethod
-    def generate(self, config: InputConfig) -> Dict[str, Tensor]:
+    def generate(self) -> Dict[str, Tensor]:
         raise NotImplementedError(
             'InputGenerator must implement generate method')

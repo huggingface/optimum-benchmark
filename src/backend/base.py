@@ -45,15 +45,22 @@ class Backend(ABC):
                     f"\t+ Setting backend.intra_op_num_threads to {config.intra_op_num_threads}")
 
     @abstractmethod
-    def run_inference(self, inputs: Dict[str, Tensor]) -> Dict[str, Tensor]:
+    def run_inference_with_model(self, inputs: Dict[str, Tensor]) -> Dict[str, Tensor]:
         """
         Run inference on the backend with the given inputs
         """
         raise NotImplementedError()
 
     @abstractmethod
-    def clean(self) -> None:
+    def symbolic_trace_model(self, inputs: Dict[str, Tensor]) -> None:
         """
-        Clean the backend after execution
+        Symbolic trace the model
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def run_inference_with_profiler(self, inputs: Dict[str, Tensor]) -> Dict[str, Tensor]:
+        """
+        Run inference on the backend with the given inputs and profiler
         """
         raise NotImplementedError()

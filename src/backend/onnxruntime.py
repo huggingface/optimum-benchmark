@@ -9,6 +9,7 @@ from optimum.onnxruntime.configuration import OptimizationConfig,  \
     AutoOptimizationConfig, QuantizationConfig, AutoQuantizationConfig
 
 from onnxruntime import SessionOptions, __version__ as ort_version
+from torch import Tensor
 
 from src.backend.base import Backend, BackendConfig
 
@@ -138,9 +139,11 @@ class ORTBackend(Backend):
                     provider=config.provider,
                 )
 
-    def run_inference(self, inputs):
+    def run_inference_with_model(self, inputs: Dict[str, Tensor]) -> Dict[str, Tensor]:
         return self.pretrained_model(**inputs)
 
-    def clean(self) -> None:
-        LOGGER.info("Cleaning onnxruntime backend:")
-        pass
+    def symbolic_trace_model(self, inputs: Dict[str, Tensor]) -> None:
+        return super().symbolic_trace_model(inputs)
+
+    def run_inference_with_profiler(self, inputs: Dict[str, Tensor]) -> Dict[str, Tensor]:
+        return super().run_inference_with_profiler(inputs)

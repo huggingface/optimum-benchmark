@@ -78,17 +78,19 @@ def run_experiment(config: ExperimentConfig) -> None:
         config.model, config.task, config.device)
     benchmark.configure(config.benchmark)
 
-    # Execute the benchmark
-    benchmark.execute(backend, input_generator)
+    # Populate the benchmark
+    benchmark.populate(backend, input_generator)
+
+    # Save the benchmark stats
+    benchmark.save_results()
 
     # Save the resolved config
     OmegaConf.save(config, ".hydra/config.yaml", resolve=True)
-    # Save the benchmark results
-    with open("stats.json", "w") as f:
-        f.write(dumps(benchmark.stats_dict, indent=4))
-    benchmark.details_df.to_csv("details.csv", index=False)
 
-    return benchmark.stats_dict['latency.mean']
+    # get the optuna metric that will be minimized in a sweep
+    optuna_metric = benchmark.stats_df['Model latency mean (s)']
+
+    return optuna_metric
 
 
 if __name__ == '__main__':
