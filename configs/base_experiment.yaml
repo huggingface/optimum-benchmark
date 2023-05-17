@@ -25,7 +25,7 @@ hydra:
 
 # used for storing results
 experiment_name: pytorch-text-inference
-experiment_time_id: ??? # resolved in dataclass
+experiment_time_id: ??? # resolved by experiment dataclass
 
 model: distilbert-base-uncased-finetuned-sst-2-english
 task: ${infer_task:${model}}

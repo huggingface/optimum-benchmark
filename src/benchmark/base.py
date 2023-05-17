@@ -3,8 +3,8 @@ from abc import ABC, abstractmethod
 from logging import getLogger
 from typing import ClassVar
 
+from pandas import DataFrame
 
-from src.input.base import InputGenerator
 from src.backend.base import Backend
 
 LOGGER = getLogger("benchmark")
@@ -28,5 +28,11 @@ class Benchmark(ABC):
         raise NotImplementedError("Benchmark must implement configure method")
 
     @abstractmethod
-    def populate(self, backend: Backend, input_generator: InputGenerator) -> None:
-        raise NotImplementedError("Benchmark must implement populate method")
+    def run(self, backend: Backend) -> None:
+        raise NotImplementedError(
+            "Benchmark must implement run_benchmark method")
+
+    @abstractmethod
+    def save_results(self, path: str = '') -> None:
+        raise NotImplementedError(
+            "Benchmark must implement save_results method")

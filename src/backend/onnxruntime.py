@@ -1,17 +1,19 @@
 from logging import getLogger
-from dataclasses import dataclass, field
+from typing import Dict, Optional
+from dataclasses import dataclass
 from omegaconf.dictconfig import DictConfig
-from tempfile import TemporaryDirectory
-from typing import Dict, List, Optional
+
 from optimum.onnxruntime import ORTOptimizer, ORTQuantizer
 from optimum.onnxruntime.trainer import ORTFeaturesManager
-from optimum.onnxruntime.configuration import OptimizationConfig,  \
-    AutoOptimizationConfig, QuantizationConfig, AutoQuantizationConfig
+from optimum.onnxruntime.configuration import AutoOptimizationConfig, AutoQuantizationConfig
 
 from onnxruntime import SessionOptions, __version__ as ort_version
+from pandas import DataFrame, read_json
+from tempfile import TemporaryDirectory
 from torch import Tensor
 
 from src.backend.base import Backend, BackendConfig
+
 
 BACKEND_NAME = 'onnxruntime'
 
@@ -24,8 +26,10 @@ class ORTConfig(BackendConfig):
     version: str = ort_version
 
     # basic options
-    use_io_binding: bool = False
     provider: str = 'CPUExecutionProvider'
+    use_io_binding: bool = False
+    enable_profiling: bool = False
+
     # graph optimization options
     optimization_level: Optional[str] = None
     optimization_parameters: DictConfig = DictConfig({})
@@ -45,6 +49,7 @@ class ORTBackend(Backend):
         super().configure(config)
 
         session_options = SessionOptions()
+
         if config.intra_op_num_threads is not None:
             LOGGER.info(
                 f"\t+ Setting onnxruntime intra_op_num_threads({config.intra_op_num_threads})"
@@ -56,6 +61,11 @@ class ORTBackend(Backend):
             )
             session_options.inter_op_num_threads = config.inter_op_num_threads
 
+        if config.enable_profiling:
+            LOGGER.info("\t+ Enabling onnxruntime profiling")
+            session_options.enable_profiling = True
+            session_options.profile_file_prefix = "profile"
+
         try:
             # for now, I'm using ORTFeaturesManager to get the model class
             # but it only works with tasks that are supported in training
@@ -63,14 +73,15 @@ class ORTBackend(Backend):
                 self.task)
         except KeyError:
             raise NotImplementedError(
-                f"Task {self.task} not supported by onnxruntime backend (not really)")
+                f"Feature {self.task} not supported by onnxruntime backend")
 
-        LOGGER.info(f"\t+ Loading model {self.model} for task {self.task}")
+        LOGGER.info(
+            f"\t+ Loading model {self.model} for task {self.task} on {self.device}")
         self.pretrained_model = ortmodel_class.from_pretrained(
-            self.model,
-            session_options=session_options,
-            use_io_binding=config.use_io_binding,
+            model_id=self.model,
             provider=config.provider,
+            use_io_binding=config.use_io_binding,
+            session_options=session_options,
             export=True,
         )
 
@@ -102,8 +113,9 @@ class ORTBackend(Backend):
                     optimization_config=optimization_config,
                 )
                 self.pretrained_model = ortmodel_class.from_pretrained(
-                    f'{tmpdirname}/{self.model}.onnx',
+                    model_id=f'{tmpdirname}/{self.model}.onnx',
                     session_options=session_options,
+                    use_io_binding=config.use_io_binding,
                     provider=config.provider,
                 )
 
@@ -134,16 +146,38 @@ class ORTBackend(Backend):
                     quantization_config=quantization_config,
                 )
                 self.pretrained_model = ortmodel_class.from_pretrained(
-                    f'{tmpdirname}/{self.model}.onnx',
+                    model_id=f'{tmpdirname}/{self.model}.onnx',
                     session_options=session_options,
+                    use_io_binding=config.use_io_binding,
                     provider=config.provider,
                 )
 
-    def run_inference_with_model(self, inputs: Dict[str, Tensor]) -> Dict[str, Tensor]:
-        return self.pretrained_model(**inputs)
+    def run_profiling(self, inputs: Dict[str, Tensor], warmup_runs: int, benchmark_duration: int) -> DataFrame:
+        LOGGER.info("Can't warmup onnxruntime model before profiling")
 
-    def symbolic_trace_model(self, inputs: Dict[str, Tensor]) -> None:
-        return super().symbolic_trace_model(inputs)
+        LOGGER.info("Profiling model")
+        latencies = []
+        while (sum(latencies) < benchmark_duration):
+            latency = self.inference_latency(inputs)
+            latencies.append(latency)
 
-    def run_inference_with_profiler(self, inputs: Dict[str, Tensor]) -> Dict[str, Tensor]:
-        return super().run_inference_with_profiler(inputs)
+        profiling_file = self.pretrained_model.model.end_profiling()
+        profiling_results = read_json(profiling_file, orient='records')
+
+        profiling_results = profiling_results[profiling_results['cat'] == 'Node']
+        profiling_results = profiling_results[['name', 'args', 'dur']]
+        profiling_results['dur'] = (
+            profiling_results['dur'] / 1e6) / len(latencies)
+
+        profiling_results.rename(
+            columns={
+                'name': 'Node name',
+                'args': 'to be processed (gather nodes before and after)',
+                'dur': 'Node latency mean (s)',
+            },
+            inplace=True,
+        )
+        # can't get std from onnxruntime
+        profiling_results['Node latency std (s)'] = 0
+
+        return profiling_results

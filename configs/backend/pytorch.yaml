@@ -8,7 +8,5 @@ intra_op_num_threads: null
 
 disable_grad: ${is_inference:${benchmark.name}}
 eval_mode: ${is_inference:${benchmark.name}}
-
-optimization:
-  bettertransformer: false
-  torch_compile: false
+bettertransformer: false
+torch_compile: false

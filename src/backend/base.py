@@ -1,11 +1,14 @@
 from typing import ClassVar, Dict, Optional
 from dataclasses import dataclass, MISSING
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from logging import getLogger
 from psutil import cpu_count
-from abc import ABC
 
+import time
+import torch
+import statistics
 from torch import Tensor
+from pandas import DataFrame
 from transformers import PreTrainedModel
 
 LOGGER = getLogger('backend')
@@ -44,23 +47,57 @@ class Backend(ABC):
                 LOGGER.info(
                     f"\t+ Setting backend.intra_op_num_threads to {config.intra_op_num_threads}")
 
-    @abstractmethod
-    def run_inference_with_model(self, inputs: Dict[str, Tensor]) -> Dict[str, Tensor]:
-        """
-        Run inference on the backend with the given inputs
-        """
-        raise NotImplementedError()
+    def run_inference(self, inputs: Dict[str, Tensor], warmup_runs: int, benchmark_duration: int) -> DataFrame:
+        LOGGER.info("Warming up model")
+        for _ in range(warmup_runs):
+            self.inference_latency(inputs)
+
+        LOGGER.info("Tracking inference latency")
+        latencies = []
+        while sum(latencies) < benchmark_duration:
+            latency = self.inference_latency(inputs)
+            latencies.append(latency)
+
+        inference_results = DataFrame({
+            "Model latency mean (s)": statistics.mean(latencies),
+            "Model latency std (s)": statistics.stdev(latencies),
+            "Model Throughput (s^-1)": len(latencies) / benchmark_duration
+        }, index=[0])
+
+        return inference_results
+
+    # Inference helper methods
+    def inference_latency(self, dummy_inputs: Dict[str, Tensor]) -> float:
+        if self.device == 'cuda':
+            return self._cuda_inference_latency(dummy_inputs)
+        else:
+            return self._cpu_inference_latency(dummy_inputs)
+
+    def _cuda_inference_latency(self, dummy_inputs: Dict[str, Tensor]) -> float:
+        start_event = torch.cuda.Event(enable_timing=True)
+        end_event = torch.cuda.Event(enable_timing=True)
+        torch.cuda.synchronize()
+        start_event.record()
+        self.pretrained_model(**dummy_inputs)
+        end_event.record()
+        torch.cuda.synchronize()
+        latency_ms = start_event.elapsed_time(end_event)
+        latency = latency_ms / 1e3
+        LOGGER.debug(f'Tracked CUDA latency took: {latency}s)')
+
+        return latency
+
+    def _cpu_inference_latency(self, dummy_inputs: Dict[str, Tensor]) -> float:
+        start = time.perf_counter_ns()
+        self.pretrained_model(**dummy_inputs)
+        end = time.perf_counter_ns()
+        latency_ns = end - start
+        latency = latency_ns / 1e9
+        LOGGER.debug(f'Tracked CPU latency took: {latency}s)')
+
+        return latency
 
     @abstractmethod
-    def symbolic_trace_model(self, inputs: Dict[str, Tensor]) -> None:
-        """
-        Symbolic trace the model
-        """
-        raise NotImplementedError()
-
-    @abstractmethod
-    def run_inference_with_profiler(self, inputs: Dict[str, Tensor]) -> Dict[str, Tensor]:
-        """
-        Run inference on the backend with the given inputs and profiler
-        """
-        raise NotImplementedError()
+    def run_profiling(self, inputs: Dict[str, Tensor], warmup_runs: int, benchmark_duration: int) -> DataFrame:
+        raise NotImplementedError(
+            "Backend must implement run_profiling method")

@@ -2,6 +2,5 @@ _target_: src.benchmark.inference.InferenceBenchmark
 
 name: inference
 
-warmup_runs: 10
+warmup_runs: 5
 benchmark_duration: 5
-profiling: false

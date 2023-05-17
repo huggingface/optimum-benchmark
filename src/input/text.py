@@ -1,13 +1,13 @@
-import torch
-from src.input.base import InputConfig
 from dataclasses import dataclass
 from logging import getLogger
 from typing import Dict
 
+import torch
 from torch import Tensor
 from transformers import AutoTokenizer, AutoConfig
 from optimum.utils import DummyTextInputGenerator, NormalizedTextConfig
 
+from src.input.base import InputConfig
 from src.input.base import InputGenerator, InputConfig
 
 
@@ -49,8 +49,9 @@ class TextGenerator(InputGenerator):
                 input_name,
                 framework='pt'
             ).to(self.device)
-            
+
             if input_name == 'attention_mask':
-                dummy_input[input_name] = torch.ones_like(dummy_input[input_name])
+                dummy_input[input_name] = torch.ones_like(
+                    dummy_input[input_name])
 
         return dummy_input

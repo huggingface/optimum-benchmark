@@ -1,6 +1,5 @@
 from logging import getLogger
-from typing import Type
-from json import dumps
+from typing import Optional, Type
 
 import hydra
 from omegaconf import OmegaConf
@@ -10,21 +9,20 @@ from hydra.core.config_store import ConfigStore
 from src.experiment import ExperimentConfig
 
 from src.benchmark.base import Benchmark
-from src.benchmark.inference import InferenceConfig
 
 from src.backend.base import Backend
 from src.backend.pytorch import PyTorchConfig
 from src.backend.onnxruntime import ORTConfig
 
 from src.input.base import InputGenerator
-from src.input.text import TextConfig
-from src.input.audio import AudioConfig
 
 from optimum.exporters import TasksManager
 
 # Register resolvers
 OmegaConf.register_new_resolver(
-    "for_gpu", lambda device: device == 'cuda')
+    "is_profiling", lambda benchmark_name: benchmark_name == 'profiling')
+OmegaConf.register_new_resolver(
+    "is_cuda", lambda device: device == 'cuda')
 OmegaConf.register_new_resolver(
     "infer_task", TasksManager.infer_task_from_model)
 OmegaConf.register_new_resolver(
@@ -42,20 +40,12 @@ cs = ConfigStore.instance()
 # This is the default config that comes with
 # an identifier and some environment variables
 cs.store(name="experiment", node=ExperimentConfig)
-cs.store(group="benchmark", name="inference_benchmark", node=InferenceConfig)
-
-cs.store(group="backend", name="pytorch_backend", node=PyTorchConfig)
-cs.store(group="backend", name="onnxruntime_backend", node=ORTConfig)
-
-cs.store(group="input", name="text_input", node=TextConfig)
-cs.store(group="input", name="audio_input", node=AudioConfig)
-
 
 LOGGER = getLogger(__name__)
 
 
 @hydra.main(config_path="configs", config_name="base_experiment", version_base=None)
-def run_experiment(config: ExperimentConfig) -> None:
+def run_experiment(config: ExperimentConfig) -> Optional[float]:
     """
     Run the benchmark with the given configuration.
     """
@@ -78,19 +68,21 @@ def run_experiment(config: ExperimentConfig) -> None:
         config.model, config.task, config.device)
     benchmark.configure(config.benchmark)
 
-    # Populate the benchmark
-    benchmark.populate(backend, input_generator)
+    # Run the benchmark
+    benchmark.run(backend, input_generator)
 
-    # Save the benchmark stats
+    # Save the benchmark results
     benchmark.save_results()
 
     # Save the resolved config
     OmegaConf.save(config, ".hydra/config.yaml", resolve=True)
 
     # get the optuna metric that will be minimized in a sweep
-    optuna_metric = benchmark.stats_df['Model latency mean (s)']
-
-    return optuna_metric
+    if config.benchmark.name == 'inference':
+        print(benchmark.inference_results['Model latency mean (s)'][0])
+        return benchmark.inference_results['Model latency mean (s)'][0]
+    else:
+        return None
 
 
 if __name__ == '__main__':

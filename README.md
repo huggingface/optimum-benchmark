@@ -102,6 +102,7 @@ best_value: 0.013089481489528796
 - [x] Add support for omptimum optimizations (graph optimization, quantization, etc.)
 - [x] Add experiments aggregator to report on data from different experiments.
 - [x] Add support for sweepers latency optimization (optuna, nevergrad, etc.)
+- [ ] Add Pydantic for schema validation.
 - [ ] Add support for quantization calibration.
 - [ ] Add support for sparse inputs (zeros in the attention mask)
 - [ ] Add support for more metrics (memory usage, node execution time, etc.)
