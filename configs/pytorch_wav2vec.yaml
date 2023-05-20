@@ -1,8 +1,5 @@
 defaults:
   - base_experiment
   - _self_
-  - override input: audio
-
-experiment_name: pytorch-audio-inference
 
 model: bookbot/distil-wav2vec2-adult-child-cls-37m

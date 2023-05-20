@@ -13,7 +13,7 @@ intra_op_num_threads: null # for now default to ort's default
 optimization_level: null # O1, O2, O3, O4.
 optimization_parameters: # additional optimization configs, for example:
   for_gpu: ${is_cuda:${device}}
-  # some parameters such as transformers specific and fp16
+  # some parameters such as transformers specific and fp16 are
   # omitted since they are handeled by auto optimization level
   disable_gelu_fusion: null
   disable_layer_norm_fusion: null
@@ -23,13 +23,11 @@ optimization_parameters: # additional optimization configs, for example:
   disable_bias_gelu_fusion: null
   disable_embed_layer_norm_fusion: null
   use_mask_index: null
-  # no_attention_mask: null # hard to use with random inputs.
+  # no_attention_mask: null # hard to use since it depends on the model
   disable_shape_inference: null
 
-# main quantization strategies: arm64, avx2, avx512, avx512_vnni, tensorrt.
-quantization_strategy: null
-# additional optimization configs, for example:
-quantization_parameters:
+quantization_strategy: null # arm64, avx2, avx512, avx512_vnni, tensorrt.
+quantization_parameters: # additional optimization configs, for example:
   is_static: null
   use_symmetric_activations: null
   use_symmetric_weights: null

@@ -6,7 +6,6 @@ from platform import python_version
 from transformers import __version__ as transformers_version
 from optimum.version import __version__ as optimum_version
 
-from src.input.base import InputConfig
 from src.backend.base import BackendConfig
 from src.benchmark.inference import BenchmarkConfig
 
@@ -24,10 +23,6 @@ class ExperimentConfig:
     # Device on which the model is loaded and run (cpu, cuda, ...)
     device: str = MISSING
 
-    # INPUTS CONFIGURATION
-    # type of input generator to use (text, image, audio, ...)
-    input: InputConfig = MISSING
-
     # BACKEND CONFIGURATION
     # The backend to use for recording timing (pytorch, onnxruntime, ...)
     backend: BackendConfig = MISSING
@@ -40,7 +35,7 @@ class ExperimentConfig:
     # Experiment name
     experiment_name: str = MISSING
     # Experiment identifier (timestamp)
-    experiment_time_id: int = int(time())
+    experiment_id: int = int(time())
 
     # ENVIRONMENT CONFIGURATION
     # Python interpreter version

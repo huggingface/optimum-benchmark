@@ -3,8 +3,8 @@ _target_: src.backend.pytorch.PyTorchBackend
 name: pytorch
 version: ${pytorch_version:}
 
-inter_op_num_threads: null
-intra_op_num_threads: null
+inter_op_num_threads: null # for now default to pytorch's default behavior
+intra_op_num_threads: null # for now default to pytorch's default behavior
 
 disable_grad: ${is_inference:${benchmark.name}}
 eval_mode: ${is_inference:${benchmark.name}}

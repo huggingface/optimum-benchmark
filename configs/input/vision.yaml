@@ -1,8 +1,0 @@
-_target_: src.input.vision.VisionGenerator
-
-name: vision
-
-batch_size: 2
-num_channels: 3
-width: 224
-height: 224

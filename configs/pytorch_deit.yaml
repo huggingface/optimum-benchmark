@@ -3,6 +3,4 @@ defaults:
   - _self_
   - override input: vision
 
-experiment_name: pytorch-vision-inference
-
 model: facebook/deit-base-distilled-patch16-224

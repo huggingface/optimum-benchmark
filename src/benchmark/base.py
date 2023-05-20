@@ -3,7 +3,8 @@ from abc import ABC, abstractmethod
 from logging import getLogger
 from typing import ClassVar
 
-from pandas import DataFrame
+from transformers.onnx.utils import get_preprocessor
+from transformers import AutoConfig
 
 from src.backend.base import Backend
 
