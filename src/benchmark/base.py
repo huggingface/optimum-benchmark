@@ -1,10 +1,7 @@
 from dataclasses import dataclass, MISSING
 from abc import ABC, abstractmethod
 from logging import getLogger
-from typing import ClassVar
-
-from transformers.onnx.utils import get_preprocessor
-from transformers import AutoConfig
+from pandas import DataFrame
 
 from src.backend.base import Backend
 
@@ -13,12 +10,10 @@ LOGGER = getLogger("benchmark")
 
 @dataclass
 class BenchmarkConfig(ABC):
-    name: str = MISSING
+    name: str = MISSING # type: ignore
 
 
 class Benchmark(ABC):
-    NAME: ClassVar[str]
-
     def __init__(self, model: str, task: str, device: str) -> None:
         self.model = model
         self.task = task
@@ -33,7 +28,13 @@ class Benchmark(ABC):
         raise NotImplementedError(
             "Benchmark must implement run_benchmark method")
 
+    @property
     @abstractmethod
-    def save_results(self, path: str = '') -> None:
+    def results(self, path: str = '') -> DataFrame:
+        raise NotImplementedError(
+            "Benchmark must implement save_results method")
+
+    @abstractmethod
+    def save(self, path: str = '') -> None:
         raise NotImplementedError(
             "Benchmark must implement save_results method")

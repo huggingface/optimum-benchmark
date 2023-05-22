@@ -1,0 +1,27 @@
+defaults:
+  # default backend is pytorch
+  - backend: pytorch
+  # default benchmark is inference
+  - benchmark: inference
+  # other parameters are infered from:
+  - experiment # dataclass (generates experiment_id)
+  - _self_ # for hydra 1.1 compatibility
+  # use colorlog for logging (colorful output)
+  - override hydra/job_logging: colorlog
+  - override hydra/hydra_logging: colorlog
+
+hydra:
+  run:
+    dir: runs/${experiment_name}/${experiment_id}
+  sweep:
+    dir: sweeps/${experiment_name}/${experiment_id}
+  job:
+    # enables changing the working directory to the run/sweep directory
+    chdir: true
+
+model: bert-base-uncased # model name is mandatory
+task: ${infer_task:${model}} # task is infered from model name but can be given explicitly
+device: cpu # device to run on is mandatory
+
+experiment_name: ${model_name:${model}}_${backend.name}_${device}_${benchmark.name} # default experiment name
+experiment_id: ??? # filled by experiment dataclass

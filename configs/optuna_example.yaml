@@ -1,5 +1,5 @@
 defaults:
-  - base_experiment
+  - bert_inference_benchmark
   - _self_
   - override backend: onnxruntime
   - override hydra/sweeper: optuna
@@ -10,10 +10,11 @@ hydra:
     # Optuna parameters
     study_name: onnxruntime_optimization_level
     direction: minimize
-    n_trials: 20
+    n_trials: 30
     n_jobs: 1
     storage: null
     params:
+      device: cpu
       backend.use_io_binding: true,false
       backend.optimization_level: O1,O2,O3,O4
       backend.optimization_parameters.for_gpu: true,false
@@ -27,4 +28,4 @@ hydra:
       backend.optimization_parameters.use_mask_index: true,false
       backend.optimization_parameters.disable_shape_inference: true,false
 
-experiment_name: optuna-onnxruntime-optimization-level
+# model: openai/whisper-base

@@ -1,41 +1,36 @@
 from dataclasses import dataclass
 from logging import getLogger
-from typing import Dict, List
+
+from pandas import DataFrame
 
 from src.backend.base import Backend
-from src.input.base import InputGenerator
-from src.benchmark.base import Benchmark, BenchmarkConfig
+from src.benchmark.inference import InferenceBenchmark, InferenceConfig
 
 BENCHMARK_NAME = "profiling"
 LOGGER = getLogger(BENCHMARK_NAME)
 
 
 @dataclass
-class ProfilingConfig(BenchmarkConfig):
+class ProfilingConfig(InferenceConfig):
     name: str = BENCHMARK_NAME
 
     warmup_runs: int = 5
     benchmark_duration: int = 5
 
 
-class ProfilingBenchmark(Benchmark):
-    NAME = BENCHMARK_NAME
-
-    def __init__(self, model: str, task: str, device: str):
-        super().__init__(model, task, device)
-
-    def configure(self, config: ProfilingConfig):
-        self.warmup_runs = config.warmup_runs
-        self.benchmark_duration = config.benchmark_duration
-
-    def run(self, backend: Backend, input_generator: InputGenerator) -> None:
+class ProfilingBenchmark(InferenceBenchmark):
+    def run(self, backend: Backend) -> None:
         LOGGER.info(f"Generating dummy input")
-        dummy_inputs = input_generator.generate()
+        dummy_inputs = self.generate_dummy_inputs()
 
         LOGGER.info(f"Running profiling benchmark")
         self.profiling_results = backend.run_profiling(
             dummy_inputs, self.warmup_runs, self.benchmark_duration)
 
-    def save_results(self, path: str = '') -> None:
+    @property
+    def results(self) -> DataFrame:
+        return self.profiling_results
+
+    def save(self, path: str = '') -> None:
         LOGGER.info('Saving profiling results')
         self.profiling_results.to_csv(path + 'profiling_results.csv')

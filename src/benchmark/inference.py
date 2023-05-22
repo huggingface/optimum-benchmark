@@ -2,8 +2,10 @@ from dataclasses import dataclass
 from logging import getLogger
 from typing import Dict
 
+
 import torch
 from torch import Tensor
+from pandas import DataFrame
 from transformers import AutoConfig
 from optimum.exporters import TasksManager
 from transformers.onnx.utils import get_preprocessor
@@ -39,44 +41,42 @@ class InferenceConfig(BenchmarkConfig):
 
 
 class InferenceBenchmark(Benchmark):
-    NAME = BENCHMARK_NAME
-
-    def __init__(self, model: str, task: str, device: str):
-        super().__init__(model, task, device)
-
-    def configure(self, config: InferenceConfig):
-        self.warmup_runs = config.warmup_runs
-        self.benchmark_duration = config.benchmark_duration
-
     def generate_dummy_inputs(self) -> Dict[str, Tensor]:
-        LOGGER.info(f"Generating dummy input")
-
         auto_config = AutoConfig.from_pretrained(self.model)
         model_type = auto_config.model_type
-
-        onnx_config = TasksManager._SUPPORTED_MODEL_TYPE[model_type]['onnx'][self.task](
-            auto_config)
-        self.dummy_inputs_generator = onnx_config.DUMMY_INPUT_GENERATOR_CLASSES[0](
+        
+        onnx_config = TasksManager._SUPPORTED_MODEL_TYPE[model_type]['onnx'][self.task](auto_config)
+        LOGGER.info(f"Using {onnx_config.__class__.__name__} as onnx config")
+        
+        dummy_inputs_generator = onnx_config.DUMMY_INPUT_GENERATOR_CLASSES[0]( # type: ignore
             task=self.task,
-            normalized_config=onnx_config.NORMALIZED_CONFIG_CLASS(auto_config),
+            normalized_config=onnx_config.NORMALIZED_CONFIG_CLASS(auto_config), # type: ignore
         )
+        LOGGER.info(f"Using {dummy_inputs_generator.__class__.__name__} as dummy inputs generator")
 
         preprocessor = get_preprocessor(self.model)
-        input_names = preprocessor.model_input_names
+        LOGGER.info(f"Using preprocessor {preprocessor.__class__.__name__} to generate dummy inputs")
 
         dummy_inputs = dict()
-        for input_name in input_names:
-            dummy_inputs[input_name] = self.dummy_inputs_generator.generate(
+        for input_name in preprocessor.model_input_names: # type: ignore
+            LOGGER.info(f"Generating dummy input for {input_name}")
+            dummy_inputs[input_name] = dummy_inputs_generator.generate(
                 input_name,
                 framework='pt'
             ).to(self.device)
 
-            # bettertransformer doesn't support random attention mask
-            if 'mask' in input_name:
-                dummy_inputs[input_name] = torch.ones_like(
-                    dummy_inputs[input_name])
+            if input_name == 'attention_mask' and 'input_values' in dummy_inputs:
+                dummy_inputs['attention_mask'] = torch.ones_like(
+                    dummy_inputs['input_values'])
+            elif input_name == 'attention_mask':
+                dummy_inputs['attention_mask'] = torch.ones_like(
+                    dummy_inputs['input_ids'])
 
         return dummy_inputs
+
+    def configure(self, config: InferenceConfig):
+        self.warmup_runs = config.warmup_runs
+        self.benchmark_duration = config.benchmark_duration
 
     def run(self, backend: Backend) -> None:
         LOGGER.info(f"Generating dummy input")
@@ -86,6 +86,10 @@ class InferenceBenchmark(Benchmark):
         self.inference_results = backend.run_inference(
             dummy_inputs, self.warmup_runs, self.benchmark_duration)
 
-    def save_results(self, path: str = '') -> None:
+    @property
+    def results(self) -> DataFrame:
+        return self.inference_results
+
+    def save(self, path: str = '') -> None:
         LOGGER.info('Saving inference results')
-        self.inference_results.to_csv(path + 'inference_results.csv')
+        self.inference_results.to_csv(path + 'results.csv')

@@ -1,7 +1,7 @@
 _target_: src.backend.onnxruntime.ORTBackend
 
 name: onnxruntime
-version: ${onnxruntime_version:}
+version: ${onnxruntime_version:} # resolved by onnxruntime config dataclass
 
 provider: ${infer_provider:${device}}
 use_io_binding: false
@@ -12,7 +12,7 @@ intra_op_num_threads: null # for now default to ort's default
 
 optimization_level: null # O1, O2, O3, O4.
 optimization_parameters: # additional optimization configs, for example:
-  for_gpu: ${is_cuda:${device}}
+  for_gpu: ${is_gpu:${device}}
   # some parameters such as transformers specific and fp16 are
   # omitted since they are handeled by auto optimization level
   disable_gelu_fusion: null

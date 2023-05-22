@@ -1,6 +1,6 @@
-from typing import ClassVar, Dict, Optional
 from dataclasses import dataclass, MISSING
 from abc import abstractmethod, ABC
+from typing import Dict, Optional
 from logging import getLogger
 from psutil import cpu_count
 
@@ -16,25 +16,25 @@ LOGGER = getLogger('backend')
 
 @dataclass
 class BackendConfig(ABC):
-    name: str = MISSING
-    version: str = MISSING
-
+    name: str = MISSING # type: ignore
+    version: str = MISSING # type: ignore
+    
     inter_op_num_threads: Optional[int] = None
     intra_op_num_threads: Optional[int] = None
 
 
 class Backend(ABC):
-    NAME: ClassVar[str]
-
-    # every backend will have a pretrained model
-    pretrained_model: Optional[PreTrainedModel] = None
-
+    # can be a transformers.PreTrainedModel or a torch.nn.Module
+    pretrained_model: PreTrainedModel
+    
     def __init__(self, model: str, task: str, device: str) -> None:
         self.model = model
         self.task = task
         self.device = device
 
+    @abstractmethod
     def configure(self, config: BackendConfig) -> None:
+        # generic configuration, can be moved to configuration class
         if config.inter_op_num_threads is not None:
             if config.inter_op_num_threads == -1:
                 config.inter_op_num_threads = cpu_count()
@@ -60,7 +60,7 @@ class Backend(ABC):
 
         inference_results = DataFrame({
             "Model latency mean (s)": statistics.mean(latencies),
-            "Model latency std (s)": statistics.stdev(latencies),
+            "Model latency std (s)": statistics.stdev(latencies) if len(latencies) > 1 else 0,
             "Model Throughput (s^-1)": len(latencies) / benchmark_duration
         }, index=[0])
 
@@ -77,9 +77,12 @@ class Backend(ABC):
         start_event = torch.cuda.Event(enable_timing=True)
         end_event = torch.cuda.Event(enable_timing=True)
         torch.cuda.synchronize()
-        start_event.record()
-        self.pretrained_model(**dummy_inputs)
-        end_event.record()
+        start_event.record(stream=torch.cuda.current_stream())
+        if hasattr(self.pretrained_model, 'generate'):
+            self.pretrained_model.generate(**dummy_inputs)
+        else:
+            self.pretrained_model(**dummy_inputs)
+        end_event.record(stream=torch.cuda.current_stream())
         torch.cuda.synchronize()
         latency_ms = start_event.elapsed_time(end_event)
         latency = latency_ms / 1e3
@@ -89,7 +92,10 @@ class Backend(ABC):
 
     def _cpu_inference_latency(self, dummy_inputs: Dict[str, Tensor]) -> float:
         start = time.perf_counter_ns()
-        self.pretrained_model(**dummy_inputs)
+        if hasattr(self.pretrained_model, 'generate'):
+            self.pretrained_model.generate(**dummy_inputs)
+        else:
+            self.pretrained_model(**dummy_inputs)
         end = time.perf_counter_ns()
         latency_ns = end - start
         latency = latency_ns / 1e9

@@ -2,4 +2,4 @@ defaults:
   - bert_inference_benchmark
   - _self_
 
-model: facebook/deit-base-distilled-patch16-224
+model: openai/whisper-base

@@ -3,17 +3,15 @@ from typing import Dict, Optional
 from dataclasses import dataclass
 from omegaconf.dictconfig import DictConfig
 
-from optimum.onnxruntime import ORTOptimizer, ORTQuantizer
-from optimum.onnxruntime.trainer import ORTFeaturesManager
 from optimum.onnxruntime.configuration import AutoOptimizationConfig, AutoQuantizationConfig
-
-from onnxruntime import SessionOptions, __version__ as ort_version
+from onnxruntime import SessionOptions, __version__ as ort_version # type: ignore
+from optimum.onnxruntime import ORTOptimizer, ORTQuantizer
+from optimum.pipelines import ORT_SUPPORTED_TASKS
 from pandas import DataFrame, read_json
 from tempfile import TemporaryDirectory
 from torch import Tensor
 
 from src.backend.base import Backend, BackendConfig
-
 
 BACKEND_NAME = 'onnxruntime'
 
@@ -39,11 +37,6 @@ class ORTConfig(BackendConfig):
 
 
 class ORTBackend(Backend):
-    NAME = BACKEND_NAME
-
-    def __init__(self, model: str, task: str, device: str) -> None:
-        super().__init__(model, task, device)
-
     def configure(self, config: ORTConfig) -> None:
         LOGGER.info("Configuring onnxruntime backend:")
         super().configure(config)
@@ -64,13 +57,9 @@ class ORTBackend(Backend):
         if config.enable_profiling:
             LOGGER.info("\t+ Enabling onnxruntime profiling")
             session_options.enable_profiling = True
-            session_options.profile_file_prefix = "profile"
 
         try:
-            # for now, I'm using ORTFeaturesManager to get the model class
-            # but it only works with tasks that are supported in training
-            ortmodel_class = ORTFeaturesManager.get_model_class_for_feature(
-                self.task)
+            ortmodel_class = ORT_SUPPORTED_TASKS[self.task]['class'][0]
         except KeyError:
             raise NotImplementedError(
                 f"Feature {self.task} not supported by onnxruntime backend")
@@ -104,7 +93,7 @@ class ORTBackend(Backend):
             )
             optimization_config = AutoOptimizationConfig.with_optimization_level(
                 optimization_level=config.optimization_level,
-                **custom_opt_config
+                **custom_opt_config # type: ignore
             )
 
             with TemporaryDirectory() as tmpdirname:
@@ -134,11 +123,11 @@ class ORTBackend(Backend):
                 f"\t+ Setting onnxruntime quantization strategy with "
                 f"backend.quantization_strategy({config.quantization_strategy})"
                 f"and overriding quantization config with custom "
-                f"backend.quantization_parameters({custom_opt_config})"
+                f"backend.quantization_parameters({custom_qnt_config})"
             )
 
-            quantization_config = AutoQuantizationConfig.__getattribute__(
-                config.quantization_strategy)(**custom_qnt_config)
+            quantization_class = getattr(AutoQuantizationConfig, config.quantization_strategy)
+            quantization_config = quantization_class(**custom_qnt_config)
 
             with TemporaryDirectory() as tmpdirname:
                 quantizer.quantize(
@@ -161,7 +150,7 @@ class ORTBackend(Backend):
             latency = self.inference_latency(inputs)
             latencies.append(latency)
 
-        profiling_file = self.pretrained_model.model.end_profiling()
+        profiling_file = self.pretrained_model.model.end_profiling() # type: ignore
         profiling_results = read_json(profiling_file, orient='records')
 
         profiling_results = profiling_results[profiling_results['cat'] == 'Node']
