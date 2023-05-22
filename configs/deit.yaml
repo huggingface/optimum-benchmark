@@ -1,5 +1,5 @@
 defaults:
-  - bert_inference_benchmark
+  - bert
   - _self_
 
 model: facebook/deit-base-distilled-patch16-224

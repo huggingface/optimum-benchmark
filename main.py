@@ -17,7 +17,7 @@ from src.backend.onnxruntime import ORTConfig
 
 # Register resolvers
 OmegaConf.register_new_resolver(
-    "model_name", lambda model: model.split("/")[-1].replace("-", "_"))
+    "extract_model_name", lambda model: model.split("/")[-1].replace("-", "_"))
 
 OmegaConf.register_new_resolver(
     "onnxruntime_version", lambda: ORTConfig.version)
@@ -46,7 +46,7 @@ cs.store(name="experiment", node=ExperimentConfig)
 LOGGER = getLogger(__name__)
 
 
-@hydra.main(config_path="configs", config_name="bert_inference_benchmark", version_base=None)
+@hydra.main(config_path="configs", config_name="bert", version_base=None)
 def run_experiment(config: ExperimentConfig) -> Optional[float]:
     # Save the config
     OmegaConf.save(config, "config.yaml", resolve=True)

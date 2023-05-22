@@ -6,6 +6,7 @@ import torch
 import statistics
 from pandas import DataFrame
 from torch import Tensor, __version__
+from transformers import AutoConfig
 from optimum.exporters import TasksManager
 from transformers.utils.fx import symbolic_trace
 from optimum.bettertransformer import BetterTransformer
@@ -30,10 +31,6 @@ class PyTorchConfig(BackendConfig):
     bettertransformer: bool = False
     torch_compile: bool = False
 
-    symbolic_profiling: bool = False
-
-    def torch_version(self) -> str:
-        return self.version
 
 class PyTorchBackend(Backend):
     def configure(self, config: PyTorchConfig) -> None:
@@ -60,12 +57,14 @@ class PyTorchBackend(Backend):
 
         # Infer task and model class
         LOGGER.info("\t+ Inferring task and model class from model name")
+        model_type = AutoConfig.from_pretrained(self.model).model_type
         inferred_task = TasksManager.infer_task_from_model(self.model)
-        automodel_class = TasksManager.get_model_class_for_task(inferred_task)
+        automodel_class = TasksManager.get_model_class_for_task(
+            inferred_task, model_type=model_type
+        )
 
         # Load model
-        LOGGER.info(
-            f"\t+ Loading {self.model} with {automodel_class.__name__}")
+        LOGGER.info(f"\t+ Loading {self.model} with {automodel_class.__name__}")
         self.pretrained_model = automodel_class.from_pretrained(self.model)
 
         # Move model to device
@@ -75,44 +74,86 @@ class PyTorchBackend(Backend):
 
         # Turn on eval mode
         if config.eval_mode:
-            LOGGER.info("\t+ Turning eval mode on model")
+            LOGGER.info("\t+ Turning on eval mode")
             self.pretrained_model.eval()
 
         # Turn on better transformer inference
         if config.bettertransformer:
             LOGGER.info("\t+ Using optimum.bettertransformer")
-            self.pretrained_model = BetterTransformer.transform( # type: ignore
-                self.pretrained_model, keep_original_model=False)
+            self.pretrained_model = BetterTransformer.transform(  # type: ignore
+                self.pretrained_model, keep_original_model=False
+            )
 
         # Compile model
         if config.torch_compile:
             LOGGER.info("\t+ Using torch.compile")
             self.pretrained_model.forward = torch.compile(self.pretrained_model.forward)
 
-    def run_profiling(self, inputs: Dict[str, Tensor], warmup_runs: int, benchmark_duration: int) -> DataFrame:
+    def run_inference(
+        self, dummy_inputs: Dict[str, Tensor], warmup_runs: int, benchmark_duration: int
+    ) -> DataFrame:
+        LOGGER.info("Running backend inference")
 
-        LOGGER.info("Symbolic tracing model")
-        self.pretrained_model = symbolic_trace(
-            model=self.pretrained_model, # type: ignore
-            input_names=list(inputs.keys()),
+        LOGGER.info("\t+ Warming up the model")
+        for _ in range(warmup_runs):
+            self.pretrained_model(**dummy_inputs)
+
+        LOGGER.info("\t+ Tracking inference latency")
+        inference_latencies = []
+        while sum(inference_latencies) < benchmark_duration:
+            latency = self.track_inference_latency(dummy_inputs)
+            inference_latencies.append(latency)
+
+        LOGGER.info("\t+ Calculating inference results")
+        inference_results = DataFrame(
+            {
+                "Model latency mean (s)": statistics.mean(inference_latencies),
+                "Model latency median (s)": statistics.median(inference_latencies),
+                "Model latency stdev (s)": statistics.stdev(inference_latencies)
+                if len(inference_latencies) > 1
+                else 0,
+                "Model Throughput (s^-1)": len(inference_latencies)
+                / benchmark_duration,
+            },
+            index=[0],
         )
 
-        LOGGER.info("Warming up symbolic model")
-        for _ in range(warmup_runs):
-            self.inference_latency(inputs)
+        return inference_results
 
-        LOGGER.info("Creating symbolic profiler")
+    def run_profiling(
+        self, dummy_inputs: Dict[str, Tensor], warmup_runs: int, benchmark_duration: int
+    ) -> DataFrame:
+        LOGGER.info("Running backend profiling")
+
+        LOGGER.info("\t+ Symbolic tracing model")
+        self.pretrained_model = symbolic_trace(
+            model=self.pretrained_model,  # type: ignore
+            input_names=list(dummy_inputs.keys()),
+        )
+
+        LOGGER.info("\t+ Warming up symbolic model")
+        for _ in range(warmup_runs):
+            self.pretrained_model(**dummy_inputs)
+
+        LOGGER.info("\t+ Creating symbolic profiler")
         symbolic_profiler = SymbolicProfiler(self.pretrained_model)
 
-        LOGGER.info("Profiling symbolic model")
+        LOGGER.info("\t+ Profiling symbolic model")
         while sum(symbolic_profiler.model_latencies) < benchmark_duration:
-            symbolic_profiler.run(*inputs.values())
+            symbolic_profiler.run(*dummy_inputs.values())
 
-        profiling_results = DataFrame([
-            {'Node name': str(node), 'Node Op': str(node.op),
-             'Node latency mean (s)': statistics.mean(node_latency),
-             'Node latency stdev (s)': statistics.stdev(node_latency)}
-            for node, node_latency in symbolic_profiler.nodes_latencies.items()
-        ])
+        LOGGER.info("\t+ Calculating profiling results")
+        profiling_results = DataFrame(
+            [
+                {
+                    "Node name": str(node),
+                    "Op name": str(node.op),
+                    "Node latency mean (s)": statistics.mean(node_latency),
+                    "Node latency median (s)": statistics.median(node_latency),
+                    "Node latency stdev (s)": statistics.stdev(node_latency),
+                }
+                for node, node_latency in symbolic_profiler.nodes_latencies.items()
+            ]
+        )
 
         return profiling_results

@@ -1,5 +1,5 @@
 defaults:
-  - bert_inference_benchmark
+  - bert
   - _self_
   - override backend: onnxruntime
   - override hydra/sweeper: optuna

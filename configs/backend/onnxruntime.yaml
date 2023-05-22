@@ -23,7 +23,7 @@ optimization_parameters: # additional optimization configs, for example:
   disable_bias_gelu_fusion: null
   disable_embed_layer_norm_fusion: null
   use_mask_index: null
-  # no_attention_mask: null # hard to use since it depends on the model
+  no_attention_mask: null
   disable_shape_inference: null
 
 quantization_strategy: null # arm64, avx2, avx512, avx512_vnni, tensorrt.

@@ -19,9 +19,9 @@ hydra:
     # enables changing the working directory to the run/sweep directory
     chdir: true
 
-model: bert-base-uncased # model name is mandatory
+model: gpt2 # model name is mandatory
 task: ${infer_task:${model}} # task is infered from model name but can be given explicitly
 device: cpu # device to run on is mandatory
 
-experiment_name: ${model_name:${model}}_${backend.name}_${device}_${benchmark.name} # default experiment name
+experiment_name: ${extract_model_name:${model}}_${backend.name}_${benchmark.name} # default experiment name
 experiment_id: ??? # filled by experiment dataclass
