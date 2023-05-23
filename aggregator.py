@@ -29,8 +29,11 @@ def gather_results(folder: Path) -> Tuple[dict, pd.DataFrame]:
     """
 
     # List all csv results
-    stats_f = [f for f in folder.glob("**/stats.csv")]
-    configs_f = [f for f in folder.glob("**/config.yaml")]
+    stats_f = [f for f in folder.glob("**/inference_results.csv")]
+    # List all configs except the ones in hydra folder
+    configs_f = [
+        f for f in folder.glob("**/config.yaml") if "hydra" not in f.as_posix()
+    ]
 
     stats_dfs = {
         f.relative_to(folder).parent.as_posix(): pd.read_csv(f, index_col=0)
@@ -38,11 +41,8 @@ def gather_results(folder: Path) -> Tuple[dict, pd.DataFrame]:
     }
 
     configs_dfs = {
-        f.relative_to(folder).parent.parent.as_posix(): pd.DataFrame(
-            flatten(
-                OmegaConf.load(f),
-                reducer=make_reducer(delimiter='.')
-            ), index=[0]
+        f.relative_to(folder).parent.as_posix(): pd.DataFrame(
+            flatten(OmegaConf.load(f), reducer=make_reducer(delimiter=".")), index=[0]  # type: ignore
         )
         for f in configs_f
     }
@@ -53,7 +53,8 @@ def gather_results(folder: Path) -> Tuple[dict, pd.DataFrame]:
     # Merge perfs dataframes with configs
     reports = {
         name: configs_dfs[name].merge(
-            stats_dfs[name], left_index=True, right_index=True)
+            stats_dfs[name], left_index=True, right_index=True
+        )
         for name in stats_dfs.keys()
     }
 
@@ -62,17 +63,26 @@ def gather_results(folder: Path) -> Tuple[dict, pd.DataFrame]:
 
     # remove unnecessary columns
     report.drop(
-        columns=[col for col in report.columns if '_target_' in col],
-        inplace=True
+        columns=[col for col in report.columns if "_target_" in col], inplace=True
     )
 
     # extract static parameters
-    static_params = report.loc[:, report.nunique(
-    ) == 1].drop_duplicates().to_dict(orient='records')[0]
+    static_params = (
+        report.loc[:, report.nunique() == 1]
+        .fillna(method="bfill")
+        .drop_duplicates()
+        .to_dict(orient="records")[0]
+    )
 
     # extract benchmark parameters
     bench_results = report.loc[:, report.nunique() > 1].sort_values(
-        by=[col for col in report.columns if 'latency mean' in col], ascending=True)
+        by=[col for col in report.columns if "latency mean" in col], ascending=True
+    )
+
+    bench_results = bench_results[
+        [col for col in bench_results.columns if "Model" not in col]
+        + [col for col in bench_results.columns if "Model" in col]
+    ]
 
     return static_params, bench_results
 
@@ -90,7 +100,8 @@ def show_results_in_console(static_params: dict, bench_results: pd.DataFrame) ->
     """
 
     table = Table(
-        show_header=True, header_style="bold",
+        show_header=True,
+        header_style="bold",
         title="Stats per run",
     )
 
@@ -105,25 +116,28 @@ def show_results_in_console(static_params: dict, bench_results: pd.DataFrame) ->
 
     console = Console()
     # Display environment
-    console.print('Static Parameters:', static_params)
+    console.print("Static Parameters:", static_params)
     # Display the table
     console.print(table)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument(
-        '--folder', '-f', type=Path, default='sweeps/',
-        help="The folder containing the results of the benchmark."
+        "--folder",
+        "-f",
+        type=Path,
+        default="sweeps/",
+        help="The folder containing the results of the benchmark.",
     )
     args = parser.parse_args()
 
     static_params, bench_results = gather_results(args.folder)
 
     # Save aggregated results
-    with open(f'{args.folder}/static_params.json', 'w') as f:
+    with open(f"{args.folder}/static_params.json", "w") as f:
         f.write(dumps(static_params, indent=4))
-    bench_results.to_csv(f'{args.folder}/bench_results.csv', index=False)
+    bench_results.to_csv(f"{args.folder}/bench_results.csv", index=False)
 
     # Display the results
     show_results_in_console(static_params, bench_results)

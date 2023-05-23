@@ -14,10 +14,9 @@ hydra:
     n_jobs: 1
     storage: null
     params:
-      device: cpu
-      backend.use_io_binding: true,false
-      backend.optimization_level: O1,O2,O3,O4
-      backend.optimization_parameters.for_gpu: true,false
+      backend.use_io_binding: true
+      backend.optimization_level: null,O1,O2,O3,O4
+      backend.optimization_parameters.for_gpu: true
       backend.optimization_parameters.disable_gelu_fusion: true,false
       backend.optimization_parameters.disable_layer_norm_fusion: true,false
       backend.optimization_parameters.disable_attention_fusion: true,false
@@ -26,6 +25,7 @@ hydra:
       backend.optimization_parameters.disable_bias_gelu_fusion: true,false
       backend.optimization_parameters.disable_embed_layer_norm_fusion: true,false
       backend.optimization_parameters.use_mask_index: true,false
-      backend.optimization_parameters.disable_shape_inference: true,false
+      backend.optimization_parameters.disable_shape_inference: true
 
-# model: openai/whisper-base
+model: openai/whisper-base
+device: cuda
