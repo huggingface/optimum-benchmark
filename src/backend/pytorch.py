@@ -28,6 +28,7 @@ class PyTorchConfig(BackendConfig):
     eval_mode: bool = False
 
     # graph optimization options
+    fp16: bool = False
     bettertransformer: bool = False
     torch_compile: bool = False
 
@@ -58,9 +59,8 @@ class PyTorchBackend(Backend):
         # Infer task and model class
         LOGGER.info("\t+ Inferring task and model class from model name")
         model_type = AutoConfig.from_pretrained(self.model).model_type
-        inferred_task = TasksManager.infer_task_from_model(self.model)
         automodel_class = TasksManager.get_model_class_for_task(
-            inferred_task, model_type=model_type
+            task=self.task, model_type=model_type
         )
 
         # Load model
@@ -88,6 +88,11 @@ class PyTorchBackend(Backend):
         if config.torch_compile:
             LOGGER.info("\t+ Using torch.compile")
             self.pretrained_model.forward = torch.compile(self.pretrained_model.forward)
+        
+        # Turn on fp16
+        if config.fp16:
+            LOGGER.info("\t+ Turning on fp16")
+            self.fp16 = True
 
     def run_inference(
         self, dummy_inputs: Dict[str, Tensor], warmup_runs: int, benchmark_duration: int
@@ -96,12 +101,14 @@ class PyTorchBackend(Backend):
 
         LOGGER.info("\t+ Warming up the model")
         for _ in range(warmup_runs):
-            self.pretrained_model(**dummy_inputs)
+            with torch.cuda.amp.autocast(enabled=self.fp16): # type: ignore
+                self.pretrained_model(**dummy_inputs)
 
         LOGGER.info("\t+ Tracking inference latency")
         inference_latencies = []
         while sum(inference_latencies) < benchmark_duration:
-            latency = self.track_inference_latency(dummy_inputs)
+            with torch.cuda.amp.autocast(enabled=self.fp16): # type: ignore
+                latency = self.track_inference_latency(dummy_inputs)
             inference_latencies.append(latency)
 
         LOGGER.info("\t+ Calculating inference results")
@@ -157,3 +164,6 @@ class PyTorchBackend(Backend):
         )
 
         return profiling_results
+
+    def clean(self) -> None:
+        del self.pretrained_model

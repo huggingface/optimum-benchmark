@@ -10,3 +10,4 @@ disable_grad: ${is_inference:${benchmark.name}}
 eval_mode: ${is_inference:${benchmark.name}}
 bettertransformer: false
 torch_compile: false
+fp16: false
