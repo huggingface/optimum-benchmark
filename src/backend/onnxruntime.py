@@ -214,3 +214,7 @@ class ORTBackend(Backend):
         )
 
         return profiling_results
+
+    def clean(self) -> None:
+        LOGGER.info("Cleaning onnxruntime backend")
+        del self.pretrained_model

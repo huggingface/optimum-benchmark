@@ -17,24 +17,24 @@ from src.backend.onnxruntime import ORTConfig
 
 # Register resolvers
 OmegaConf.register_new_resolver(
-    "extract_model_name", lambda model: model.split("/")[-1].replace("-", "_"))
+    "extract_model_name", lambda model: model.split("/")[-1].replace("-", "_")
+)
+
+OmegaConf.register_new_resolver("onnxruntime_version", lambda: ORTConfig.version)
+OmegaConf.register_new_resolver("pytorch_version", lambda: PyTorchConfig.version)
 
 OmegaConf.register_new_resolver(
-    "onnxruntime_version", lambda: ORTConfig.version)
+    "is_profiling", lambda benchmark_name: benchmark_name == "profiling"
+)
 OmegaConf.register_new_resolver(
-    "pytorch_version", lambda: PyTorchConfig.version)
+    "is_inference", lambda benchmark_name: benchmark_name == "inference"
+)
+OmegaConf.register_new_resolver("is_gpu", lambda device: device in ["cuda", "gpu"])
 
+OmegaConf.register_new_resolver("infer_task", TasksManager.infer_task_from_model)
 OmegaConf.register_new_resolver(
-    "is_profiling", lambda benchmark_name: benchmark_name == "profiling")
-OmegaConf.register_new_resolver(
-    "is_inference", lambda benchmark_name: benchmark_name == "inference")
-OmegaConf.register_new_resolver(
-    "is_gpu", lambda device: device in ["cuda", "gpu"])
-
-OmegaConf.register_new_resolver(
-    "infer_task", TasksManager.infer_task_from_model)
-OmegaConf.register_new_resolver(
-    "infer_provider", lambda device: f"{device.upper()}ExecutionProvider")
+    "infer_provider", lambda device: f"{device.upper()}ExecutionProvider"
+)
 
 # Register configurations
 cs = ConfigStore.instance()
@@ -52,12 +52,12 @@ def run_experiment(config: ExperimentConfig) -> Optional[float]:
     OmegaConf.save(config, "config.yaml", resolve=True)
 
     # Allocate requested target backend
-    backend_factory: Type[Backend] = get_class(config.backend._target_) # type: ignore
+    backend_factory: Type[Backend] = get_class(config.backend._target_)  # type: ignore
     backend: Backend = backend_factory(config.model, config.task, config.device)
     backend.configure(config.backend)
 
     # Allocate requested benchmark
-    benchmark_factory: Type[Benchmark] = get_class(config.benchmark._target_) # type: ignore
+    benchmark_factory: Type[Benchmark] = get_class(config.benchmark._target_)  # type: ignore
     benchmark: Benchmark = benchmark_factory(config.model, config.task, config.device)
     benchmark.configure(config.benchmark)
 
@@ -65,6 +65,9 @@ def run_experiment(config: ExperimentConfig) -> Optional[float]:
     benchmark.run(backend)
     # Save the benchmark results
     benchmark.save()
+
+    # clean backend
+    backend.clean()
 
     # get the optuna metric that will be minimized in a sweep
     if config.benchmark.name == "inference":
