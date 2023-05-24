@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from logging import getLogger
 from typing import Dict
 
+import gc
 import torch
 import statistics
 from pandas import DataFrame
@@ -88,7 +89,7 @@ class PyTorchBackend(Backend):
         if config.torch_compile:
             LOGGER.info("\t+ Using torch.compile")
             self.pretrained_model.forward = torch.compile(self.pretrained_model.forward)
-        
+
         # Turn on fp16
         if config.fp16:
             LOGGER.info("\t+ Turning on fp16")
@@ -101,13 +102,13 @@ class PyTorchBackend(Backend):
 
         LOGGER.info("\t+ Warming up the model")
         for _ in range(warmup_runs):
-            with torch.cuda.amp.autocast(enabled=self.fp16): # type: ignore
+            with torch.cuda.amp.autocast(enabled=self.fp16):  # type: ignore
                 self.pretrained_model(**dummy_inputs)
 
         LOGGER.info("\t+ Tracking inference latency")
         inference_latencies = []
         while sum(inference_latencies) < benchmark_duration:
-            with torch.cuda.amp.autocast(enabled=self.fp16): # type: ignore
+            with torch.cuda.amp.autocast(enabled=self.fp16):  # type: ignore
                 latency = self.track_inference_latency(dummy_inputs)
             inference_latencies.append(latency)
 
@@ -167,3 +168,4 @@ class PyTorchBackend(Backend):
 
     def clean(self) -> None:
         del self.pretrained_model
+        gc.collect()

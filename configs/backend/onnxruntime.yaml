@@ -10,25 +10,35 @@ enable_profiling: ${is_profiling:${benchmark.name}}
 inter_op_num_threads: null # for now default to ort's default
 intra_op_num_threads: null # for now default to ort's default
 
-optimization_level: null # O1, O2, O3, O4.
-optimization_parameters: # additional optimization configs, for example:
+optimization:
+  level: null # O1, O2, O3, O4
   for_gpu: ${is_gpu:${device}}
-  # some parameters such as transformers specific and fp16 are
-  # omitted since they are handeled by auto optimization level
-  disable_gelu_fusion: null
-  disable_layer_norm_fusion: null
-  disable_attention_fusion: null
-  disable_skip_layer_norm_fusion: null
-  disable_bias_skip_layer_norm_fusion: null
-  disable_bias_gelu_fusion: null
-  disable_embed_layer_norm_fusion: null
-  use_mask_index: null
-  no_attention_mask: null
-  disable_shape_inference: null
+  # parameters such as transformers specific and fp16 are
+  # omitted since they are handeled by optimum's optimization level
+  disable_gelu_fusion: null # true, false
+  disable_layer_norm_fusion: null # true, false
+  disable_attention_fusion: null # true, false
+  disable_skip_layer_norm_fusion: null # true, false
+  disable_bias_skip_layer_norm_fusion: null # true, false
+  disable_bias_gelu_fusion: null # true, false
+  use_mask_index: null # true, false
+  no_attention_mask: null # true, false
+  disable_embed_layer_norm_fusion: null # true, false
+  disable_shape_inference: null # true, false
+  # experimental parameters
+  use_multi_head_attention: null # true, false
+  enable_gemm_fast_gelu_fusion: null # true, false
+  use_raw_attention_mask: null # true, false
+  disable_group_norm_fusion: null # true, false
+  disable_packed_kv: null # true, false
 
-quantization_strategy: null # arm64, avx2, avx512, avx512_vnni, tensorrt.
-quantization_parameters: # additional optimization configs, for example:
-  is_static: null
-  use_symmetric_activations: null
-  use_symmetric_weights: null
-  per_channel: null
+quantization:
+  instructions: null # arm64, avx2, avx512, avx512_vnni, tensorrt.
+  is_static: null # true, false
+  format: null # QOperator, QDQ
+  mode: null # QLinearOps, IntegerOps
+  activations_dtype: null # QInt8, QUInt8
+  weights_dtype: null # QInt8, QUInt8
+  per_channel: null # true, false
+  reduce_range: null # true, false
+  operators_to_quantize: null # list of strings

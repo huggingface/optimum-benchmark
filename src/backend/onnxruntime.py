@@ -1,20 +1,24 @@
+from typing import Dict
 from logging import getLogger
-from typing import Dict, Optional
 from dataclasses import dataclass
 from omegaconf.dictconfig import DictConfig
 
-
+from onnxruntime import __version__ as onnxruntime_version, SessionOptions  # type: ignore
+from onnxruntime.quantization import QuantFormat, QuantizationMode, QuantType
 from optimum.onnxruntime import ORTOptimizer, ORTQuantizer, ORTModel
 from optimum.pipelines import ORT_SUPPORTED_TASKS
 from optimum.onnxruntime.configuration import (
+    OptimizationConfig,
+    QuantizationConfig,
     AutoOptimizationConfig,
     AutoQuantizationConfig,
 )
+
 from tempfile import TemporaryDirectory
 from pandas import DataFrame
 from torch import Tensor
-import onnxruntime
 import statistics
+import gc
 
 from src.backend.utils import json_to_df, split_data_across_runs, load_json
 from src.backend.base import Backend, BackendConfig
@@ -27,19 +31,17 @@ LOGGER = getLogger(BACKEND_NAME)
 @dataclass
 class ORTConfig(BackendConfig):
     name: str = BACKEND_NAME
-    version: str = onnxruntime.__version__
+    version: str = onnxruntime_version
 
     # basic options
     provider: str = "CPUExecutionProvider"
     use_io_binding: bool = False
     enable_profiling: bool = False
 
-    # graph optimization options
-    optimization_level: Optional[str] = None
-    optimization_parameters: DictConfig = DictConfig({})
-    # auto quantization options
-    quantization_strategy: Optional[str] = None
-    quantization_parameters: DictConfig = DictConfig({})
+    # optimization options
+    optimization: DictConfig = DictConfig({})
+    # quantization options
+    quantization: DictConfig = DictConfig({})
 
 
 class ORTBackend(Backend):
@@ -47,7 +49,7 @@ class ORTBackend(Backend):
         LOGGER.info("Configuring onnxruntime backend")
         super().configure(config)
 
-        session_options = onnxruntime.SessionOptions()
+        session_options = SessionOptions()
 
         if config.intra_op_num_threads is not None:
             LOGGER.info(
@@ -76,28 +78,44 @@ class ORTBackend(Backend):
             export=True,
         )
 
-        if config.optimization_level is not None:
-            LOGGER.info("Optimizing model")
+        filtered_opt_config = {
+            key: value
+            for (key, value) in config.optimization.items()
+            if value is not None
+        }
+
+        # always there since it's inferred from device
+        for_gpu = filtered_opt_config.pop("for_gpu")
+        print(filtered_opt_config)
+        # at least one optimization parameter should be set
+        if filtered_opt_config:
+            LOGGER.info("Attempting to optimize model")
             optimizer = ORTOptimizer.from_pretrained(self.pretrained_model)
 
-            custom_opt_config = {
-                key: value
-                for (key, value) in config.optimization_parameters.items()
-                if value is not None
-            }
+            # optimization level for coherence with optimum's API
+            level = filtered_opt_config.pop("level", None)
+            if level is not None:
+                filtered_opt_config["for_gpu"] = for_gpu
+                LOGGER.info(f"\t+ Using onnxruntime optimization level: {level}")
+                if filtered_opt_config:
+                    LOGGER.info(f"\t+ Setting onnxruntime optimization parameters:")
+                    for key, value in filtered_opt_config.items():
+                        LOGGER.info(f"\t+ {key}: {value}")
 
-            LOGGER.info(
-                f"\t+ Setting onnxruntime optimization level with "
-                f"backend.optimization_level({config.optimization_level}) "
-                f"and overriding optimization config with custom "
-                f"backend.optimization_parameters({custom_opt_config})"
-            )
-            optimization_config = AutoOptimizationConfig.with_optimization_level(
-                optimization_level=config.optimization_level,
-                **custom_opt_config,  # type: ignore
-            )
+                optimization_config = AutoOptimizationConfig.with_optimization_level(
+                    optimization_level=level,
+                    **filtered_opt_config,  # type: ignore
+                )
+            else:
+                filtered_opt_config["optimize_for_gpu"] = for_gpu
+                LOGGER.info("\t+ Setting onnxruntime optimization parameters:")
+                for key, value in filtered_opt_config.items():
+                    LOGGER.info(f"\t+ {key}: {value}")
+
+                optimization_config = OptimizationConfig(**filtered_opt_config)  # type: ignore
 
             with TemporaryDirectory() as tmpdirname:
+                LOGGER.info("\t+ Starting optimization")
                 optimizer.optimize(
                     save_dir=f"{tmpdirname}/{self.model}.onnx",
                     optimization_config=optimization_config,
@@ -110,29 +128,61 @@ class ORTBackend(Backend):
                     provider=config.provider,
                 )
 
-        if config.quantization_strategy is not None:
-            LOGGER.info("Quantizing model")
+        filtered_qnt_config = {
+            key: value
+            for (key, value) in config.quantization.items()
+            if value is not None
+        }
+
+        if filtered_qnt_config:
+            LOGGER.info("Attempting to quantize model")
             quantizer = ORTQuantizer.from_pretrained(self.pretrained_model)
 
-            custom_qnt_config = {
-                key: value
-                for (key, value) in config.quantization_parameters.items()
-                if value is not None
-            }
+            instrunctions = filtered_qnt_config.pop("instructions", None)
 
-            LOGGER.info(
-                f"\t+ Setting onnxruntime quantization strategy with "
-                f"backend.quantization_strategy({config.quantization_strategy})"
-                f"and overriding quantization config with custom "
-                f"backend.quantization_parameters({custom_qnt_config})"
-            )
+            if instrunctions is not None:
+                LOGGER.info(
+                    f"\t+ Using onnxruntime quantization instructions: {instrunctions}"
+                )
+                # well it should at least specify is_static (leaving validation for Pydatic)
+                if filtered_qnt_config:
+                    LOGGER.info(f"\t+ Setting onnxruntime quantization parameters:")
+                    for key, value in filtered_qnt_config.items():
+                        LOGGER.info(f"\t+ {key}: {value}")
 
-            quantization_class = getattr(
-                AutoQuantizationConfig, config.quantization_strategy
-            )
-            quantization_config = quantization_class(**custom_qnt_config)
+                quantization_config = getattr(AutoQuantizationConfig, instrunctions)(
+                    **filtered_qnt_config  # this is basically a leap of faith
+                )
+
+            else:
+                # same as above
+                if filtered_qnt_config:
+                    LOGGER.info("\t+ Setting onnxruntime quantization parameters:")
+                    for key, value in filtered_qnt_config.items():
+                        LOGGER.info(f"\t+ {key}: {value}")
+
+                    # should be handeled by Pydantic
+                    if filtered_qnt_config.get("format", None) is not None:
+                        filtered_qnt_config["format"] = QuantFormat.from_string(
+                            filtered_qnt_config["format"]
+                        )
+                    if filtered_qnt_config.get("mode", None) is not None:
+                        filtered_qnt_config["mode"] = QuantizationMode.from_string(
+                            filtered_qnt_config["mode"]
+                        )
+                    if filtered_qnt_config.get("activations_dtype", None) is not None:
+                        filtered_qnt_config["activations_dtype"] = QuantType.from_string(
+                            filtered_qnt_config["activations_dtype"]
+                        )
+                    if filtered_qnt_config.get("weights_dtype", None) is not None:
+                        filtered_qnt_config["weights_dtype"] = QuantType.from_string(
+                            filtered_qnt_config["weights_dtype"]
+                        )
+
+                quantization_config = QuantizationConfig(**filtered_qnt_config)  # type: ignore
 
             with TemporaryDirectory() as tmpdirname:
+                LOGGER.info("\t+ Starting quantization")
                 quantizer.quantize(
                     save_dir=f"{tmpdirname}/{self.model}.onnx",
                     quantization_config=quantization_config,
@@ -145,6 +195,8 @@ class ORTBackend(Backend):
                     use_io_binding=config.use_io_binding,
                     provider=config.provider,
                 )
+
+        
 
     def run_inference(
         self, dummy_inputs: Dict[str, Tensor], warmup_runs: int, benchmark_duration: int
@@ -218,3 +270,4 @@ class ORTBackend(Backend):
     def clean(self) -> None:
         LOGGER.info("Cleaning onnxruntime backend")
         del self.pretrained_model
+        gc.collect()

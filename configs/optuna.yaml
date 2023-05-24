@@ -1,7 +1,7 @@
 defaults:
-  - bert
+  - bert # base config
   - _self_
-  - override backend: onnxruntime
+  - override backend: onnxruntime # group config should be overriden
   - override hydra/sweeper: optuna
   - override hydra/sweeper/sampler: tpe
 
@@ -14,18 +14,34 @@ hydra:
     n_jobs: 1
     storage: null
     params:
+      model: bert-base-uncased
+      device: cuda
       backend.use_io_binding: true
-      backend.optimization_level: null,O1,O2,O3,O4
-      backend.optimization_parameters.for_gpu: true
-      backend.optimization_parameters.disable_gelu_fusion: true,false
-      backend.optimization_parameters.disable_layer_norm_fusion: true,false
-      backend.optimization_parameters.disable_attention_fusion: true,false
-      backend.optimization_parameters.disable_skip_layer_norm_fusion: true,false
-      backend.optimization_parameters.disable_bias_skip_layer_norm_fusion: true,false
-      backend.optimization_parameters.disable_bias_gelu_fusion: true,false
-      backend.optimization_parameters.disable_embed_layer_norm_fusion: true,false
-      backend.optimization_parameters.use_mask_index: true,false
-      backend.optimization_parameters.disable_shape_inference: true
+      # optimization parameters
+      # backend.optimization.level: O4
+      # backend.optimization.for_gpu: true
+      # backend.optimization.disable_gelu_fusion: true,false
+      # backend.optimization.disable_layer_norm_fusion: true,false
+      # backend.optimization.disable_attention_fusion: true,false
+      # backend.optimization.disable_skip_layer_norm_fusion: true,false
+      # backend.optimization.disable_bias_skip_layer_norm_fusion: true,false
+      # backend.optimization.disable_bias_gelu_fusion: true
+      # backend.optimization.disable_embed_layer_norm_fusion: true,false
+      # backend.optimization.use_mask_index: true,false
+      # backend.optimization.no_attention_mask: true
+      # backend.optimization.disable_shape_inference: true # creates issues with whisper
+      # backend.optimization.use_multi_head_attention: true,false
+      # backend.optimization.enable_gemm_fast_gelu_fusion: true,false
+      # backend.optimization.use_raw_attention_mask: true,false
+      # backend.optimization.disable_group_norm_fusion: true,false
+      # backend.optimization.disable_packed_kv: false,true
 
-model: openai/whisper-base
-device: cuda
+      # quantization parameters
+      # backend.quantization.instructions: null
+      backend.quantization.is_static: false
+      backend.quantization.format: QOperator
+      backend.quantization.mode: IntegerOps
+      backend.quantization.activations_dtype: QUInt8
+      backend.quantization.weights_dtype: QInt8,QUInt8
+      backend.quantization.per_channel: true,false
+      backend.quantization.reduce_range: true,false
