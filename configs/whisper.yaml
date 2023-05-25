@@ -1,5 +1,6 @@
 defaults:
-  - bert
+  - base_experiment
   - _self_
 
 model: openai/whisper-base
+device: cuda

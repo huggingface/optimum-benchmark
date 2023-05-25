@@ -1,6 +1,4 @@
 import pandas as pd
-from json import dumps
-from typing import Tuple
 from pathlib import Path
 from omegaconf import OmegaConf
 from flatten_dict import flatten
@@ -11,12 +9,16 @@ from rich.console import Console
 from rich.table import Table
 
 
-def gather_results(folder: Path) -> Tuple[dict, pd.DataFrame]:
+def gather_results(
+    benchamrk: str, folder: Path
+) -> pd.DataFrame:  # Tuple[dict, pd.DataFrame]:
     """
     Gather all results and configs from the given folder.
 
     Parameters
     ----------
+    benchamrk : str
+        The type of the benchmarks.
     folder : Path
         The folder to search for results.
 
@@ -29,7 +31,7 @@ def gather_results(folder: Path) -> Tuple[dict, pd.DataFrame]:
     """
 
     # List all csv results
-    stats_f = [f for f in folder.glob("**/inference_results.csv")]
+    stats_f = [f for f in folder.glob(f"**/{benchamrk}_results.csv")]
     # List all configs except the ones in hydra folder
     configs_f = [
         f for f in folder.glob("**/config.yaml") if "hydra" not in f.as_posix()
@@ -60,34 +62,20 @@ def gather_results(folder: Path) -> Tuple[dict, pd.DataFrame]:
 
     # Concatenate all reports
     report = pd.concat(reports.values(), axis=0, ignore_index=True)
-
+    # set experiment_id as index
+    report.set_index("experiment_id", inplace=True)
     # remove unnecessary columns
     report.drop(
         columns=[col for col in report.columns if "_target_" in col], inplace=True
     )
-
-    # extract static parameters
-    static_params = (
-        report.loc[:, report.nunique() == 1]
-        .fillna(method="bfill")
-        .drop_duplicates()
-        .to_dict(orient="records")[0]
+    report.drop(
+        columns=[col for col in report.columns if "version" in col], inplace=True
     )
 
-    # extract benchmark parameters
-    bench_results = report.loc[:, report.nunique() > 1].sort_values(
-        by=[col for col in report.columns if "latency mean" in col], ascending=True
-    )
-
-    bench_results = bench_results[
-        [col for col in bench_results.columns if "Model" not in col]
-        + [col for col in bench_results.columns if "Model" in col]
-    ]
-
-    return static_params, bench_results
+    return report
 
 
-def show_results_in_console(static_params: dict, bench_results: pd.DataFrame) -> None:
+def show_results_in_console(report) -> None:
     """
     Display the results in the console.
 
@@ -101,23 +89,36 @@ def show_results_in_console(static_params: dict, bench_results: pd.DataFrame) ->
 
     table = Table(
         show_header=True,
-        header_style="bold",
-        title="Stats per run",
+        padding=(0, 0),
+        title="Benchmark Results",
     )
 
-    # Define the columns
-    for col in bench_results.columns:
-        table.add_column(col)
+    report.columns = pd.MultiIndex.from_tuples(
+        [tuple(col.split(".")) for col in report.columns]
+    )
 
-    # Add rows
-    for row in bench_results.itertuples(index=False):
-        # stringify the row
-        table.add_row(*[str(v) for v in row])
+    for level in range(report.columns.nlevels):
+        if level == 0:
+            pass
+            columns = report.columns.get_level_values(level).to_list()
+            for col in columns:
+                table.add_column(col, justify="left")
+
+        else:
+            columns = report.columns.get_level_values(level).to_list()
+
+            for i in range(len(columns)):
+                # if it's nan we don't want to print it
+                if columns[i] != columns[i]:
+                    columns[i] = ""
+
+            print(columns)
+            table.add_row(*columns, end_section=True)
+
+    for row in report.itertuples(index=False):
+        table.add_row(*[str(r) if type(r) != float else f"{r:.2E}" for r in row])
 
     console = Console()
-    # Display environment
-    console.print("Static Parameters:", static_params)
-    # Display the table
     console.print(table)
 
 
@@ -131,13 +132,8 @@ if __name__ == "__main__":
         help="The folder containing the results of the benchmark.",
     )
     args = parser.parse_args()
-
-    static_params, bench_results = gather_results(args.folder)
-
-    # Save aggregated results
-    with open(f"{args.folder}/static_params.json", "w") as f:
-        f.write(dumps(static_params, indent=4))
-    bench_results.to_csv(f"{args.folder}/bench_results.csv", index=False)
+    report = gather_results("inference", args.folder)
+    report.to_csv(f"{args.folder}/report.csv", index=False)
 
     # Display the results
-    show_results_in_console(static_params, bench_results)
+    show_results_in_console(report)

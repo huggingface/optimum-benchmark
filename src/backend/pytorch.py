@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from logging import getLogger
-from typing import Dict
+from typing import Dict, List
 
 import gc
 import torch
@@ -13,7 +13,8 @@ from transformers.utils.fx import symbolic_trace
 from optimum.bettertransformer import BetterTransformer
 
 from src.backend.base import Backend, BackendConfig
-from src.backend.utils import SymbolicProfiler
+from src.symbolic_profiler import SymbolicProfiler
+from src.tracker import Tracker
 
 BACKEND_NAME = "pytorch"
 LOGGER = getLogger(BACKEND_NAME)
@@ -35,6 +36,13 @@ class PyTorchConfig(BackendConfig):
 
 
 class PyTorchBackend(Backend):
+    def __init__(self, model: str, task: str, device: str) -> None:
+        super().__init__(model, task, device)
+        self.model_type = AutoConfig.from_pretrained(self.model).model_type
+        self.automodel_class = TasksManager.get_model_class_for_task(
+            task=self.task, model_type=self.model_type
+        )
+
     def configure(self, config: PyTorchConfig) -> None:
         LOGGER.info("Configuring pytorch Backend:")
         super().configure(config)
@@ -57,16 +65,9 @@ class PyTorchBackend(Backend):
             LOGGER.info("\t+ Disabling gradients")
             torch.set_grad_enabled(False)
 
-        # Infer task and model class
-        LOGGER.info("\t+ Inferring task and model class from model name")
-        model_type = AutoConfig.from_pretrained(self.model).model_type
-        automodel_class = TasksManager.get_model_class_for_task(
-            task=self.task, model_type=model_type
-        )
-
         # Load model
-        LOGGER.info(f"\t+ Loading {self.model} with {automodel_class.__name__}")
-        self.pretrained_model = automodel_class.from_pretrained(self.model)
+        LOGGER.info(f"\t+ Loading {self.model} with {self.automodel_class.__name__}")
+        self.pretrained_model = self.automodel_class.from_pretrained(self.model)
 
         # Move model to device
         if self.pretrained_model.device.type != self.device:
@@ -94,10 +95,12 @@ class PyTorchBackend(Backend):
         if config.fp16:
             LOGGER.info("\t+ Turning on fp16")
             self.fp16 = True
+        else:
+            self.fp16 = False
 
     def run_inference(
         self, dummy_inputs: Dict[str, Tensor], warmup_runs: int, benchmark_duration: int
-    ) -> DataFrame:
+    ) -> List[float]:
         LOGGER.info("Running backend inference")
 
         LOGGER.info("\t+ Warming up the model")
@@ -106,27 +109,13 @@ class PyTorchBackend(Backend):
                 self.pretrained_model(**dummy_inputs)
 
         LOGGER.info("\t+ Tracking inference latency")
-        inference_latencies = []
-        while sum(inference_latencies) < benchmark_duration:
-            with torch.cuda.amp.autocast(enabled=self.fp16):  # type: ignore
-                latency = self.track_inference_latency(dummy_inputs)
-            inference_latencies.append(latency)
+        tracker = Tracker(device=self.device)
+        while sum(tracker.tracked_latencies) < benchmark_duration:
+            with tracker.track_latency():
+                with torch.cuda.amp.autocast(enabled=self.fp16):  # type: ignore
+                    self.pretrained_model(**dummy_inputs)
 
-        LOGGER.info("\t+ Calculating inference results")
-        inference_results = DataFrame(
-            {
-                "Model latency mean (s)": statistics.mean(inference_latencies),
-                "Model latency median (s)": statistics.median(inference_latencies),
-                "Model latency stdev (s)": statistics.stdev(inference_latencies)
-                if len(inference_latencies) > 1
-                else 0,
-                "Model Throughput (s^-1)": len(inference_latencies)
-                / benchmark_duration,
-            },
-            index=[0],
-        )
-
-        return inference_results
+        return tracker.tracked_latencies
 
     def run_profiling(
         self, dummy_inputs: Dict[str, Tensor], warmup_runs: int, benchmark_duration: int
@@ -141,14 +130,20 @@ class PyTorchBackend(Backend):
 
         LOGGER.info("\t+ Warming up symbolic model")
         for _ in range(warmup_runs):
-            self.pretrained_model(**dummy_inputs)
+            with torch.cuda.amp.autocast(enabled=self.fp16):  # type: ignore
+                self.pretrained_model(**dummy_inputs)
 
         LOGGER.info("\t+ Creating symbolic profiler")
         symbolic_profiler = SymbolicProfiler(self.pretrained_model)
 
         LOGGER.info("\t+ Profiling symbolic model")
-        while sum(symbolic_profiler.model_latencies) < benchmark_duration:
-            symbolic_profiler.run(*dummy_inputs.values())
+        tracker = Tracker(device=self.device)
+        while sum(tracker.tracked_latencies) < benchmark_duration:
+            with tracker.track_latency():
+                with torch.cuda.amp.autocast(enabled=self.fp16):  # type: ignore
+                    symbolic_profiler.run(*dummy_inputs.values())
+
+        nodes_latencies = symbolic_profiler.nodes_latencies
 
         LOGGER.info("\t+ Calculating profiling results")
         profiling_results = DataFrame(
@@ -160,7 +155,7 @@ class PyTorchBackend(Backend):
                     "Node latency median (s)": statistics.median(node_latency),
                     "Node latency stdev (s)": statistics.stdev(node_latency),
                 }
-                for node, node_latency in symbolic_profiler.nodes_latencies.items()
+                for node, node_latency in nodes_latencies.items()
             ]
         )
 

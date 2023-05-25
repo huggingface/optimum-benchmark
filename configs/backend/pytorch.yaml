@@ -8,6 +8,7 @@ intra_op_num_threads: null # for now default to pytorch's default behavior
 
 disable_grad: ${is_inference:${benchmark.name}}
 eval_mode: ${is_inference:${benchmark.name}}
+
 bettertransformer: false
 torch_compile: false
 fp16: false

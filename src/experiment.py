@@ -17,23 +17,23 @@ LOGGER = getLogger('experiment')
 class ExperimentConfig:
     # MODEL CONFIGURATION
     # Name of the model to run (bert-base-uncased, ...)
-    model: str = MISSING
+    model: str = MISSING # type: ignore
     # Task on which the model is run (sequence-classification, ...)
-    task: str = MISSING
+    task: str = MISSING # type: ignore
     # Device on which the model is loaded and run (cpu, cuda, ...)
-    device: str = MISSING
+    device: str = MISSING # type: ignore
 
     # BACKEND CONFIGURATION
     # The backend to use for recording timing (pytorch, onnxruntime, ...)
-    backend: BackendConfig = MISSING
+    backend: BackendConfig = MISSING # type: ignore
 
     # BENCHMARK CONFIGURATION
     # The kind of benchmark to run (inference, training, ...)
-    benchmark: BenchmarkConfig = MISSING
+    benchmark: BenchmarkConfig = MISSING # type: ignore
 
     # EXPERIMENT CONFIGURATION
     # Experiment name
-    experiment_name: str = MISSING
+    experiment_name: str = MISSING # type: ignore
     # Experiment identifier (timestamp)
     experiment_id: int = int(time())
 

@@ -20,17 +20,21 @@ class ProfilingConfig(InferenceConfig):
 
 class ProfilingBenchmark(InferenceBenchmark):
     def run(self, backend: Backend) -> None:
-        LOGGER.info(f"Generating dummy input")
-        dummy_inputs = self.generate_dummy_inputs()
+        dummy_inputs = self.dummy_input_generator.generate()
 
         LOGGER.info(f"Running profiling benchmark")
         self.profiling_results = backend.run_profiling(
-            dummy_inputs, self.warmup_runs, self.benchmark_duration)
+            dummy_inputs, self.warmup_runs, self.benchmark_duration
+        )
 
     @property
     def results(self) -> DataFrame:
         return self.profiling_results
 
-    def save(self, path: str = '') -> None:
-        LOGGER.info('Saving profiling results')
-        self.profiling_results.to_csv(path + 'profiling_results.csv')
+    @property
+    def objective(self) -> float:
+        return 0.0
+
+    def save(self, path: str = "") -> None:
+        LOGGER.info("Saving profiling results")
+        self.profiling_results.to_csv(path + "profiling_results.csv")

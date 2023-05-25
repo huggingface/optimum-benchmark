@@ -1,44 +1,5 @@
-from typing import Any, Dict, List
 import pandas as pd
 import json
-import time
-
-from torch.fx.graph_module import GraphModule
-from torch.fx import Interpreter
-from torch.fx.node import Node
-import torch
-
-
-class SymbolicProfiler(Interpreter):
-    def __init__(self, graph_module: GraphModule):
-        super().__init__(graph_module)
-
-        self.model_latencies: List[float] = []
-        self.nodes_latencies: Dict[Node, List[float]] = {}
-        self.device: str = graph_module.device.type  # type: ignore[attr-defined]
-
-    def run(self, *args) -> Any:
-        return_val = super().run(*args)
-        return return_val
-
-    def run_node(self, node: Node) -> Any:
-        if self.device == "cuda":
-            start = torch.cuda.Event(enable_timing=True)
-            end = torch.cuda.Event(enable_timing=True)
-            start.record(stream=torch.cuda.current_stream())
-            return_val = super().run_node(node)
-            end.record(stream=torch.cuda.current_stream())
-            torch.cuda.synchronize()
-            node_runtime = start.elapsed_time(end) / 1e3
-        else:
-            start = time.perf_counter_ns()
-            return_val = super().run_node(node)
-            end = time.perf_counter_ns()
-            node_runtime = (end - start) / 1e9
-
-        self.nodes_latencies.setdefault(node, [])
-        self.nodes_latencies[node].append(node_runtime)
-        return return_val
 
 
 def shape_to_string(shape):
@@ -73,15 +34,6 @@ def json_to_df(data):
 
         if cat != "Kernel" and not name.endswith("kernel_time"):
             continue
-        if name.endswith("kernel_time"):
-            most_recent_kernel_launch_event = item
-
-        block_x = arg.get("block_x", -1)
-        block_y = arg.get("block_y", -1)
-        block_z = arg.get("block_z", -1)
-        grid_x = arg.get("grid_x", -1)
-        grid_y = arg.get("grid_y", -1)
-        grid_z = arg.get("grid_z", -1)
 
         if cat in ["Kernel", "Node"]:
             entries.append(

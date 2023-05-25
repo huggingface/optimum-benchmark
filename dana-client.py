@@ -1,13 +1,12 @@
 from typing import Any, Dict, Optional
 from omegaconf import OmegaConf
-import logging
-from logging import getLogger
 from pathlib import Path
 import pandas as pd
 import requests
+import logging
 import json
 
-LOGGER = getLogger("DanaClient")
+LOGGER = logging.getLogger("DanaClient")
 logging.basicConfig(level=logging.INFO)
 
 
@@ -173,7 +172,7 @@ def main():
             )
 
             results = pd.read_csv(experiment / "inference_results.csv")
-            sample_value = results["Model latency mean (s)"][0] * 1000 # convert to ms
+            sample_value = results["Model latency mean (s)"][0] * 1000  # convert to ms
 
             LOGGER.info(f"\t + Adding new sample...")
             add_new_sample(

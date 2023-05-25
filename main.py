@@ -17,7 +17,7 @@ from src.backend.onnxruntime import ORTConfig
 
 # Register resolvers
 OmegaConf.register_new_resolver(
-    "extract_model_name", lambda model: model.split("/")[-1].replace("-", "_")
+    "clean_model_string", lambda model: model.split("/")[-1].replace("-", "_")
 )
 
 OmegaConf.register_new_resolver("onnxruntime_version", lambda: ORTConfig.version)
@@ -46,34 +46,35 @@ cs.store(name="experiment", node=ExperimentConfig)
 LOGGER = getLogger(__name__)
 
 
-@hydra.main(config_path="configs", config_name="bert", version_base=None)
+@hydra.main(config_path="configs", config_name="base_experiment", version_base=None)
 def run_experiment(config: ExperimentConfig) -> Optional[float]:
     # Save the config
     OmegaConf.save(config, "config.yaml", resolve=True)
-
-    # Allocate requested target backend
-    backend_factory: Type[Backend] = get_class(config.backend._target_)  # type: ignore
-    backend: Backend = backend_factory(config.model, config.task, config.device)
-    backend.configure(config.backend)
 
     # Allocate requested benchmark
     benchmark_factory: Type[Benchmark] = get_class(config.benchmark._target_)  # type: ignore
     benchmark: Benchmark = benchmark_factory(config.model, config.task, config.device)
     benchmark.configure(config.benchmark)
 
-    # Run the benchmark
-    benchmark.run(backend)
+    try:
+        # Allocate requested target backend
+        backend_factory: Type[Backend] = get_class(config.backend._target_)  # type: ignore
+        backend: Backend = backend_factory(config.model, config.task, config.device)
+        backend.configure(config.backend)
+
+        # Run the benchmark
+        benchmark.run(backend)
+        # clean backend
+        backend.clean()
+
+    except Exception as e:
+        LOGGER.error(e)
+        LOGGER.error("Failed to run the benchmark")
+
     # Save the benchmark results
     benchmark.save()
-
-    # clean backend
-    backend.clean()
-
-    # get the optuna metric that will be minimized in a sweep
-    if config.benchmark.name == "inference":
-        return benchmark.results["Model latency mean (s)"][0]
-    else:
-        return None
+    print(benchmark.objective)
+    return benchmark.objective
 
 
 if __name__ == "__main__":
