@@ -25,13 +25,13 @@ class DummyInputGenerator:
         ](self.auto_config)
         LOGGER.info(f"\t+ Using {self.onnx_config.__class__.__name__} as onnx config")
 
-        self.input_names = list(self.onnx_config.inputs.keys())  # type: ignore
+        self.input_names = list(self.onnx_config.input.keys())  # type: ignore
         LOGGER.info(f"\t+ Using {self.input_names} as model input names")
 
     def generate(self) -> Dict[str, Tensor]:
-        LOGGER.info(f"Generating dummy inputs")
+        LOGGER.info(f"Generating dummy input")
 
-        dummy_inputs = dict()
+        dummy_input = dict()
         for input_name in self.input_names:
             dummy_input_generator = None
 
@@ -53,14 +53,14 @@ class DummyInputGenerator:
                 f"\t+ Generating dummy input for {input_name} using {dummy_input_generator.__class__.__name__}"
             )
 
-            dummy_inputs[input_name] = dummy_input_generator.generate(
+            dummy_input[input_name] = dummy_input_generator.generate(
                 input_name, framework="pt"
             ).to(self.device)
 
             # this is for bettertransformer since it does not support random attention mask
             if input_name == "attention_mask":
-                dummy_inputs["attention_mask"] = torch.ones_like(
-                    dummy_inputs["input_ids"]
+                dummy_input["attention_mask"] = torch.ones_like(
+                    dummy_input["input_ids"]
                 )
 
-        return dummy_inputs
+        return dummy_input

@@ -18,14 +18,14 @@ For example, to run the default `whisper` benchmark:
 python main.py --config-name whisper
 ```
 
-Who's behavior is determined by `configs/whisper.yaml`:
+Who's behavior is determined by `configs/whisper.yaml`.
 
 ## Command-line configuration overrides
 
 It's easy to override the default behavior of your benchmark from the command line.
 
 ```
-python main.py --config-name whisper experiment_name=my-cuda-experiment device=cuda
+python main.py --config-name whisper experiment_name=my-cuda-whisper device=cuda
 ```
 
 Results (`inference_results.csv` or `profiling_results.csv`) will be stored in `runs/{experiment_name}/{experiment_id}`, along with the program logs `main.log` and the configuration that's been used `config.yaml`.
@@ -41,7 +41,7 @@ python main.py -m --config-name backend=pytorch,onnxruntime device=cpu,cuda
 Also, for integer parameters like `batch_size`, one can specify a range of values to sweep over:
 
 ```bash
-python main.py -m backend=pytorch,onnxruntime device=cpu,cuda input.batch_size='range(1,10,step=2)'
+python main.py --config-name bert -m backend=pytorch,onnxruntime device=cpu,cuda input.batch_size='range(1,10,step=2)'
 ```
 
 Other features like intervals and log scale ranges of values are also supported through sweeper plugins: `hydra/sweeper=optuna`, `hydra/sweeper=nevergrad`, etc.
@@ -57,7 +57,8 @@ python aggregator.py --folder {folder_path}
 This will generate `report.csv` in the specified directory which contains the aggregated results of all the runs/sweeps in the directory.
 
 The console output will be something like this (using `rich`)
-<img src='rich-benchmark-table.png' alt='text-inference-report' style='display:block;margin-left:auto;margin-right:auto;'>
+
+<img src='rich-benchmark-table.png' alt='rich-benchmark-table' style='display:block;margin-left:auto;margin-right:auto;'>
 
 ## Configurations structure
 
@@ -84,9 +85,9 @@ This is especially useful for creating sweeps, where the cli commands become too
 python main.py -m --config-name optuna
 ```
 
-But in this example in particule we don't use the basic sweeper (that's used for testing all combinations) but rather a custom one that leverages [optuna](https://optuna.org/) to find the best combination in `n_trials` reducing the latency with bayesian optimization (isn't that cool?).
+But in this example in particule we don't use the basic sweeper (that's used for testing all combinations) but rather a custom one that leverages [optuna](https://optuna.org/) to find the best combination in `n_trials` run, reducing the latency with bayesian optimization (isn't that cool?).
 
-At the end of it you get an additional `optimization_results.yaml` file that contains the best combination of optimizations found by optuna.
+At the end of it you get an additional `optimization_results.yaml` file that contains the best combination of parameters found by optuna.
 
 ## TODO
 

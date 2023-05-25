@@ -1,0 +1,6 @@
+defaults:
+  - base_experiment
+  - _self_
+
+model: bert-base-uncased
+device: cuda
