@@ -69,7 +69,9 @@ def gather_results(
         columns=[
             col
             for col in report.columns
-            if ("_target_" in col) or ("version" in col) or (col == "experiment_name")
+            if ("_target_" in col)
+            or ("version" in col)
+            or (col in ["experiment_name", "task"])
         ],
         inplace=True,
     )

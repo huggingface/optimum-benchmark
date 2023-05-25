@@ -57,7 +57,7 @@ python aggregator.py --folder {folder_path}
 This will generate `report.csv` in the specified directory which contains the aggregated results of all the runs/sweeps in the directory.
 
 The console output will be something like this (using `rich`)
-<img src='rich-benchmark.png' alt='text-inference-report' style='display:block;margin-left:auto;margin-right:auto;'>
+<img src='rich-benchmark-table.png' alt='text-inference-report' style='display:block;margin-left:auto;margin-right:auto;'>
 
 ## Configurations structure
 
