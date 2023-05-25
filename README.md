@@ -1,8 +1,10 @@
 # inference-benchmark
+
 A repository for benchmarking optimum's inference and training optimizations on different supported backends.
 The experiment management and tracking is handled by [hydra](https://hydra.cc/) and based on [tune](https://github.com/huggingface/tune).
 
 ## Quickstart
+
 Start by installing the required dependencies:
 
 ```bash
@@ -10,28 +12,30 @@ python -m pip install -r requirements.txt
 ```
 
 Then, run one of the default benchmarks in `configs`.
-For example, to run the default `base_experiment` benchmark:
+For example, to run the default `whisper` benchmark:
 
 ```bash
-python main.py
+python main.py --config-name whisper
 ```
 
-Who's behavior is determined by `configs/base_experiment.yaml`.
+Who's behavior is determined by `configs/whisper.yaml`:
 
 ## Command-line configuration overrides
+
 It's easy to override the default behavior of your benchmark from the command line.
 
 ```
-python main.py experiment_name=my-cuda-experiment device=cuda
+python main.py --config-name whisper experiment_name=my-cuda-experiment device=cuda
 ```
 
-Results (`stats.json` and `details.csv` or `profiling.csv`) will be stored in `runs/{experiment_name}/{experiment_datetime_id}`, along with the program logs `main.log` and the configuration that's been used `.hydra/config.yaml`.
+Results (`inference_results.csv` or `profiling_results.csv`) will be stored in `runs/{experiment_name}/{experiment_id}`, along with the program logs `main.log` and the configuration that's been used `config.yaml`.
 
 ## Multirun configuration sweeps
-You can easily run configuration sweeps using the `-m` or `--multirun` option. By default, configurations will be executed serially but other kinds of executions are supported with hydra's launcher plugins : `hydra/launcher=submitit`, `hydra/launcher=slurm`, `hydra/launcher=joblib`, etc.
+
+You can easily run configuration sweeps using the `-m` or `--multirun` option. By default, configurations will be executed serially but other kinds of executions are supported with hydra's launcher plugins : `hydra/launcher=submitit`, `hydra/launcher=rays`, etc.
 
 ```
-python main.py -m backend=pytorch,onnxruntime device=cpu,cuda
+python main.py -m --config-name backend=pytorch,onnxruntime device=cpu,cuda
 ```
 
 Also, for integer parameters like `batch_size`, one can specify a range of values to sweep over:
@@ -43,68 +47,60 @@ python main.py -m backend=pytorch,onnxruntime device=cpu,cuda input.batch_size='
 Other features like intervals and log scale ranges of values are also supported through sweeper plugins: `hydra/sweeper=optuna`, `hydra/sweeper=nevergrad`, etc.
 
 ## Aggregating experiment results
+
 To aggregate the results of an experiment (run(s) or sweep(s)), you can use the `aggregator.py` script:
 
 ```bash
 python aggregator.py --folder {folder_path}
 ```
 
-This will generate `static_params.json` and `bench_results.csv` files in the specified directory. The `bench_results.csv` file contains the aggregated sweep results of all the runs in the directory (only tracking changing parameters). While the `static_params.json` file contains all parameters that didn't change during the sweep.
+This will generate `report.csv` in the specified directory which contains the aggregated results of all the runs/sweeps in the directory.
 
-The console output will be something like this:
-<img src='text_inference.png' alt='text-inference-report' style='display:block;margin-left:auto;margin-right:auto;'>
+The console output will be something like this (using `rich`)
+<img src='rich-benchmark.png' alt='text-inference-report' style='display:block;margin-left:auto;margin-right:auto;'>
 
 ## Configurations structure
+
 You can create custom configuration files following the examples in `configs` directory.
 The easiest way to do so is by using `hydra`'s [composition](https://hydra.cc/docs/0.11/tutorial/composition/).
 
-The base configuration is `configs/base_experiment.yaml`. 
-For example, to create a configuration that uses a `wav2vec2` model and takes `audio` inputs, it's as easy as:
+The base configuration is `configs/base_experiment.yaml`.
+For example, to create a configuration that uses a `wav2vec2` model and `onnxruntime` backend, it's as easy as:
 
 ```yaml
 defaults:
   - base_experiment
   - _self_
-  - override input: audio
+  - override backend: onnxruntime
 
-experiment_name: pytorch-audio-inference
-
+# experiment name can be set or inferred from pramaeters
+experiment_name: onnxruntime-wav2vec2
 model: bookbot/distil-wav2vec2-adult-child-cls-37m
 ```
 
-This is especially useful for creating sweeps, where the cli commands become too long. An example is provided in `configs/optuna_onnxruntime.yaml` for an exhaustive sweep over all possible cominations of `onnxruntime`'s graph optimizations (leve, layer fusions, etc.). The command to run it is:
+This is especially useful for creating sweeps, where the cli commands become too long. An example is provided in `configs/optuna.yaml` for an exhaustive sweep over all possible cominations of `onnxruntime`'s graph optimizations (leve, layer fusions, etc.) and quantizations (operator, weights, etc.). The command to run it is:
 
 ```bash
-python main.py -m --config-name optuna_onnxruntime
+python main.py -m --config-name optuna
 ```
 
 But in this example in particule we don't use the basic sweeper (that's used for testing all combinations) but rather a custom one that leverages [optuna](https://optuna.org/) to find the best combination in `n_trials` reducing the latency with bayesian optimization (isn't that cool?).
 
 At the end of it you get an additional `optimization_results.yaml` file that contains the best combination of optimizations found by optuna.
 
-```yaml
-name: optuna
-best_params:
-  backend.optimization_level: O3
-  backend.optimization_parameters.disable_gelu_fusion: false
-  backend.optimization_parameters.disable_layer_norm_fusion: false
-  backend.optimization_parameters.disable_attention_fusion: false
-  backend.optimization_parameters.disable_skip_layer_norm_fusion: true
-  backend.optimization_parameters.disable_bias_skip_layer_norm_fusion: true
-  backend.optimization_parameters.disable_bias_gelu_fusion: true
-  backend.optimization_parameters.disable_embed_layer_norm_fusion: true
-best_value: 0.013089481489528796
-
-```
-
 ## TODO
-- [x] Add support for other model inputs (vision, audio, etc.)
-- [x] Add support for omptimum optimizations (graph optimization, quantization, etc.)
-- [x] Add experiments aggregator to report on data from different experiments.
+
+- [x] Add support for any kind of input (text, audio, image, etc.)
+- [x] Add support for onnxruntime backend
+- [x] Add support for omptimum graph optimizations
+- [x] Add support for optimum quantization
+- [x] Add experiments aggregator to report on data from different runs/sweeps.
 - [x] Add support for sweepers latency optimization (optuna, nevergrad, etc.)
+- [x] Add support for profiling nodes/kernels execution time.
+- [x] add Dana client to send results to the dashboard [(WIP)](https://github.com/IlyasMoutawwakil/optimum-dana)
+
 - [ ] Add Pydantic for schema validation.
 - [ ] Add support for quantization calibration.
 - [ ] Add support for sparse inputs (zeros in the attention mask)
 - [ ] Add support for more metrics (memory usage, node execution time, etc.)
-- [ ] Dana benchmark regression and comparison system with dashboard [(WIP)](https://github.com/IlyasMoutawwakil/optimum-dana)
 - [ ] ...

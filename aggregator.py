@@ -66,10 +66,12 @@ def gather_results(
     report.set_index("experiment_id", inplace=True)
     # remove unnecessary columns
     report.drop(
-        columns=[col for col in report.columns if "_target_" in col], inplace=True
-    )
-    report.drop(
-        columns=[col for col in report.columns if "version" in col], inplace=True
+        columns=[
+            col
+            for col in report.columns
+            if ("_target_" in col) or ("version" in col) or (col == "experiment_name")
+        ],
+        inplace=True,
     )
 
     return report
@@ -102,7 +104,7 @@ def show_results_in_console(report) -> None:
             pass
             columns = report.columns.get_level_values(level).to_list()
             for col in columns:
-                table.add_column(col, justify="left")
+                table.add_column(col)
 
         else:
             columns = report.columns.get_level_values(level).to_list()
@@ -110,13 +112,27 @@ def show_results_in_console(report) -> None:
             for i in range(len(columns)):
                 # if it's nan we don't want to print it
                 if columns[i] != columns[i]:
+                    # white background
                     columns[i] = ""
 
-            print(columns)
             table.add_row(*columns, end_section=True)
 
     for row in report.itertuples(index=False):
-        table.add_row(*[str(r) if type(r) != float else f"{r:.2E}" for r in row])
+        table_row = []
+        for elm in row:
+            if type(elm) == float:
+                table_row.append(f"{elm:.2e}")
+            elif type(elm) == bool:
+                if elm:
+                    table_row.append("[green]✔[/green]")
+                else:
+                    table_row.append("[red]✘[/red]")
+            elif elm is None:
+                table_row.append("[yellow]N/A[/yellow]")
+            else:
+                table_row.append(str(elm))
+
+        table.add_row(*table_row)
 
     console = Console()
     console.print(table)
