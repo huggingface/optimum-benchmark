@@ -73,7 +73,6 @@ def run_experiment(config: ExperimentConfig) -> Optional[float]:
 
     # Save the benchmark results
     benchmark.save()
-    print(benchmark.objective)
     return benchmark.objective
 
 

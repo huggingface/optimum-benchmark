@@ -1,20 +1,17 @@
 from dataclasses import dataclass
 from logging import getLogger
 from typing import Dict, List
-
 import gc
+
 import torch
-import statistics
-from pandas import DataFrame
-from torch import Tensor, __version__
+from torch import Tensor
 from transformers import AutoConfig
 from optimum.exporters import TasksManager
 from transformers.utils.fx import symbolic_trace
 from optimum.bettertransformer import BetterTransformer
 
 from src.backend.base import Backend, BackendConfig
-from src.symbolic_profiler import SymbolicProfiler
-from src.tracker import Tracker
+from src.profilers import PytorchProfilingWrapper
 
 BACKEND_NAME = "pytorch"
 LOGGER = getLogger(BACKEND_NAME)
@@ -23,7 +20,7 @@ LOGGER = getLogger(BACKEND_NAME)
 @dataclass
 class PyTorchConfig(BackendConfig):
     name: str = BACKEND_NAME
-    version: str = __version__
+    version: str = torch.__version__
 
     # inference options
     disable_grad: bool = False
@@ -94,72 +91,25 @@ class PyTorchBackend(Backend):
         # Turn on fp16
         if config.fp16:
             LOGGER.info("\t+ Turning on fp16")
-            self.fp16 = True
-        else:
-            self.fp16 = False
 
-    def run_inference(
-        self, dummy_inputs: Dict[str, Tensor], warmup_runs: int, benchmark_duration: int
-    ) -> List[float]:
-        LOGGER.info("Running backend inference")
+        self.fp16 = config.fp16
 
-        LOGGER.info("\t+ Warming up the model")
-        for _ in range(warmup_runs):
+    def inference(self, input: Dict[str, Tensor]) -> None:
+        with torch.no_grad():
             with torch.cuda.amp.autocast(enabled=self.fp16):  # type: ignore
-                self.pretrained_model(**dummy_inputs)
+                output = self.pretrained_model(**input)
 
-        LOGGER.info("\t+ Tracking inference latency")
-        tracker = Tracker(device=self.device)
-        while sum(tracker.tracked_latencies) < benchmark_duration:
-            with tracker.track_latency():
-                with torch.cuda.amp.autocast(enabled=self.fp16):  # type: ignore
-                    self.pretrained_model(**dummy_inputs)
+        return output
 
-        return tracker.tracked_latencies
-
-    def run_profiling(
-        self, dummy_inputs: Dict[str, Tensor], warmup_runs: int, benchmark_duration: int
-    ) -> DataFrame:
-        LOGGER.info("Running backend profiling")
-
+    def prepare_for_profiling(self, input_names: List[str]) -> None:
+        LOGGER.info("Preparing for profiling")
         LOGGER.info("\t+ Symbolic tracing model")
         self.pretrained_model = symbolic_trace(
             model=self.pretrained_model,  # type: ignore
-            input_names=list(dummy_inputs.keys()),
+            input_names=input_names,
         )
-
-        LOGGER.info("\t+ Warming up symbolic model")
-        for _ in range(warmup_runs):
-            with torch.cuda.amp.autocast(enabled=self.fp16):  # type: ignore
-                self.pretrained_model(**dummy_inputs)
-
-        LOGGER.info("\t+ Creating symbolic profiler")
-        symbolic_profiler = SymbolicProfiler(self.pretrained_model)
-
-        LOGGER.info("\t+ Profiling symbolic model")
-        tracker = Tracker(device=self.device)
-        while sum(tracker.tracked_latencies) < benchmark_duration:
-            with tracker.track_latency():
-                with torch.cuda.amp.autocast(enabled=self.fp16):  # type: ignore
-                    symbolic_profiler.run(*dummy_inputs.values())
-
-        nodes_latencies = symbolic_profiler.nodes_latencies
-
-        LOGGER.info("\t+ Calculating profiling results")
-        profiling_results = DataFrame(
-            [
-                {
-                    "Node name": str(node),
-                    "Op name": str(node.op),
-                    "Node latency mean (s)": statistics.mean(node_latency),
-                    "Node latency median (s)": statistics.median(node_latency),
-                    "Node latency stdev (s)": statistics.stdev(node_latency),
-                }
-                for node, node_latency in nodes_latencies.items()
-            ]
-        )
-
-        return profiling_results
+        LOGGER.info("\t+ Wrapping model with profiler")
+        self.pretrained_model = PytorchProfilingWrapper(self.pretrained_model)
 
     def clean(self) -> None:
         del self.pretrained_model

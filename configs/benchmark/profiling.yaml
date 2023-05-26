@@ -1,6 +1,0 @@
-_target_: src.benchmark.profiling.ProfilingBenchmark
-
-name: profiling
-
-warmup_runs: 5
-benchmark_duration: 5

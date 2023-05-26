@@ -11,7 +11,7 @@ LOGGER = getLogger("tracker")
 
 
 @dataclass
-class Tracker:
+class LatencyTracker:
     device: str = MISSING  # type: ignore
     tracked_latencies: List[float] = field(default_factory=list)
 

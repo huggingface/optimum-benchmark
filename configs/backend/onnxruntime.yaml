@@ -6,7 +6,7 @@ version: ${onnxruntime_version:} # resolved by onnxruntime config dataclass
 provider: ${infer_provider:${device}}
 use_io_binding: ${is_gpu:${device}}
 
-enable_profiling: ${is_profiling:${benchmark.name}}
+enable_profiling: ${benchmark.profiling}
 inter_op_num_threads: null
 intra_op_num_threads: null
 

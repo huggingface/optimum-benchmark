@@ -27,16 +27,11 @@ class Benchmark(ABC):
     def run(self, backend: Backend) -> None:
         raise NotImplementedError("Benchmark must implement run_benchmark method")
 
-    @property
     @abstractmethod
-    def results(self, path: str = "") -> DataFrame:
+    def save(self, path: str = "") -> None:
         raise NotImplementedError("Benchmark must implement save_results method")
 
     @property
     @abstractmethod
     def objective(self) -> float:
-        raise NotImplementedError("Benchmark must implement save_results method")
-
-    @abstractmethod
-    def save(self, path: str = "") -> None:
         raise NotImplementedError("Benchmark must implement save_results method")

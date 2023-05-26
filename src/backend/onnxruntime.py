@@ -1,12 +1,13 @@
 import os
+import gc
 from typing import Dict, List
 from logging import getLogger
 from dataclasses import dataclass
-from omegaconf.dictconfig import DictConfig
+from tempfile import TemporaryDirectory
 
-from onnxruntime import __version__ as onnxruntime_version, SessionOptions  # type: ignore
+import onnxruntime
 from onnxruntime.quantization import QuantFormat, QuantizationMode, QuantType
-from optimum.onnxruntime import ORTOptimizer, ORTQuantizer, ORTModel
+from optimum.onnxruntime import ORTOptimizer, ORTQuantizer
 from optimum.pipelines import ORT_SUPPORTED_TASKS
 from optimum.onnxruntime.configuration import (
     OptimizationConfig,
@@ -15,28 +16,20 @@ from optimum.onnxruntime.configuration import (
     # AutoQuantizationConfig,
 )
 
-from tempfile import TemporaryDirectory
-from pandas import DataFrame
+from omegaconf.dictconfig import DictConfig
 from torch import Tensor
-import gc
 
 from src.backend.base import Backend, BackendConfig
-from src.tracker import Tracker
-from src.utils import (
-    json_to_df,
-    split_data_across_runs,
-    load_json,
-)
+from src.profilers import ORTProfilingWrapper
 
 BACKEND_NAME = "onnxruntime"
-
 LOGGER = getLogger(BACKEND_NAME)
 
 
 @dataclass
 class ORTConfig(BackendConfig):
     name: str = BACKEND_NAME
-    version: str = onnxruntime_version
+    version: str = onnxruntime.__version__
 
     # basic options
     provider: str = "CPUExecutionProvider"
@@ -61,7 +54,7 @@ class ORTBackend(Backend):
         LOGGER.info("Configuring onnxruntime backend")
         super().configure(config)
 
-        self.session_options = SessionOptions()
+        self.session_options = onnxruntime.SessionOptions()
 
         if config.intra_op_num_threads is not None:
             LOGGER.info(
@@ -80,7 +73,7 @@ class ORTBackend(Backend):
             self.session_options.enable_profiling = True
 
         LOGGER.info(f"Loading model {self.model} with {self.ortmodel_class.__name__}")
-        self.pretrained_model: ORTModel = self.ortmodel_class.from_pretrained(
+        self.pretrained_model = self.ortmodel_class.from_pretrained(
             model_id=self.model,
             session_options=self.session_options,
             provider=config.provider,
@@ -103,7 +96,7 @@ class ORTBackend(Backend):
         optimization_config = OptimizationConfig(**config.optimization)  # type: ignore
 
         LOGGER.info("\t+ Starting optimization")
-        optimizer = ORTOptimizer.from_pretrained(self.pretrained_model)
+        optimizer = ORTOptimizer.from_pretrained(self.pretrained_model)  # type: ignore
         optimizer.optimize(
             save_dir=f"{tmpdirname}/optimized",
             optimization_config=optimization_config,
@@ -142,7 +135,7 @@ class ORTBackend(Backend):
         quantization_config = QuantizationConfig(**config.quantization)  # type: ignore
 
         LOGGER.info("\t+ Starting quantization")
-        model_dir = self.pretrained_model.model_save_dir
+        model_dir = self.pretrained_model.model_save_dir  # type: ignore
         components = [file for file in os.listdir(model_dir) if file.endswith(".onnx")]
         for component in components:
             LOGGER.info(f"\t+ Quantizing {component}")
@@ -160,60 +153,13 @@ class ORTBackend(Backend):
             provider=config.provider,
         )
 
-    def run_inference(
-        self, dummy_inputs: Dict[str, Tensor], warmup_runs: int, benchmark_duration: int
-    ) -> List[float]:
-        LOGGER.info("Running inference on onnxruntime backend")
-        LOGGER.info("\t+ Warming up the model")
-        for _ in range(warmup_runs):
-            self.pretrained_model(**dummy_inputs)
+    def inference(self, input: Dict[str, Tensor]):
+        output = self.pretrained_model(**input)
+        return output
 
-        LOGGER.info("\t+ Tracking inference latency")
-        tracker = Tracker(device=self.device)
-        while sum(tracker.tracked_latencies) < benchmark_duration:
-            with tracker.track_latency():
-                self.pretrained_model(**dummy_inputs)
-
-        inference_latencies = tracker.tracked_latencies
-
-        return inference_latencies
-
-    def run_profiling(
-        self, dummy_inputs: Dict[str, Tensor], warmup_runs: int, benchmark_duration: int
-    ) -> DataFrame:
-        LOGGER.info("Running backend profiling")
-
-        LOGGER.info("\t+ Warming up the model")
-        for _ in range(warmup_runs):
-            self.pretrained_model(**dummy_inputs)
-
-        LOGGER.info("\t+ Profiling the model")
-        tracker = Tracker(device=self.device)
-        while sum(tracker.tracked_latencies) < benchmark_duration:
-            with tracker.track_latency():
-                self.pretrained_model(**dummy_inputs)
-
-        LOGGER.info("\t+ Parsing profiling results")
-        profiling_file = self.pretrained_model.model.end_profiling()  # type: ignore
-        profiling_json = load_json(profiling_file)
-        profiling_json, _ = split_data_across_runs(
-            profiling_json, start=warmup_runs, end=None
-        )
-        profiling_df = json_to_df(profiling_json)
-        profiling_results = (
-            profiling_df.groupby(["Kernel name", "Op name"])
-            .aggregate(
-                {
-                    "Kernel mean latency (us)": "mean",
-                    "Kernel median latency (us)": "median",
-                    "Kernel stdev latency (us)": "std",
-                },
-                set_axis=False,
-            )
-            .reset_index()
-        )
-
-        return profiling_results
+    def prepare_for_profiling(self, input_names: List[str]) -> None:
+        LOGGER.info("Preparing onnxruntime backend for profiling")
+        self.pretrained_model = ORTProfilingWrapper(self.pretrained_model)  # type: ignore
 
     def clean(self) -> None:
         LOGGER.info("Cleaning onnxruntime backend")

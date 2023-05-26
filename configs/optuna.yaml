@@ -15,14 +15,14 @@ hydra:
     storage: null
     params:
       backend.enable_optimization: true
-      backend.enable_quantization: true
+      backend.enable_quantization: false
 
       # optimization parameters
-      backend.optimization.optimization_level: 1,2,99
+      backend.optimization.optimization_level: 99
       backend.optimization.optimize_for_gpu: true
       backend.optimization.fp16: true
       backend.optimization.enable_transformers_specific_optimizations: true
-      backend.optimization.disable_gelu_fusion: true,false
+      backend.optimization.disable_gelu_fusion: false
       backend.optimization.disable_layer_norm_fusion: true,false
       backend.optimization.disable_attention_fusion: true,false
       backend.optimization.disable_skip_layer_norm_fusion: true,false
@@ -31,7 +31,7 @@ hydra:
       backend.optimization.disable_bias_gelu_fusion: true
       backend.optimization.disable_embed_layer_norm_fusion: true,false
       backend.optimization.use_mask_index: true,false
-      backend.optimization.no_attention_mask: true
+      backend.optimization.no_attention_mask: true,false
       backend.optimization.disable_shape_inference: true # disable for whisper
       backend.optimization.use_multi_head_attention: true,false
       backend.optimization.enable_gemm_fast_gelu_fusion: true,false
@@ -40,15 +40,15 @@ hydra:
       backend.optimization.disable_packed_kv: true,false
 
       # quantization parameters
-      backend.quantization.is_static: true,false
-      backend.quantization.format: QOperator,QDQ
-      backend.quantization.mode: QLinearOps,IntegerOps
-      backend.quantization.activations_dtype: QInt8,QUInt8
-      backend.quantization.activations_symmetric: true,false
-      backend.quantization.weights_dtype: QInt8,QUInt8
-      backend.quantization.weights_symmetric: true,false
-      backend.quantization.per_channel: true,false
-      backend.quantization.reduce_range: true,false
+      # backend.quantization.is_static: true,false
+      # backend.quantization.format: QOperator,QDQ
+      # backend.quantization.mode: QLinearOps,IntegerOps
+      # backend.quantization.activations_dtype: QInt8,QUInt8
+      # backend.quantization.activations_symmetric: true,false
+      # backend.quantization.weights_dtype: QInt8,QUInt8
+      # backend.quantization.weights_symmetric: true,false
+      # backend.quantization.per_channel: true,false
+      # backend.quantization.reduce_range: true,false
 
 model: openai/whisper-base
 device: cuda

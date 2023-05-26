@@ -25,7 +25,7 @@ class DummyInputGenerator:
         ](self.auto_config)
         LOGGER.info(f"\t+ Using {self.onnx_config.__class__.__name__} as onnx config")
 
-        self.input_names = list(self.onnx_config.input.keys())  # type: ignore
+        self.input_names = list(self.onnx_config.inputs.keys())  # type: ignore
         LOGGER.info(f"\t+ Using {self.input_names} as model input names")
 
     def generate(self) -> Dict[str, Tensor]:

@@ -4,3 +4,6 @@ name: inference
 
 warmup_runs: 5
 benchmark_duration: 5
+
+profiling: false
+function: forward # forward,generate

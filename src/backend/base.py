@@ -5,7 +5,6 @@ from logging import getLogger
 from psutil import cpu_count
 
 from torch import Tensor
-from pandas import DataFrame
 
 LOGGER = getLogger("backend")
 
@@ -47,13 +46,9 @@ class Backend(ABC):
         raise NotImplementedError("Backend must implement clean method")
 
     @abstractmethod
-    def run_inference(
-        self, dummy_inputs: Dict[str, Tensor], warmup_runs: int, benchmark_duration: int
-    ) -> List[float]:
-        raise NotImplementedError("Backend must implement run_inference method")
+    def inference(self, input: Dict[str, Tensor]):
+        raise NotImplementedError("Backend must implement inference method")
 
     @abstractmethod
-    def run_profiling(
-        self, dummy_inputs: Dict[str, Tensor], warmup_runs: int, benchmark_duration: int
-    ) -> DataFrame:
-        raise NotImplementedError("Backend must implement run_profiling method")
+    def prepare_for_profiling(self, input_names: List[str]) -> None:
+        raise NotImplementedError("Backend must implement prepare_for_profiling method")
