@@ -2,6 +2,7 @@ from typing import Any, List, Tuple
 from logging import getLogger
 
 from optimum.onnxruntime import ORTModel
+import pandas as pd
 from torch.fx.graph_module import GraphModule
 from torch.fx import Interpreter
 from torch.fx.node import Node
@@ -16,7 +17,7 @@ LOGGER = getLogger("profiler")
 class PytorchProfilingWrapper(Interpreter):
     def __init__(self, module: GraphModule):
         super().__init__(module)
-        self.profiling_latencies: List[Tuple[str, str, float]] = []
+        self.profiling_records: List[Tuple[str, str, float]] = []
 
     def run(self, *args) -> Any:
         return_val = super().run(*args)
@@ -38,7 +39,7 @@ class PytorchProfilingWrapper(Interpreter):
             node_runtime = (end - start) / 1e9
 
         LOGGER.debug(f"Node {node.name} took {node_runtime} seconds")
-        self.profiling_latencies.append((node.name, node.op, node_runtime))
+        self.profiling_records.append((node.name, node.op, node_runtime))
 
         return return_val
 
@@ -46,32 +47,36 @@ class PytorchProfilingWrapper(Interpreter):
         args = kwargs.values()
         return super().run(*args)
 
-    def get_profiling_results(self) -> List[Tuple[str, str, float]]:
-        return self.profiling_latencies
+    def get_profiling_records(self) -> List[Tuple[str, str, float]]:
+        return self.profiling_records
 
 
 class ORTProfilingWrapper:
     def __init__(self, module: ORTModel):
         self.module = module
-        self.profiling_latencies: List[Tuple[str, str, float]] = []
+        self.profiling_records: List[Tuple[str, str, float]] = []
 
     def __call__(self, *args, **kwargs):
         return self.module(*args, **kwargs)
 
-    def get_profiling_results(self, last_run: int = 0) -> List[Tuple[str, str, float]]:
-        profiling_dict = self.module.model.end_profiling()  # type: ignore
-
-        with open(profiling_dict, encoding="utf-8") as file_obj:
+    def get_profiling_records(self) -> List[Tuple[str, str, float]]:
+        profiling_json = self.module.model.end_profiling()  # type: ignore
+        print(profiling_json)
+        with open(profiling_json) as file_obj:
             profiling_data = json.load(file_obj)
+            print("data")
+            if isinstance(profiling_data, dict):
+                profiling_data = profiling_data["traceEvents"]
 
-        profiling_data = extract_last_run_data(profiling_data)
-        profiling_latencies = extract_latencies(profiling_data)
+        print("extracting records")
+        profiling_records = extract_last_run_records(profiling_data)
+        profiling_records = normalize_records(profiling_records)
 
-        return profiling_latencies
+        return profiling_records
 
 
-def extract_latencies(data) -> List[Tuple[str, str, float]]:
-    profiling_latencies = []
+def normalize_records(data) -> List[Tuple[str, str, float]]:
+    records = []
     for item in data:
         cat = item.get("cat")
         if cat is None:
@@ -88,18 +93,19 @@ def extract_latencies(data) -> List[Tuple[str, str, float]]:
 
         if cat != "Kernel" and not name.endswith("kernel_time"):
             continue
+
         if cat in ["Kernel", "Node"]:
-            profiling_latencies.append((name, op_name, dur / 1e6))
+            records.append((name.replace("_kernel_time", ""), op_name, dur / 1e6))
 
-    return profiling_latencies
+    return records
 
 
-def extract_last_run_data(data):
+def extract_last_run_records(data):
     # Here we assume that the traces are properly ordered, so we can simplify the splitting logic.
-    last_run_start = 0
-
-    for i, item in enumerate(data):
-        if item.get("name") == "model_run":
-            last_run_start = i
-
-    return data[last_run_start:-1]
+    return (
+        pd.DataFrame(data)[["name", "cat", "dur", "args"]]
+        .groupby("name")
+        .last()
+        .reset_index()
+        .to_dict(orient="records")
+    )
