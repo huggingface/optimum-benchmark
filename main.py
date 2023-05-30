@@ -56,7 +56,7 @@ LOGGER = getLogger(__name__)
 @hydra.main(config_path="configs", config_name="base_experiment", version_base=None)
 def run_experiment(config: ExperimentConfig) -> Optional[float]:
     # Save the config
-    OmegaConf.save(config, "config.yaml", resolve=True)
+    OmegaConf.save(config, "hydra_config.yaml", resolve=True)
     # Allocate requested benchmark
     benchmark_factory: Type[Benchmark] = get_class(config.benchmark._target_)  # type: ignore
     benchmark: Benchmark = benchmark_factory(config.model, config.task, config.device)
