@@ -84,16 +84,19 @@ class InferenceBenchmark(Benchmark):
     def inference_results(self) -> DataFrame:
         return DataFrame(
             {
-                "Model latency mean (s)": statistics.mean(self.inference_latencies)
+                "latency.mean(s)": statistics.mean(self.inference_latencies)
                 if len(self.inference_latencies) > 0
                 else float("nan"),
-                "Model latency median (s)": statistics.median(self.inference_latencies)
+                "latency.median(s)": statistics.median(self.inference_latencies)
                 if len(self.inference_latencies) > 0
                 else float("nan"),
-                "Model latency stdev (s)": statistics.stdev(self.inference_latencies)
+                "latency.stdev(s)": statistics.stdev(self.inference_latencies)
                 if len(self.inference_latencies) > 1
                 else float("nan"),
-                "Model Throughput (s^-1)": len(self.inference_latencies)
+                "memory.peak(MB)": bytes_to_mega_bytes(
+                    statistics.mean(self.inference_peak_memory)
+                ),
+                "throughput(s^-1)": len(self.inference_latencies)
                 / self.benchmark_duration,
             },
             index=[0],

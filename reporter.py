@@ -59,36 +59,13 @@ def gather_inference_results(
     inference_report = pd.concat(inference_reports.values(), axis=0, ignore_index=True)
     # set experiment_id as index
     inference_report.set_index("experiment_hash", inplace=True)
-    # remove unnecessary columns
-    inference_report.drop(
-        columns=[
-            col
-            for col in inference_report.columns
-            if any(
-                [
-                    elm in col
-                    for elm in [
-                        "_traget_",
-                        "environment",
-                        "experiment",
-                        "benchmark",
-                        "backend.optimization",
-                        "backend.quantization",
-                    ]
-                ]
-            )
-        ],
-        inplace=True,
-    )
     # sort by throughput
-    inference_report.sort_values(
-        by=["Model Throughput (s^-1)"], ascending=False, inplace=True
-    )
+    inference_report.sort_values(by=["throughput(s^-1)"], ascending=False, inplace=True)
 
     return inference_report
 
 
-def show_results_in_console(report) -> None:
+def show_inference_results(report) -> None:
     """
     Display the results in the console.
 
@@ -100,6 +77,17 @@ def show_results_in_console(report) -> None:
         The results of the benchmark with their corresponding changing parameters.
     """
 
+    # remove unnecessary columns
+    report = report[
+        [
+            "latency.mean(s)",
+            "latency.stdev(s)",
+            "latency.median(s)",
+            "memory.peak(MB)",
+            "throughput(s^-1)",
+        ]
+    ]
+
     table = Table(
         show_header=True,
         padding=(0, 0),
@@ -107,9 +95,10 @@ def show_results_in_console(report) -> None:
     )
 
     report.columns = pd.MultiIndex.from_tuples(
-        [tuple(col.split(".")) for col in report.columns]
+        [tuple(col.split(".")) for col in report.columns.to_list()]
     )
 
+    table.add_column("experiment_hash", justify="left")
     for level in range(report.columns.nlevels):
         columns = report.columns.get_level_values(level).to_list()
         for i in range(len(columns)):
@@ -119,10 +108,11 @@ def show_results_in_console(report) -> None:
         if level < report.columns.nlevels - 1:
             for col in columns:
                 table.add_column(col)
+            pass
         else:
-            table.add_row(*columns, end_section=True)
+            table.add_row("", *columns, end_section=True)
 
-    for row in report.itertuples(index=False):
+    for row in report.itertuples():
         table_row = []
         for elm in row:
             if type(elm) == float:
@@ -136,7 +126,6 @@ def show_results_in_console(report) -> None:
                 table_row.append(None)
             else:
                 table_row.append(str(elm))
-
         table.add_row(*table_row)
 
     console = Console(record=True)
@@ -157,4 +146,4 @@ if __name__ == "__main__":
     report.to_csv(f"{args.folder}/inference_report.csv", index=False)
 
     # Display the results
-    show_results_in_console(report)
+    show_inference_results(report)

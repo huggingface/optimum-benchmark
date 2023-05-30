@@ -2,12 +2,12 @@ from typing import Any, List, Tuple
 from logging import getLogger
 
 from optimum.onnxruntime import ORTModel
-import pandas as pd
 from torch.fx.graph_module import GraphModule
 from torch.fx import Interpreter
 from torch.fx.node import Node
 import torch
 
+import pandas as pd
 import json
 import time
 

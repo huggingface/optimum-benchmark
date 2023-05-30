@@ -49,10 +49,10 @@ Other features like intervals and log scale ranges of values are also supported 
 
 ## Aggregating experiment results
 
-To aggregate the results of an experiment (run(s) or sweep(s)), you can use the `aggregator.py` script:
+To aggregate the results of an experiment (run(s) or sweep(s)), you can use the `reporter.py` script:
 
 ```bash
-python aggregator.py --folder {folder_path}
+python reporter.py --folder {folder_path}
 ```
 
 This will generate `inference_report.csv` in the specified directory which contains the aggregated results of all the runs/sweeps in the directory.
