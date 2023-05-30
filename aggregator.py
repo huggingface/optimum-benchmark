@@ -58,15 +58,25 @@ def gather_inference_results(
     # Concatenate all reports
     inference_report = pd.concat(inference_reports.values(), axis=0, ignore_index=True)
     # set experiment_id as index
-    inference_report.set_index("experiment_id", inplace=True)
+    inference_report.set_index("experiment_hash", inplace=True)
     # remove unnecessary columns
     inference_report.drop(
         columns=[
             col
             for col in inference_report.columns
-            if ("_target_" in col)
-            or ("version" in col)
-            or (col in ["experiment_name", "task"])
+            if any(
+                [
+                    elm in col
+                    for elm in [
+                        "_traget_",
+                        "environment",
+                        "experiment",
+                        "benchmark",
+                        "backend.optimization",
+                        "backend.quantization",
+                    ]
+                ]
+            )
         ],
         inplace=True,
     )
