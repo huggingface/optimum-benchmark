@@ -12,9 +12,9 @@ defaults:
 
 hydra:
   run:
-    dir: runs/${experiment_name}/${experiment_id}
+    dir: runs/${experiment_name}/${experiment_hash}
   sweep:
-    dir: sweeps/${experiment_name}/${experiment_id}
+    dir: sweeps/${experiment_name}/${experiment_hash}
   job:
     # enables changing the working directory to the run/sweep directory
     chdir: true
@@ -25,4 +25,4 @@ task: ${infer_task:${model}} # task is infered from model
 
 # an almost distinct experiment name is generated from the following parameters
 experiment_name: ${clean_model_string:${model}}_${device}_${backend.name}_${benchmark.name}
-experiment_id: ??? # filled by experiment dataclass
+experiment_hash: ${hash:${model},${device},${backend},${benchmark}}

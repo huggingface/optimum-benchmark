@@ -3,4 +3,4 @@ defaults:
   - _self_
 
 model: bert-base-uncased
-device: cuda
+device: cpu

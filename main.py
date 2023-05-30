@@ -1,5 +1,6 @@
 from typing import Optional, Type
 from logging import getLogger
+import hashlib
 
 import hydra
 from omegaconf import OmegaConf
@@ -14,8 +15,14 @@ from src.backend.base import Backend
 from src.backend.pytorch import PyTorchConfig
 from src.backend.onnxruntime import ORTConfig
 
-
+hashlib.sha512
 # Register resolvers
+OmegaConf.register_new_resolver(
+    "hash",
+    lambda *args: hashlib.sha512(
+        "".join([str(arg) for arg in args]).encode("utf-8")
+    ).hexdigest(),
+)
 OmegaConf.register_new_resolver(
     "clean_model_string", lambda model: model.split("/")[-1].replace("-", "_")
 )
@@ -50,7 +57,6 @@ LOGGER = getLogger(__name__)
 def run_experiment(config: ExperimentConfig) -> Optional[float]:
     # Save the config
     OmegaConf.save(config, "config.yaml", resolve=True)
-
     # Allocate requested benchmark
     benchmark_factory: Type[Benchmark] = get_class(config.benchmark._target_)  # type: ignore
     benchmark: Benchmark = benchmark_factory(config.model, config.task, config.device)
