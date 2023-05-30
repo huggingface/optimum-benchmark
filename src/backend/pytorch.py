@@ -95,14 +95,12 @@ class PyTorchBackend(Backend):
         self.fp16 = config.fp16
 
     def inference(self, input: Dict[str, Tensor]) -> None:
-        with torch.no_grad():
-            with torch.cuda.amp.autocast(enabled=self.fp16):  # type: ignore
-                output = self.pretrained_model(**input)
+        with torch.cuda.amp.autocast(enabled=self.fp16):  # type: ignore
+            output = self.pretrained_model(**input)
 
         return output
 
     def prepare_for_profiling(self, input_names: List[str]) -> None:
-        LOGGER.info("Preparing for profiling")
         LOGGER.info("\t+ Symbolic tracing model")
         self.pretrained_model = symbolic_trace(
             model=self.pretrained_model,  # type: ignore

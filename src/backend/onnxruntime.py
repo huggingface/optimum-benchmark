@@ -95,7 +95,7 @@ class ORTBackend(Backend):
 
         optimization_config = OptimizationConfig(**config.optimization)  # type: ignore
 
-        LOGGER.info("\t+ Starting optimization")
+        LOGGER.info("\t+ Attempting optimization")
         optimizer = ORTOptimizer.from_pretrained(self.pretrained_model)  # type: ignore
         optimizer.optimize(
             save_dir=f"{tmpdirname}/optimized",
@@ -134,7 +134,7 @@ class ORTBackend(Backend):
 
         quantization_config = QuantizationConfig(**config.quantization)  # type: ignore
 
-        LOGGER.info("\t+ Starting quantization")
+        LOGGER.info("\t+ Attempting quantization")
         model_dir = self.pretrained_model.model_save_dir  # type: ignore
         components = [file for file in os.listdir(model_dir) if file.endswith(".onnx")]
         for component in components:
@@ -158,7 +158,8 @@ class ORTBackend(Backend):
         return output
 
     def prepare_for_profiling(self, input_names: List[str]) -> None:
-        LOGGER.info("Preparing onnxruntime backend for profiling")
+        LOGGER.info("Preparing for profiling")
+        LOGGER.info("\t+ Wrapping model with profiler")
         self.pretrained_model = ORTProfilingWrapper(self.pretrained_model)  # type: ignore
 
     def clean(self) -> None:
