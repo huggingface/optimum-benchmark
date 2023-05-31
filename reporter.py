@@ -18,16 +18,22 @@ def gather_inference_report(
         config_file for config_file in folder.glob(f"**/hydra_config.yaml")
     ]
 
+    # only leave config files that have the same parent as stats files
+    configs_files = [
+        config_file
+        for config_file in configs_files
+        if config_file.parent in [stats_file.parent for stats_file in stats_files]
+    ]
+
     stats_dfs = {i: pd.read_csv(f, index_col=0) for i, f in enumerate(stats_files)}
     config_dicts = {
         i: flatten(OmegaConf.load(f), reducer="dot")
         for i, f in enumerate(configs_files)
     }
 
-    # problem with list of operators to quantize
+    # for now there's a problem with list of operators to quantize
     for d in config_dicts.values():
         d.pop("backend.quantization.operators_to_quantize", None)
-
     configs_dfs = {i: pd.DataFrame(d, index=[0]) for i, d in config_dicts.items()}
 
     if len(stats_dfs) == 0 or len(configs_dfs) == 0:
@@ -42,9 +48,10 @@ def gather_inference_report(
     }
     # Concatenate all reports
     inference_report = pd.concat(inference_reports.values(), axis=0, ignore_index=True)
-    # set experiment_id as index
-    inference_report.set_index("experiment_name", inplace=True, drop=True)
-    # sort by throughput
+    inference_report["config_path"] = configs_files
+    print(configs_files)
+    inference_report.set_index("config_path", inplace=True)
+    # sort by throughput and remove failed experiments
     inference_report = inference_report[inference_report["throughput(s^-1)"] > 0.0]
     inference_report.sort_values(by=["throughput(s^-1)"], ascending=False, inplace=True)
 
@@ -134,7 +141,7 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument(
         "--experiments-folder",
-        "-f",
+        "-e",
         type=Path,
         default="sweeps/",
         help="The folder containing the results of the benchmark.",
