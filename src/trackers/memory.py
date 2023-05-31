@@ -23,27 +23,28 @@ LOGGER = getLogger("memory")
 class PeakMemoryTracker:
     def __init__(self, device: str):
         self.device = device
-        self.tracked_peak_memories: List[int] = []
+        self.tracked_peak_memory: int = 0
 
     @contextmanager
-    def track(self, interval: float):
+    def track(self, interval: float = 0.01):
         if self.device == "cuda":
             yield from self._track_cuda_peak_memory()
         else:
             yield from self._track_cpu_peak_memory(interval)
 
-    def get_tracked_peak_memories(self):
-        return self.tracked_peak_memories
+    def get_tracked_peak_memory(self):
+        return self.tracked_peak_memory
 
     def _track_cuda_peak_memory(self):
+        torch.cuda.reset_peak_memory_stats()
         nvml.nvmlInit()
         yield
         handle = nvml.nvmlDeviceGetHandleByIndex(0)
         meminfo = nvml.nvmlDeviceGetMemoryInfo(handle)
         nvml.nvmlShutdown()
 
-        self.tracked_peak_memories.append(meminfo.used)  # type: ignore
-        LOGGER.debug(f"Peak memory usage: {bytes_to_mega_bytes(meminfo.used)} MB")  # type: ignore
+        self.tracked_peak_memory = meminfo.used  # type: ignore
+        LOGGER.debug(f"Peak memory usage: {bytes_to_mega_bytes(self.tracked_peak_memory)} MB")  # type: ignore
 
     def _track_cpu_peak_memory(self, interval: float):
         child_connection, parent_connection = Pipe()
@@ -61,7 +62,7 @@ class PeakMemoryTracker:
         max_memory = parent_connection.recv()
         num_measurements = parent_connection.recv()
 
-        self.tracked_peak_memories.append(max_memory)
+        self.tracked_peak_memory = max_memory
         LOGGER.debug(f"Peak memory usage: {bytes_to_mega_bytes(max_memory)} MB")
         LOGGER.debug(f"Peak memory in {num_measurements} measurements")
 

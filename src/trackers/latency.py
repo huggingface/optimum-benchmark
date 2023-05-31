@@ -35,7 +35,7 @@ class LatencyTracker:
         latency_ms = start_event.elapsed_time(end_event)
         latency = latency_ms / 1e3
 
-        LOGGER.debug(f"Tracked CUDA latency took: {latency}s)")
+        LOGGER.debug(f"Tracked CUDA latency: {latency:.2e}s")
         self.tracked_latencies.append(latency)
 
     def _cpu_inference_latency(self):
@@ -45,5 +45,5 @@ class LatencyTracker:
         latency_ns = end - start
         latency = latency_ns / 1e9
 
-        LOGGER.debug(f"Tracked CPU latency took: {latency}s)")
+        LOGGER.debug(f"Tracked CPU latency: {latency:.2e}s")
         self.tracked_latencies.append(latency)
