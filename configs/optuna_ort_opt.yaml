@@ -16,7 +16,7 @@ hydra:
     params:
       backend.enable_optimization: true
       # optimization parameters
-      backend.optimization.optimization_level: 0,1,2,99
+      backend.optimization.optimization_level: 1,2,99
       backend.optimization.optimize_for_gpu: true,false
       backend.optimization.fp16: true,false
       backend.optimization.enable_transformers_specific_optimizations: true,false
