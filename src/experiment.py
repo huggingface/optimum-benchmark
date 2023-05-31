@@ -47,7 +47,7 @@ class ExperimentConfig:
     # Experiment name
     experiment_name: str = MISSING  # type: ignore
     # Experiment identifier (timestamp)
-    experiment_datetime: str = time.strftime("%Y-%m-%d %H:%M:%S")
+    experiment_datetime: str = time.strftime("%Y-%m-%d_%H:%M:%S")
 
     # ENVIRONMENT CONFIGURATION
     environment: DictConfig = DictConfig(
