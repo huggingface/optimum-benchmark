@@ -1,0 +1,41 @@
+defaults:
+  - base_experiment
+  - _self_
+  - override backend: onnxruntime # group config should be overriden
+  - override hydra/sweeper: optuna
+  - override hydra/sweeper/sampler: tpe
+
+hydra:
+  sweeper:
+    # Optuna parameters
+    study_name: onnxruntime_optimization
+    direction: minimize
+    n_trials: 50
+    n_jobs: 1
+    storage: null
+    params:
+      backend.enable_optimization: true
+      # optimization parameters
+      backend.optimization.optimization_level: 0,1,2,99
+      backend.optimization.optimize_for_gpu: true,false
+      backend.optimization.fp16: true,false
+      backend.optimization.enable_transformers_specific_optimizations: true,false
+      backend.optimization.disable_gelu_fusion: true,false
+      backend.optimization.disable_layer_norm_fusion: true,false
+      backend.optimization.disable_attention_fusion: true,false
+      backend.optimization.disable_skip_layer_norm_fusion: true,false
+      backend.optimization.enable_gelu_approximation: true,false
+      backend.optimization.disable_bias_skip_layer_norm_fusion: true,false
+      backend.optimization.disable_bias_gelu_fusion: true,false
+      backend.optimization.disable_embed_layer_norm_fusion: true,false
+      backend.optimization.use_mask_index: true,false
+      backend.optimization.no_attention_mask: true,false
+      backend.optimization.disable_shape_inference: true # disable for whisper
+      backend.optimization.use_multi_head_attention: true,false
+      backend.optimization.enable_gemm_fast_gelu_fusion: true,false
+      backend.optimization.use_raw_attention_mask: true,false
+      backend.optimization.disable_group_norm_fusion: true,false
+      backend.optimization.disable_packed_kv: true,false
+
+model: openai/whisper-base
+device: cuda

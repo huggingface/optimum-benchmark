@@ -37,18 +37,10 @@ enable_quantization: false
 quantization:
   is_static: false
   format: QOperator # QOperator, QDQ
-  mode: QLinearOps # QLinearOps, IntegerOps
+  mode: IntegerOps # QLinearOps, IntegerOps
   activations_dtype: QUInt8 # QInt8, QUInt8
   activations_symmetric: false
   weights_dtype: QInt8 # QInt8, QUInt8
   weights_symmetric: true
   per_channel: false
   reduce_range: false
-  # nodes_to_quantize: null # list
-  # nodes_to_exclude: null # list
-  # operators_to_quantize: # list
-  #   - MatMul
-  #   - Add
-  # qdq_add_pair_to_weight: false
-  # qdq_dedicated_pair: false
-  # qdq_op_type_per_channel_support_to_axis: null # dict

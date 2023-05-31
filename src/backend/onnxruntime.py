@@ -4,6 +4,7 @@ from typing import Dict, List
 from logging import getLogger
 from dataclasses import dataclass
 from tempfile import TemporaryDirectory
+from omegaconf import ListConfig
 
 import onnxruntime
 from onnxruntime.quantization import QuantFormat, QuantizationMode, QuantType
@@ -102,6 +103,7 @@ class ORTBackend(Backend):
             optimization_config=optimization_config,
         )
         LOGGER.info("\t+ Loading optimized model")
+        del self.pretrained_model
         self.pretrained_model = self.ortmodel_class.from_pretrained(
             model_id=f"{tmpdirname}/optimized",
             session_options=self.session_options,
@@ -131,8 +133,18 @@ class ORTBackend(Backend):
             config.quantization["weights_dtype"] = QuantType.from_string(
                 config.quantization["weights_dtype"]
             )
+        if config.quantization.get("operators_to_quantize", None) is not None:
+            config.quantization["operators_to_quantize"] = list(
+                config.quantization["operators_to_quantize"]
+            )
+            print(type(config.quantization["operators_to_quantize"]))
 
-        quantization_config = QuantizationConfig(**config.quantization)  # type: ignore
+        quantization_config = QuantizationConfig(
+            **{
+                key: list(value) if type(value) == ListConfig else value
+                for key, value in config.quantization.items()
+            }  # type: ignore
+        )
 
         LOGGER.info("\t+ Attempting quantization")
         model_dir = self.pretrained_model.model_save_dir  # type: ignore
@@ -146,6 +158,7 @@ class ORTBackend(Backend):
             )
 
         LOGGER.info("\t+ Loading quantized model")
+        del self.pretrained_model
         self.pretrained_model = self.ortmodel_class.from_pretrained(
             model_id=f"{tmpdirname}/quantized",
             session_options=self.session_options,
@@ -153,8 +166,12 @@ class ORTBackend(Backend):
             provider=config.provider,
         )
 
-    def inference(self, input: Dict[str, Tensor]):
+    def forward(self, input: Dict[str, Tensor]):
         output = self.pretrained_model(**input)
+        return output
+
+    def generate(self, input: Dict[str, Tensor]):
+        output = self.pretrained_model.generate(**input) # type: ignore
         return output
 
     def prepare_for_profiling(self, input_names: List[str]) -> None:

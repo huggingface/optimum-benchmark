@@ -94,10 +94,14 @@ class PyTorchBackend(Backend):
 
         self.fp16 = config.fp16
 
-    def inference(self, input: Dict[str, Tensor]) -> None:
+    def forward(self, input: Dict[str, Tensor]):
         with torch.cuda.amp.autocast(enabled=self.fp16):  # type: ignore
             output = self.pretrained_model(**input)
+        return output
 
+    def generate(self, input: Dict[str, Tensor]):
+        with torch.cuda.amp.autocast(enabled=self.fp16):  # type: ignore
+            output = self.pretrained_model.generate(**input)  # type: ignore
         return output
 
     def prepare_for_profiling(self, input_names: List[str]) -> None:

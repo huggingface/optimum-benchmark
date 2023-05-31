@@ -46,8 +46,8 @@ class Backend(ABC):
         raise NotImplementedError("Backend must implement clean method")
 
     @abstractmethod
-    def inference(self, input: Dict[str, Tensor]):
-        raise NotImplementedError("Backend must implement inference method")
+    def forward(self, input: Dict[str, Tensor]):
+        raise NotImplementedError("Backend must implement forward method")
 
     @abstractmethod
     def prepare_for_profiling(self, input_names: List[str]) -> None:
