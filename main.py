@@ -68,13 +68,13 @@ def run_experiment(config: ExperimentConfig) -> Optional[float]:
         benchmark.run(backend)
         # clean backend
         backend.clean()
+        # Save the benchmark results
+        benchmark.save()
 
     except Exception as e:
         LOGGER.error(e)
         LOGGER.error("Failed to run the benchmark")
 
-    # Save the benchmark results
-    benchmark.save()
     return benchmark.objective
 
 
