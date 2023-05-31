@@ -15,16 +15,9 @@ from src.backend.base import Backend
 from src.backend.pytorch import PyTorchConfig
 from src.backend.onnxruntime import ORTConfig
 
-hashlib.sha512
 # Register resolvers
 OmegaConf.register_new_resolver(
-    "hash",
-    lambda *args: hashlib.sha512(
-        "".join([str(arg) for arg in args]).encode("utf-8")
-    ).hexdigest(),
-)
-OmegaConf.register_new_resolver(
-    "clean_model_string", lambda model: model.split("/")[-1].replace("-", "_")
+    "clean_string", lambda model: model.split("/")[-1].replace("-", "_")
 )
 
 OmegaConf.register_new_resolver("onnxruntime_version", lambda: ORTConfig.version)
@@ -40,7 +33,10 @@ OmegaConf.register_new_resolver("is_gpu", lambda device: device in ["cuda", "gpu
 
 OmegaConf.register_new_resolver("infer_task", TasksManager.infer_task_from_model)
 OmegaConf.register_new_resolver(
-    "infer_provider", lambda device: f"{device.upper()}ExecutionProvider"
+    "infer_provider",
+    lambda device: "CUDAExecutionProvider"
+    if device == "cuda"
+    else "CPUExecutionProvider",
 )
 
 # Register configurations

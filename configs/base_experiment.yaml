@@ -12,9 +12,9 @@ defaults:
 
 hydra:
   run:
-    dir: runs/${experiment_name}/${experiment_hash}
+    dir: runs/${experiment_name}/${experiment_datetime}
   sweep:
-    dir: sweeps/${experiment_name}/${experiment_hash}
+    dir: sweeps/${experiment_name}/${experiment_datetime}
   job:
     # enables changing the working directory to the run/sweep directory
     chdir: true
@@ -23,6 +23,5 @@ model: ??? # model is mandatory
 device: ??? # device to run on is mandatory
 task: ${infer_task:${model}} # task is infered from model
 
-# an almost distinct experiment name is generated from the following parameters
-experiment_name: ${clean_model_string:${model}}_${device}_${backend.name}_${benchmark.name}
-experiment_hash: ${hash:${model},${device},${backend},${benchmark}}
+# an almost distinct experiment name and hash is generated from the following parameters
+experiment_name: ${clean_string:${model}}_${device}_${backend.name}_${benchmark.name}

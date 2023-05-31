@@ -11,21 +11,6 @@ from rich.table import Table
 def gather_inference_report(
     folder: Path,
 ) -> pd.DataFrame:
-    """
-    Gather all results and configs from the given folder.
-
-    Parameters
-    ----------
-    folder : Path
-        The folder containing the results of the benchmark.
-
-    Returns
-    -------
-    pd.DataFrame
-        The results of the benchmark with their corresponding parameters.
-    """
-
-    # List all csv stats
     stats_files = [
         stats_file for stats_file in folder.glob(f"**/inference_results.csv")
     ]
@@ -34,10 +19,16 @@ def gather_inference_report(
     ]
 
     stats_dfs = {i: pd.read_csv(f, index_col=0) for i, f in enumerate(stats_files)}
-    configs_dfs = {
-        i: pd.DataFrame(flatten(OmegaConf.load(f), reducer="dot"), index=[0])
+    config_dicts = {
+        i: flatten(OmegaConf.load(f), reducer="dot")
         for i, f in enumerate(configs_files)
     }
+
+    # problem with list of operators to quantize
+    for d in config_dicts.values():
+        d.pop("backend.quantization.operators_to_quantize", None)
+
+    configs_dfs = {i: pd.DataFrame(d, index=[0]) for i, d in config_dicts.items()}
 
     if len(stats_dfs) == 0 or len(configs_dfs) == 0:
         raise ValueError(f"No results found in {folder}")
@@ -52,25 +43,15 @@ def gather_inference_report(
     # Concatenate all reports
     inference_report = pd.concat(inference_reports.values(), axis=0, ignore_index=True)
     # set experiment_id as index
-    inference_report.set_index("experiment_hash", inplace=True, drop=True)
+    inference_report.set_index("experiment_name", inplace=True, drop=True)
     # sort by throughput
+    inference_report = inference_report[inference_report["throughput(s^-1)"] > 0.0]
     inference_report.sort_values(by=["throughput(s^-1)"], ascending=False, inplace=True)
 
     return inference_report
 
 
 def show_inference_report(report, with_baseline=False):
-    """
-    Display the results in the console.
-
-    Parameters
-    ----------
-    static_params : dict
-        The unchanging parameters of the benchmark.
-    bench_results : pd.DataFrame
-        The results of the benchmark with their corresponding changing parameters.
-    """
-
     # columns to display
     show_report = report[
         ["latency.median(s)", "memory.peak(MB)", "throughput(s^-1)"]
@@ -86,7 +67,7 @@ def show_inference_report(report, with_baseline=False):
         [tuple(col.split(".")) for col in show_report.columns.to_list()]
     )
 
-    table.add_column("experiment_hash", justify="left")
+    table.add_column("experiment_name", justify="left")
     for level in range(show_report.columns.nlevels):
         columns = show_report.columns.get_level_values(level).to_list()
         for i in range(len(columns)):
@@ -104,7 +85,6 @@ def show_inference_report(report, with_baseline=False):
         table_row = []
         for elm in row:
             if type(elm) == float:
-                # round to 2 decimals if bigger than 1
                 if elm >= 1:
                     table_row.append(f"{elm:.2f}")
                 else:
