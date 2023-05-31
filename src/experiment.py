@@ -1,6 +1,7 @@
 from dataclasses import dataclass, MISSING
 from logging import getLogger
 
+import time
 import psutil
 import platform
 import py3nvml.py3nvml as nvml
@@ -46,7 +47,7 @@ class ExperimentConfig:
     # Experiment name
     experiment_name: str = MISSING  # type: ignore
     # Experiment identifier (timestamp)
-    experiment_hash: str = MISSING  # type: ignore
+    experiment_datetime: str = time.strftime("%Y-%m-%d %H:%M:%S")
 
     # ENVIRONMENT CONFIGURATION
     environment: DictConfig = DictConfig(

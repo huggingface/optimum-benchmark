@@ -5,6 +5,7 @@ import torch
 from torch import Tensor
 from transformers import AutoConfig
 from optimum.exporters import TasksManager
+from transformers.onnx.utils import get_preprocessor
 
 
 LOGGER = getLogger("dummy_input_generator")
@@ -16,6 +17,7 @@ class DummyInputGenerator:
         self.task = task
         self.device = device
 
+    def configure(self, inference_mode) -> None:
         self.auto_config = AutoConfig.from_pretrained(self.model)
         model_type = self.auto_config.model_type
         LOGGER.info(f"\t+ Using {model_type} as model type")
@@ -25,7 +27,11 @@ class DummyInputGenerator:
         ](self.auto_config)
         LOGGER.info(f"\t+ Using {self.onnx_config.__class__.__name__} as onnx config")
 
-        self.input_names = list(self.onnx_config.inputs.keys())  # type: ignore
+        if inference_mode == "forward":
+            self.input_names = list(self.onnx_config.inputs.keys())  # type: ignore
+        elif inference_mode == "generate":
+            self.input_names = get_preprocessor(self.model).model_input_names  # type: ignore
+
         LOGGER.info(f"\t+ Using {self.input_names} as model input names")
 
     def generate(self) -> Dict[str, Tensor]:
