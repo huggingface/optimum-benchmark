@@ -8,11 +8,8 @@ defaults:
 hydra:
   sweeper:
     # Optuna parameters
-    study_name: onnxruntime_optimization
     direction: minimize
     n_trials: 50
-    n_jobs: 1
-    storage: null
     params:
       backend.enable_optimization: true
       # optimization parameters
@@ -37,5 +34,6 @@ hydra:
       backend.optimization.disable_group_norm_fusion: true,false
       backend.optimization.disable_packed_kv: true,false
 
+experiment_name: whisper_optuna_ort_opt
 model: openai/whisper-base
 device: cuda

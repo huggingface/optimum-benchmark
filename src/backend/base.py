@@ -42,13 +42,17 @@ class Backend(ABC):
                 )
 
     @abstractmethod
-    def clean(self) -> None:
-        raise NotImplementedError("Backend must implement clean method")
-
-    @abstractmethod
     def forward(self, input: Dict[str, Tensor]):
         raise NotImplementedError("Backend must implement forward method")
 
     @abstractmethod
+    def generate(self, input: Dict[str, Tensor]):
+        raise NotImplementedError("Backend must implement generate method")
+
+    @abstractmethod
     def prepare_for_profiling(self, input_names: List[str]) -> None:
         raise NotImplementedError("Backend must implement prepare_for_profiling method")
+
+    @abstractmethod
+    def clean(self) -> None:
+        raise NotImplementedError("Backend must implement clean method")

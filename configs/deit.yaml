@@ -1,6 +1,0 @@
-defaults:
-  - base_experiment
-  - _self_
-
-model: facebook/deit-base-distilled-patch16-224
-device: cuda

@@ -99,9 +99,13 @@ class PyTorchBackend(Backend):
             output = self.pretrained_model(**input)
         return output
 
-    def generate(self, input: Dict[str, Tensor]):
+    def generate(self, input: Dict[str, Tensor]) -> None:
         with torch.cuda.amp.autocast(enabled=self.fp16):  # type: ignore
-            output = self.pretrained_model.generate(**input)  # type: ignore
+            output = self.pretrained_model.generate(  # type: ignore
+                **input,
+                max_new_tokens=100,
+                pad_token_id=-1,
+            )  # type: ignore
         return output
 
     def prepare_for_profiling(self, input_names: List[str]) -> None:

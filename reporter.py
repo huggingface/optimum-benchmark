@@ -49,11 +49,10 @@ def gather_inference_report(
     # Concatenate all reports
     inference_report = pd.concat(inference_reports.values(), axis=0, ignore_index=True)
     inference_report["config_path"] = configs_files
-    print(configs_files)
     inference_report.set_index("config_path", inplace=True)
     # sort by throughput and remove failed experiments
-    inference_report = inference_report[inference_report["throughput(s^-1)"] > 0.0]
-    inference_report.sort_values(by=["throughput(s^-1)"], ascending=False, inplace=True)
+    inference_report = inference_report[inference_report["throughput(it/s)"] > 0.0]
+    inference_report.sort_values(by=["throughput(it/s)"], ascending=False, inplace=True)
 
     return inference_report
 
@@ -61,8 +60,9 @@ def gather_inference_report(
 def show_inference_report(report, with_baseline=False):
     # columns to display
     show_report = report[
-        ["latency.median(s)", "memory.peak(MB)", "throughput(s^-1)"]
-        + (["baseline", "speedup"] if with_baseline else [])
+        (["baseline"] if with_baseline else [])
+        + ["latency.mean(s)", "latency.median(s)", "throughput(it/s)"]
+        + (["speedup(%)"] if with_baseline else [])
     ]
 
     table = Table(
@@ -74,7 +74,7 @@ def show_inference_report(report, with_baseline=False):
         [tuple(col.split(".")) for col in show_report.columns.to_list()]
     )
 
-    table.add_column("experiment_name", justify="left")
+    table.add_column("config_path", justify="left")
     for level in range(show_report.columns.nlevels):
         columns = show_report.columns.get_level_values(level).to_list()
         for i in range(len(columns)):
@@ -92,10 +92,13 @@ def show_inference_report(report, with_baseline=False):
         table_row = []
         for elm in row:
             if type(elm) == float:
-                if elm >= 1:
+                if abs(elm) >= 1:
                     table_row.append(f"{elm:.2f}")
-                else:
+                elif abs(elm) > 1e-3:
                     table_row.append(f"{elm:.2e}")
+                else:
+                    table_row.append(f"{elm}")
+
             elif type(elm) == bool:
                 if elm:
                     table_row.append("[green]✔[/green]")
@@ -119,12 +122,13 @@ def main(args):
         baseline_report = gather_inference_report(args.baseline_folder)
         assert len(baseline_report) == 1, "There should be only one baseline"
         experiments_report["baseline"] = [False] * len(experiments_report)
-        experiments_report["speedup"] = (
-            experiments_report["throughput(s^-1)"]
-            / baseline_report["throughput(s^-1)"].iloc[0]
-        )
+        experiments_report["speedup(%)"] = (
+            experiments_report["throughput(it/s)"]
+            / baseline_report["throughput(it/s)"].iloc[0]
+            - 1
+        ) * 100
         baseline_report["baseline"] = True
-        baseline_report["speedup"] = 1.0
+        baseline_report["speedup(%)"] = 0
 
         report = pd.concat(
             [experiments_report, baseline_report], axis=0, ignore_index=False

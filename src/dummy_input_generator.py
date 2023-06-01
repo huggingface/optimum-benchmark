@@ -17,37 +17,35 @@ class DummyInputGenerator:
         self.task = task
         self.device = device
 
-    def configure(self, inference_mode) -> None:
-        self.auto_config = AutoConfig.from_pretrained(self.model)
-        model_type = self.auto_config.model_type
-        LOGGER.info(f"\t+ Using {model_type} as model type")
+    def generate(self, mode) -> Dict[str, Tensor]:
+        # LOGGER.info(f"Generating dummy input")
 
-        self.onnx_config = TasksManager._SUPPORTED_MODEL_TYPE[model_type]["onnx"][
-            self.task
-        ](self.auto_config)
-        LOGGER.info(f"\t+ Using {self.onnx_config.__class__.__name__} as onnx config")
+        auto_config = AutoConfig.from_pretrained(self.model)
+        model_type = auto_config.model_type
+        onnx_config = TasksManager._SUPPORTED_MODEL_TYPE[model_type]["onnx"][self.task](
+            auto_config
+        )
+        normalized_config = onnx_config.NORMALIZED_CONFIG_CLASS(auto_config)  # type: ignore
+        # LOGGER.info(f"\t+ Using {onnx_config.__class__.__name__} as onnx config")
 
-        if inference_mode == "forward":
-            self.input_names = list(self.onnx_config.inputs.keys())  # type: ignore
-        elif inference_mode == "generate":
-            self.input_names = get_preprocessor(self.model).model_input_names  # type: ignore
+        if mode == "forward":
+            input_names = list(onnx_config.inputs.keys())  # type: ignore
+        elif mode == "generate":
+            input_names = get_preprocessor(self.model).model_input_names  # type: ignore
+        else:
+            raise ValueError(f"Unknown mode {mode}")
 
-        LOGGER.info(f"\t+ Using {self.input_names} as model input names")
-
-    def generate(self) -> Dict[str, Tensor]:
-        LOGGER.info(f"Generating dummy input")
+        # LOGGER.info(f"\t+ Using {input_names} as model input names")
 
         dummy_input = dict()
-        for input_name in self.input_names:
+        for input_name in input_names:
             dummy_input_generator = None
 
-            for dummy_input_generator_class in self.onnx_config.DUMMY_INPUT_GENERATOR_CLASSES:  # type: ignore
+            for dummy_input_generator_class in onnx_config.DUMMY_INPUT_GENERATOR_CLASSES:  # type: ignore
                 if input_name in dummy_input_generator_class.SUPPORTED_INPUT_NAMES:  # type: ignore
                     dummy_input_generator = dummy_input_generator_class(
                         task=self.task,
-                        normalized_config=self.onnx_config.NORMALIZED_CONFIG_CLASS(  # type: ignore
-                            self.auto_config
-                        ),
+                        normalized_config=normalized_config,
                     )
 
             if dummy_input_generator is None:
@@ -55,9 +53,9 @@ class DummyInputGenerator:
                     f"Could not find dummy input generator for {input_name}"
                 )
 
-            LOGGER.info(
-                f"\t+ Generating dummy input for {input_name} using {dummy_input_generator.__class__.__name__}"
-            )
+            # LOGGER.info(
+            #     f"\t+ Generating dummy input for {input_name} using {dummy_input_generator.__class__.__name__}"
+            # )
 
             dummy_input[input_name] = dummy_input_generator.generate(
                 input_name, framework="pt"

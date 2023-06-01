@@ -23,5 +23,6 @@ model: ??? # model is mandatory
 device: ??? # device to run on is mandatory
 task: ${infer_task:${model}} # task is infered from model
 
-# an almost distinct experiment name and hash is generated from the following parameters
+# an almost distinct experiment name is generated from the following parameters
+# but you can (or should) override it for your own needs
 experiment_name: ${clean_string:${model}}_${device}_${backend.name}_${benchmark.name}

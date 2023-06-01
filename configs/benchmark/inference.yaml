@@ -2,7 +2,9 @@ _target_: src.benchmark.inference.InferenceBenchmark
 
 name: inference
 
-profiling: false
-warmup_runs: 5
-benchmark_duration: 5
-inference_mode: forward # forward,generate
+profile: false
+track_memory: false
+is_generator: false
+
+warmup_runs: 10
+benchmark_duration: 10

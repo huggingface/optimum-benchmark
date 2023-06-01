@@ -1,10 +1,7 @@
 from dataclasses import dataclass
-from functools import partial
+from typing import List, Tuple
 from logging import getLogger
-from multiprocessing import Process, Queue
-from typing import Callable, List, Tuple
 
-import gc
 import statistics
 from pandas import DataFrame
 
@@ -24,18 +21,21 @@ LOGGER = getLogger(BENCHMARK_NAME)
 class InferenceConfig(BenchmarkConfig):
     name: str = BENCHMARK_NAME
 
-    profiling: bool = False
+    profile: bool = False
+    track_memory: bool = False
+    is_generator: bool = False
+
     warmup_runs: int = 5
     benchmark_duration: int = 5
-    inference_mode: str = "forward"
 
 
 class InferenceBenchmark(Benchmark):
     def __init__(self, model: str, task: str, device: str) -> None:
         super().__init__(model, task, device)
 
-        self.inference_memory: int = 0
-        self.inference_latencies: List[float] = []
+        self.model_peak_memory: int = 0
+        self.model_latencies: List[float] = []
+        self.generation_records: List[Tuple[int, float]] = []
         self.profiling_records: List[Tuple[str, str, float]] = []
 
         self.dummy_input_generator = DummyInputGenerator(
@@ -43,112 +43,133 @@ class InferenceBenchmark(Benchmark):
         )
 
     def configure(self, config: InferenceConfig):
-        self.profiling = config.profiling
+        self.profile = config.profile
+        self.track_memory = config.track_memory
+        self.is_generator = config.is_generator
+
         self.warmup_runs = config.warmup_runs
         self.benchmark_duration = config.benchmark_duration
-
-        self.inference_mode = config.inference_mode
-        self.dummy_input_generator.configure(self.inference_mode)
 
     def run(self, backend: Backend) -> None:
         LOGGER.info("Running inference")
 
-        self.dummy_inputs = self.dummy_input_generator.generate()
-        self.inference_func = getattr(backend, self.inference_mode)
+        self._run_with_forward_latency_tracking(backend)
 
-        self.run_with_latency_tracking()
-        self.run_with_memory_tracking()
+        if self.track_memory:
+            self._run_with_memory_tracking(backend)
 
-        if self.profiling:
-            self.run_with_profiling(backend)
+        if self.is_generator:
+            self._run_with_generate_latency_tracking(backend)
 
-    def run_with_latency_tracking(self) -> None:
+        if self.profile:
+            self._run_with_model_profile(backend)
+
+    def _run_with_forward_latency_tracking(self, backend: Backend) -> None:
         LOGGER.info("\t+ Warming up the model")
+        warmup_inputs = self.dummy_input_generator.generate(mode="forward")
         for _ in range(self.warmup_runs):
-            self.inference_func(self.dummy_inputs)
+            backend.forward(warmup_inputs)
 
-        LOGGER.info("\t+ Tracking latencies")
+        LOGGER.info("\t+ Tracking model latency and throughput")
+        forward_inputs = self.dummy_input_generator.generate(mode="forward")
         latency_tracker = LatencyTracker(device=self.device)
         for _ in latency_tracker.track(duration=self.benchmark_duration):
-            self.inference_func(self.dummy_inputs)
-        self.inference_latencies = latency_tracker.get_tracked_latencies()
-        LOGGER.info(f"\t+ Latency: {statistics.mean(self.inference_latencies)}s")
+            outputs = backend.forward(forward_inputs)
 
-    def run_with_memory_tracking(self) -> None:
-        LOGGER.info("\t+ Tracking peak memory")
+        self.model_latencies = latency_tracker.get_tracked_latencies()
+        LOGGER.info(f"\t+ Model Latency: {self.model_latency:.2e} (s)")
+        LOGGER.info(f"\t+ Model Throughput: {self.model_throughput:.2f} (iter/s)")
+
+    def _run_with_generate_latency_tracking(self, backend: Backend) -> None:
+        LOGGER.info("\t+ Tracking generation throughput")
+        generate_inputs = self.dummy_input_generator.generate(mode="generate")
+        latency_tracker = LatencyTracker(device=self.device)
+        num_generated_tokens = []
+        for _ in latency_tracker.track(duration=self.benchmark_duration):
+            outputs = backend.generate(generate_inputs)  # type: ignore
+            num_generated_tokens.append(outputs.shape[-1])
+
+        self.generation_records = list(
+            zip(num_generated_tokens, latency_tracker.get_tracked_latencies())
+        )
+        LOGGER.info(
+            f"\t+ Generation Throughput: {self.generation_throughput:.2f} (tok/s)"
+        )
+
+    def _run_with_memory_tracking(self, backend: Backend) -> None:
+        LOGGER.info("\t+ Tracking model peak memory")
+        memory_inputs = self.dummy_input_generator.generate(mode="forward")
         peak_memory_tracker = PeakMemoryTracker(device=self.device)
-        with peak_memory_tracker.track(interval=self.inference_latencies[-1] / 10):
-            self.inference_func(self.dummy_inputs)
-        self.inference_memory = peak_memory_tracker.get_tracked_peak_memory()
-        LOGGER.info(f"\t+ Memory: {bytes_to_mega_bytes(self.inference_memory)}MB")
+        with peak_memory_tracker.track(interval=self.model_latency / 10):
+            outputs = backend.forward(memory_inputs)
 
-    def run_with_profiling(self, backend: Backend) -> None:
+        self.model_peak_memory = bytes_to_mega_bytes(
+            peak_memory_tracker.get_tracked_peak_memory()
+        )
+        LOGGER.info(f"\t+ Model Peak Memory: {self.model_peak_memory} (MB)")
+
+    def _run_with_model_profile(self, backend: Backend) -> None:
         LOGGER.info("Preparing for profiling")
-        backend.prepare_for_profiling(self.dummy_input_generator.input_names)
+        profile_inputs = self.dummy_input_generator.generate(mode="forward")
+        backend.prepare_for_profiling(list(profile_inputs.keys()))
         LOGGER.info("Running profiling")
-        self.inference_func(self.dummy_inputs)
+        backend.forward(profile_inputs)
         self.profiling_records = backend.pretrained_model.get_profiling_records()  # type: ignore
 
     @property
-    def inference_results(self) -> DataFrame:
-        return DataFrame(
-            {
-                "latency.mean(s)": statistics.mean(self.inference_latencies)
-                if len(self.inference_latencies) > 0
-                else float("nan"),
-                "latency.median(s)": statistics.median(self.inference_latencies)
-                if len(self.inference_latencies) > 0
-                else float("nan"),
-                "latency.stdev(s)": statistics.stdev(self.inference_latencies)
-                if len(self.inference_latencies) > 1
-                else float("nan"),
-                "throughput(s^-1)": len(self.inference_latencies)
-                / self.benchmark_duration,
-                "memory.peak(MB)": bytes_to_mega_bytes(self.inference_memory),
-            },
-            index=[0],
+    def model_latency(self) -> float:
+        return (
+            statistics.mean(self.model_latencies)
+            if len(self.model_latencies) > 0
+            else float("inf")
         )
 
     @property
-    def profiling_results(self) -> DataFrame:
+    def model_throughput(self) -> float:
+        return (
+            len(self.model_latencies) / self.benchmark_duration
+            if self.benchmark_duration > 0
+            else float("-inf")
+        )
+
+    @property
+    def generation_throughput(self) -> float:
+        return (
+            statistics.mean([t / l for t, l in self.generation_records])
+            if len(self.generation_records) > 0
+            else float("-inf")
+        )
+
+    @property
+    def results_df(self) -> DataFrame:
+        results_dict = dict()
+
+        results_dict["Model Latency (s)"] = self.model_latency
+        results_dict["Model Throughput (iter/s)"] = self.model_throughput
+
+        if self.is_generator:
+            results_dict["Generation Throughput (tok/s)"] = self.generation_throughput
+
+        if self.track_memory:
+            results_dict["Model Peak Memory (MB)"] = self.model_peak_memory
+
+        return DataFrame(results_dict, index=[0])
+
+    @property
+    def profile_df(self) -> DataFrame:
         return DataFrame(
             self.profiling_records,
             columns=["Node/Kernel", "Operator", "Latency (s)"],
         )
 
-    def save(self, path: str = "") -> None:
+    def save(self) -> None:
         LOGGER.info("Saving inference results")
-        self.inference_results.to_csv(path + "inference_results.csv")
+        self.results_df.to_csv("inference_results.csv")
 
-        if self.profiling:
+        if self.profile:
             LOGGER.info("Saving profiling results")
-            self.profiling_results.to_csv(path + "profiling_results.csv")
+            self.profile_df.to_csv("inference_profile.csv")
 
     @property
     def objective(self) -> float:
-        return (
-            statistics.mean(self.inference_latencies)
-            if len(self.inference_latencies) > 0
-            else float("inf")
-        )
-
-
-def run_separate_process(func: Callable) -> Callable:
-    def multi_process_func(*args, **kwargs):
-        def wrapper_func(queue: Queue, *args):
-            try:
-                result = func(*args, **kwargs)
-            except Exception as e:
-                LOGGER.error(e)
-                print(e)
-                result = "N/A"
-            queue.put(result)
-
-        queue = Queue()
-        p = Process(target=wrapper_func, args=[queue] + list(args))
-        p.start()
-        result = queue.get()
-        p.join()
-        return result
-
-    return multi_process_func
+        return self.model_latency

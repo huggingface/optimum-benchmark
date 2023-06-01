@@ -1,10 +1,10 @@
 import os
 import gc
-from typing import Dict, List
+from typing import Dict, List, Optional
 from logging import getLogger
 from dataclasses import dataclass
 from tempfile import TemporaryDirectory
-from omegaconf import ListConfig
+from omegaconf import OmegaConf
 
 import onnxruntime
 from onnxruntime.quantization import QuantFormat, QuantizationMode, QuantType
@@ -13,7 +13,7 @@ from optimum.pipelines import ORT_SUPPORTED_TASKS
 from optimum.onnxruntime.configuration import (
     OptimizationConfig,
     QuantizationConfig,
-    # AutoOptimizationConfig,
+    AutoOptimizationConfig,
     # AutoQuantizationConfig,
 )
 
@@ -39,6 +39,7 @@ class ORTConfig(BackendConfig):
 
     # optimization options
     enable_optimization: bool = False
+    auto_optimization: Optional[str] = None
     optimization: DictConfig = DictConfig({})
 
     # quantization options
@@ -90,11 +91,19 @@ class ORTBackend(Backend):
                 self.quantize_model(config, tmpdirname)
 
     def optimize_model(self, config: ORTConfig, tmpdirname: str) -> None:
-        LOGGER.info("\t+ Setting onnxruntime optimization parameters:")
-        for key, value in config.optimization.items():
-            LOGGER.info(f"\t+ {key}: {value}")
+        if config.auto_optimization is not None:
+            LOGGER.info(
+                f"\t+ Setting auto optimization level {config.auto_optimization}"
+            )
+            optimization_config = AutoOptimizationConfig.with_optimization_level(
+                config.auto_optimization, for_gpu=config.optimization.optimize_for_gpu
+            )  # type: ignore
+        else:
+            LOGGER.info("\t+ Setting optimization parameters:")
+            for key, value in config.optimization.items():
+                LOGGER.info(f"\t+ {key}: {value}")
 
-        optimization_config = OptimizationConfig(**config.optimization)  # type: ignore
+            optimization_config = OptimizationConfig(**config.optimization)  # type: ignore
 
         LOGGER.info("\t+ Attempting optimization")
         optimizer = ORTOptimizer.from_pretrained(self.pretrained_model)  # type: ignore
@@ -112,7 +121,7 @@ class ORTBackend(Backend):
         )
 
     def quantize_model(self, config: ORTConfig, tmpdirname: str) -> None:
-        LOGGER.info("\t+ Setting onnxruntime quantization parameters:")
+        LOGGER.info("\t+ Setting quantization parameters:")
         for key, value in config.quantization.items():
             LOGGER.info(f"\t+ {key}: {value}")
 
@@ -133,18 +142,10 @@ class ORTBackend(Backend):
             config.quantization["weights_dtype"] = QuantType.from_string(
                 config.quantization["weights_dtype"]
             )
-        if config.quantization.get("operators_to_quantize", None) is not None:
-            config.quantization["operators_to_quantize"] = list(
-                config.quantization["operators_to_quantize"]
-            )
-            print(type(config.quantization["operators_to_quantize"]))
 
         quantization_config = QuantizationConfig(
-            **{
-                key: list(value) if type(value) == ListConfig else value
-                for key, value in config.quantization.items()
-            }  # type: ignore
-        )
+            **OmegaConf.to_container(config.quantization, resolve=True)  # type: ignore
+        )  # type: ignore
 
         LOGGER.info("\t+ Attempting quantization")
         model_dir = self.pretrained_model.model_save_dir  # type: ignore
@@ -171,7 +172,11 @@ class ORTBackend(Backend):
         return output
 
     def generate(self, input: Dict[str, Tensor]):
-        output = self.pretrained_model.generate(**input) # type: ignore
+        output = self.pretrained_model.generate(  # type: ignore
+            **input,
+            max_new_tokens=100,
+            pad_token_id=-1,
+        )  # type: ignore
         return output
 
     def prepare_for_profiling(self, input_names: List[str]) -> None:

@@ -104,8 +104,8 @@ def extract_last_run_records(data):
     # Here we assume that the traces are properly ordered, so we can simplify the splitting logic.
     return (
         pd.DataFrame(data)[["name", "cat", "dur", "args"]]
-        .groupby("name")
-        .last()
+        # .groupby("name")
+        # .last()
         .reset_index()
         .to_dict(orient="records")
     )
