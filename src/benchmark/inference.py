@@ -28,7 +28,6 @@ class InferenceConfig(BenchmarkConfig):
 
     warmup_runs: int = 10
     model_runs: int = 100
-    generation_runs: int = 10
 
     batch_size: int = 1
 
@@ -40,7 +39,7 @@ class InferenceBenchmark(Benchmark):
         self.model_peak_memory: int = 0
         self.model_latencies: List[float] = []
 
-        self.generation_num_tokens: List[int] = []
+        self.num_generated_tokens: int = 0
         self.generation_latencies: List[float] = []
 
         self.profiling_records: List[Tuple[str, str, float]] = []
@@ -51,8 +50,6 @@ class InferenceBenchmark(Benchmark):
 
         self.warmup_runs = config.warmup_runs
         self.model_runs = config.model_runs
-
-        self.generation_runs = config.generation_runs
 
         self.batch_size = config.batch_size
 
@@ -91,29 +88,21 @@ class InferenceBenchmark(Benchmark):
     def _run_with_generate_latency_tracking(self, backend: Backend) -> None:
         generate_inputs = self.generate_dummy_inputs(mode="generate")
         if "input_ids" in generate_inputs:
-            if generate_inputs["input_ids"].shape[0] > 1:
-                LOGGER.info(
-                    f"\t+ Batch size is {generate_inputs['input_ids'].shape[0]}"
-                    " but it's better to use batch size 1 for LLM benchmarking."
-                )
-            prefix_tokens = (
-                generate_inputs["input_ids"].shape[-1]
-                * generate_inputs["input_ids"].shape[0]
-            )
+            prefix_tokens = generate_inputs["input_ids"].shape[-1]
         else:
             prefix_tokens = 0
 
         LOGGER.info("\t+ Tracking generation throughput")
         latency_tracker = LatencyTracker(device=self.device)
-        for _ in range(self.generation_runs):
+        while self.num_generated_tokens < 1000:
             with latency_tracker.track():
                 outputs = backend.generate(
                     generate_inputs,
                 )
 
-            new_tokens = (outputs.shape[-1] * outputs.shape[0]) - prefix_tokens
-            self.generation_num_tokens.append(new_tokens)
-            LOGGER.debug(f"\t+ Generated {new_tokens} tokens")
+            num_new_tokens = outputs.shape[-1] - prefix_tokens
+            self.num_generated_tokens += num_new_tokens
+            LOGGER.debug(f"\t+ Generated {num_new_tokens} tokens")
 
         self.generation_latencies = latency_tracker.get_tracked_latencies()
         LOGGER.info(
@@ -149,20 +138,26 @@ class InferenceBenchmark(Benchmark):
 
     @property
     def generation_throughput(self) -> float:
-        return sum(self.generation_num_tokens) / sum(self.generation_latencies)
+        return self.num_generated_tokens / sum(self.generation_latencies)
 
     @property
     def results_df(self) -> DataFrame:
         results_dict = dict()
 
-        results_dict["Model Latency (s)"] = self.model_latency
-        results_dict["Model Throughput (iter/s)"] = self.model_throughput
+        results_dict["Model Latency (s)"] = significant_figures(self.model_latency)
+        results_dict["Model Throughput (iter/s)"] = significant_figures(
+            self.model_throughput
+        )
 
         if self.track_memory:
-            results_dict["Model Peak Memory (MB)"] = self.model_peak_memory
+            results_dict["Model Peak Memory (MB)"] = significant_figures(
+                self.model_peak_memory
+            )
 
         if self.is_generator:
-            results_dict["Generation Throughput (tok/s)"] = self.generation_throughput
+            results_dict["Generation Throughput (tok/s)"] = significant_figures(
+                self.generation_throughput
+            )
 
         return DataFrame(results_dict, index=[0])
 
@@ -186,12 +181,11 @@ class InferenceBenchmark(Benchmark):
         return self.model_latency
 
     def generate_dummy_inputs(self, mode) -> Dict[str, Tensor]:
+        # hacky way to get what we need
         auto_config = AutoConfig.from_pretrained(self.model)
-        model_type = auto_config.model_type
-        onnx_config = TasksManager._SUPPORTED_MODEL_TYPE[model_type]["onnx"][self.task](
-            auto_config
-        )
+        onnx_config = TasksManager._SUPPORTED_MODEL_TYPE[auto_config.model_type]["onnx"][self.task](auto_config)  # type: ignore
         normalized_config = onnx_config.NORMALIZED_CONFIG_CLASS(auto_config)  # type: ignore
+        generator_classes = onnx_config.DUMMY_INPUT_GENERATOR_CLASSES  # type: ignore
 
         if mode == "forward":
             input_names = list(onnx_config.inputs.keys())  # type: ignore
@@ -202,23 +196,31 @@ class InferenceBenchmark(Benchmark):
 
         dummy_input = dict()
         for input_name in input_names:
-            dummy_input_generator = None
-            for dummy_input_generator_class in onnx_config.DUMMY_INPUT_GENERATOR_CLASSES:  # type: ignore
-                if input_name in dummy_input_generator_class.SUPPORTED_INPUT_NAMES:  # type: ignore
-                    dummy_input_generator = dummy_input_generator_class(
+            generator = None
+            for generator_class in generator_classes:
+                if input_name in generator_class.SUPPORTED_INPUT_NAMES:  # type: ignore
+                    if (
+                        input_name == "input_ids"
+                        and mode == "generate"
+                        and self.batch_size > 1
+                    ):
+                        LOGGER.warn(
+                            f"\t+ batch_size={self.batch_size} is not "
+                            "recommended for LLM throughput benchmarking."
+                        )
+
+                    generator = generator_class(
                         task=self.task,
                         normalized_config=normalized_config,
                         batch_size=self.batch_size,
                     )
 
-            if dummy_input_generator is None:
+            if generator is None:
                 raise ValueError(
                     f"Could not find dummy input generator for {input_name}"
                 )
 
-            dummy_input[input_name] = dummy_input_generator.generate(
-                input_name, framework="pt"
-            ).to(self.device)
+            dummy_input[input_name] = generator.generate(input_name).to(self.device)
 
             # this is for bettertransformer since it does not support random attention mask
             if input_name == "attention_mask":
@@ -227,3 +229,7 @@ class InferenceBenchmark(Benchmark):
                 )
 
         return dummy_input
+
+
+def significant_figures(x):
+    return float(f"{x:.3g}")
