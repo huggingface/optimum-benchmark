@@ -180,11 +180,11 @@ class ORTBackend(Backend):
     def is_generator(self) -> bool:
         return isinstance(self.pretrained_model, GenerationMixin)
 
-    def generate(self, input: Dict[str, Tensor], max_new_tokens):
+    def generate(self, input: Dict[str, Tensor]):
         output = self.pretrained_model.generate(  # type: ignore
             **input,
-            max_new_tokens=max_new_tokens,
-            pad_token_id=-1,  # don't stop
+            max_new_tokens=self.pretrained_model.config.max_length,  # type: ignore
+            pad_token_id=self.pretrained_model.config.eos_token_id,  # type: ignore
         )
         return output
 

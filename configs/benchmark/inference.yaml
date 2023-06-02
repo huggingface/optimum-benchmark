@@ -8,8 +8,5 @@ track_memory: false
 warmup_runs: 10
 model_runs: 100
 
-# generators specific
-generation_runs: 10
-
 # input specific
 batch_size: 1
