@@ -45,6 +45,10 @@ class Backend(ABC):
     def forward(self, input: Dict[str, Tensor]):
         raise NotImplementedError("Backend must implement forward method")
 
+    @property
+    def is_generator(self) -> bool:
+        return False
+
     @abstractmethod
     def generate(self, input: Dict[str, Tensor]):
         raise NotImplementedError("Backend must implement generate method")

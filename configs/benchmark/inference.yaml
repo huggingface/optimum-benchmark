@@ -4,7 +4,12 @@ name: inference
 
 profile: false
 track_memory: false
-is_generator: false
 
 warmup_runs: 10
-benchmark_duration: 10
+model_runs: 100
+
+# generators specific
+generation_runs: 10
+
+# input specific
+batch_size: 1

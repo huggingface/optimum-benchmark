@@ -1,11 +1,8 @@
 defaults:
-  - base_experiment
+  - hydra_base
   - _self_
 
 model: gpt2
 device: cuda
 
 experiment_name: gpt2_baseline
-
-benchmark:
-  is_generator: true

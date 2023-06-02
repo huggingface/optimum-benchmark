@@ -20,7 +20,6 @@ OmegaConf.register_new_resolver(
 )
 OmegaConf.register_new_resolver("onnxruntime_version", lambda: ORTConfig.version)
 OmegaConf.register_new_resolver("pytorch_version", lambda: PyTorchConfig.version)
-
 OmegaConf.register_new_resolver(
     "is_profiling", lambda benchmark_name: benchmark_name == "profiling"
 )
@@ -34,16 +33,15 @@ OmegaConf.register_new_resolver(
 )
 
 # Register configurations
-cs = ConfigStore.instance()
-
 # This is the default config that comes with
-# an identifier and some environment variables
+# an identifier and environment configuration
+cs = ConfigStore.instance()
 cs.store(name="experiment", node=ExperimentConfig)
 
 LOGGER = getLogger(__name__)
 
 
-@hydra.main(config_path="configs", config_name="base_experiment", version_base=None)
+@hydra.main(config_path="configs", version_base=None)
 def run_experiment(config: ExperimentConfig) -> Optional[float]:
     # Save the config
     OmegaConf.save(config, "hydra_config.yaml", resolve=True)
@@ -68,7 +66,6 @@ def run_experiment(config: ExperimentConfig) -> Optional[float]:
     # log error and traceback
     except Exception as e:
         LOGGER.error(e, exc_info=True)
-        
 
     return benchmark.objective
 

@@ -1,6 +1,8 @@
 defaults:
-  - base_experiment
+  - hydra_base
   - _self_
 
 model: bert-base-uncased
 device: cuda
+
+experiment_name: bert_baseline

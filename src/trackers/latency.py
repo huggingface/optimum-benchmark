@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from logging import getLogger
 from typing import List
 
@@ -13,12 +14,12 @@ class LatencyTracker:
         self.device = device
         self.tracked_latencies: List[float] = []
 
-    def track(self, duration: int = 5):
-        while sum(self.tracked_latencies) < duration:
-            if self.device == "cuda":
-                yield from self._cuda_inference_latency()
-            else:
-                yield from self._cpu_inference_latency()
+    @contextmanager
+    def track(self):
+        if self.device == "cuda":
+            yield from self._cuda_inference_latency()
+        else:
+            yield from self._cpu_inference_latency()
 
     def get_tracked_latencies(self):
         return self.tracked_latencies

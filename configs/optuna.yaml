@@ -1,5 +1,5 @@
 defaults:
-  - base_experiment
+  - hydra_base
   - _self_
   - override backend: onnxruntime # group config should be overriden
   - override hydra/sweeper: optuna

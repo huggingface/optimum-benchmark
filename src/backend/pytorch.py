@@ -5,9 +5,9 @@ import gc
 
 import torch
 from torch import Tensor
-from transformers import AutoConfig
 from optimum.exporters import TasksManager
 from transformers.utils.fx import symbolic_trace
+from transformers import AutoConfig, GenerationMixin
 from optimum.bettertransformer import BetterTransformer
 
 from src.backend.base import Backend, BackendConfig
@@ -99,13 +99,17 @@ class PyTorchBackend(Backend):
             output = self.pretrained_model(**input)
         return output
 
+    @property
+    def is_generator(self) -> bool:
+        return isinstance(self.pretrained_model, GenerationMixin)
+
     def generate(self, input: Dict[str, Tensor]) -> None:
         with torch.cuda.amp.autocast(enabled=self.fp16):  # type: ignore
             output = self.pretrained_model.generate(  # type: ignore
                 **input,
-                max_new_tokens=100,
-                pad_token_id=-1,
-            )  # type: ignore
+                max_new_tokens=self.pretrained_model.config.max_length,  # type: ignore
+                pad_token_id=self.pretrained_model.config.eos_token_id,  # type: ignore
+            )
         return output
 
     def prepare_for_profiling(self, input_names: List[str]) -> None:
