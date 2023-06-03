@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional
 from tempfile import TemporaryDirectory
 
-
+import torch
 import onnxruntime
 from transformers import GenerationMixin
 from onnxruntime.quantization import QuantFormat, QuantizationMode, QuantType
@@ -23,8 +23,8 @@ from omegaconf import OmegaConf
 from omegaconf.dictconfig import DictConfig
 
 from src.backend.base import Backend, BackendConfig
-from src.profilers import ORTProfilingWrapper
-from src.utils import get_used_gpu_memory
+from src.profiler.ort_profiler import ORTProfilingWrapper
+from src.utils import get_used_memory
 
 BACKEND_NAME = "onnxruntime"
 LOGGER = getLogger(BACKEND_NAME)
@@ -59,9 +59,8 @@ class ORTBackend(Backend):
         self.ortmodel_class = ORT_SUPPORTED_TASKS[self.task]["class"][0]
 
     def configure(self, config: ORTConfig) -> None:
-        LOGGER.info("Configuring onnxruntime backend")
+        LOGGER.info("Configuring onnxruntime backend:")
         super().configure(config)
-        print(get_used_gpu_memory())
         self.session_options = onnxruntime.SessionOptions()
         # self.session_options.enable_cpu_mem_arena = False
 
@@ -81,7 +80,9 @@ class ORTBackend(Backend):
             LOGGER.info("\t+ Enabling onnxruntime profiling")
             self.session_options.enable_profiling = True
 
-        LOGGER.info(f"Loading model {self.model} with {self.ortmodel_class.__name__}")
+        LOGGER.info(
+            f"\t+ Loading model {self.model} with {self.ortmodel_class.__name__}"
+        )
         self.pretrained_model = self.ortmodel_class.from_pretrained(
             model_id=self.model,
             session_options=self.session_options,
@@ -90,20 +91,24 @@ class ORTBackend(Backend):
             use_io_binding=config.use_io_binding,
             export=True,
         )
-        print(get_used_gpu_memory())
+        LOGGER.info(f"\t+ Device used memory: {get_used_memory(device=self.device)}")
+
         with TemporaryDirectory() as tmpdirname:
             if config.enable_optimization:
                 self.optimize_model(config, tmpdirname)
-            print(get_used_gpu_memory())
+                LOGGER.info(
+                    f"\t+ Device used memory: {get_used_memory(device=self.device)}"
+                )
+
             if config.enable_quantization:
                 self.quantize_model(config, tmpdirname)
-            print(get_used_gpu_memory())
+                LOGGER.info(
+                    f"\t+ Device used memory: {get_used_memory(device=self.device)}"
+                )
 
     def optimize_model(self, config: ORTConfig, tmpdirname: str) -> None:
         if config.auto_optimization is not None:
-            LOGGER.info(
-                f"\t+ Setting auto optimization level {config.auto_optimization}"
-            )
+            LOGGER.info(f"\t+ Setting auto optimization {config.auto_optimization}")
             optimization_config = AutoOptimizationConfig.with_optimization_level(
                 optimization_level=config.auto_optimization,
                 for_gpu=config.optimization_config.optimize_for_gpu,
@@ -112,7 +117,7 @@ class ORTBackend(Backend):
         else:
             LOGGER.info("\t+ Setting optimization parameters:")
             for key, value in config.optimization_config.items():
-                LOGGER.info(f"\t+ {key}: {value}")
+                LOGGER.info(f"\t\t+ {key}: {value}")
 
             optimization_config = OptimizationConfig(
                 **OmegaConf.to_container(config.optimization_config, resolve=True)
@@ -138,7 +143,7 @@ class ORTBackend(Backend):
     def quantize_model(self, config: ORTConfig, tmpdirname: str) -> None:
         LOGGER.info("\t+ Setting quantization parameters:")
         for key, value in config.quantization_config.items():
-            LOGGER.info(f"\t+ {key}: {value}")
+            LOGGER.info(f"\t\t+ {key}: {value}")
 
         if config.auto_quantization is not None:
             quantization_config = getattr(
@@ -221,3 +226,4 @@ class ORTBackend(Backend):
         LOGGER.info("Cleaning onnxruntime backend")
         del self.pretrained_model
         gc.collect()
+        torch.cuda.empty_cache()

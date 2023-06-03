@@ -12,8 +12,8 @@ from transformers.onnx.utils import get_preprocessor
 
 from src.backend.base import Backend
 from src.benchmark.base import Benchmark, BenchmarkConfig
-from src.trackers.memory import MemoryTracker
-from src.trackers.latency import LatencyTracker
+from src.tracker.memory import MemoryTracker
+from src.tracker.latency import LatencyTracker
 
 BENCHMARK_NAME = "inference"
 LOGGER = getLogger(BENCHMARK_NAME)
@@ -23,7 +23,7 @@ LOGGER = getLogger(BENCHMARK_NAME)
 class InferenceConfig(BenchmarkConfig):
     name: str = BENCHMARK_NAME
 
-    track_memory: bool = False
+    memory: bool = False
     profile: bool = False
 
     warmup_runs: int = 10
@@ -46,7 +46,7 @@ class InferenceBenchmark(Benchmark):
 
     def configure(self, config: InferenceConfig):
         self.profile = config.profile
-        self.track_memory = config.track_memory
+        self.memory = config.memory
 
         self.warmup_runs = config.warmup_runs
         self.benchmark_duration = config.benchmark_duration
@@ -58,12 +58,14 @@ class InferenceBenchmark(Benchmark):
 
         self._run_with_forward_latency_tracking(backend)
 
-        if self.track_memory:
+        if self.memory:
             self._run_with_memory_tracking(backend)
 
         if backend.is_generator:
             self.is_generator = True
             self._run_with_generate_latency_tracking(backend)
+        else:
+            self.is_generator = False
 
         if self.profile:
             self._run_with_model_profile(backend)
@@ -77,11 +79,11 @@ class InferenceBenchmark(Benchmark):
 
         LOGGER.info("\t+ Tracking model latency and throughput")
         latency_tracker = LatencyTracker(device=self.device)
-        while sum(latency_tracker.get_tracked_latencies()) < self.benchmark_duration:
+        while sum(latency_tracker.get_latencies()) < self.benchmark_duration:
             with latency_tracker.track():
                 outputs = backend.forward(forward_inputs)
 
-        self.model_latencies = latency_tracker.get_tracked_latencies()
+        self.model_latencies = latency_tracker.get_latencies()
         LOGGER.info(f"\t+ Model Latency: {self.model_latency:.2e} (s)")
         LOGGER.info(f"\t+ Model Throughput: {self.model_throughput:.2f} (iter/s)")
 
@@ -94,7 +96,7 @@ class InferenceBenchmark(Benchmark):
 
         LOGGER.info("\t+ Tracking generation throughput")
         latency_tracker = LatencyTracker(device=self.device)
-        while sum(latency_tracker.get_tracked_latencies()) < self.benchmark_duration:
+        while sum(latency_tracker.get_latencies()) < self.benchmark_duration:
             with latency_tracker.track():
                 outputs = backend.generate(
                     generate_inputs,
@@ -104,7 +106,7 @@ class InferenceBenchmark(Benchmark):
             self.num_generated_tokens += num_new_tokens
             LOGGER.debug(f"\t+ Generated {num_new_tokens} tokens")
 
-        self.generation_latencies = latency_tracker.get_tracked_latencies()
+        self.generation_latencies = latency_tracker.get_latencies()
         LOGGER.info(
             f"\t+ Generation Throughput: {self.generation_throughput:.2f} (tok/s)"
         )
@@ -117,7 +119,7 @@ class InferenceBenchmark(Benchmark):
         with memory_tracker.track(interval=self.model_latency / 10):
             outputs = backend.forward(memory_inputs)
 
-        self.model_peak_memory = memory_tracker.get_tracked_peak_memory()
+        self.model_peak_memory = memory_tracker.get_peak_memory()
         LOGGER.info(f"\t+ Model Peak Memory: {self.model_peak_memory} (MB)")
 
     def _run_with_model_profile(self, backend: Backend) -> None:
@@ -149,7 +151,7 @@ class InferenceBenchmark(Benchmark):
             self.model_throughput
         )
 
-        if self.track_memory:
+        if self.memory:
             results_dict["Model.Peak_Memory(MB)"] = significant_figures(
                 self.model_peak_memory
             )
@@ -168,6 +170,10 @@ class InferenceBenchmark(Benchmark):
             columns=["Node/Kernel", "Operator", "Latency (s)"],
         )
 
+    @property
+    def objective(self) -> float:
+        return self.model_latency
+
     def save(self) -> None:
         LOGGER.info("Saving inference results")
         self.results_df.to_csv("inference_results.csv")
@@ -176,21 +182,17 @@ class InferenceBenchmark(Benchmark):
             LOGGER.info("Saving profiling results")
             self.profile_df.to_csv("inference_profile.csv")
 
-    @property
-    def objective(self) -> float:
-        return self.model_latency
-
     def generate_dummy_inputs(self, mode) -> Dict[str, Tensor]:
         # hacky way to get what we need
         auto_config = AutoConfig.from_pretrained(self.model)
         onnx_config = TasksManager._SUPPORTED_MODEL_TYPE[auto_config.model_type]["onnx"][self.task](auto_config)  # type: ignore
-        normalized_config = onnx_config.NORMALIZED_CONFIG_CLASS(auto_config)  # type: ignore
-        generator_classes = onnx_config.DUMMY_INPUT_GENERATOR_CLASSES  # type: ignore
+        normalized_config = onnx_config.NORMALIZED_CONFIG_CLASS(auto_config)
+        generator_classes = onnx_config.DUMMY_INPUT_GENERATOR_CLASSES
 
         if mode == "forward":
-            input_names = list(onnx_config.inputs.keys())  # type: ignore
+            input_names = list(onnx_config.inputs.keys())
         elif mode == "generate":
-            input_names = get_preprocessor(self.model).model_input_names  # type: ignore
+            input_names = get_preprocessor(self.model).model_input_names
         else:
             raise ValueError(f"Unknown mode {mode}")
 
@@ -198,7 +200,7 @@ class InferenceBenchmark(Benchmark):
         for input_name in input_names:
             generator = None
             for generator_class in generator_classes:
-                if input_name in generator_class.SUPPORTED_INPUT_NAMES:  # type: ignore
+                if input_name in generator_class.SUPPORTED_INPUT_NAMES:
                     if (
                         input_name == "input_ids"
                         and mode == "generate"

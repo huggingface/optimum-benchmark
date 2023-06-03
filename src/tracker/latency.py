@@ -6,25 +6,25 @@ import torch
 import time
 
 
-LOGGER = getLogger("latency")
+LOGGER = getLogger("latency_tracker")
 
 
 class LatencyTracker:
     def __init__(self, device: str = "cuda"):
         self.device = device
-        self.tracked_latencies: List[float] = []
+        self.latencies: List[float] = []
 
     @contextmanager
     def track(self):
         if self.device == "cuda":
-            yield from self._cuda_inference_latency()
+            yield from self._cuda_latency()
         else:
-            yield from self._cpu_inference_latency()
+            yield from self._cpu_latency()
 
-    def get_tracked_latencies(self):
-        return self.tracked_latencies
+    def get_latencies(self):
+        return self.latencies
 
-    def _cuda_inference_latency(self):
+    def _cuda_latency(self):
         start_event = torch.cuda.Event(enable_timing=True)
         end_event = torch.cuda.Event(enable_timing=True)
         torch.cuda.synchronize()
@@ -36,9 +36,9 @@ class LatencyTracker:
         latency = latency_ms / 1e3
 
         LOGGER.debug(f"Tracked CUDA latency: {latency:.2e}s")
-        self.tracked_latencies.append(latency)
+        self.latencies.append(latency)
 
-    def _cpu_inference_latency(self):
+    def _cpu_latency(self):
         start = time.perf_counter_ns()
         yield
         end = time.perf_counter_ns()
@@ -46,4 +46,4 @@ class LatencyTracker:
         latency = latency_ns / 1e9
 
         LOGGER.debug(f"Tracked CPU latency: {latency:.2e}s")
-        self.tracked_latencies.append(latency)
+        self.latencies.append(latency)

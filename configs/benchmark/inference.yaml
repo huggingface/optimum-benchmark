@@ -3,7 +3,7 @@ _target_: src.benchmark.inference.InferenceBenchmark
 name: inference
 
 profile: false
-track_memory: false
+memory: false
 
 warmup_runs: 10
 benchmark_duration: 10

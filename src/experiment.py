@@ -8,9 +8,9 @@ from omegaconf import DictConfig
 from transformers import __version__ as transformers_version
 from optimum.version import __version__ as optimum_version
 
-from src.utils import get_gpu_name, get_total_gpu_memory, bytes_to_mega_bytes
 from src.backend.base import BackendConfig
 from src.benchmark.inference import BenchmarkConfig
+from src.utils import get_gpu_name, get_total_memory
 
 
 LOGGER = getLogger("experiment")
@@ -51,8 +51,8 @@ class ExperimentConfig:
             "machine": platform.machine(),
             "cpu": platform.processor(),
             "cpu_count": psutil.cpu_count(),
-            "cpu_ram_mb": bytes_to_mega_bytes(psutil.virtual_memory().total),
+            "cpu_ram_mb": get_total_memory(device="cpu"),
             "gpu": get_gpu_name(),
-            "gpu_ram_mb": get_total_gpu_memory(),
+            "gpu_ram_mb": get_total_memory(device="cuda"),
         }
     )

@@ -11,7 +11,8 @@ from transformers import AutoConfig, GenerationMixin
 from optimum.bettertransformer import BetterTransformer
 
 from src.backend.base import Backend, BackendConfig
-from src.profilers import PytorchProfilingWrapper
+from src.profiler.fx_profiler import FXProfilingWrapper
+from src.utils import get_used_memory
 
 BACKEND_NAME = "pytorch"
 LOGGER = getLogger(BACKEND_NAME)
@@ -39,6 +40,7 @@ class PyTorchBackend(Backend):
         self.automodel_class = TasksManager.get_model_class_for_task(
             task=self.task, model_type=self.model_type
         )
+        self.fp16 = False
 
     def configure(self, config: PyTorchConfig) -> None:
         LOGGER.info("Configuring pytorch Backend:")
@@ -68,8 +70,10 @@ class PyTorchBackend(Backend):
 
         # Move model to device
         if self.pretrained_model.device.type != self.device:
-            LOGGER.info(f"\t+ Moving model to device {self.device}")
+            LOGGER.info(f"\t+ Moving model to {self.device}")
             self.pretrained_model.to(self.device)
+
+        LOGGER.info(f"\t+ Device used memory: {get_used_memory(device=self.device)}")
 
         # Turn on eval mode
         if config.eval_mode:
@@ -82,17 +86,22 @@ class PyTorchBackend(Backend):
             self.pretrained_model = BetterTransformer.transform(  # type: ignore
                 self.pretrained_model, keep_original_model=False
             )
+            LOGGER.info(
+                f"\t+ Device used memory: {get_used_memory(device=self.device)}"
+            )
 
         # Compile model
         if config.torch_compile:
             LOGGER.info("\t+ Using torch.compile")
             self.pretrained_model.forward = torch.compile(self.pretrained_model.forward)
+            LOGGER.info(
+                f"\t+ Device used memory: {get_used_memory(device=self.device)}"
+            )
 
         # Turn on fp16
         if config.fp16:
             LOGGER.info("\t+ Turning on fp16")
-
-        self.fp16 = config.fp16
+            self.fp16 = True
 
     def forward(self, input: Dict[str, Tensor]):
         with torch.cuda.amp.autocast(enabled=self.fp16):  # type: ignore
@@ -119,8 +128,9 @@ class PyTorchBackend(Backend):
             input_names=input_names,
         )
         LOGGER.info("\t+ Wrapping model with profiler")
-        self.pretrained_model = PytorchProfilingWrapper(self.pretrained_model)
+        self.pretrained_model = FXProfilingWrapper(self.pretrained_model)
 
     def clean(self) -> None:
         del self.pretrained_model
         gc.collect()
+        torch.cuda.empty_cache()
