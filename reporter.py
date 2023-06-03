@@ -32,7 +32,7 @@ def gather_inference_report(
     # for now there's a problem with list of operators to quantize
     for d in config_dicts.values():
         d.pop("backend.quantization_config.operators_to_quantize", None)
-    
+
     configs_dfs = {i: pd.DataFrame(d, index=[0]) for i, d in config_dicts.items()}
 
     if len(stats_dfs) == 0 or len(configs_dfs) == 0:
@@ -62,6 +62,11 @@ def show_inference_report(report, with_baseline=False):
     show_report = report[
         (["Baseline"] if with_baseline else [])
         + ["Model.Latency(s)", "Model.Throughput(iter/s)"]
+        + (
+            ["Model.Peak_Memory(MB)"]
+            if "Model.Peak_Memory(MB)" in report.columns
+            else []
+        )
         + (["Speedup(%)"] if with_baseline else [])
         + (
             ["Generation.Throughput(tok/s)"]
@@ -121,7 +126,7 @@ def show_inference_report(report, with_baseline=False):
 
 
 def main(args):
-    experiments_report = gather_inference_report(args.sweeps_folder)
+    experiments_report = gather_inference_report(args.experiments_folder)
     if args.baseline_folder is not None:
         print("Using the provided baseline")
         baseline_report = gather_inference_report(args.baseline_folder)
@@ -142,18 +147,18 @@ def main(args):
         print("No baseline provided")
         report = experiments_report
 
-    report.to_csv(f"{args.sweeps_folder}/inference_report.csv", index=True)
+    report.to_csv(f"{args.experiments_folder}/inference_report.csv", index=True)
     show_inference_report(report, with_baseline=args.baseline_folder is not None)
 
 
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument(
-        "--sweeps-folder",
-        "-s",
+        "--experiments-folder",
+        "-e",
         type=Path,
         default="sweeps/",
-        help="The folder containing the results of sweeps.",
+        help="The folder containing the results of experiments.",
     )
     parser.add_argument(
         "--baseline-folder",
