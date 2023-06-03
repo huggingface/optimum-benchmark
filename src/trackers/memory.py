@@ -6,6 +6,8 @@ import os
 
 import torch
 import psutil
+import py3nvml.py3nvml as nvml
+
 
 from src.utils import bytes_to_mega_bytes
 
@@ -28,13 +30,14 @@ class MemoryTracker:
         return bytes_to_mega_bytes(self.tracked_peak_memory)
 
     def _track_cuda_peak_memory(self):
-        torch.cuda.empty_cache()
-        torch.cuda.reset_peak_memory_stats()
+        nvml.nvmlInit()
         yield
-        self.tracked_peak_memory = torch.cuda.max_memory_allocated()
-        LOGGER.debug(
-            f"Peak memory usage: {bytes_to_mega_bytes(self.tracked_peak_memory)} MB"
-        )
+        handle = nvml.nvmlDeviceGetHandleByIndex(0)
+        meminfo = nvml.nvmlDeviceGetMemoryInfo(handle)
+        nvml.nvmlShutdown()
+
+        self.tracked_peak_memory = max(self.tracked_peak_memory, meminfo.used)
+        LOGGER.debug(f"Peak memory usage: {self.get_tracked_peak_memory} MB")
 
     def _track_cpu_peak_memory(self, interval: float):
         child_connection, parent_connection = Pipe()

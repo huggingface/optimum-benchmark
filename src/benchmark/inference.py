@@ -27,7 +27,7 @@ class InferenceConfig(BenchmarkConfig):
     profile: bool = False
 
     warmup_runs: int = 10
-    model_runs: int = 100
+    benchmark_duration: int = 10
 
     batch_size: int = 1
 
@@ -49,7 +49,7 @@ class InferenceBenchmark(Benchmark):
         self.track_memory = config.track_memory
 
         self.warmup_runs = config.warmup_runs
-        self.model_runs = config.model_runs
+        self.benchmark_duration = config.benchmark_duration
 
         self.batch_size = config.batch_size
 
@@ -77,7 +77,7 @@ class InferenceBenchmark(Benchmark):
 
         LOGGER.info("\t+ Tracking model latency and throughput")
         latency_tracker = LatencyTracker(device=self.device)
-        for _ in range(self.model_runs):
+        while sum(latency_tracker.get_tracked_latencies()) < self.benchmark_duration:
             with latency_tracker.track():
                 outputs = backend.forward(forward_inputs)
 
@@ -94,7 +94,7 @@ class InferenceBenchmark(Benchmark):
 
         LOGGER.info("\t+ Tracking generation throughput")
         latency_tracker = LatencyTracker(device=self.device)
-        while self.num_generated_tokens < 1000:
+        while sum(latency_tracker.get_tracked_latencies()) < self.benchmark_duration:
             with latency_tracker.track():
                 outputs = backend.generate(
                     generate_inputs,
@@ -144,18 +144,18 @@ class InferenceBenchmark(Benchmark):
     def results_df(self) -> DataFrame:
         results_dict = dict()
 
-        results_dict["Model Latency (s)"] = significant_figures(self.model_latency)
-        results_dict["Model Throughput (iter/s)"] = significant_figures(
+        results_dict["Model.Latency(s)"] = significant_figures(self.model_latency)
+        results_dict["Model.Throughput(iter/s)"] = significant_figures(
             self.model_throughput
         )
 
         if self.track_memory:
-            results_dict["Model Peak Memory (MB)"] = significant_figures(
+            results_dict["Model.Peak_Memory(MB)"] = significant_figures(
                 self.model_peak_memory
             )
 
         if self.is_generator:
-            results_dict["Generation Throughput (tok/s)"] = significant_figures(
+            results_dict["Generation.Throughput(tok/s)"] = significant_figures(
                 self.generation_throughput
             )
 

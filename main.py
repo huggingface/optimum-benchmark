@@ -29,7 +29,8 @@ OmegaConf.register_new_resolver(
 OmegaConf.register_new_resolver("is_gpu", lambda device: device in ["cuda", "gpu"])
 OmegaConf.register_new_resolver("infer_task", TasksManager.infer_task_from_model)
 OmegaConf.register_new_resolver(
-    "infer_provider", lambda device: f"{device.upper()}ExecutionProvider"
+    "infer_provider",
+    lambda device: f"{device.upper()}ExecutionProvider",
 )
 
 # Register configurations
@@ -63,11 +64,14 @@ def run_experiment(config: ExperimentConfig) -> Optional[float]:
         # Save the benchmark results
         benchmark.save()
 
+        # Return the objective
+        return benchmark.objective
+
     # log error and traceback
     except Exception as e:
         LOGGER.error(e, exc_info=True)
 
-    return benchmark.objective
+    return None
 
 
 if __name__ == "__main__":
