@@ -47,24 +47,26 @@ quantization_config:
   per_channel: false
   reduce_range: false
   operators_to_quantize:
-    # transformers specific
-    - Attention
-    - LayerNormalization
-    - SkipLayerNormalization
-    - BiasGelu
-    # common binary ops
+  # default operators to quantize
     - MatMul
     - Add
-    - Mul
-    - Div
-    - Sub
-    # common unary ops
-    - Slice
-    - Cast
-    - Gather
-    - Shape
-    - Concat
-    - Reshape
-    - Transpose
-    - Squeeze
-    - Unsqueeze
+  
+  #   # transformers specific
+  #   - Attention # when attention is fused
+  #   - LayerNormalization # when layer norm is fused
+  #   - SkipLayerNormalization # when skip layer norm is fused
+  #   - BiasGelu # when bias gelu is fused
+  #   # common binary ops
+  #   - Mul
+  #   - Div
+  #   - Sub
+  #   # common unary ops
+  #   - Slice
+  #   - Cast
+  #   - Gather
+  #   - Shape
+  #   - Concat
+  #   - Reshape
+  #   - Transpose
+  #   - Squeeze
+  #   - Unsqueeze
