@@ -15,7 +15,7 @@ from optimum.onnxruntime.configuration import (
     OptimizationConfig,
     QuantizationConfig,
     AutoOptimizationConfig,
-    # AutoQuantizationConfig,
+    AutoQuantizationConfig,
 )
 
 from torch import Tensor
@@ -24,9 +24,12 @@ from omegaconf.dictconfig import DictConfig
 
 from src.backend.base import Backend, BackendConfig
 from src.profilers import ORTProfilingWrapper
+from src.utils import get_used_gpu_memory
 
 BACKEND_NAME = "onnxruntime"
 LOGGER = getLogger(BACKEND_NAME)
+
+PROVIDER_OPTIONS = {"arena_extend_strategy": "kSameAsRequested"}
 
 
 @dataclass
@@ -46,6 +49,7 @@ class ORTConfig(BackendConfig):
 
     # quantization options
     enable_quantization: bool = False
+    auto_quantization: Optional[str] = None
     quantization_config: DictConfig = DictConfig({})
 
 
@@ -57,8 +61,9 @@ class ORTBackend(Backend):
     def configure(self, config: ORTConfig) -> None:
         LOGGER.info("Configuring onnxruntime backend")
         super().configure(config)
-
+        print(get_used_gpu_memory())
         self.session_options = onnxruntime.SessionOptions()
+        # self.session_options.enable_cpu_mem_arena = False
 
         if config.intra_op_num_threads is not None:
             LOGGER.info(
@@ -81,16 +86,18 @@ class ORTBackend(Backend):
             model_id=self.model,
             session_options=self.session_options,
             provider=config.provider,
+            provider_options=PROVIDER_OPTIONS,
             use_io_binding=config.use_io_binding,
             export=True,
         )
-
+        print(get_used_gpu_memory())
         with TemporaryDirectory() as tmpdirname:
             if config.enable_optimization:
                 self.optimize_model(config, tmpdirname)
-
+            print(get_used_gpu_memory())
             if config.enable_quantization:
                 self.quantize_model(config, tmpdirname)
+            print(get_used_gpu_memory())
 
     def optimize_model(self, config: ORTConfig, tmpdirname: str) -> None:
         if config.auto_optimization is not None:
@@ -100,14 +107,15 @@ class ORTBackend(Backend):
             optimization_config = AutoOptimizationConfig.with_optimization_level(
                 optimization_level=config.auto_optimization,
                 for_gpu=config.optimization_config.optimize_for_gpu,
-            )  # type: ignore
+                disable_shape_inference=config.optimization_config.disable_shape_inference,
+            )
         else:
             LOGGER.info("\t+ Setting optimization parameters:")
             for key, value in config.optimization_config.items():
                 LOGGER.info(f"\t+ {key}: {value}")
 
             optimization_config = OptimizationConfig(
-                **OmegaConf.to_container(config.optimization, resolve=True)  # type: ignore
+                **OmegaConf.to_container(config.optimization_config, resolve=True)
             )
 
         LOGGER.info("\t+ Attempting optimization")
@@ -118,11 +126,13 @@ class ORTBackend(Backend):
         )
         LOGGER.info("\t+ Loading optimized model")
         del self.pretrained_model
+        gc.collect()
         self.pretrained_model = self.ortmodel_class.from_pretrained(
             model_id=f"{tmpdirname}/optimized",
             session_options=self.session_options,
             use_io_binding=config.use_io_binding,
             provider=config.provider,
+            provider_options=PROVIDER_OPTIONS,
         )
 
     def quantize_model(self, config: ORTConfig, tmpdirname: str) -> None:
@@ -130,30 +140,42 @@ class ORTBackend(Backend):
         for key, value in config.quantization_config.items():
             LOGGER.info(f"\t+ {key}: {value}")
 
-        # should be handeled by Pydantic
-        if config.quantization_config.get("format", None) is not None:
-            config.quantization_config["format"] = QuantFormat.from_string(
-                config.quantization_config["format"]
-            )
-        if config.quantization_config.get("mode", None) is not None:
-            config.quantization_config["mode"] = QuantizationMode.from_string(
-                config.quantization_config["mode"]
-            )
-        if config.quantization_config.get("activations_dtype", None) is not None:
-            config.quantization_config["activations_dtype"] = QuantType.from_string(
-                config.quantization_config["activations_dtype"]
-            )
-        if config.quantization_config.get("weights_dtype", None) is not None:
-            config.quantization_config["weights_dtype"] = QuantType.from_string(
-                config.quantization_config["weights_dtype"]
+        if config.auto_quantization is not None:
+            quantization_config = getattr(
+                AutoQuantizationConfig, config.auto_quantization
+            )(
+                is_static=config.quantization_config.is_static,
+                per_channel=config.quantization_config.per_channel,
+                operators_to_quantize=OmegaConf.to_container(
+                    config.quantization_config.operators_to_quantize, resolve=True
+                ),
             )
 
-        quantization_config = QuantizationConfig(
-            **OmegaConf.to_container(config.quantization_config, resolve=True)  # type: ignore
-        )  # type: ignore
+        else:
+            # should be handeled by Pydantic
+            if config.quantization_config.get("format", None) is not None:
+                config.quantization_config["format"] = QuantFormat.from_string(
+                    config.quantization_config["format"]
+                )
+            if config.quantization_config.get("mode", None) is not None:
+                config.quantization_config["mode"] = QuantizationMode.from_string(
+                    config.quantization_config["mode"]
+                )
+            if config.quantization_config.get("activations_dtype", None) is not None:
+                config.quantization_config["activations_dtype"] = QuantType.from_string(
+                    config.quantization_config["activations_dtype"]
+                )
+            if config.quantization_config.get("weights_dtype", None) is not None:
+                config.quantization_config["weights_dtype"] = QuantType.from_string(
+                    config.quantization_config["weights_dtype"]
+                )
+
+            quantization_config = QuantizationConfig(
+                **OmegaConf.to_container(config.quantization_config, resolve=True)
+            )
 
         LOGGER.info("\t+ Attempting quantization")
-        model_dir = self.pretrained_model.model_save_dir  # type: ignore
+        model_dir = self.pretrained_model.model_save_dir
         components = [file for file in os.listdir(model_dir) if file.endswith(".onnx")]
         for component in components:
             LOGGER.info(f"\t+ Quantizing {component}")
@@ -165,11 +187,13 @@ class ORTBackend(Backend):
 
         LOGGER.info("\t+ Loading quantized model")
         del self.pretrained_model
+        gc.collect()
         self.pretrained_model = self.ortmodel_class.from_pretrained(
             model_id=f"{tmpdirname}/quantized",
             session_options=self.session_options,
             use_io_binding=config.use_io_binding,
             provider=config.provider,
+            provider_options=PROVIDER_OPTIONS,
         )
 
     def forward(self, input: Dict[str, Tensor]):
@@ -181,17 +205,17 @@ class ORTBackend(Backend):
         return isinstance(self.pretrained_model, GenerationMixin)
 
     def generate(self, input: Dict[str, Tensor]):
-        output = self.pretrained_model.generate(  # type: ignore
+        output = self.pretrained_model.generate(
             **input,
-            max_new_tokens=self.pretrained_model.config.max_length,  # type: ignore
-            pad_token_id=self.pretrained_model.config.eos_token_id,  # type: ignore
+            max_new_tokens=self.pretrained_model.config.max_length,
+            pad_token_id=self.pretrained_model.config.eos_token_id,
         )
         return output
 
     def prepare_for_profiling(self, input_names: List[str]) -> None:
         LOGGER.info("Preparing for profiling")
         LOGGER.info("\t+ Wrapping model with profiler")
-        self.pretrained_model = ORTProfilingWrapper(self.pretrained_model)  # type: ignore
+        self.pretrained_model = ORTProfilingWrapper(self.pretrained_model)
 
     def clean(self) -> None:
         LOGGER.info("Cleaning onnxruntime backend")

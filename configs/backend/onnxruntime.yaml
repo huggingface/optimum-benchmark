@@ -12,7 +12,7 @@ intra_op_num_threads: null
 
 enable_optimization: false
 auto_optimization: null # O1, O2, O3, O4
-optimization:
+optimization_config:
   optimization_level: 1 # 0, 1, 2, 99
   optimize_for_gpu: ${is_gpu:${device}}
   fp16: false
@@ -35,7 +35,8 @@ optimization:
   disable_packed_kv: true
 
 enable_quantization: false
-quantization:
+auto_quantization: null # arm64,avx2,avx512,avx512_vnni,tensorrt
+quantization_config:
   is_static: false
   format: QOperator # QOperator, QDQ
   mode: IntegerOps # QLinearOps, IntegerOps
@@ -45,25 +46,25 @@ quantization:
   weights_symmetric: true
   per_channel: false
   reduce_range: false
-  # operators_to_quantize:
-  #   # transformers specific
-  #   - Attention
-  #   - LayerNormalization
-  #   - SkipLayerNormalization
-  #   - BiasGelu
-  #   # common binary ops
-  #   - MatMul
-  #   - Add
-  #   - Mul
-  #   - Div
-  #   - Sub
-  #   # common unary ops
-  #   - Slice
-  #   - Cast
-  #   - Gather
-  #   - Shape
-  #   - Concat
-  #   - Reshape
-  #   - Transpose
-  #   - Squeeze
-  #   - Unsqueeze
+  operators_to_quantize:
+    # transformers specific
+    - Attention
+    - LayerNormalization
+    - SkipLayerNormalization
+    - BiasGelu
+    # common binary ops
+    - MatMul
+    - Add
+    - Mul
+    - Div
+    - Sub
+    # common unary ops
+    - Slice
+    - Cast
+    - Gather
+    - Shape
+    - Concat
+    - Reshape
+    - Transpose
+    - Squeeze
+    - Unsqueeze
