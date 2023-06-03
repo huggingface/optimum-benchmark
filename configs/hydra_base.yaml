@@ -4,7 +4,7 @@ defaults:
   # default benchmark is inference
   - benchmark: inference
   # other parameters are infered from:
-  - experiment # dataclass (generates experiment_id)
+  - experiment # dataclass (contains environment state)
   - _self_ # for hydra 1.1 compatibility
   # use colorlog for logging (colorful output)
   - override hydra/job_logging: colorlog
@@ -12,9 +12,9 @@ defaults:
 
 hydra:
   run:
-    dir: runs/${experiment_name}/${experiment_datetime}
+    dir: runs/${backend.name}_${device}/${experiment_name}
   sweep:
-    dir: sweeps/${experiment_name}/${experiment_datetime}
+    dir: sweeps/${backend.name}_${device}/${experiment_name}
   job:
     # enables changing the working directory to the run/sweep directory
     chdir: true
@@ -23,6 +23,5 @@ model: ??? # model is mandatory
 device: ??? # device to run on is mandatory
 task: ${infer_task:${model}} # task is infered from model
 
-# an almost distinct experiment name is generated from the following parameters
-# but you can (or should) override it for your own needs
-experiment_name: ${clean_string:${model}}_${device}_${backend.name}_${benchmark.name}
+# a distinct experiment name should be used for each experiment
+experiment_name: ??? # experiment name is mandatory
