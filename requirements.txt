@@ -1,12 +1,12 @@
-optimum==1.8.6
-pandas==2.0.1
-py3nvml==0.2.7
-Requests==2.31.0
-torch==2.0.1
-transformers==4.28.1
-onnxruntime-gpu==1.14.0
-onnx==1.13.1
+git+https://github.com/huggingface/optimum.git
+onnxruntime-gpu
+transformers
+torch
+onnx
 
+pandas
+py3nvml
+Requests
 omegaconf
 hydra-core
 hydra_colorlog
