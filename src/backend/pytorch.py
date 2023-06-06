@@ -5,9 +5,9 @@ import gc
 
 import torch
 from torch import Tensor
+from transformers import AutoConfig
 from optimum.exporters import TasksManager
 from transformers.utils.fx import symbolic_trace
-from transformers import AutoConfig, GenerationMixin
 from optimum.bettertransformer import BetterTransformer
 
 from src.backend.base import Backend, BackendConfig
@@ -40,7 +40,6 @@ class PyTorchBackend(Backend):
         self.automodel_class = TasksManager.get_model_class_for_task(
             task=self.task, model_type=self.model_type
         )
-        self.fp16 = False
 
     def configure(self, config: PyTorchConfig) -> None:
         LOGGER.info("Configuring pytorch Backend:")
@@ -102,23 +101,20 @@ class PyTorchBackend(Backend):
         if config.fp16:
             LOGGER.info("\t+ Turning on fp16")
             self.fp16 = True
+        else:
+            self.fp16 = False
 
     def forward(self, input: Dict[str, Tensor]):
         with torch.cuda.amp.autocast(enabled=self.fp16):
             output = self.pretrained_model(**input)
         return output
 
-    @property
-    def is_generator(self) -> bool:
-        return isinstance(self.pretrained_model, GenerationMixin)
-
-    def generate(self, input: Dict[str, Tensor], prefix_length: int = 1) -> None:
+    def generate(self, input: Dict[str, Tensor], new_tokens: int) -> Tensor:
         with torch.cuda.amp.autocast(enabled=self.fp16):
             output = self.pretrained_model.generate(
                 **input,
-                max_new_tokens=self.pretrained_model.config.max_length - prefix_length,
-                pad_token_id=-1,
-                eos_token_id=-1,
+                max_new_tokens=new_tokens,
+                min_new_tokens=new_tokens,
             )
         return output
 

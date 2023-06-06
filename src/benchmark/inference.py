@@ -30,6 +30,7 @@ class InferenceConfig(BenchmarkConfig):
     benchmark_duration: int = 10
 
     batch_size: int = 1
+    new_tokens: int = 100
 
 
 class InferenceBenchmark(Benchmark):
@@ -38,20 +39,20 @@ class InferenceBenchmark(Benchmark):
 
         self.model_peak_memory: int = 0
         self.model_latencies: List[float] = []
-
-        self.num_generated_tokens: int = 0
         self.generation_latencies: List[float] = []
 
         self.profiling_records: List[Tuple[str, str, float]] = []
 
     def configure(self, config: InferenceConfig):
-        self.profile = config.profile
         self.memory = config.memory
+        self.profile = config.profile
+        self.is_generator = False
 
         self.warmup_runs = config.warmup_runs
         self.benchmark_duration = config.benchmark_duration
 
         self.batch_size = config.batch_size
+        self.new_tokens = config.new_tokens
 
     def run(self, backend: Backend) -> None:
         LOGGER.info("Running inference")
@@ -61,11 +62,9 @@ class InferenceBenchmark(Benchmark):
         if self.memory:
             self._run_with_memory_tracking(backend)
 
-        if backend.is_generator:
-            self.is_generator = True
+        if backend.is_generator():
+            self.generation = True
             self._run_with_generate_latency_tracking(backend)
-        else:
-            self.is_generator = False
 
         if self.profile:
             self._run_with_model_profile(backend)
@@ -75,7 +74,7 @@ class InferenceBenchmark(Benchmark):
 
         LOGGER.info("\t+ Warming up the forward pass")
         for _ in range(self.warmup_runs):
-            backend.forward(forward_inputs)
+            outputs = backend.forward(forward_inputs)
 
         LOGGER.info("\t+ Tracking model latency and throughput")
         latency_tracker = LatencyTracker(device=self.device)
@@ -90,28 +89,15 @@ class InferenceBenchmark(Benchmark):
     def _run_with_generate_latency_tracking(self, backend: Backend) -> None:
         generate_inputs = self.generate_dummy_inputs(mode="generate")
 
-        LOGGER.info("\t+ Warming up the generation pass (once)")
-        outputs = backend.generate(generate_inputs)
-
-        if "input_ids" in generate_inputs:
-            prefix_length = generate_inputs["input_ids"].shape[-1]
-        else:
-            prefix_length = 1  # for bos_token
-
-        LOGGER.info(f"\t+ Using {prefix_length} prefix tokens")
+        LOGGER.info("\t+ Warming up the generation pass")
+        for _ in range(self.warmup_runs):
+            outputs = backend.generate(generate_inputs, new_tokens=self.new_tokens)
 
         LOGGER.info("\t+ Tracking generation throughput")
         latency_tracker = LatencyTracker(device=self.device)
         while sum(latency_tracker.get_latencies()) < self.benchmark_duration:
             with latency_tracker.track():
-                outputs = backend.generate(
-                    generate_inputs,
-                    prefix_length=prefix_length,
-                )
-
-            num_new_tokens = outputs.shape[-1] - prefix_length
-            LOGGER.debug(f"\t+ Generated {num_new_tokens} new tokens")
-            self.num_generated_tokens += num_new_tokens
+                outputs = backend.generate(generate_inputs, new_tokens=self.new_tokens)
 
         self.generation_latencies = latency_tracker.get_latencies()
         LOGGER.info(
@@ -147,7 +133,11 @@ class InferenceBenchmark(Benchmark):
 
     @property
     def generation_throughput(self) -> float:
-        return self.num_generated_tokens / sum(self.generation_latencies)
+        return (
+            self.new_tokens
+            * len(self.generation_latencies)
+            / sum(self.generation_latencies)
+        )
 
     @property
     def results_df(self) -> DataFrame:
@@ -167,8 +157,6 @@ class InferenceBenchmark(Benchmark):
             results_dict["Generation.Throughput(tok/s)"] = significant_figures(
                 self.generation_throughput
             )
-            results_dict["Generation.Total_num_tokens"] = self.num_generated_tokens
-            results_dict["Generation.Total_time(s)"] = sum(self.generation_latencies)
 
         return DataFrame(results_dict, index=[0])
 
