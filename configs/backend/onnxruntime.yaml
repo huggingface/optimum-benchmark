@@ -10,11 +10,6 @@ enable_profiling: ${benchmark.profile}
 inter_op_num_threads: null
 intra_op_num_threads: null
 
-auto_optimization: null # O1, O2, O3, O4
-auto_optimization_config:
-  optimize_for_gpu: ${is_gpu:${device}}
-  # add whatever you want to override
-
 optimization: false # true, false
 optimization_config:
   optimization_level: 1 # 0, 1, 2, 99
@@ -38,9 +33,9 @@ optimization_config:
   disable_group_norm_fusion: true
   disable_packed_kv: true
 
-auto_quantization: null # arm64,avx2,avx512,avx512_vnni,tensorrt
-auto_quantization_config:
-  is_static: false
+auto_optimization: null # O1, O2, O3, O4
+auto_optimization_config:
+  for_gpu: ${is_gpu:${device}}
   # add whatever you want to override
 
 quantization: false # true, false
@@ -55,6 +50,39 @@ quantization_config:
   per_channel: false # true, false
   reduce_range: false # true, false
   operators_to_quantize:
-    # default operators to quantize
+    - Gather
+    - Transpose
+    - EmbedLayerNormalization
+    - MatMul
+    - Attention
+    - LSTM
+    - ArgMax
+    - Conv
+    - Gemm
     - MatMul
     - Add
+    - Mul
+    - Relu
+    - Clip
+    - LeakyRelu
+    - Sigmoid
+    - MaxPool
+    - GlobalAveragePool
+    - Split
+    - Pad
+    - Reshape
+    - Squeeze
+    - Unsqueeze
+    - Resize
+    - AveragePool
+    - Concat
+    - Softmax
+    - Where
+    - ConvTranspose
+    - InstanceNormalization
+
+auto_quantization: null # arm64,avx2,avx512,avx512_vnni,tensorrt
+auto_quantization_config:
+  is_static: false
+  # add whatever you want to override
+  operators_to_quantize: ${backend.quantization_config.operators_to_quantize}

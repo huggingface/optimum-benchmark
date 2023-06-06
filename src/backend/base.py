@@ -5,6 +5,7 @@ from logging import getLogger
 from psutil import cpu_count
 
 from torch import Tensor
+from transformers import GenerationMixin
 
 LOGGER = getLogger("backend")
 
@@ -45,9 +46,8 @@ class Backend(ABC):
     def forward(self, input: Dict[str, Tensor]):
         raise NotImplementedError("Backend must implement forward method")
 
-    @property
     def is_generator(self) -> bool:
-        return False
+        return isinstance(self.pretrained_model, GenerationMixin)
 
     @abstractmethod
     def generate(self, input: Dict[str, Tensor], prefix_length: int) -> str:

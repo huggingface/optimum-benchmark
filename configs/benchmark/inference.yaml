@@ -10,3 +10,6 @@ benchmark_duration: 10
 
 # input specific (more to be added)
 batch_size: 1
+
+# output specific
+new_tokens: 100

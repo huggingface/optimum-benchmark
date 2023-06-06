@@ -44,18 +44,18 @@ class ORTConfig(BackendConfig):
     enable_profiling: bool = False
 
     # optimization options
-    auto_optimization: Optional[str] = None
-    auto_optimization_config: DictConfig = DictConfig({})
-
     optimization: bool = False
     optimization_config: DictConfig = DictConfig({})
 
-    # quantization options
-    auto_quantization: Optional[str] = None
-    auto_quantization_config: DictConfig = DictConfig({})
+    auto_optimization: Optional[str] = None
+    auto_optimization_config: DictConfig = DictConfig({})
 
+    # quantization options
     quantization: bool = False
     quantization_config: DictConfig = DictConfig({})
+
+    auto_quantization: Optional[str] = None
+    auto_quantization_config: DictConfig = DictConfig({})
 
 
 class ORTBackend(Backend):
@@ -222,16 +222,11 @@ class ORTBackend(Backend):
         output = self.pretrained_model(**input)
         return output
 
-    @property
-    def is_generator(self) -> bool:
-        return isinstance(self.pretrained_model, GenerationMixin)
-
-    def generate(self, input: Dict[str, Tensor], prefix_length: int = 1):
+    def generate(self, input: Dict[str, Tensor], new_tokens: int) -> Tensor:
         output = self.pretrained_model.generate(
             **input,
-            max_new_tokens=self.pretrained_model.config.max_length - prefix_length,
-            pad_token_id=-1,
-            eos_token_id=-1,
+            max_new_tokens=new_tokens,
+            min_new_tokens=new_tokens,
         )
         return output
 

@@ -1,11 +1,12 @@
 import pandas as pd
+import seaborn as sns
 from pathlib import Path
 from pandas import DataFrame
+import matplotlib.pyplot as plt
 from omegaconf import OmegaConf
 from flatten_dict import flatten
 from argparse import ArgumentParser
-import seaborn as sns
-import matplotlib.pyplot as plt
+
 from rich.console import Console
 from rich.table import Table
 
@@ -61,9 +62,7 @@ def show_inference_report(report, with_baseline=False):
     # columns to display
     show_report = report[
         [
-            "backend.enable_quantization",
             "backend.auto_quantization",
-            "backend.enable_optimization",
             "backend.auto_optimization",
         ]
         + ["Model.Latency(s)", "Model.Throughput(iter/s)"]
@@ -84,6 +83,9 @@ def show_inference_report(report, with_baseline=False):
             else []
         )
     ]
+
+    if with_baseline:
+        show_report.sort_values(by="Model.Speedup(%)", inplace=True, ascending=False)
 
     table = Table(
         show_header=True,
@@ -120,16 +122,17 @@ def show_inference_report(report, with_baseline=False):
                     table_row.append("")
                 else:
                     table_row.append(f"{elm}")
+            elif elm is None:
+                table_row.append("")
 
             elif type(elm) == bool:
                 if elm:
                     table_row.append("[green]✔[/green]")
                 else:
                     table_row.append("[red]✘[/red]")
-            elif elm is None:
-                table_row.append("")
-            elif type(elm) == str and "baseline" in elm.lower():
-                table_row.append(f"[yellow]{elm}[/yellow]")
+
+            elif type(elm) == str and elm.endswith("baseline"):
+                table_row.append(f"[bold][yellow]{elm}[/yellow][/bold]")
             else:
                 table_row.append(str(elm))
 
@@ -143,9 +146,6 @@ def plot_inference_report(report, with_baseline=False):
     # add title and labels
     device = report["device"].iloc[0]
     report["experiment_name"] = report.index
-
-    if device == "cuda":
-        report = report[~report.experiment_name.str.contains("qnt")]
 
     # create bar charts seperately
     fig1, ax1 = plt.subplots(figsize=(20, 10))
@@ -213,18 +213,14 @@ def plot_inference_report(report, with_baseline=False):
 
 
 def main(args):
-    experiments_report = gather_inference_report(args.experiments_folder)
-    if args.baseline_folder is not None:
-        print("Using the provided baseline")
-        baseline_report = gather_inference_report(args.baseline_folder)
-        assert len(baseline_report) == 1, "There should be only one baseline"
+    # gather experiments reports
+    experiments_dfs = []
+    for experiment_folder in args.experiments:
+        experiments_dfs.append(gather_inference_report(experiment_folder))
 
-        experiments_report["Baseline"] = [False] * len(experiments_report)
-        baseline_report["Baseline"] = [True] * len(baseline_report)
-
-        report = pd.concat(
-            [experiments_report, baseline_report], axis=0, ignore_index=False
-        )
+    if args.baseline:
+        baseline_df = gather_inference_report(args.baseline)
+        report = pd.concat([*experiments_dfs, baseline_df], axis=0)
         report["Model.Speedup(%)"] = (
             report["Model.Throughput(iter/s)"]
             / report["Model.Throughput(iter/s)"].iloc[-1]
@@ -236,30 +232,29 @@ def main(args):
                 / report["Generation.Throughput(tok/s)"].iloc[-1]
                 - 1
             ) * 100
-
     else:
-        print("No baseline provided")
-        report = experiments_report
+        report = pd.concat(experiments_dfs, axis=0, ignore_index=True)
 
-    report.to_csv(f"{args.experiments_folder}/inference_report.csv", index=True)
-    show_inference_report(report, with_baseline=args.baseline_folder is not None)
-    plot_inference_report(report, with_baseline=args.baseline_folder is not None)
+    show_inference_report(report, with_baseline=args.baseline is not None)
+    plot_inference_report(report, with_baseline=args.baseline is not None)
+    report.to_csv(f"inference_report.csv", index=True)
 
 
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument(
-        "--experiments-folder",
+        "--experiments",
         "-e",
+        nargs="*",
         type=Path,
         default="sweeps/",
         help="The folder containing the results of experiments.",
     )
     parser.add_argument(
-        "--baseline-folder",
+        "--baseline",
         "-b",
         type=Path,
-        help="The folder containing the results of the baseline.",
+        help="The folders containing the results of baseline.",
     )
     args = parser.parse_args()
     main(args)
