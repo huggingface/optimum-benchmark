@@ -8,5 +8,5 @@ memory: false
 warmup_runs: 10
 benchmark_duration: 10
 
-# input specific
+# input specific (more to be added)
 batch_size: 1

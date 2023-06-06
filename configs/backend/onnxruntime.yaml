@@ -10,18 +10,22 @@ enable_profiling: ${benchmark.profile}
 inter_op_num_threads: null
 intra_op_num_threads: null
 
-enable_optimization: false
 auto_optimization: null # O1, O2, O3, O4
+manual_optimization: false # true, false
+
 optimization_config:
+  # only used with manual optimization
   optimization_level: 1 # 0, 1, 2, 99
   optimize_for_gpu: ${is_gpu:${device}}
   fp16: false
   enable_transformers_specific_optimizations: true
+  enable_gelu_approximation: false
+
+  # used with manual and auto optimization
   disable_gelu_fusion: false
   disable_layer_norm_fusion: false
   disable_attention_fusion: false
   disable_skip_layer_norm_fusion: true
-  enable_gelu_approximation: false
   disable_bias_skip_layer_norm_fusion: false
   disable_bias_gelu_fusion: false
   use_mask_index: false
@@ -34,8 +38,8 @@ optimization_config:
   disable_group_norm_fusion: true
   disable_packed_kv: true
 
-enable_quantization: false
 auto_quantization: null # arm64,avx2,avx512,avx512_vnni,tensorrt
+manual_quantization: false
 quantization_config:
   is_static: false
   format: QOperator # QOperator, QDQ
@@ -47,26 +51,6 @@ quantization_config:
   per_channel: false
   reduce_range: false
   operators_to_quantize:
-  # default operators to quantize
+    # default operators to quantize
     - MatMul
     - Add
-  
-  #   # transformers specific
-  #   - Attention # when attention is fused
-  #   - LayerNormalization # when layer norm is fused
-  #   - SkipLayerNormalization # when skip layer norm is fused
-  #   - BiasGelu # when bias gelu is fused
-  #   # common binary ops
-  #   - Mul
-  #   - Div
-  #   - Sub
-  #   # common unary ops
-  #   - Slice
-  #   - Cast
-  #   - Gather
-  #   - Shape
-  #   - Concat
-  #   - Reshape
-  #   - Transpose
-  #   - Squeeze
-  #   - Unsqueeze

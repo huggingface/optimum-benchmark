@@ -50,7 +50,7 @@ class Backend(ABC):
         return False
 
     @abstractmethod
-    def generate(self, input: Dict[str, Tensor]):
+    def generate(self, input: Dict[str, Tensor], prefix_length: int) -> str:
         raise NotImplementedError("Backend must implement generate method")
 
     @abstractmethod

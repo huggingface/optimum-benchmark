@@ -1,3 +1,4 @@
+import inspect
 import os
 import gc
 from logging import getLogger
@@ -29,7 +30,7 @@ from src.utils import get_used_memory
 BACKEND_NAME = "onnxruntime"
 LOGGER = getLogger(BACKEND_NAME)
 
-PROVIDER_OPTIONS = {"arena_extend_strategy": "kSameAsRequested"}
+PROVIDER_OPTIONS = {}  # {"arena_extend_strategy": "kSameAsRequested"}
 
 
 @dataclass
@@ -43,13 +44,13 @@ class ORTConfig(BackendConfig):
     enable_profiling: bool = False
 
     # optimization options
-    enable_optimization: bool = False
     auto_optimization: Optional[str] = None
+    manual_optimization: bool = False
     optimization_config: DictConfig = DictConfig({})
 
     # quantization options
-    enable_quantization: bool = False
     auto_quantization: Optional[str] = None
+    manual_quantization: bool = False
     quantization_config: DictConfig = DictConfig({})
 
 
@@ -94,33 +95,46 @@ class ORTBackend(Backend):
         LOGGER.info(f"\t+ Device used memory: {get_used_memory(device=self.device)}")
 
         with TemporaryDirectory() as tmpdirname:
-            if config.enable_optimization:
+            if config.manual_optimization or config.auto_optimization is not None:
                 self.optimize_model(config, tmpdirname)
                 LOGGER.info(
                     f"\t+ Device used memory: {get_used_memory(device=self.device)}"
                 )
 
-            if config.enable_quantization:
+            if config.manual_quantization or config.auto_quantization is not None:
                 self.quantize_model(config, tmpdirname)
                 LOGGER.info(
                     f"\t+ Device used memory: {get_used_memory(device=self.device)}"
                 )
 
     def optimize_model(self, config: ORTConfig, tmpdirname: str) -> None:
+        optimization_dict = OmegaConf.to_container(
+            config.optimization_config, resolve=True
+        )
         if config.auto_optimization is not None:
-            LOGGER.info(f"\t+ Setting auto optimization {config.auto_optimization}")
+            LOGGER.info(f"\t+ Using auto optimization {config.auto_optimization}")
+            for_gpu = optimization_dict.pop("optimize_for_gpu")
+            optimization_dict.pop("optimization_level")
+            optimization_dict.pop("fp16")
+            optimization_dict.pop("enable_transformers_specific_optimizations")
+            optimization_dict.pop("enable_gelu_approximation")
+
+            LOGGER.info("\t+ Setting optimization parameters:")
+            for key, value in optimization_dict.items():
+                LOGGER.info(f"\t\t+ {key}: {value}")
+
             optimization_config = AutoOptimizationConfig.with_optimization_level(
                 optimization_level=config.auto_optimization,
                 for_gpu=config.optimization_config.optimize_for_gpu,
-                disable_shape_inference=config.optimization_config.disable_shape_inference,
+                **optimization_dict,
             )
         else:
             LOGGER.info("\t+ Setting optimization parameters:")
-            for key, value in config.optimization_config.items():
+            for key, value in optimization_dict.items():
                 LOGGER.info(f"\t\t+ {key}: {value}")
 
             optimization_config = OptimizationConfig(
-                **OmegaConf.to_container(config.optimization_config, resolve=True)
+                **optimization_dict,
             )
 
         LOGGER.info("\t+ Attempting optimization")
@@ -129,9 +143,11 @@ class ORTBackend(Backend):
             save_dir=f"{tmpdirname}/optimized",
             optimization_config=optimization_config,
         )
-        LOGGER.info("\t+ Loading optimized model")
         del self.pretrained_model
         gc.collect()
+        torch.cuda.empty_cache()
+
+        LOGGER.info("\t+ Loading optimized model")
         self.pretrained_model = self.ortmodel_class.from_pretrained(
             model_id=f"{tmpdirname}/optimized",
             session_options=self.session_options,
@@ -141,42 +157,51 @@ class ORTBackend(Backend):
         )
 
     def quantize_model(self, config: ORTConfig, tmpdirname: str) -> None:
-        LOGGER.info("\t+ Setting quantization parameters:")
-        for key, value in config.quantization_config.items():
-            LOGGER.info(f"\t\t+ {key}: {value}")
+        quantization_dict = OmegaConf.to_container(
+            config.quantization_config, resolve=True
+        )
 
         if config.auto_quantization is not None:
-            quantization_config = getattr(
+            LOGGER.info(f"\t+ Using auto quantization {config.auto_quantization}")
+            auto_quantization_class = getattr(
                 AutoQuantizationConfig, config.auto_quantization
-            )(
-                is_static=config.quantization_config.is_static,
-                per_channel=config.quantization_config.per_channel,
-                operators_to_quantize=OmegaConf.to_container(
-                    config.quantization_config.operators_to_quantize, resolve=True
-                ),
             )
+            auto_quantization_args = inspect.getfullargspec(auto_quantization_class)[0]
+            auto_quantization_args.remove("self")
+
+            quantization_dict = {
+                key: value
+                for key, value in quantization_dict.items()
+                if key in auto_quantization_args
+            }
+
+            LOGGER.info("\t+ Setting quantization parameters:")
+            for key, value in quantization_dict.items():
+                LOGGER.info(f"\t\t+ {key}: {value}")
+
+            quantization_config = auto_quantization_class(**quantization_dict)
 
         else:
-            # should be handeled by Pydantic
-            if config.quantization_config.get("format", None) is not None:
-                config.quantization_config["format"] = QuantFormat.from_string(
-                    config.quantization_config["format"]
+            # should be handeled by Pydantic later
+            if quantization_dict.get("format", None) is not None:
+                quantization_dict["format"] = QuantFormat.from_string(
+                    quantization_dict["format"]
                 )
-            if config.quantization_config.get("mode", None) is not None:
-                config.quantization_config["mode"] = QuantizationMode.from_string(
-                    config.quantization_config["mode"]
+            if quantization_dict.get("mode", None) is not None:
+                quantization_dict["mode"] = QuantizationMode.from_string(
+                    quantization_dict["mode"]
                 )
-            if config.quantization_config.get("activations_dtype", None) is not None:
-                config.quantization_config["activations_dtype"] = QuantType.from_string(
-                    config.quantization_config["activations_dtype"]
+            if quantization_dict.get("activations_dtype", None) is not None:
+                quantization_dict["activations_dtype"] = QuantType.from_string(
+                    quantization_dict["activations_dtype"]
                 )
-            if config.quantization_config.get("weights_dtype", None) is not None:
-                config.quantization_config["weights_dtype"] = QuantType.from_string(
-                    config.quantization_config["weights_dtype"]
+            if quantization_dict.get("weights_dtype", None) is not None:
+                quantization_dict["weights_dtype"] = QuantType.from_string(
+                    quantization_dict["weights_dtype"]
                 )
 
             quantization_config = QuantizationConfig(
-                **OmegaConf.to_container(config.quantization_config, resolve=True)
+                **quantization_dict,
             )
 
         LOGGER.info("\t+ Attempting quantization")
@@ -190,9 +215,11 @@ class ORTBackend(Backend):
                 quantization_config=quantization_config,
             )
 
-        LOGGER.info("\t+ Loading quantized model")
         del self.pretrained_model
         gc.collect()
+        torch.cuda.empty_cache()
+
+        LOGGER.info("\t+ Loading quantized model")
         self.pretrained_model = self.ortmodel_class.from_pretrained(
             model_id=f"{tmpdirname}/quantized",
             session_options=self.session_options,
@@ -209,11 +236,12 @@ class ORTBackend(Backend):
     def is_generator(self) -> bool:
         return isinstance(self.pretrained_model, GenerationMixin)
 
-    def generate(self, input: Dict[str, Tensor]):
+    def generate(self, input: Dict[str, Tensor], prefix_length: int = 1):
         output = self.pretrained_model.generate(
             **input,
-            max_new_tokens=self.pretrained_model.config.max_length,
-            pad_token_id=self.pretrained_model.config.eos_token_id,
+            max_new_tokens=self.pretrained_model.config.max_length - prefix_length,
+            pad_token_id=-1,
+            eos_token_id=-1,
         )
         return output
 

@@ -73,7 +73,7 @@ class InferenceBenchmark(Benchmark):
     def _run_with_forward_latency_tracking(self, backend: Backend) -> None:
         forward_inputs = self.generate_dummy_inputs(mode="forward")
 
-        LOGGER.info("\t+ Warming up the model")
+        LOGGER.info("\t+ Warming up the forward pass")
         for _ in range(self.warmup_runs):
             backend.forward(forward_inputs)
 
@@ -89,10 +89,16 @@ class InferenceBenchmark(Benchmark):
 
     def _run_with_generate_latency_tracking(self, backend: Backend) -> None:
         generate_inputs = self.generate_dummy_inputs(mode="generate")
+
+        LOGGER.info("\t+ Warming up the generation pass (once)")
+        outputs = backend.generate(generate_inputs)
+
         if "input_ids" in generate_inputs:
-            prefix_tokens = generate_inputs["input_ids"].shape[-1]
+            prefix_length = generate_inputs["input_ids"].shape[-1]
         else:
-            prefix_tokens = 0
+            prefix_length = 1  # for bos_token
+
+        LOGGER.info(f"\t+ Using {prefix_length} prefix tokens")
 
         LOGGER.info("\t+ Tracking generation throughput")
         latency_tracker = LatencyTracker(device=self.device)
@@ -100,11 +106,12 @@ class InferenceBenchmark(Benchmark):
             with latency_tracker.track():
                 outputs = backend.generate(
                     generate_inputs,
+                    prefix_length=prefix_length,
                 )
 
-            num_new_tokens = outputs.shape[-1] - prefix_tokens
+            num_new_tokens = outputs.shape[-1] - prefix_length
+            LOGGER.debug(f"\t+ Generated {num_new_tokens} new tokens")
             self.num_generated_tokens += num_new_tokens
-            LOGGER.debug(f"\t+ Generated {num_new_tokens} tokens")
 
         self.generation_latencies = latency_tracker.get_latencies()
         LOGGER.info(
@@ -160,6 +167,8 @@ class InferenceBenchmark(Benchmark):
             results_dict["Generation.Throughput(tok/s)"] = significant_figures(
                 self.generation_throughput
             )
+            results_dict["Generation.Total_num_tokens"] = self.num_generated_tokens
+            results_dict["Generation.Total_time(s)"] = sum(self.generation_latencies)
 
         return DataFrame(results_dict, index=[0])
 

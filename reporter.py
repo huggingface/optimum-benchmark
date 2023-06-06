@@ -1,16 +1,16 @@
 import pandas as pd
 from pathlib import Path
+from pandas import DataFrame
 from omegaconf import OmegaConf
 from flatten_dict import flatten
 from argparse import ArgumentParser
-
+import seaborn as sns
+import matplotlib.pyplot as plt
 from rich.console import Console
 from rich.table import Table
 
 
-def gather_inference_report(
-    folder: Path,
-) -> pd.DataFrame:
+def gather_inference_report(folder: Path) -> DataFrame:
     stats_files = [
         stats_file for stats_file in folder.glob(f"**/inference_results.csv")
     ]
@@ -47,8 +47,8 @@ def gather_inference_report(
     }
     # Concatenate all reports
     inference_report = pd.concat(inference_reports.values(), axis=0, ignore_index=True)
-    inference_report["Config Path"] = configs_files  # for console display (clickable)
-    inference_report.set_index("Config Path", inplace=True)
+    # inference_report["Config Path"] = configs_files  # for console display (clickable)
+    inference_report.set_index("experiment_name", inplace=True)
     # sort by throughput and remove failed experiments
     inference_report.sort_values(
         by=["Model.Throughput(iter/s)"], ascending=False, inplace=True
@@ -60,17 +60,27 @@ def gather_inference_report(
 def show_inference_report(report, with_baseline=False):
     # columns to display
     show_report = report[
-        (["Baseline"] if with_baseline else [])
+        [
+            "backend.enable_quantization",
+            "backend.auto_quantization",
+            "backend.enable_optimization",
+            "backend.auto_optimization",
+        ]
         + ["Model.Latency(s)", "Model.Throughput(iter/s)"]
         + (
             ["Model.Peak_Memory(MB)"]
             if "Model.Peak_Memory(MB)" in report.columns
             else []
         )
-        + (["Speedup(%)"] if with_baseline else [])
+        + (["Model.Speedup(%)"] if with_baseline else [])
         + (
             ["Generation.Throughput(tok/s)"]
             if "Generation.Throughput(tok/s)" in report.columns
+            else []
+        )
+        + (
+            ["Generation.Speedup(%)"]
+            if "Generation.Throughput(tok/s)" in report.columns and with_baseline
             else []
         )
     ]
@@ -84,7 +94,7 @@ def show_inference_report(report, with_baseline=False):
         [tuple(col.split(".")) for col in show_report.columns.to_list()]
     )
 
-    table.add_column("Config Path", justify="left")
+    table.add_column("Experiment Name", justify="left")
     for level in range(show_report.columns.nlevels):
         columns = show_report.columns.get_level_values(level).to_list()
         for i in range(len(columns)):
@@ -106,6 +116,8 @@ def show_inference_report(report, with_baseline=False):
                     table_row.append(f"{elm:.2f}")
                 elif abs(elm) > 1e-3:
                     table_row.append(f"{elm:.2e}")
+                elif elm != elm:
+                    table_row.append("")
                 else:
                     table_row.append(f"{elm}")
 
@@ -115,7 +127,9 @@ def show_inference_report(report, with_baseline=False):
                 else:
                     table_row.append("[red]✘[/red]")
             elif elm is None:
-                table_row.append(None)
+                table_row.append("")
+            elif type(elm) == str and "baseline" in elm.lower():
+                table_row.append(f"[yellow]{elm}[/yellow]")
             else:
                 table_row.append(str(elm))
 
@@ -125,30 +139,111 @@ def show_inference_report(report, with_baseline=False):
     console.print(table)
 
 
+def plot_inference_report(report, with_baseline=False):
+    # add title and labels
+    device = report["device"].iloc[0]
+    report["experiment_name"] = report.index
+
+    if device == "cuda":
+        report = report[~report.experiment_name.str.contains("qnt")]
+
+    # create bar charts seperately
+    fig1, ax1 = plt.subplots(figsize=(20, 10))
+    fig2, ax2 = plt.subplots(figsize=(20, 10))
+
+    axs = [ax1, ax2]
+
+    sns.barplot(
+        x="experiment_name",
+        y="Model.Throughput(iter/s)",
+        data=report,
+        ax=ax1,
+        width=0.5,
+    )
+    sns.barplot(
+        x="experiment_name",
+        y="Generation.Throughput(tok/s)",
+        data=report,
+        ax=ax2,
+        width=0.5,
+    )
+
+    # add speedup text on top of each bar
+    if with_baseline:
+        baseline_throughput = report["Model.Throughput(iter/s)"].iloc[-1]
+        for p in ax1.patches:
+            speedup = (p.get_height() / baseline_throughput - 1) * 100
+            ax1.annotate(
+                f"{'+' if speedup>0 else '-'}{abs(speedup):.2f}%",
+                (p.get_x() + p.get_width() / 2, 1.02 * p.get_height()),
+                ha="center",
+                va="center",
+            )
+
+        baseline_throughput = report["Generation.Throughput(tok/s)"].iloc[-1]
+        for p in ax2.patches:
+            speedup = (p.get_height() / baseline_throughput - 1) * 100
+            ax2.annotate(
+                f"{'+' if speedup>0 else '-'}{abs(speedup):.2f}%",
+                (p.get_x() + p.get_width() / 2, 1.02 * p.get_height()),
+                ha="center",
+                va="center",
+            )
+
+    # add ticks
+    ax1.set_xticklabels(ax1.get_xticklabels(), rotation=45, horizontalalignment="right")
+    ax2.set_xticklabels(ax2.get_xticklabels(), rotation=45, horizontalalignment="right")
+
+    # rename x axis
+    ax1.set_xlabel("Experiment")
+    ax2.set_xlabel("Experiment")
+
+    # rename y axis
+    ax1.set_ylabel("Forward Throughput (iter/s)")
+    ax2.set_ylabel("Generate Throughput (tok/s)")
+
+    axs[0].set_title(f"Model Throughput and Speedup on {device.upper()}")
+    axs[1].set_title(f"Generation Throughput and Speedup on {device.upper()}")
+
+    # save figures
+    fig1.savefig(f"images/whisper_{device}_throughput.png", bbox_inches="tight")
+    fig2.savefig(f"images/whisper_{device}_gen_throughput.png", bbox_inches="tight")
+
+    # plt.show()
+
+
 def main(args):
     experiments_report = gather_inference_report(args.experiments_folder)
     if args.baseline_folder is not None:
         print("Using the provided baseline")
         baseline_report = gather_inference_report(args.baseline_folder)
         assert len(baseline_report) == 1, "There should be only one baseline"
+
         experiments_report["Baseline"] = [False] * len(experiments_report)
-        experiments_report["Speedup(%)"] = (
-            experiments_report["Model.Throughput(iter/s)"]
-            / baseline_report["Model.Throughput(iter/s)"].iloc[0]
-            - 1
-        ) * 100
         baseline_report["Baseline"] = [True] * len(baseline_report)
-        baseline_report["Speedup(%)"] = [0] * len(baseline_report)
 
         report = pd.concat(
             [experiments_report, baseline_report], axis=0, ignore_index=False
         )
+        report["Model.Speedup(%)"] = (
+            report["Model.Throughput(iter/s)"]
+            / report["Model.Throughput(iter/s)"].iloc[-1]
+            - 1
+        ) * 100
+        if "Generation.Throughput(tok/s)" in report.columns:
+            report["Generation.Speedup(%)"] = (
+                report["Generation.Throughput(tok/s)"]
+                / report["Generation.Throughput(tok/s)"].iloc[-1]
+                - 1
+            ) * 100
+
     else:
         print("No baseline provided")
         report = experiments_report
 
     report.to_csv(f"{args.experiments_folder}/inference_report.csv", index=True)
     show_inference_report(report, with_baseline=args.baseline_folder is not None)
+    plot_inference_report(report, with_baseline=args.baseline_folder is not None)
 
 
 if __name__ == "__main__":

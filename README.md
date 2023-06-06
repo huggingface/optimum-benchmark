@@ -1,7 +1,16 @@
-# optimum-benchmarks
+# AutoBenchmark
 
-A repository for benchmarking optimum's inference and training optimizations on different supported backends.
+## The idea
+A repository aiming to create a universal benchmarking utility for HF while supporting optimum's inference and training optimizations on different backends and hardware.
 The experiment management and tracking is handled by [hydra](https://hydra.cc/) and inspired from [tune](https://github.com/huggingface/tune).
+
+## Motivation
+
+- Many users would want to know how their models perform (latency/throughput) before deploying them to production (found examples in slack).
+- Many hardware vendors would want to know how their hardware performs on different models and how it compares to others.
+- Optimum offers a lot of optimizations that can be applied to models to improve their performance, but it's hard to know which ones to use and how much they improve the performance before trying them out.
+- [...]
+
 
 ## Quickstart
 
