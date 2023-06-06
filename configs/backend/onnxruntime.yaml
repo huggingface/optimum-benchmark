@@ -11,17 +11,17 @@ inter_op_num_threads: null
 intra_op_num_threads: null
 
 auto_optimization: null # O1, O2, O3, O4
-manual_optimization: false # true, false
+auto_optimization_config:
+  optimize_for_gpu: ${is_gpu:${device}}
+  # add whatever you want to override
 
+optimization: false # true, false
 optimization_config:
-  # only used with manual optimization
   optimization_level: 1 # 0, 1, 2, 99
   optimize_for_gpu: ${is_gpu:${device}}
   fp16: false
   enable_transformers_specific_optimizations: true
   enable_gelu_approximation: false
-
-  # used with manual and auto optimization
   disable_gelu_fusion: false
   disable_layer_norm_fusion: false
   disable_attention_fusion: false
@@ -39,17 +39,21 @@ optimization_config:
   disable_packed_kv: true
 
 auto_quantization: null # arm64,avx2,avx512,avx512_vnni,tensorrt
-manual_quantization: false
-quantization_config:
+auto_quantization_config:
   is_static: false
+  # add whatever you want to override
+
+quantization: false # true, false
+quantization_config:
+  is_static: false # true, false
   format: QOperator # QOperator, QDQ
   mode: IntegerOps # QLinearOps, IntegerOps
   activations_dtype: QUInt8 # QInt8, QUInt8
-  activations_symmetric: false
+  activations_symmetric: false # true, false
   weights_dtype: QInt8 # QInt8, QUInt8
-  weights_symmetric: true
-  per_channel: false
-  reduce_range: false
+  weights_symmetric: true # true, false
+  per_channel: false # true, false
+  reduce_range: false # true, false
   operators_to_quantize:
     # default operators to quantize
     - MatMul

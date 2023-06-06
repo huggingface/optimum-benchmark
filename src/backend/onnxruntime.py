@@ -45,12 +45,16 @@ class ORTConfig(BackendConfig):
 
     # optimization options
     auto_optimization: Optional[str] = None
-    manual_optimization: bool = False
+    auto_optimization_config: DictConfig = DictConfig({})
+
+    optimization: bool = False
     optimization_config: DictConfig = DictConfig({})
 
     # quantization options
     auto_quantization: Optional[str] = None
-    manual_quantization: bool = False
+    auto_quantization_config: DictConfig = DictConfig({})
+
+    quantization: bool = False
     quantization_config: DictConfig = DictConfig({})
 
 
@@ -95,47 +99,39 @@ class ORTBackend(Backend):
         LOGGER.info(f"\t+ Device used memory: {get_used_memory(device=self.device)}")
 
         with TemporaryDirectory() as tmpdirname:
-            if config.manual_optimization or config.auto_optimization is not None:
+            if config.optimization or config.auto_optimization is not None:
                 self.optimize_model(config, tmpdirname)
                 LOGGER.info(
                     f"\t+ Device used memory: {get_used_memory(device=self.device)}"
                 )
 
-            if config.manual_quantization or config.auto_quantization is not None:
+            if config.quantization or config.auto_quantization is not None:
                 self.quantize_model(config, tmpdirname)
                 LOGGER.info(
                     f"\t+ Device used memory: {get_used_memory(device=self.device)}"
                 )
 
     def optimize_model(self, config: ORTConfig, tmpdirname: str) -> None:
-        optimization_dict = OmegaConf.to_container(
-            config.optimization_config, resolve=True
-        )
         if config.auto_optimization is not None:
             LOGGER.info(f"\t+ Using auto optimization {config.auto_optimization}")
-            for_gpu = optimization_dict.pop("optimize_for_gpu")
-            optimization_dict.pop("optimization_level")
-            optimization_dict.pop("fp16")
-            optimization_dict.pop("enable_transformers_specific_optimizations")
-            optimization_dict.pop("enable_gelu_approximation")
-
+            optimization_dict = OmegaConf.to_container(
+                config.auto_optimization_config, resolve=True
+            )
             LOGGER.info("\t+ Setting optimization parameters:")
             for key, value in optimization_dict.items():
                 LOGGER.info(f"\t\t+ {key}: {value}")
 
             optimization_config = AutoOptimizationConfig.with_optimization_level(
-                optimization_level=config.auto_optimization,
-                for_gpu=config.optimization_config.optimize_for_gpu,
-                **optimization_dict,
+                optimization_level=config.auto_optimization, **optimization_dict
             )
         else:
+            optimization_dict = OmegaConf.to_container(
+                config.optimization_config, resolve=True
+            )
             LOGGER.info("\t+ Setting optimization parameters:")
             for key, value in optimization_dict.items():
                 LOGGER.info(f"\t\t+ {key}: {value}")
-
-            optimization_config = OptimizationConfig(
-                **optimization_dict,
-            )
+            optimization_config = OptimizationConfig(**optimization_dict)
 
         LOGGER.info("\t+ Attempting optimization")
         optimizer = ORTOptimizer.from_pretrained(self.pretrained_model)  # type: ignore
@@ -157,23 +153,14 @@ class ORTBackend(Backend):
         )
 
     def quantize_model(self, config: ORTConfig, tmpdirname: str) -> None:
-        quantization_dict = OmegaConf.to_container(
-            config.quantization_config, resolve=True
-        )
-
         if config.auto_quantization is not None:
             LOGGER.info(f"\t+ Using auto quantization {config.auto_quantization}")
             auto_quantization_class = getattr(
                 AutoQuantizationConfig, config.auto_quantization
             )
-            auto_quantization_args = inspect.getfullargspec(auto_quantization_class)[0]
-            auto_quantization_args.remove("self")
-
-            quantization_dict = {
-                key: value
-                for key, value in quantization_dict.items()
-                if key in auto_quantization_args
-            }
+            quantization_dict = OmegaConf.to_container(
+                config.auto_quantization_config, resolve=True
+            )
 
             LOGGER.info("\t+ Setting quantization parameters:")
             for key, value in quantization_dict.items():
@@ -182,6 +169,9 @@ class ORTBackend(Backend):
             quantization_config = auto_quantization_class(**quantization_dict)
 
         else:
+            quantization_dict = OmegaConf.to_container(
+                config.quantization_config, resolve=True
+            )
             # should be handeled by Pydantic later
             if quantization_dict.get("format", None) is not None:
                 quantization_dict["format"] = QuantFormat.from_string(
