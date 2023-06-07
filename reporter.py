@@ -33,6 +33,7 @@ def gather_inference_report(folder: Path) -> DataFrame:
     # for now there's a problem with list of operators to quantize
     for d in config_dicts.values():
         d.pop("backend.quantization_config.operators_to_quantize", None)
+        d.pop("backend.auto_quantization_config.operators_to_quantize", None)
 
     configs_dfs = {i: pd.DataFrame(d, index=[0]) for i, d in config_dicts.items()}
 
@@ -58,34 +59,28 @@ def gather_inference_report(folder: Path) -> DataFrame:
     return inference_report
 
 
-def show_inference_report(report, with_baseline=False):
+def show_inference_report(report):
     # columns to display
     show_report = report[
         [
-            "backend.auto_quantization",
-            "backend.auto_optimization",
+            col
+            for col in report.columns
+            if len(report[col].unique()) > 2 and col.startswith("backend.")
         ]
-        + ["Model.Latency(s)", "Model.Throughput(iter/s)"]
+        + ["Model.Latency(s)", "Model.Throughput(iter/s)", "Model.Speedup(%)"]
+        + (
+            ["Generation.Throughput(tok/s)", "Generation.Speedup(%)"]
+            if "Generation.Throughput(tok/s)" in report.columns
+            else []
+        )
         + (
             ["Model.Peak_Memory(MB)"]
             if "Model.Peak_Memory(MB)" in report.columns
             else []
         )
-        + (["Model.Speedup(%)"] if with_baseline else [])
-        + (
-            ["Generation.Throughput(tok/s)"]
-            if "Generation.Throughput(tok/s)" in report.columns
-            else []
-        )
-        + (
-            ["Generation.Speedup(%)"]
-            if "Generation.Throughput(tok/s)" in report.columns and with_baseline
-            else []
-        )
     ]
 
-    if with_baseline:
-        show_report.sort_values(by="Model.Speedup(%)", inplace=True, ascending=False)
+    show_report.sort_values(by="Model.Speedup(%)", inplace=True, ascending=False)
 
     table = Table(
         show_header=True,
@@ -142,9 +137,11 @@ def show_inference_report(report, with_baseline=False):
     console.print(table)
 
 
-def plot_inference_report(report, with_baseline=False):
+def plot_inference_report(report):
     # add title and labels
     device = report["device"].iloc[0]
+    batch_size = report["benchmark.batch_size"].iloc[0]
+    new_tokens = report["benchmark.new_tokens"].iloc[0]
     report["experiment_name"] = report.index
 
     # create bar charts seperately
@@ -169,26 +166,25 @@ def plot_inference_report(report, with_baseline=False):
     )
 
     # add speedup text on top of each bar
-    if with_baseline:
-        baseline_throughput = report["Model.Throughput(iter/s)"].iloc[-1]
-        for p in ax1.patches:
-            speedup = (p.get_height() / baseline_throughput - 1) * 100
-            ax1.annotate(
-                f"{'+' if speedup>0 else '-'}{abs(speedup):.2f}%",
-                (p.get_x() + p.get_width() / 2, 1.02 * p.get_height()),
-                ha="center",
-                va="center",
-            )
+    baseline_throughput = report["Model.Throughput(iter/s)"].iloc[-1]
+    for p in ax1.patches:
+        speedup = (p.get_height() / baseline_throughput - 1) * 100
+        ax1.annotate(
+            f"{'+' if speedup>0 else '-'}{abs(speedup):.2f}%",
+            (p.get_x() + p.get_width() / 2, 1.02 * p.get_height()),
+            ha="center",
+            va="center",
+        )
 
-        baseline_throughput = report["Generation.Throughput(tok/s)"].iloc[-1]
-        for p in ax2.patches:
-            speedup = (p.get_height() / baseline_throughput - 1) * 100
-            ax2.annotate(
-                f"{'+' if speedup>0 else '-'}{abs(speedup):.2f}%",
-                (p.get_x() + p.get_width() / 2, 1.02 * p.get_height()),
-                ha="center",
-                va="center",
-            )
+    baseline_throughput = report["Generation.Throughput(tok/s)"].iloc[-1]
+    for p in ax2.patches:
+        speedup = (p.get_height() / baseline_throughput - 1) * 100
+        ax2.annotate(
+            f"{'+' if speedup>0 else '-'}{abs(speedup):.2f}%",
+            (p.get_x() + p.get_width() / 2, 1.02 * p.get_height()),
+            ha="center",
+            va="center",
+        )
 
     # add ticks
     ax1.set_xticklabels(ax1.get_xticklabels(), rotation=45, horizontalalignment="right")
@@ -202,14 +198,22 @@ def plot_inference_report(report, with_baseline=False):
     ax1.set_ylabel("Forward Throughput (iter/s)")
     ax2.set_ylabel("Generate Throughput (tok/s)")
 
-    axs[0].set_title(f"Model Throughput and Speedup on {device.upper()}")
-    axs[1].set_title(f"Generation Throughput and Speedup on {device.upper()}")
+    axs[0].set_title(
+        f"Model Throughput and Speedup on {device.upper()} with batch_size={batch_size}"
+    )
+    axs[1].set_title(
+        f"Generation Throughput and Speedup on {device.upper()} with batch_size={batch_size} and new_tokens={new_tokens}"
+    )
 
     # save figures
-    fig1.savefig(f"images/whisper_{device}_throughput.png", bbox_inches="tight")
-    fig2.savefig(f"images/whisper_{device}_gen_throughput.png", bbox_inches="tight")
-
-    # plt.show()
+    fig1.savefig(
+        f"images/whisper_{device}_{batch_size}_{new_tokens}_throughput.png",
+        bbox_inches="tight",
+    )
+    fig2.savefig(
+        f"images/whisper_{device}_{batch_size}_{new_tokens}_gen_throughput.png",
+        bbox_inches="tight",
+    )
 
 
 def main(args):
@@ -217,27 +221,24 @@ def main(args):
     experiments_dfs = []
     for experiment_folder in args.experiments:
         experiments_dfs.append(gather_inference_report(experiment_folder))
+    baseline_df = gather_inference_report(args.baseline)
+    report = pd.concat([*experiments_dfs, baseline_df], axis=0)
 
-    if args.baseline:
-        baseline_df = gather_inference_report(args.baseline)
-        report = pd.concat([*experiments_dfs, baseline_df], axis=0)
-        report["Model.Speedup(%)"] = (
-            report["Model.Throughput(iter/s)"]
-            / report["Model.Throughput(iter/s)"].iloc[-1]
+    # compute speedup
+    report["Model.Speedup(%)"] = (
+        report["Model.Throughput(iter/s)"] / report["Model.Throughput(iter/s)"].iloc[-1]
+        - 1
+    ) * 100
+    if "Generation.Throughput(tok/s)" in report.columns:
+        report["Generation.Speedup(%)"] = (
+            report["Generation.Throughput(tok/s)"]
+            / report["Generation.Throughput(tok/s)"].iloc[-1]
             - 1
         ) * 100
-        if "Generation.Throughput(tok/s)" in report.columns:
-            report["Generation.Speedup(%)"] = (
-                report["Generation.Throughput(tok/s)"]
-                / report["Generation.Throughput(tok/s)"].iloc[-1]
-                - 1
-            ) * 100
-    else:
-        report = pd.concat(experiments_dfs, axis=0, ignore_index=True)
 
-    show_inference_report(report, with_baseline=args.baseline is not None)
-    plot_inference_report(report, with_baseline=args.baseline is not None)
-    report.to_csv(f"inference_report.csv", index=True)
+    show_inference_report(report)
+    plot_inference_report(report)
+    report.to_csv(f"{args.baseline}/inference_report.csv", index=True)
 
 
 if __name__ == "__main__":
@@ -246,6 +247,7 @@ if __name__ == "__main__":
         "--experiments",
         "-e",
         nargs="*",
+        required=True,
         type=Path,
         default="sweeps/",
         help="The folder containing the results of experiments.",
@@ -253,6 +255,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--baseline",
         "-b",
+        required=False,
         type=Path,
         help="The folders containing the results of baseline.",
     )

@@ -227,6 +227,9 @@ class ORTBackend(Backend):
             **input,
             max_new_tokens=new_tokens,
             min_new_tokens=new_tokens,
+            do_sample=False,
+            num_beams=1,
+            use_cache=True,
         )
         return output
 

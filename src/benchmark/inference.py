@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 from typing import List, Tuple, Dict
+from dataclasses import dataclass
 from logging import getLogger
 
 import torch
@@ -46,7 +46,7 @@ class InferenceBenchmark(Benchmark):
     def configure(self, config: InferenceConfig):
         self.memory = config.memory
         self.profile = config.profile
-        self.is_generator = False
+        self.generation = False
 
         self.warmup_runs = config.warmup_runs
         self.benchmark_duration = config.benchmark_duration
@@ -90,7 +90,7 @@ class InferenceBenchmark(Benchmark):
         generate_inputs = self.generate_dummy_inputs(mode="generate")
 
         LOGGER.info("\t+ Warming up the generation pass")
-        for _ in range(self.warmup_runs):
+        for _ in range(1):
             outputs = backend.generate(generate_inputs, new_tokens=self.new_tokens)
 
         LOGGER.info("\t+ Tracking generation throughput")
@@ -153,7 +153,7 @@ class InferenceBenchmark(Benchmark):
                 self.model_peak_memory
             )
 
-        if self.is_generator:
+        if self.generation:
             results_dict["Generation.Throughput(tok/s)"] = significant_figures(
                 self.generation_throughput
             )
