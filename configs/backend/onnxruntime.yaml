@@ -53,7 +53,6 @@ quantization_config:
     - Gather
     - Transpose
     - EmbedLayerNormalization
-    - MatMul
     - Attention
     - LSTM
     - ArgMax
@@ -85,4 +84,3 @@ auto_quantization: null # arm64,avx2,avx512,avx512_vnni,tensorrt
 auto_quantization_config:
   is_static: false
   # add whatever you want to override
-  operators_to_quantize: ${backend.quantization_config.operators_to_quantize}
