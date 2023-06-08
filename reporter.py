@@ -142,14 +142,14 @@ def plot_inference_report(report):
     device = report["device"].iloc[0]
     batch_size = report["benchmark.batch_size"].iloc[0]
     new_tokens = report["benchmark.new_tokens"].iloc[0]
-    report["experiment_name"] = report.index
+    backends = report["backend.name"].unique()
 
     # create bar charts seperately
     fig1, ax1 = plt.subplots(figsize=(20, 10))
     fig2, ax2 = plt.subplots(figsize=(20, 10))
-
     axs = [ax1, ax2]
 
+    report["experiment_name"] = report.index
     sns.barplot(
         x="experiment_name",
         y="Model.Throughput(iter/s)",
@@ -199,21 +199,25 @@ def plot_inference_report(report):
     ax2.set_ylabel("Generate Throughput (tok/s)")
 
     axs[0].set_title(
-        f"Model Throughput and Speedup on {device.upper()} with batch_size={batch_size}"
+        f"Forward Throughput and Speedup on {device.upper()} with batch_size={batch_size}"
     )
     axs[1].set_title(
-        f"Generation Throughput and Speedup on {device.upper()} with batch_size={batch_size} and new_tokens={new_tokens}"
+        f"Generate Throughput and Speedup on {device.upper()} with batch_size={batch_size} and new_tokens={new_tokens}"
     )
 
     # save figures
     fig1.savefig(
-        f"images/whisper_{device}_{batch_size}_{new_tokens}_throughput.png",
+        f"images/{device}_{batch_size}_{new_tokens}_forward_throughput.png",
         bbox_inches="tight",
     )
     fig2.savefig(
-        f"images/whisper_{device}_{batch_size}_{new_tokens}_gen_throughput.png",
+        f"images/{device}_{batch_size}_{new_tokens}_generate_throughput.png",
         bbox_inches="tight",
     )
+
+
+def save_inference_report(report, baseline):
+    report.to_csv(f"{baseline}/inference_report.csv", index=True)
 
 
 def main(args):
@@ -238,7 +242,7 @@ def main(args):
 
     show_inference_report(report)
     plot_inference_report(report)
-    report.to_csv(f"{args.baseline}/inference_report.csv", index=True)
+    save_inference_report(report, args.baseline)
 
 
 if __name__ == "__main__":
@@ -255,7 +259,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--baseline",
         "-b",
-        required=False,
+        required=True,
         type=Path,
         help="The folders containing the results of baseline.",
     )
