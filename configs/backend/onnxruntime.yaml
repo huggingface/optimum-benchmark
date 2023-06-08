@@ -38,47 +38,49 @@ auto_optimization_config:
   for_gpu: ${is_gpu:${device}}
   # add whatever you want to override
 
-quantization: false # true, false
+quantization: false
 quantization_config:
-  is_static: false # true, false
+  is_static: false
   format: QOperator # QOperator, QDQ
   mode: IntegerOps # QLinearOps, IntegerOps
   activations_dtype: QUInt8 # QInt8, QUInt8
-  activations_symmetric: false # true, false
+  activations_symmetric: false
   weights_dtype: QInt8 # QInt8, QUInt8
-  weights_symmetric: true # true, false
-  per_channel: false # true, false
-  reduce_range: false # true, false
+  weights_symmetric: true
+  per_channel: false
+  reduce_range: false
   operators_to_quantize:
-    - Gather
-    - Transpose
-    - EmbedLayerNormalization
-    - Attention
-    - LSTM
-    - ArgMax
-    - Conv
-    - Gemm
     - MatMul
     - Add
-    - Mul
-    - Relu
-    - Clip
-    - LeakyRelu
-    - Sigmoid
-    - MaxPool
-    - GlobalAveragePool
-    - Split
-    - Pad
-    - Reshape
-    - Squeeze
-    - Unsqueeze
-    - Resize
-    - AveragePool
-    - Concat
-    - Softmax
-    - Where
-    - ConvTranspose
-    - InstanceNormalization
+    # - Gather
+    # - Transpose
+    # - EmbedLayerNormalization
+    # - Attention
+    # - LSTM
+    # - ArgMax
+    # - Conv
+    # - Gemm
+    # - MatMul
+    # - Add
+    # - Mul
+    # - Relu
+    # - Clip
+    # - LeakyRelu
+    # - Sigmoid
+    # - MaxPool
+    # - GlobalAveragePool
+    # - Split
+    # - Pad
+    # - Reshape
+    # - Squeeze
+    # - Unsqueeze
+    # - Resize
+    # - AveragePool
+    # - Concat
+    # - Softmax
+    # - Where
+    # - ConvTranspose
+    # - InstanceNormalization
 
 auto_quantization: null # arm64,avx2,avx512,avx512_vnni,tensorrt
 auto_quantization_config:
