@@ -1,0 +1,16 @@
+defaults:
+  - whisper_baseline
+  - _self_
+  - override backend: onnxruntime
+
+hydra:
+  sweeper:
+    params:
+      backend.auto_optimization: O1,O2,O3,O4
+      +backend.auto_optimization_config.disable_shape_inference: true # whisper fails shape inference
+
+      backend.auto_quantization: arm64,avx2,avx512,avx512_vnni
+      +backend.auto_quantization_config.per_channel: false # blocking quantization on colab for some reason
+
+experiment_name: whisper_auto_opt(${backend.auto_optimization})+auto_qnt(${backend.auto_quantization})
+device: cpu
