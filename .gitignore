@@ -161,7 +161,6 @@ cython_debug/
 
 experiments/
 reports/
-outputs/
 sweeps/
 runs/
 *.ipynb
