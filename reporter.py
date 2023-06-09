@@ -222,28 +222,30 @@ def compute_speedup(report, with_generate=False):
 
 def main(experiments_folders, baseline_folder=None):
     # gather experiments reports
-    inference_experiments_dfs = [
+    inference_experiments = [
         gather_inference_report(experiment) for experiment in experiments_folders
     ]
+    inference_report = pd.concat(inference_experiments, axis=0)
+
+    # sort by forward throughput
+    inference_report.sort_values(
+        by="forward.throughput(iter/s)", ascending=False, inplace=True
+    )
+
     # some flags
     with_baseline = baseline_folder is not None
-    with_generate = "generate.throughput(tok/s)" in inference_experiments_dfs[0].columns
+    with_generate = "generate.throughput(tok/s)" in inference_report.columns
 
     if with_baseline:
         # gather baseline report
-        inference_baseline_df = gather_inference_report(baseline_folder)
+        inference_baseline = gather_inference_report(baseline_folder)
         assert (
-            inference_baseline_df.shape[0] == 1
+            inference_baseline.shape[0] == 1
         ), "baseline folder should contain only one experiment"
         # add baseline to experiment
-        inference_experiments_dfs.append(inference_baseline_df)
-        # concatenate all experiments
-        inference_report = pd.concat(inference_experiments_dfs, axis=0)
+        inference_report = pd.concat([inference_report, inference_baseline], axis=0)
         # compute speedup compared to baseline
         inference_report = compute_speedup(inference_report, with_generate)
-    else:
-        # concatenate all experiments
-        inference_report = pd.concat(inference_experiments_dfs, axis=0)
 
     # there should be only one device, batch_size and new_tokens (unique triplet)
     unique_devices = inference_report["device"].unique()
