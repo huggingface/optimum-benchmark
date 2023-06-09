@@ -1,0 +1,4 @@
+- backend.auto_optimization=O3
+- device=cuda
+- benchmark.batch_size=8
+- benchmark.new_tokens=10

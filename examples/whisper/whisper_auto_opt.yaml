@@ -1,0 +1,11 @@
+defaults:
+  - whisper_baseline
+  - _self_
+  - override backend: onnxruntime
+
+hydra:
+  sweeper:
+    params:
+      backend.auto_optimization: O1,O2,O3,O4
+
+experiment_name: whisper_auto_opt(${backend.auto_optimization})

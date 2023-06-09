@@ -1,0 +1,207 @@
+hydra:
+  run:
+    dir: runs/${device}_${backend.name}_${benchmark.batch_size}_${benchmark.new_tokens}/${experiment_name}
+  sweep:
+    dir: sweeps/${device}_${backend.name}_${benchmark.batch_size}_${benchmark.new_tokens}/${experiment_name}
+    subdir: ${hydra.job.num}
+  launcher:
+    _target_: hydra._internal.core_plugins.basic_launcher.BasicLauncher
+  sweeper:
+    _target_: hydra._internal.core_plugins.basic_sweeper.BasicSweeper
+    max_batch_size: null
+    params: null
+  help:
+    app_name: ${hydra.job.name}
+    header: '${hydra.help.app_name} is powered by Hydra.
+
+      '
+    footer: 'Powered by Hydra (https://hydra.cc)
+
+      Use --hydra-help to view Hydra specific help
+
+      '
+    template: '${hydra.help.header}
+
+      == Configuration groups ==
+
+      Compose your configuration from those groups (group=option)
+
+
+      $APP_CONFIG_GROUPS
+
+
+      == Config ==
+
+      Override anything in the config (foo.bar=value)
+
+
+      $CONFIG
+
+
+      ${hydra.help.footer}
+
+      '
+  hydra_help:
+    template: 'Hydra (${hydra.runtime.version})
+
+      See https://hydra.cc for more info.
+
+
+      == Flags ==
+
+      $FLAGS_HELP
+
+
+      == Configuration groups ==
+
+      Compose your configuration from those groups (For example, append hydra/job_logging=disabled
+      to command line)
+
+
+      $HYDRA_CONFIG_GROUPS
+
+
+      Use ''--cfg hydra'' to Show the Hydra config.
+
+      '
+    hydra_help: ???
+  hydra_logging:
+    version: 1
+    formatters:
+      colorlog:
+        (): colorlog.ColoredFormatter
+        format: '[%(cyan)s%(asctime)s%(reset)s][%(purple)sHYDRA%(reset)s] %(message)s'
+    handlers:
+      console:
+        class: logging.StreamHandler
+        formatter: colorlog
+        stream: ext://sys.stdout
+    root:
+      level: INFO
+      handlers:
+      - console
+    disable_existing_loggers: false
+  job_logging:
+    version: 1
+    formatters:
+      simple:
+        format: '[%(asctime)s][%(name)s][%(levelname)s] - %(message)s'
+      colorlog:
+        (): colorlog.ColoredFormatter
+        format: '[%(cyan)s%(asctime)s%(reset)s][%(blue)s%(name)s%(reset)s][%(log_color)s%(levelname)s%(reset)s]
+          - %(message)s'
+        log_colors:
+          DEBUG: purple
+          INFO: green
+          WARNING: yellow
+          ERROR: red
+          CRITICAL: red
+    handlers:
+      console:
+        class: logging.StreamHandler
+        formatter: colorlog
+        stream: ext://sys.stdout
+      file:
+        class: logging.FileHandler
+        formatter: simple
+        filename: ${hydra.job.name}.log
+    root:
+      level: INFO
+      handlers:
+      - console
+      - file
+    disable_existing_loggers: false
+  env: {}
+  mode: MULTIRUN
+  searchpath: []
+  callbacks: {}
+  output_subdir: .hydra
+  overrides:
+    hydra:
+    - hydra.mode=MULTIRUN
+    task:
+    - device=cuda
+    - benchmark.batch_size=1,8
+    - benchmark.new_tokens=10,100
+  job:
+    name: main
+    chdir: true
+    override_dirname: benchmark.batch_size=1,8,benchmark.new_tokens=10,100,device=cuda
+    id: ???
+    num: ???
+    config_name: whisper_baseline
+    env_set: {}
+    env_copy: []
+    config:
+      override_dirname:
+        kv_sep: '='
+        item_sep: ','
+        exclude_keys: []
+  runtime:
+    version: 1.3.2
+    version_base: '1.3'
+    cwd: /content/drive/MyDrive/AutoBenchmark
+    config_sources:
+    - path: hydra.conf
+      schema: pkg
+      provider: hydra
+    - path: /content/drive/MyDrive/AutoBenchmark/configs
+      schema: file
+      provider: main
+    - path: hydra_plugins.hydra_colorlog.conf
+      schema: pkg
+      provider: hydra-colorlog
+    - path: ''
+      schema: structured
+      provider: schema
+    output_dir: ???
+    choices:
+      benchmark: inference
+      backend: pytorch
+      hydra/env: default
+      hydra/callbacks: null
+      hydra/job_logging: colorlog
+      hydra/hydra_logging: colorlog
+      hydra/hydra_help: default
+      hydra/help: default
+      hydra/sweeper: basic
+      hydra/launcher: basic
+      hydra/output: default
+  verbose: false
+backend:
+  _target_: src.backend.pytorch.PyTorchBackend
+  name: pytorch
+  version: ${pytorch_version:}
+  inter_op_num_threads: null
+  intra_op_num_threads: null
+  disable_grad: ${is_inference:${benchmark.name}}
+  eval_mode: ${is_inference:${benchmark.name}}
+  bettertransformer: false
+  torch_compile: false
+  fp16: false
+benchmark:
+  _target_: src.benchmark.inference.InferenceBenchmark
+  name: inference
+  profile: false
+  memory: false
+  warmup_runs: 10
+  benchmark_duration: 10
+  batch_size: 1
+  new_tokens: 100
+model: openai/whisper-base
+task: ${infer_task:${model}}
+device: cuda
+experiment_name: whisper_baseline
+experiment_datetime: 2023-06-07_13:45:32
+environment:
+  optimum_version: 1.8.7.dev0
+  transformers_version: 4.29.2
+  python_version: 3.10.11
+  system: Linux
+  architecture: 64bit
+  machine: x86_64
+  cpu: x86_64
+  cpu_count: 2
+  cpu_ram_mb: 12982
+  gpu: Tesla T4
+  gpu_ram_mb: 15360

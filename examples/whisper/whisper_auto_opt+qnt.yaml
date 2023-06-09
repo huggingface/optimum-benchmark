@@ -1,0 +1,44 @@
+defaults:
+  - whisper_baseline
+  - _self_
+  - override backend: onnxruntime
+
+hydra:
+  sweeper:
+    params:
+      backend.auto_optimization: O1,O2,O3,O4
+      backend.auto_quantization: arm64,avx2,avx512,avx512_vnni
+      +backend.auto_quantization_config.per_channel: false # blocking decoder quantization
+      +backend.auto_quantization_config.operators_to_quantize:
+      # when a model is optimized a new set of operators is created in the graph (like fused attention)
+        - Gather
+        - Transpose
+        - EmbedLayerNormalization
+        - Attention
+        - LSTM
+        - ArgMax
+        # - Conv # only works for static quantization
+        - Gemm
+        - MatMul
+        - Add
+        - Mul
+        - Relu
+        - Clip
+        - LeakyRelu
+        - Sigmoid
+        - MaxPool
+        - GlobalAveragePool
+        - Split
+        - Pad
+        - Reshape
+        - Squeeze
+        - Unsqueeze
+        - Resize
+        - AveragePool
+        - Concat
+        - Softmax
+        - Where
+        - ConvTranspose
+        - InstanceNormalization
+
+experiment_name: whisper_auto_opt(${backend.auto_optimization})+auto_qnt(${backend.auto_quantization})

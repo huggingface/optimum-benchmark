@@ -1,0 +1,78 @@
+backend:
+  _target_: src.backend.onnxruntime.ORTBackend
+  name: onnxruntime
+  version: 1.15.0
+  provider: CPUExecutionProvider
+  use_io_binding: false
+  enable_profiling: false
+  inter_op_num_threads: null
+  intra_op_num_threads: null
+  optimization: false
+  optimization_config:
+    optimization_level: 1
+    optimize_for_gpu: false
+    fp16: false
+    enable_transformers_specific_optimizations: true
+    enable_gelu_approximation: false
+    disable_gelu_fusion: false
+    disable_layer_norm_fusion: false
+    disable_attention_fusion: false
+    disable_skip_layer_norm_fusion: true
+    disable_bias_skip_layer_norm_fusion: false
+    disable_bias_gelu_fusion: false
+    use_mask_index: false
+    no_attention_mask: false
+    disable_embed_layer_norm_fusion: true
+    disable_shape_inference: false
+    use_multi_head_attention: false
+    enable_gemm_fast_gelu_fusion: false
+    use_raw_attention_mask: false
+    disable_group_norm_fusion: true
+    disable_packed_kv: true
+  auto_optimization: null
+  auto_optimization_config:
+    for_gpu: false
+  quantization: false
+  quantization_config:
+    is_static: false
+    format: QOperator
+    mode: IntegerOps
+    activations_dtype: QUInt8
+    activations_symmetric: false
+    weights_dtype: QInt8
+    weights_symmetric: true
+    per_channel: false
+    reduce_range: false
+    operators_to_quantize:
+    - MatMul
+    - Add
+  auto_quantization: avx512
+  auto_quantization_config:
+    is_static: false
+    per_channel: false
+benchmark:
+  _target_: src.benchmark.inference.InferenceBenchmark
+  name: inference
+  profile: false
+  memory: false
+  warmup_runs: 10
+  benchmark_duration: 10
+  batch_size: 1
+  new_tokens: 10
+model: openai/whisper-base
+task: automatic-speech-recognition
+device: cpu
+experiment_name: whisper_auto_qnt(avx512)
+experiment_datetime: 2023-06-07_09:42:57
+environment:
+  optimum_version: 1.8.7.dev0
+  transformers_version: 4.29.2
+  python_version: 3.10.11
+  system: Linux
+  architecture: 64bit
+  machine: x86_64
+  cpu: x86_64
+  cpu_count: 2
+  cpu_ram_mb: 12982
+  gpu: CUDA not available
+  gpu_ram_mb: CUDA not available

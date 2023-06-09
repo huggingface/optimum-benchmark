@@ -1,0 +1,5 @@
+- backend.auto_quantization=avx2
+- +backend.auto_quantization_config.per_channel=False
+- device=cpu
+- benchmark.batch_size=1
+- benchmark.new_tokens=10

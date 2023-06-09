@@ -1,0 +1,37 @@
+backend:
+  _target_: src.backend.pytorch.PyTorchBackend
+  name: pytorch
+  version: 2.0.1+cu118
+  inter_op_num_threads: null
+  intra_op_num_threads: null
+  disable_grad: true
+  eval_mode: true
+  bettertransformer: false
+  torch_compile: false
+  fp16: false
+benchmark:
+  _target_: src.benchmark.inference.InferenceBenchmark
+  name: inference
+  profile: false
+  memory: false
+  warmup_runs: 10
+  benchmark_duration: 10
+  batch_size: 1
+  new_tokens: 10
+model: openai/whisper-base
+task: automatic-speech-recognition
+device: cuda
+experiment_name: whisper_baseline
+experiment_datetime: 2023-06-07_13:45:32
+environment:
+  optimum_version: 1.8.7.dev0
+  transformers_version: 4.29.2
+  python_version: 3.10.11
+  system: Linux
+  architecture: 64bit
+  machine: x86_64
+  cpu: x86_64
+  cpu_count: 2
+  cpu_ram_mb: 12982
+  gpu: Tesla T4
+  gpu_ram_mb: 15360

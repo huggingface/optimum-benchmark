@@ -1,8 +1,0 @@
-defaults:
-  - hydra_base
-  - _self_
-
-model: openai/whisper-base
-device: cuda
-
-experiment_name: whisper_baseline
