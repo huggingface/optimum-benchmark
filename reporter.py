@@ -16,17 +16,19 @@ from rich.terminal_theme import MONOKAI
 def gather_inference_report(root_folder: Path) -> DataFrame:
     # key is path to inference file as string, value is dataframe
     inference_dfs = {
-        f.parent.as_posix(): pd.read_csv(f)
+        f.parent.absolute().as_posix(): pd.read_csv(f)
         for f in root_folder.glob(f"**/inference_results.csv")
     }
 
     # key is path to config file as string, value is flattened dict
     config_dfs = {
-        f.parent.as_posix(): pd.DataFrame.from_dict(
+        f.parent.absolute()
+        .as_posix(): pd.DataFrame.from_dict(
             flatten(OmegaConf.load(f), reducer="dot"), orient="index"
-        ).T
+        )
+        .T
         for f in root_folder.glob(f"**/hydra_config.yaml")
-        if f.parent.as_posix() in inference_dfs.keys()
+        if f.parent.absolute().as_posix() in inference_dfs.keys()
     }
 
     if len(inference_dfs) == 0 or len(config_dfs) == 0:
@@ -133,7 +135,6 @@ def populate_inference_rich_table(table, report, with_baseline=False):
     # we populate the table with values
     for i, row in enumerate(display_report.itertuples(index=True)):
         if i == display_report.shape[0] - 1:
-            print("last row")
             table_row = format_row(row, style="yellow")
         else:
             table_row = format_row(row)
@@ -235,9 +236,8 @@ def main(experiments_folders, baseline_folder=None):
         ), "baseline folder should contain only one experiment"
         # add baseline to experiment
         inference_experiments_dfs.append(inference_baseline_df)
-        inference_report = pd.concat(
-            inference_experiments_dfs, axis=0, ignore_index=True
-        )
+        inference_report = pd.concat(inference_experiments_dfs, axis=0)
+        # compute speedup
         inference_report = compute_speedup(inference_report)
     else:
         inference_report = pd.concat(inference_experiments_dfs, axis=0)
@@ -263,12 +263,15 @@ def main(experiments_folders, baseline_folder=None):
 
     # create reporting directory
     reporting_directory = f"reports/{device}_{batch_size}_{new_tokens}"
-    Path(reporting_directory).mkdir(exist_ok=True)
+    Path(reporting_directory).mkdir(exist_ok=True, parents=True)
 
     # print rich table
     rich_table = Table(
         show_header=True,
-        title=f"Device: {device} | Batch Size: {batch_size} | New Tokens: {new_tokens}",
+        title=f"""
+        Inferencing Report
+        Device: {device} | Batch Size: {batch_size} | New Tokens: {new_tokens}
+        """,
         show_lines=True,
     )
     console = Console(record=True)
