@@ -36,12 +36,18 @@ I also added `benchmark.batch_size=1,8 benchmark.new_tokens=10,100` to compare b
 ### Batch Size = 1, New Tokens = 10
 
 <div>
+  <img src="reports/cuda_1_10/rich_table.svg" style="width: 90%; display: inline-block;">
+</div>
+<div>
   <img src="reports/cuda_1_10/forward_throughput.png" style="width: 45%; display: inline-block;">
   <img src="reports/cuda_1_10/generate_throughput.png" style="width: 45%; display: inline-block">
 </div>
 
 ### Batch Size = 1, New Tokens = 100
 
+<div>
+  <img src="reports/cuda_1_100/rich_table.svg" style="width: 90%; display: inline-block;">
+</div>
 <div>
   <img src="reports/cuda_1_100/forward_throughput.png" style="width: 45%; display: inline-block;">
   <img src="reports/cuda_1_100/generate_throughput.png" style="width: 45%; display: inline-block">
@@ -50,11 +56,19 @@ I also added `benchmark.batch_size=1,8 benchmark.new_tokens=10,100` to compare b
 ### Batch Size = 8, New Tokens = 10
 
 <div>
+  <img src="reports/cuda_8_10/rich_table.svg" style="width: 90%; display: inline-block;">
+</div>
+
+<div>
   <img src="reports/cuda_8_10/forward_throughput.png" style="width: 45%; display: inline-block;">
   <img src="reports/cuda_8_10/generate_throughput.png" style="width: 45%; display: inline-block">
 </div>
     
 ### Batch Size = 8, New Tokens = 100
+
+<div>
+  <img src="reports/cuda_8_100/rich_table.svg" style="width: 90%; display: inline-block;">
+</div>
 
 <div>
   <img src="reports/cuda_8_100/forward_throughput.png" style="width: 45%; display: inline-block;">
@@ -66,11 +80,19 @@ I also added `benchmark.batch_size=1,8 benchmark.new_tokens=10,100` to compare b
 ### Batch Size = 1, New Tokens = 10
 
 <div>
+  <img src="reports/cpu_1_10/rich_table.svg" style="width: 90%; display: inline-block;">
+</div>
+
+<div>
   <img src="reports/cpu_1_10/forward_throughput.png" style="width: 45%; display: inline-block;">
   <img src="reports/cpu_1_10/generate_throughput.png" style="width: 45%; display: inline-block">
 </div>
 
 ### Batch Size = 1, New Tokens = 100
+
+<div>
+  <img src="reports/cpu_1_100/rich_table.svg" style="width: 90%; display: inline-block;">
+</div>
 
 <div>
   <img src="reports/cpu_1_100/forward_throughput.png" style="width: 45%; display: inline-block;">
