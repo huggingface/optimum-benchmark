@@ -273,7 +273,7 @@ def main(experiments_folders, baseline_folder=None):
 
     # Rich table
     rich_title = "Inferencing Report"
-    rich_title += f"Device: {device} | Batch Size: {batch_size}"
+    rich_title += f"\nDevice: {device} | Batch Size: {batch_size}"
     if with_generate:
         rich_title += f" | New Tokens: {new_tokens}"
 
