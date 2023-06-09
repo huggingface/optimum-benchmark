@@ -1,16 +1,16 @@
 # AutoBenchmark
 
-## The idea
+## The Goal
 
-A repository aiming to create a universal benchmarking utility for any model on HF hub while supporting optimum's inference and training optimizations on different backends and hardware.
+A repository aiming to create a "universal" benchmarking utility for any model on HuggingFace's Hub while also supporting optimum's inference and training optimizations on different backends and hardware.
 The experiment management and tracking is handled by [hydra](https://hydra.cc/) and inspired from [tune](https://github.com/huggingface/tune).
 
 ## Motivation
 
-- Many users would want to know how their models perform (latency/throughput) before deploying them to production (found examples in slack).
+- Many users would want to know how their models perform (latency/throughput) before deploying them to production.
 - Many hardware vendors would want to know how their hardware performs on different models and how it compares to others.
 - Optimum offers a lot of optimizations that can be applied to models to improve their performance, but it's hard to know which ones to use and how much they improve the performance before trying them out.
-- Benchmarks depend heavily on many factors, many will post a "+500% speedup compared to baseline" without giving a trace of what optimizations were used in the baseline (disabling gradients, fp16, etc.).
+- Benchmarks depend heavily on many factors, many will post a "+500% speedup compared to baseline" without giving a trace of what optimizations were used in the baseline (disabling gradients, fp16, etc.). So transparency is important.
 
 ## Quickstart
 
@@ -31,7 +31,7 @@ This will run the benchmark on the default backend (`pytorch`) and device (`cuda
 The result files are `inference_results.csv` and `profiling_results.csv` in case profiling is enabled.
 There's also the program's logs `main.log` and the configuration that's been used `hydra_config.yaml`
 
-The directory for storing these results can be changed using the `hydra.run.dir` (and/or `hydra.sweep.dir`) in the command line or in the config file (see [`hydra_base.yaml`](configs/hydra_base.yaml) for example).
+The directory for storing these results can be changed using the `hydra.run.dir` (and/or `hydra.sweep.dir`) in the command line or in the config file (see [`hydra_base.yaml`](configs/hydra_base.yaml) or how I changed it in the whisper branch).
 
 ## Command-line configuration overrides
 
@@ -65,17 +65,18 @@ To aggregate the results of a benchmark (run(s) or sweep(s)), you can use the `r
 python reporter.py --baseline {baseline_folder} --experiments {experiments_folder_1} {experiments_folder_2} ...
 ```
 
-This will generate `inference_report.csv` in the specified baseline directory which will contain the aggregated results of all the runs/sweeps with their corresponding configurations (one big dataframe for you).
+Where baseline is optional (used to compute speedups) and experiments are the folders containing the results of the runs/sweeps you want to aggregate.
 
-The console outputs will be something like this:
-<img src='rich-benchmark.png' alt='rich-benchmark-table' style='display:block;margin-left:auto;margin-right:auto;'>
+The script will generate a few reporting files : a csv report (`inference_report.csv`), a rich table (`rich_table.svg`) and some plots (`forward_throughput.png` and `generate_throughput.png` if `generate.throughput(tok/s)` is tracked).
+
+These files will be stored in `reports/${device}_${batch_size}` (or `reports/${device}_${batch_size}_${new_tokens}` if `generate.throughput(tok/s)` is tracked).
 
 ## Configurations structure
 
 You can create custom configuration files following the [examples here](examples).
-The easiest way to do so is by using `hydra`'s [composition](https://hydra.cc/docs/0.11/tutorial/composition/) with the base configuration is [`configs/hydra_base.yaml`](configs/hydra_base.yaml).
+The easiest way to do so is by using `hydra`'s [composition](https://hydra.cc/docs/0.11/tutorial/composition/) with a base configuratin [`configs/hydra_base.yaml`](configs/hydra_base.yaml).
 
-For example, to create a configuration that uses a `wav2vec2` model and `onnxruntime` backend, it's as easy as:
+To create a configuration that uses a `wav2vec2` model and `onnxruntime` backend, it's as easy as:
 
 ```yaml
 defaults:
@@ -92,13 +93,7 @@ experiment_name: onnxruntime_wav2vec2
 
 This is especially useful for creating sweeps, where the cli commands become too long.
 
-An example is provided in [`examples/whisper_auto_opt+qnt.yaml`](examples/whisper_auto_opt+qnt.yaml) for an exhaustive sweep over all possible cominations of `optimum`'s AutoOptimizations and AutoQuantizations on CPU.
-
-The command to run it (once you've copied it to `configs/`) is:
-
-```bash
-python main.py --config-name whisper_auto_opt+qnt -m
-```
+An example is provided in [`examples/whisper_auto_opt+qnt.yaml`](examples/whisper_auto_opt+qnt.yaml) for an exhaustive sweep over all possible cominations of `optimum`'s AutoOptimizations and AutoQuantizations on CPU (checkout the `whisper` branch for the full benchmark).
 
 ## TODO
 

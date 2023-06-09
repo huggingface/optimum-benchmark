@@ -83,7 +83,9 @@ def format_row(row, style=""):
     return formated_row
 
 
-def populate_inference_rich_table(table, report, with_baseline=False):
+def populate_inference_rich_table(
+    table, report, with_baseline=False, with_generate=False
+):
     perf_columns = [
         "forward.latency(s)",
         "forward.throughput(iter/s)",
@@ -92,22 +94,18 @@ def populate_inference_rich_table(table, report, with_baseline=False):
     if with_baseline:
         perf_columns.append("forward.speedup(%)")
 
-    if "generate.throughput(tok/s)" in report.columns:
+    if with_generate:
         perf_columns += ["generate.throughput(tok/s)"]
-        if with_baseline is not None:
+        if with_baseline:
             perf_columns.append("generate.speedup(%)")
-
-    if "forward.peak_memory(MB)" in report.columns:
-        perf_columns.append("forward.peak_memory(MB)")
 
     additional_columns = [
         col
         for col in report.columns
         if report[col].nunique() > 1
-        and col not in perf_columns
+        and "backend" in col
         and "_target_" not in col
         and "version" not in col
-        and "datetime" not in col
     ]
 
     # display interesting columns in multilevel hierarchy
@@ -204,7 +202,7 @@ def get_inference_plots(report, with_baseline=False):
     return fig1, fig2
 
 
-def compute_speedup(report):
+def compute_speedup(report, with_generate=False):
     # compute speedup for each experiment compared to baseline
     report["forward.speedup(%)"] = (
         report["forward.throughput(iter/s)"]
@@ -212,7 +210,7 @@ def compute_speedup(report):
         - 1
     ) * 100
 
-    if "generate.throughput(tok/s)" in report.columns:
+    if with_generate:
         report["generate.speedup(%)"] = (
             report["generate.throughput(tok/s)"]
             / report["generate.throughput(tok/s)"].iloc[-1]
@@ -227,8 +225,11 @@ def main(experiments_folders, baseline_folder=None):
     inference_experiments_dfs = [
         gather_inference_report(experiment) for experiment in experiments_folders
     ]
+    # some flags
+    with_baseline = baseline_folder is not None
+    with_generate = "generate.throughput(tok/s)" in inference_experiments_dfs[0].columns
 
-    if baseline_folder is not None:
+    if with_baseline:
         # gather baseline report
         inference_baseline_df = gather_inference_report(baseline_folder)
         assert (
@@ -236,50 +237,55 @@ def main(experiments_folders, baseline_folder=None):
         ), "baseline folder should contain only one experiment"
         # add baseline to experiment
         inference_experiments_dfs.append(inference_baseline_df)
+        # concatenate all experiments
         inference_report = pd.concat(inference_experiments_dfs, axis=0)
-        # compute speedup
-        inference_report = compute_speedup(inference_report)
+        # compute speedup compared to baseline
+        inference_report = compute_speedup(inference_report, with_generate)
     else:
+        # concatenate all experiments
         inference_report = pd.concat(inference_experiments_dfs, axis=0)
 
     # there should be only one device, batch_size and new_tokens (unique triplet)
     unique_devices = inference_report["device"].unique()
-    unique_batch_sizes = inference_report["benchmark.batch_size"].unique()
-    unique_new_tokens = inference_report["benchmark.new_tokens"].unique()
-
     assert (
         len(unique_devices) == 1
     ), "there should be only one device (apples to apples comparison)"
+    device = unique_devices[0]
+    unique_batch_sizes = inference_report["benchmark.batch_size"].unique()
     assert (
         len(unique_batch_sizes) == 1
     ), "there should be only one batch_size (apples to apples comparison)"
+    batch_size = unique_batch_sizes[0]
+
+    unique_new_tokens = inference_report["benchmark.new_tokens"].unique()
     assert (
         len(unique_new_tokens) == 1
     ), "there should be only one new_tokens (apples to apples comparison)"
-
-    device = unique_devices[0]
-    batch_size = unique_batch_sizes[0]
     new_tokens = unique_new_tokens[0]
 
     # create reporting directory
-    reporting_directory = f"reports/{device}_{batch_size}_{new_tokens}"
+    reporting_directory = f"reports/{device}_{batch_size}"
+    if with_generate:
+        reporting_directory += f"_{new_tokens}"
     Path(reporting_directory).mkdir(exist_ok=True, parents=True)
 
-    # print rich table
+    # Rich table
+    rich_title = "Inferencing Report"
+    rich_title += f"Device: {device} | Batch Size: {batch_size}"
+    if with_generate:
+        rich_title += f" | New Tokens: {new_tokens}"
+
     rich_table = Table(
         show_header=True,
-        title=f"""
-        Inferencing Report
-        Device: {device} | Batch Size: {batch_size} | New Tokens: {new_tokens}
-        """,
+        title=rich_title,
         show_lines=True,
     )
     console = Console(record=True)
     rich_table = populate_inference_rich_table(
-        rich_table, inference_report, baseline_folder is not None
+        rich_table, inference_report, with_baseline, with_generate
     )
 
-    console.print(rich_table, justify="left")
+    console.print(rich_table, justify="left", no_wrap=True)
     console.save_svg(f"{reporting_directory}/rich_table.svg", theme=MONOKAI)
 
     forward_fig, generate_fig = get_inference_plots(inference_report, args.baseline)
