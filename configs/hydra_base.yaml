@@ -12,9 +12,9 @@ defaults:
 
 hydra:
   run:
-    dir: runs/${backend.name}_${device}/${experiment_name}
+    dir: runs/${experiment_name}
   sweep:
-    dir: sweeps/${backend.name}_${device}/${experiment_name}
+    dir: sweeps/${experiment_name}
   job:
     # enables changing the working directory to the run/sweep directory
     chdir: true
