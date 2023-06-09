@@ -1,4 +1,4 @@
-# Optimum Benchmarks
+# Optimum-Benchmark
 
 ## The Goal
 
@@ -11,6 +11,7 @@ The experiment management and tracking is handled by [hydra](https://hydra.cc/) 
 - Many hardware vendors would want to know how their hardware performs on different models and how it compares to others.
 - Optimum offers a lot of optimizations that can be applied to models to improve their performance, but it's hard to know which ones to use and how much they improve the performance before trying them out.
 - Benchmarks depend heavily on many factors, many will post a "+500% speedup compared to baseline" without giving a trace of what optimizations were used in the baseline (disabling gradients, fp16, etc.). So transparency is important.
+- [...]
 
 ## Quickstart
 
