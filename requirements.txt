@@ -10,6 +10,8 @@ Requests
 omegaconf
 hydra-core
 hydra_colorlog
+matplotlib
+seaborn
 flatten_dict
 psutil
 rich

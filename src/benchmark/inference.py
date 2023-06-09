@@ -143,18 +143,18 @@ class InferenceBenchmark(Benchmark):
     def results_df(self) -> DataFrame:
         results_dict = dict()
 
-        results_dict["Model.Latency(s)"] = significant_figures(self.model_latency)
-        results_dict["Model.Throughput(iter/s)"] = significant_figures(
+        results_dict["forward.latency(s)"] = significant_figures(self.model_latency)
+        results_dict["forward.throughput(iter/s)"] = significant_figures(
             self.model_throughput
         )
 
         if self.memory:
-            results_dict["Model.Peak_Memory(MB)"] = significant_figures(
+            results_dict["forward.peak_memory(MB)"] = significant_figures(
                 self.model_peak_memory
             )
 
         if self.generation:
-            results_dict["Generation.Throughput(tok/s)"] = significant_figures(
+            results_dict["generate.throughput(tok/s)"] = significant_figures(
                 self.generation_throughput
             )
 

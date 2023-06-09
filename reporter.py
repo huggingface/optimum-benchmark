@@ -1,251 +1,295 @@
 import pandas as pd
-import seaborn as sns
 from pathlib import Path
 from pandas import DataFrame
-import matplotlib.pyplot as plt
+
 from omegaconf import OmegaConf
 from flatten_dict import flatten
-from argparse import ArgumentParser
 
-from rich.console import Console
+import seaborn as sns
+import matplotlib.pyplot as plt
+
 from rich.table import Table
+from rich.console import Console
+from rich.terminal_theme import MONOKAI
 
 
-def gather_inference_report(folder: Path) -> DataFrame:
-    stats_files = [
-        stats_file for stats_file in folder.glob(f"**/inference_results.csv")
-    ]
-    stats_dfs = {i: pd.read_csv(f, index_col=0) for i, f in enumerate(stats_files)}
-
-    configs_files = [
-        config_file for config_file in folder.glob(f"**/hydra_config.yaml")
-    ]
-    # only leave config files that have a corresponding stats file
-    configs_files = [
-        config_file
-        for config_file in configs_files
-        if config_file.parent in [stats_file.parent for stats_file in stats_files]
-    ]
-    config_dicts = {
-        i: flatten(OmegaConf.load(f), reducer="dot")
-        for i, f in enumerate(configs_files)
+def gather_inference_report(root_folder: Path) -> DataFrame:
+    # key is path to inference file as string, value is dataframe
+    inference_dfs = {
+        f.parent.as_posix(): pd.read_csv(f)
+        for f in root_folder.glob(f"**/inference_results.csv")
     }
-    # for now there's a problem with list of operators to quantize
-    for d in config_dicts.values():
-        d.pop("backend.quantization_config.operators_to_quantize", None)
-        d.pop("backend.auto_quantization_config.operators_to_quantize", None)
 
-    configs_dfs = {i: pd.DataFrame(d, index=[0]) for i, d in config_dicts.items()}
-
-    if len(stats_dfs) == 0 or len(configs_dfs) == 0:
-        raise ValueError(f"No results found in {folder}")
-
-    # Merge perfs dataframes with configs
-    inference_reports = {
-        name: configs_dfs[name].merge(
-            stats_dfs[name], left_index=True, right_index=True
-        )
-        for name in stats_dfs.keys()
+    # key is path to config file as string, value is flattened dict
+    config_dfs = {
+        f.parent.as_posix(): pd.DataFrame.from_dict(
+            flatten(OmegaConf.load(f), reducer="dot"), orient="index"
+        ).T
+        for f in root_folder.glob(f"**/hydra_config.yaml")
+        if f.parent.as_posix() in inference_dfs.keys()
     }
+
+    if len(inference_dfs) == 0 or len(config_dfs) == 0:
+        raise ValueError(f"No results found in {root_folder}")
+
+    # Merge inference and config dataframes
+    inference_reports = [
+        config_dfs[name].merge(inference_dfs[name], left_index=True, right_index=True)
+        for name in inference_dfs.keys()
+    ]
+
     # Concatenate all reports
-    inference_report = pd.concat(inference_reports.values(), axis=0, ignore_index=True)
-    # inference_report["Config Path"] = configs_files  # for console display (clickable)
+    inference_report = pd.concat(inference_reports, axis=0, ignore_index=True)
     inference_report.set_index("experiment_name", inplace=True)
-    # sort by throughput and remove failed experiments
-    inference_report.sort_values(
-        by=["Model.Throughput(iter/s)"], ascending=False, inplace=True
-    )
-
     return inference_report
 
 
-def show_inference_report(report):
-    # columns to display
-    show_report = report[
-        [
-            col
-            for col in report.columns
-            if len(report[col].unique()) > 2 and col.startswith("backend.")
-        ]
-        + ["Model.Latency(s)", "Model.Throughput(iter/s)", "Model.Speedup(%)"]
-        + (
-            ["Generation.Throughput(tok/s)", "Generation.Speedup(%)"]
-            if "Generation.Throughput(tok/s)" in report.columns
-            else []
-        )
-        + (
-            ["Model.Peak_Memory(MB)"]
-            if "Model.Peak_Memory(MB)" in report.columns
-            else []
-        )
+def style_element(element, style=""):
+    if style:
+        return f"[{style}]{element}[/{style}]"
+    else:
+        return element
+
+
+def format_element(element, style=""):
+    if type(element) == float:
+        if element != element:  # nan
+            formated_element = ""
+        elif abs(element) >= 1:
+            formated_element = f"{element:.2f}"
+        elif abs(element) > 1e-6:
+            formated_element = f"{element:.2e}"
+        else:
+            formated_element = f"{element}"
+    elif element is None:
+        formated_element = ""
+    elif type(element) == bool:
+        if element:
+            formated_element = style_element("✔", style="green")
+        else:
+            formated_element = style_element("✘", style="red")
+    else:
+        formated_element = str(element)
+
+    return style_element(formated_element, style=style)
+
+
+def format_row(row, style=""):
+    formated_row = []
+    for element in row:
+        formated_row.append(format_element(element, style=style))
+    return formated_row
+
+
+def populate_inference_rich_table(table, report, with_baseline=False):
+    perf_columns = [
+        "forward.latency(s)",
+        "forward.throughput(iter/s)",
     ]
 
-    show_report.sort_values(by="Model.Speedup(%)", inplace=True, ascending=False)
+    if with_baseline:
+        perf_columns.append("forward.speedup(%)")
 
-    table = Table(
-        show_header=True,
-        title="Inference Benchmark Report",
+    if "generate.throughput(tok/s)" in report.columns:
+        perf_columns += ["generate.throughput(tok/s)"]
+        if with_baseline is not None:
+            perf_columns.append("generate.speedup(%)")
+
+    if "forward.peak_memory(MB)" in report.columns:
+        perf_columns.append("forward.peak_memory(MB)")
+
+    additional_columns = [
+        col
+        for col in report.columns
+        if report[col].nunique() > 1
+        and col not in perf_columns
+        and "_target_" not in col
+        and "version" not in col
+        and "datetime" not in col
+    ]
+
+    # display interesting columns in multilevel hierarchy
+    display_report = report[additional_columns + perf_columns]
+    display_report.columns = pd.MultiIndex.from_tuples(
+        [tuple(col.split(".")) for col in display_report.columns]
     )
 
-    show_report.columns = pd.MultiIndex.from_tuples(
-        [tuple(col.split(".")) for col in show_report.columns.to_list()]
-    )
-
-    table.add_column("Experiment Name", justify="left")
-    for level in range(show_report.columns.nlevels):
-        columns = show_report.columns.get_level_values(level).to_list()
+    # we add a column for the index
+    table.add_column("Experiment Name", justify="left", header_style="")
+    # then we add the rest of the columns
+    for level in range(display_report.columns.nlevels):
+        columns = display_report.columns.get_level_values(level).to_list()
         for i in range(len(columns)):
             if columns[i] != columns[i]:  # nan
                 columns[i] = ""
 
-        if level < show_report.columns.nlevels - 1:
+        if level < display_report.columns.nlevels - 1:
             for col in columns:
-                table.add_column(col)
+                table.add_column(col, header_style="")
             pass
         else:
             table.add_row("", *columns, end_section=True)
 
-    for row in show_report.itertuples(index=True):
-        table_row = []
-        for elm in row:
-            if type(elm) == float:
-                if abs(elm) >= 1:
-                    table_row.append(f"{elm:.2f}")
-                elif abs(elm) > 1e-3:
-                    table_row.append(f"{elm:.2e}")
-                elif elm != elm:
-                    table_row.append("")
-                else:
-                    table_row.append(f"{elm}")
-            elif elm is None:
-                table_row.append("")
+    # we populate the table with values
+    for i, row in enumerate(display_report.itertuples(index=True)):
+        if i == display_report.shape[0] - 1:
+            print("last row")
+            table_row = format_row(row, style="yellow")
+        else:
+            table_row = format_row(row)
 
-            elif type(elm) == bool:
-                if elm:
-                    table_row.append("[green]✔[/green]")
-                else:
-                    table_row.append("[red]✘[/red]")
+        table.add_row(*table_row)
 
-            elif type(elm) == str and elm.endswith("baseline"):
-                table_row.append(f"[bold][yellow]{elm}[/yellow][/bold]")
-            else:
-                table_row.append(str(elm))
-
-        table.add_row(*table_row, end_section=False)
-
-    console = Console(record=True)
-    console.print(table)
+    return table
 
 
-def plot_inference_report(report):
-    # add title and labels
-    device = report["device"].iloc[0]
-    batch_size = report["benchmark.batch_size"].iloc[0]
-    new_tokens = report["benchmark.new_tokens"].iloc[0]
-    backends = report["backend.name"].unique()
-
+def get_inference_plots(report, with_baseline=False):
     # create bar charts seperately
     fig1, ax1 = plt.subplots(figsize=(20, 10))
-    fig2, ax2 = plt.subplots(figsize=(20, 10))
-    axs = [ax1, ax2]
+    fig2, ax2 = None, None
 
-    report["experiment_name"] = report.index
     sns.barplot(
-        x="experiment_name",
-        y="Model.Throughput(iter/s)",
-        data=report,
+        x=report.index,
+        y=report["forward.throughput(iter/s)"],
         ax=ax1,
         width=0.5,
     )
-    sns.barplot(
-        x="experiment_name",
-        y="Generation.Throughput(tok/s)",
-        data=report,
-        ax=ax2,
-        width=0.5,
-    )
-
-    # add speedup text on top of each bar
-    baseline_throughput = report["Model.Throughput(iter/s)"].iloc[-1]
-    for p in ax1.patches:
-        speedup = (p.get_height() / baseline_throughput - 1) * 100
-        ax1.annotate(
-            f"{'+' if speedup>0 else '-'}{abs(speedup):.2f}%",
-            (p.get_x() + p.get_width() / 2, 1.02 * p.get_height()),
-            ha="center",
-            va="center",
-        )
-
-    baseline_throughput = report["Generation.Throughput(tok/s)"].iloc[-1]
-    for p in ax2.patches:
-        speedup = (p.get_height() / baseline_throughput - 1) * 100
-        ax2.annotate(
-            f"{'+' if speedup>0 else '-'}{abs(speedup):.2f}%",
-            (p.get_x() + p.get_width() / 2, 1.02 * p.get_height()),
-            ha="center",
-            va="center",
-        )
-
-    # add ticks
     ax1.set_xticklabels(ax1.get_xticklabels(), rotation=45, horizontalalignment="right")
-    ax2.set_xticklabels(ax2.get_xticklabels(), rotation=45, horizontalalignment="right")
-
-    # rename x axis
     ax1.set_xlabel("Experiment")
-    ax2.set_xlabel("Experiment")
-
-    # rename y axis
     ax1.set_ylabel("Forward Throughput (iter/s)")
-    ax2.set_ylabel("Generate Throughput (tok/s)")
+    ax1.set_title("Forward Throughput by Experiment")
 
-    axs[0].set_title(
-        f"Forward Throughput and Speedup on {device.upper()} with batch_size={batch_size}"
-    )
-    axs[1].set_title(
-        f"Generate Throughput and Speedup on {device.upper()} with batch_size={batch_size} and new_tokens={new_tokens}"
-    )
+    if with_baseline:
+        # add speedup text on top of each bar
+        baselineforward_throughput = report["forward.throughput(iter/s)"].iloc[-1]
+        for p in ax1.patches:
+            speedup = (p.get_height() / baselineforward_throughput - 1) * 100
+            ax1.annotate(
+                f"{'+' if speedup>0 else '-'}{abs(speedup):.2f}%",
+                (p.get_x() + p.get_width() / 2, 1.02 * p.get_height()),
+                ha="center",
+                va="center",
+            )
+        ax1.set_title("Forward Throughput and Speedup by Experiment")
 
-    # save figures
-    fig1.savefig(
-        f"images/{device}_{batch_size}_{new_tokens}_forward_throughput.png",
-        bbox_inches="tight",
-    )
-    fig2.savefig(
-        f"images/{device}_{batch_size}_{new_tokens}_generate_throughput.png",
-        bbox_inches="tight",
-    )
+    if "generate.throughput(tok/s)" in report.columns:
+        fig2, ax2 = plt.subplots(figsize=(20, 10))
+        sns.barplot(
+            x=report.index,
+            y=report["generate.throughput(tok/s)"],
+            ax=ax2,
+            width=0.5,
+        )
+        ax2.set_xticklabels(
+            ax2.get_xticklabels(), rotation=45, horizontalalignment="right"
+        )
+        ax2.set_xlabel("Experiment")
+        ax2.set_ylabel("Generate Throughput (tok/s)")
+        ax2.set_title("Generate Throughput by Experiment")
+
+        if with_baseline:
+            # add speedup text on top of each bar
+            baseline_generate_throughput = report["generate.throughput(tok/s)"].iloc[-1]
+            for p in ax2.patches:
+                speedup = (p.get_height() / baseline_generate_throughput - 1) * 100
+                ax2.annotate(
+                    f"{'+' if speedup>0 else '-'}{abs(speedup):.2f}%",
+                    (p.get_x() + p.get_width() / 2, 1.02 * p.get_height()),
+                    ha="center",
+                    va="center",
+                )
+            ax2.set_title("Generate Throughput and Speedup by Experiment")
+
+    return fig1, fig2
 
 
-def save_inference_report(report, baseline):
-    report.to_csv(f"{baseline}/inference_report.csv", index=True)
-
-
-def main(args):
-    # gather experiments reports
-    experiments_dfs = []
-    for experiment_folder in args.experiments:
-        experiments_dfs.append(gather_inference_report(experiment_folder))
-    baseline_df = gather_inference_report(args.baseline)
-    report = pd.concat([*experiments_dfs, baseline_df], axis=0)
-
-    # compute speedup
-    report["Model.Speedup(%)"] = (
-        report["Model.Throughput(iter/s)"] / report["Model.Throughput(iter/s)"].iloc[-1]
+def compute_speedup(report):
+    # compute speedup for each experiment compared to baseline
+    report["forward.speedup(%)"] = (
+        report["forward.throughput(iter/s)"]
+        / report["forward.throughput(iter/s)"].iloc[-1]
         - 1
     ) * 100
-    if "Generation.Throughput(tok/s)" in report.columns:
-        report["Generation.Speedup(%)"] = (
-            report["Generation.Throughput(tok/s)"]
-            / report["Generation.Throughput(tok/s)"].iloc[-1]
+
+    if "generate.throughput(tok/s)" in report.columns:
+        report["generate.speedup(%)"] = (
+            report["generate.throughput(tok/s)"]
+            / report["generate.throughput(tok/s)"].iloc[-1]
             - 1
         ) * 100
 
-    show_inference_report(report)
-    plot_inference_report(report)
-    save_inference_report(report, args.baseline)
+    return report
+
+
+def main(experiments_folders, baseline_folder=None):
+    # gather experiments reports
+    inference_experiments_dfs = [
+        gather_inference_report(experiment) for experiment in experiments_folders
+    ]
+
+    if baseline_folder is not None:
+        # gather baseline report
+        inference_baseline_df = gather_inference_report(baseline_folder)
+        assert (
+            inference_baseline_df.shape[0] == 1
+        ), "baseline folder should contain only one experiment"
+        # add baseline to experiment
+        inference_experiments_dfs.append(inference_baseline_df)
+        inference_report = pd.concat(
+            inference_experiments_dfs, axis=0, ignore_index=True
+        )
+        inference_report = compute_speedup(inference_report)
+    else:
+        inference_report = pd.concat(inference_experiments_dfs, axis=0)
+
+    # there should be only one device, batch_size and new_tokens (unique triplet)
+    unique_devices = inference_report["device"].unique()
+    unique_batch_sizes = inference_report["benchmark.batch_size"].unique()
+    unique_new_tokens = inference_report["benchmark.new_tokens"].unique()
+
+    assert (
+        len(unique_devices) == 1
+    ), "there should be only one device (apples to apples comparison)"
+    assert (
+        len(unique_batch_sizes) == 1
+    ), "there should be only one batch_size (apples to apples comparison)"
+    assert (
+        len(unique_new_tokens) == 1
+    ), "there should be only one new_tokens (apples to apples comparison)"
+
+    device = unique_devices[0]
+    batch_size = unique_batch_sizes[0]
+    new_tokens = unique_new_tokens[0]
+
+    # create reporting directory
+    reporting_directory = f"reports/{device}_{batch_size}_{new_tokens}"
+    Path(reporting_directory).mkdir(exist_ok=True)
+
+    # print rich table
+    rich_table = Table(
+        show_header=True,
+        title=f"Device: {device} | Batch Size: {batch_size} | New Tokens: {new_tokens}",
+        show_lines=True,
+    )
+    console = Console(record=True)
+    rich_table = populate_inference_rich_table(
+        rich_table, inference_report, baseline_folder is not None
+    )
+
+    console.print(rich_table, justify="left")
+    console.save_svg(f"{reporting_directory}/rich_table.svg", theme=MONOKAI)
+
+    forward_fig, generate_fig = get_inference_plots(inference_report, args.baseline)
+    forward_fig.savefig(f"{reporting_directory}/forward_throughput.png")
+    if generate_fig is not None:
+        generate_fig.savefig(f"{reporting_directory}/generate_throughput.png")
+
+    inference_report.to_csv(f"{reporting_directory}/inference_report.csv", index=True)
 
 
 if __name__ == "__main__":
+    from argparse import ArgumentParser
+
     parser = ArgumentParser()
     parser.add_argument(
         "--experiments",
@@ -253,15 +297,16 @@ if __name__ == "__main__":
         nargs="*",
         required=True,
         type=Path,
-        default="sweeps/",
+        default="experiments/",
         help="The folder containing the results of experiments.",
     )
     parser.add_argument(
         "--baseline",
         "-b",
-        required=True,
+        required=False,
         type=Path,
         help="The folders containing the results of baseline.",
     )
     args = parser.parse_args()
-    main(args)
+
+    main(args.experiments, args.baseline)

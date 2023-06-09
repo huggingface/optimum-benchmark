@@ -26,11 +26,12 @@ Then copy `examples/bert.yaml` to `configs/bert.yaml` and run the benchmark with
 python main.py --config-name bert
 ```
 
-This will run the benchmark on the default backend (`pytorch`) and device (`cuda`) and store the results in `runs/pytorch_cuda/bert_baseline`.
+This will run the benchmark on the default backend (`pytorch`) and device (`cuda`) and store the results in `runs/bert_baseline`.
 
-An benchmark's results are `inference_results.csv` (and `profiling_results.csv` in case profiling is enabled) will. There's also the program's logs `main.log` and the configuration that's been used `hydra_config.yaml`
+The result files are `inference_results.csv` and `profiling_results.csv` in case profiling is enabled.
+There's also the program's logs `main.log` and the configuration that's been used `hydra_config.yaml`
 
-The directory for storing these results can be changed using the `hydra.run.dir` (or `hydra.sweep.dir`) in the command line or in the base config file [`hydra_base.yaml`](configs/hydra_base.yaml).
+The directory for storing these results can be changed using the `hydra.run.dir` (and/or `hydra.sweep.dir`) in the command line or in the config file (see [`hydra_base.yaml`](configs/hydra_base.yaml) for example).
 
 ## Command-line configuration overrides
 
@@ -89,7 +90,7 @@ device: cpu
 experiment_name: onnxruntime_wav2vec2
 ```
 
-This is especially useful for creating sweeps, where the cli commands become too long. 
+This is especially useful for creating sweeps, where the cli commands become too long.
 
 An example is provided in [`examples/whisper_auto_opt+qnt.yaml`](examples/whisper_auto_opt+qnt.yaml) for an exhaustive sweep over all possible cominations of `optimum`'s AutoOptimizations and AutoQuantizations on CPU.
 
@@ -109,6 +110,8 @@ python main.py --config-name whisper_auto_opt+qnt -m
 - [x] Add support for sweepers latency optimization (optuna, nevergrad, etc.)
 - [x] Add support for profiling nodes/kernels execution time.
 - [x] Add support for more metrics (memory usage, node execution time, etc.)
+- [ ] Find a way to seperate where experiments are stored from the configuration files (shouldn't be too long and should follow some kind of convention).
+- [ ] Make a consistent reporting utility.
 - [ ] Migrate configuration management to be handled solely in dataclasses (practical or not?)
 - [ ] Add Pydantic for schema validation.
 - [ ] Add support for static quantization + calibration.
