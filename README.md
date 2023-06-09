@@ -1,4 +1,4 @@
-# AutoBenchmark
+# Optimum Benchmarks
 
 ## The Goal
 

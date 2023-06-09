@@ -1,10 +1,10 @@
-# AutoBenchmark Whisper+Optimum
+# Optimum-Benchmark x Whisper
 
-A set of benchmarks on OpenAI's Whisper model, using AutoBenchmarks.
+A set of benchmarks on OpenAI's Whisper model, using Optimum-Benchmark.
 
 To isolate CPU and GPU performance, I used Colab's GPU (NVIDIA T4) and CPU (Intel(R) Xeon(R) CPU @ 2.20GHz) machines.
 
-With AutoBenchmarks, once you clone the repo and install depndancies, it's as easy as:
+With Optimum-Benchmark, once you clone the repo and install depndancies, it's as easy as:
 
 ```bash
 python main.py --config-name whisper_baseline -m device=${device}
