@@ -83,8 +83,8 @@ def format_row(row, style=""):
     return formated_row
 
 
-def populate_inference_rich_table(
-    table, report, with_baseline=False, with_generate=False
+def get_inference_rich_table(
+    inference_report, with_baseline=False, with_generate=False
 ):
     perf_columns = [
         "forward.latency(s)",
@@ -101,21 +101,23 @@ def populate_inference_rich_table(
 
     additional_columns = [
         col
-        for col in report.columns
-        if report[col].nunique() > 1
+        for col in inference_report.columns
+        if inference_report[col].nunique() > 1
         and "backend" in col
         and "_target_" not in col
         and "version" not in col
     ]
 
     # display interesting columns in multilevel hierarchy
-    display_report = report[additional_columns + perf_columns]
+    display_report = inference_report[additional_columns + perf_columns]
     display_report.columns = pd.MultiIndex.from_tuples(
         [tuple(col.split(".")) for col in display_report.columns]
     )
 
+    # create rich table
+    rich_table = Table(show_header=True, title="Inferencing Report", show_lines=True)
     # we add a column for the index
-    table.add_column("Experiment Name", justify="left", header_style="")
+    rich_table.add_column("Experiment Name", justify="left", header_style="")
     # then we add the rest of the columns
     for level in range(display_report.columns.nlevels):
         columns = display_report.columns.get_level_values(level).to_list()
@@ -125,10 +127,10 @@ def populate_inference_rich_table(
 
         if level < display_report.columns.nlevels - 1:
             for col in columns:
-                table.add_column(col, header_style="")
+                rich_table.add_column(col, header_style="")
             pass
         else:
-            table.add_row("", *columns, end_section=True)
+            rich_table.add_row("", *columns, end_section=True)
 
     # we populate the table with values
     for i, row in enumerate(display_report.itertuples(index=True)):
@@ -137,12 +139,12 @@ def populate_inference_rich_table(
         else:
             table_row = format_row(row)
 
-        table.add_row(*table_row)
+        rich_table.add_row(*table_row)
 
-    return table
+    return rich_table
 
 
-def get_inference_plots(report, with_baseline=False):
+def get_inference_plots(report, with_baseline=False, with_generate=False):
     # create bar charts seperately
     fig1, ax1 = plt.subplots(figsize=(20, 10))
     fig2, ax2 = None, None
@@ -158,20 +160,7 @@ def get_inference_plots(report, with_baseline=False):
     ax1.set_ylabel("Forward Throughput (iter/s)")
     ax1.set_title("Forward Throughput by Experiment")
 
-    if with_baseline:
-        # add speedup text on top of each bar
-        baselineforward_throughput = report["forward.throughput(iter/s)"].iloc[-1]
-        for p in ax1.patches:
-            speedup = (p.get_height() / baselineforward_throughput - 1) * 100
-            ax1.annotate(
-                f"{'+' if speedup>0 else '-'}{abs(speedup):.2f}%",
-                (p.get_x() + p.get_width() / 2, 1.02 * p.get_height()),
-                ha="center",
-                va="center",
-            )
-        ax1.set_title("Forward Throughput and Speedup by Experiment")
-
-    if "generate.throughput(tok/s)" in report.columns:
+    if with_generate:
         fig2, ax2 = plt.subplots(figsize=(20, 10))
         sns.barplot(
             x=report.index,
@@ -186,7 +175,20 @@ def get_inference_plots(report, with_baseline=False):
         ax2.set_ylabel("Generate Throughput (tok/s)")
         ax2.set_title("Generate Throughput by Experiment")
 
-        if with_baseline:
+    if with_baseline:
+        # add speedup text on top of each bar
+        baselineforward_throughput = report["forward.throughput(iter/s)"].iloc[-1]
+        for p in ax1.patches:
+            speedup = (p.get_height() / baselineforward_throughput - 1) * 100
+            ax1.annotate(
+                f"{'+' if speedup>0 else '-'}{abs(speedup):.2f}%",
+                (p.get_x() + p.get_width() / 2, 1.02 * p.get_height()),
+                ha="center",
+                va="center",
+            )
+        ax1.set_title("Forward Throughput and Speedup by Experiment")
+
+        if with_generate:
             # add speedup text on top of each bar
             baseline_generate_throughput = report["generate.throughput(tok/s)"].iloc[-1]
             for p in ax2.patches:
@@ -199,7 +201,7 @@ def get_inference_plots(report, with_baseline=False):
                 )
             ax2.set_title("Generate Throughput and Speedup by Experiment")
 
-    return fig1, fig2
+    return fig1, ax1, fig2, ax2
 
 
 def compute_speedup(report, with_generate=False):
@@ -253,6 +255,7 @@ def main(experiments_folders, baseline_folder=None):
         len(unique_devices) == 1
     ), "there should be only one device (apples to apples comparison)"
     device = unique_devices[0]
+
     unique_batch_sizes = inference_report["benchmark.batch_size"].unique()
     assert (
         len(unique_batch_sizes) == 1
@@ -265,36 +268,37 @@ def main(experiments_folders, baseline_folder=None):
     ), "there should be only one new_tokens (apples to apples comparison)"
     new_tokens = unique_new_tokens[0]
 
-    # create reporting directory
+    # create reporting directory and title
     reporting_directory = f"reports/{device}_{batch_size}"
+    reportnig_title = f"Device: {device} | Batch Size: {batch_size}"
     if with_generate:
         reporting_directory += f"_{new_tokens}"
+        reportnig_title += f" | New Tokens: {new_tokens}"
     Path(reporting_directory).mkdir(exist_ok=True, parents=True)
 
-    # Rich table
-    rich_title = "Inferencing Report"
-    rich_title += f"\nDevice: {device} | Batch Size: {batch_size}"
-    if with_generate:
-        rich_title += f" | New Tokens: {new_tokens}"
-
-    rich_table = Table(
-        show_header=True,
-        title=rich_title,
-        show_lines=True,
-    )
+    # rich
     console = Console(record=True)
-    rich_table = populate_inference_rich_table(
-        rich_table, inference_report, with_baseline, with_generate
+    rich_table = get_inference_rich_table(
+        inference_report, with_baseline, with_generate
     )
-
+    rich_table.title = rich_table.title + f"\n{reportnig_title}"
     console.print(rich_table, justify="left", no_wrap=True)
     console.save_svg(f"{reporting_directory}/rich_table.svg", theme=MONOKAI)
 
-    forward_fig, generate_fig = get_inference_plots(inference_report, args.baseline)
+    # plots
+    forward_fig, forward_ax, generate_fig, generate_ax = get_inference_plots(
+        inference_report, with_baseline, with_generate
+    )
+    forward_ax.set_title(forward_ax.get_title() + f"\n{reportnig_title}")
+    forward_fig.tight_layout()
     forward_fig.savefig(f"{reporting_directory}/forward_throughput.png")
+
     if generate_fig is not None:
+        generate_ax.set_title(generate_ax.get_title() + f"\n{reportnig_title}")
+        generate_fig.tight_layout()
         generate_fig.savefig(f"{reporting_directory}/generate_throughput.png")
 
+    # csv
     inference_report.to_csv(f"{reporting_directory}/inference_report.csv", index=True)
 
 
