@@ -5,7 +5,6 @@ from logging import getLogger
 from psutil import cpu_count
 
 from torch import Tensor
-from transformers import GenerationMixin
 
 LOGGER = getLogger("backend")
 
@@ -27,7 +26,7 @@ class Backend(ABC):
 
     @abstractmethod
     def configure(self, config: BackendConfig) -> None:
-        # generic configuration, can be moved to a resolver
+        LOGGER.info(f"Configuring {config.name} backend")
         if config.inter_op_num_threads is not None:
             if config.inter_op_num_threads == -1:
                 config.inter_op_num_threads = cpu_count()
@@ -45,9 +44,6 @@ class Backend(ABC):
     @abstractmethod
     def forward(self, input: Dict[str, Tensor]):
         raise NotImplementedError("Backend must implement forward method")
-
-    def is_generator(self) -> bool:
-        return isinstance(self.pretrained_model, GenerationMixin)
 
     @abstractmethod
     def generate(self, input: Dict[str, Tensor], prefix_length: int) -> str:

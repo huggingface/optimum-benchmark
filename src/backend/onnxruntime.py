@@ -1,4 +1,3 @@
-import inspect
 import os
 import gc
 from logging import getLogger
@@ -8,7 +7,6 @@ from tempfile import TemporaryDirectory
 
 import torch
 import onnxruntime
-from transformers import GenerationMixin
 from onnxruntime.quantization import QuantFormat, QuantizationMode, QuantType
 from optimum.onnxruntime import ORTOptimizer, ORTQuantizer
 from optimum.pipelines import ORT_SUPPORTED_TASKS
@@ -37,25 +35,101 @@ PROVIDER_OPTIONS = {}  # {"arena_extend_strategy": "kSameAsRequested"}
 class ORTConfig(BackendConfig):
     name: str = BACKEND_NAME
     version: str = onnxruntime.__version__
+    _target_: str = "src.backend.onnxruntime.ORTBackend"
 
     # basic options
-    provider: str = "CPUExecutionProvider"
-    use_io_binding: bool = False
-    enable_profiling: bool = False
+    provider: str = "${infer_provider:${device}}"
+    use_io_binding: bool = "${is_gpu:${device}}"
+    enable_profiling: bool = "${benchmark.profile}"
 
     # optimization options
     optimization: bool = False
-    optimization_config: DictConfig = DictConfig({})
+    optimization_config: DictConfig = DictConfig(
+        {
+            "optimization_level": 1,  # 0, 1, 2, 99
+            "optimize_for_gpu": "${is_gpu:${device}}",
+            "fp16": False,
+            "enable_transformers_specific_optimizations": True,
+            "enable_gelu_approximation": False,
+            "disable_gelu_fusion": False,
+            "disable_layer_norm_fusion": False,
+            "disable_attention_fusion": False,
+            "disable_skip_layer_norm_fusion": True,
+            "disable_bias_skip_layer_norm_fusion": False,
+            "disable_bias_gelu_fusion": False,
+            "use_mask_index": False,
+            "no_attention_mask": False,
+            "disable_embed_layer_norm_fusion": True,
+            "disable_shape_inference": False,
+            "use_multi_head_attention": False,
+            "enable_gemm_fast_gelu_fusion": False,
+            "use_raw_attention_mask": False,
+            "disable_group_norm_fusion": True,
+            "disable_packed_kv": True,
+        }
+    )
 
-    auto_optimization: Optional[str] = None
-    auto_optimization_config: DictConfig = DictConfig({})
+    auto_optimization: Optional[str] = None  # O1, O2, O3, O4
+    auto_optimization_config: DictConfig = DictConfig(
+        {
+            "for_gpu": "${is_gpu:${device}}",
+        }
+    )
 
     # quantization options
     quantization: bool = False
-    quantization_config: DictConfig = DictConfig({})
+    quantization_config: DictConfig = DictConfig(
+        {
+            "is_static": False,
+            "format": "QOperator",  # QOperator, QDQ
+            "mode": "IntegerOps",  # QLinearOps, IntegerOps
+            "activations_dtype": "QUInt8",  # QInt8, QUInt8
+            "activations_symmetric": False,
+            "weights_dtype": "QInt8",  # QInt8, QUInt8
+            "weights_symmetric": True,
+            "per_channel": False,
+            "reduce_range": False,
+            "operators_to_quantize": [
+                "MatMul",
+                "Add",
+                # "Gather",
+                # "Transpose",
+                # "EmbedLayerNormalization",
+                # "Attention",
+                # "LSTM",
+                # "ArgMax",
+                # "Conv",
+                # "Gemm",
+                # "Mul",
+                # "Relu",
+                # "Clip",
+                # "LeakyRelu",
+                # "Sigmoid",
+                # "MaxPool",
+                # "GlobalAveragePool",
+                # "Split",
+                # "Pad",
+                # "Reshape",
+                # "Squeeze",
+                # "Unsqueeze",
+                # "Resize",
+                # "AveragePool",
+                # "Concat",
+                # "Softmax",
+                # "Where",
+                # "ConvTranspose",
+                # "InstanceNormalization",
+            ],
+        }
+    )
 
-    auto_quantization: Optional[str] = None
-    auto_quantization_config: DictConfig = DictConfig({})
+    auto_quantization: Optional[str] = None  # arm64,avx2,avx512,avx512_vnni,tensorrt
+    auto_quantization_config: DictConfig = DictConfig(
+        {
+            "is_static": False  # for now, only dynamic quantization is supported
+            # add auto quantization specific options
+        }
+    )
 
 
 class ORTBackend(Backend):
@@ -64,8 +138,8 @@ class ORTBackend(Backend):
         self.ortmodel_class = ORT_SUPPORTED_TASKS[self.task]["class"][0]
 
     def configure(self, config: ORTConfig) -> None:
-        LOGGER.info("Configuring onnxruntime backend:")
         super().configure(config)
+
         self.session_options = onnxruntime.SessionOptions()
         # self.session_options.enable_cpu_mem_arena = False
 
@@ -96,18 +170,18 @@ class ORTBackend(Backend):
             use_io_binding=config.use_io_binding,
             export=True,
         )
-        LOGGER.info(f"\t+ Device used memory: {get_used_memory(device=self.device)}")
+        LOGGER.debug(f"\t+ Device used memory: {get_used_memory(device=self.device)}")
 
         with TemporaryDirectory() as tmpdirname:
             if config.optimization or config.auto_optimization is not None:
                 self.optimize_model(config, tmpdirname)
-                LOGGER.info(
+                LOGGER.debug(
                     f"\t+ Device used memory: {get_used_memory(device=self.device)}"
                 )
 
             if config.quantization or config.auto_quantization is not None:
                 self.quantize_model(config, tmpdirname)
-                LOGGER.info(
+                LOGGER.debug(
                     f"\t+ Device used memory: {get_used_memory(device=self.device)}"
                 )
 
@@ -117,7 +191,7 @@ class ORTBackend(Backend):
             optimization_dict = OmegaConf.to_container(
                 config.auto_optimization_config, resolve=True
             )
-            LOGGER.info("\t+ Setting optimization parameters:")
+            LOGGER.info("\t+ Setting auto optimization parameters:")
             for key, value in optimization_dict.items():
                 LOGGER.info(f"\t\t+ {key}: {value}")
 
@@ -139,11 +213,9 @@ class ORTBackend(Backend):
             save_dir=f"{tmpdirname}/optimized",
             optimization_config=optimization_config,
         )
-        del self.pretrained_model
-        gc.collect()
-        torch.cuda.empty_cache()
 
         LOGGER.info("\t+ Loading optimized model")
+        self._delete_pretrained_model()
         self.pretrained_model = self.ortmodel_class.from_pretrained(
             model_id=f"{tmpdirname}/optimized",
             session_options=self.session_options,
@@ -205,11 +277,8 @@ class ORTBackend(Backend):
                 quantization_config=quantization_config,
             )
 
-        del self.pretrained_model
-        gc.collect()
-        torch.cuda.empty_cache()
-
         LOGGER.info("\t+ Loading quantized model")
+        self._delete_pretrained_model()
         self.pretrained_model = self.ortmodel_class.from_pretrained(
             model_id=f"{tmpdirname}/quantized",
             session_options=self.session_options,
@@ -225,11 +294,12 @@ class ORTBackend(Backend):
     def generate(self, input: Dict[str, Tensor], new_tokens: int) -> Tensor:
         output = self.pretrained_model.generate(
             **input,
+            pad_token_id=self.pretrained_model.config.eos_token_id,
             max_new_tokens=new_tokens,
             min_new_tokens=new_tokens,
             do_sample=False,
-            num_beams=1,
             use_cache=True,
+            num_beams=1,
         )
         return output
 
@@ -240,6 +310,9 @@ class ORTBackend(Backend):
 
     def clean(self) -> None:
         LOGGER.info("Cleaning onnxruntime backend")
+        self._delete_pretrained_model()
+
+    def _delete_pretrained_model(self) -> None:
         del self.pretrained_model
         gc.collect()
         torch.cuda.empty_cache()

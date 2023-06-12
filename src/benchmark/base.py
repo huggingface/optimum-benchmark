@@ -1,16 +1,20 @@
 from dataclasses import dataclass, MISSING
 from abc import ABC, abstractmethod
 from logging import getLogger
-from pandas import DataFrame
 
 from src.backend.base import Backend
+from src.utils import set_seed
 
 LOGGER = getLogger("benchmark")
 
 
 @dataclass
 class BenchmarkConfig(ABC):
-    name: str = MISSING  # type: ignore
+    name: str = MISSING
+    _target_: str = MISSING
+
+    # seed for reproducibility
+    seed: int = 42
 
 
 class Benchmark(ABC):
@@ -19,19 +23,16 @@ class Benchmark(ABC):
         self.task = task
         self.device = device
 
-    @abstractmethod
     def configure(self, config: BenchmarkConfig) -> None:
-        raise NotImplementedError("Benchmark must implement configure method")
+        LOGGER.info(f"Configuring {config.name} benchmark")
+        self.seed = config.seed
+        set_seed(self.seed)
+        LOGGER.info(f"\t+ Setting seed({self.seed})")
 
     @abstractmethod
     def run(self, backend: Backend) -> None:
-        raise NotImplementedError("Benchmark must implement run_benchmark method")
+        raise NotImplementedError("Benchmark must implement run method")
 
     @abstractmethod
     def save(self, path: str = "") -> None:
-        raise NotImplementedError("Benchmark must implement save_results method")
-
-    @property
-    @abstractmethod
-    def objective(self) -> float:
-        raise NotImplementedError("Benchmark must implement save_results method")
+        raise NotImplementedError("Benchmark must implement save method")

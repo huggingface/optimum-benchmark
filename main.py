@@ -4,22 +4,23 @@ from logging import getLogger
 import hydra
 from omegaconf import OmegaConf
 from hydra.utils import get_class
-from hydra.core.config_store import ConfigStore
 from optimum.exporters import TasksManager
+from hydra.core.config_store import ConfigStore
 
 from src.experiment import ExperimentConfig
-from src.benchmark.base import Benchmark
-from src.backend.base import Backend
 
+from src.benchmark.base import Benchmark
+from src.benchmark.inference import InferenceConfig
+
+from src.backend.base import Backend
 from src.backend.pytorch import PyTorchConfig
 from src.backend.onnxruntime import ORTConfig
 
-# Register resolvers
+# Register resolvers (maybe should be moved to a separate file)
 OmegaConf.register_new_resolver(
     "clean_string", lambda model: model.split("/")[-1].replace("-", "_")
 )
 OmegaConf.register_new_resolver("onnxruntime_version", lambda: ORTConfig.version)
-OmegaConf.register_new_resolver("pytorch_version", lambda: PyTorchConfig.version)
 OmegaConf.register_new_resolver(
     "is_profiling", lambda benchmark_name: benchmark_name == "profiling"
 )
@@ -33,13 +34,14 @@ OmegaConf.register_new_resolver(
     lambda device: f"{device.upper()}ExecutionProvider",
 )
 
-# Register configurations
-# This is the default config that comes with
-# an identifier and environment configuration
+# Register configurations (maybe should be moved to a separate file)
 cs = ConfigStore.instance()
 cs.store(name="experiment", node=ExperimentConfig)
+cs.store(group="backend", name="pytorch", node=PyTorchConfig)
+cs.store(group="backend", name="onnxruntime", node=ORTConfig)
+cs.store(group="benchmark", name="inference", node=InferenceConfig)
 
-LOGGER = getLogger(__name__)
+LOGGER = getLogger("optimum-benchmark")
 
 
 @hydra.main(config_path="configs", version_base=None)
@@ -52,7 +54,7 @@ def run_experiment(config: ExperimentConfig) -> Optional[float]:
     benchmark.configure(config.benchmark)
 
     try:
-        # Allocate requested target backend
+        # Allocate requested backend
         backend_factory: Type[Backend] = get_class(config.backend._target_)  # type: ignore
         backend: Backend = backend_factory(config.model, config.task, config.device)
         backend.configure(config.backend)
@@ -64,14 +66,9 @@ def run_experiment(config: ExperimentConfig) -> Optional[float]:
         # Save the benchmark results
         benchmark.save()
 
-        # Return the objective
-        return benchmark.objective
-
     # log error and traceback
     except Exception as e:
         LOGGER.error(e, exc_info=True)
-
-    return None
 
 
 if __name__ == "__main__":

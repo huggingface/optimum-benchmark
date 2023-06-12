@@ -11,7 +11,9 @@ from transformers.utils.fx import symbolic_trace
 from optimum.bettertransformer import BetterTransformer
 
 from src.backend.base import Backend, BackendConfig
+
 from src.profiler.fx_profiler import FXProfilingWrapper
+
 from src.utils import get_used_memory
 
 BACKEND_NAME = "pytorch"
@@ -22,10 +24,11 @@ LOGGER = getLogger(BACKEND_NAME)
 class PyTorchConfig(BackendConfig):
     name: str = BACKEND_NAME
     version: str = torch.__version__
+    _target_: str = "src.backend.pytorch.PyTorchBackend"
 
     # inference options
-    disable_grad: bool = False
-    eval_mode: bool = False
+    disable_grad: bool = "${is_inference:benchmark.name}"
+    eval_mode: bool = "${is_inference:benchmark.name}"
 
     # graph optimization options
     fp16: bool = False
@@ -36,13 +39,9 @@ class PyTorchConfig(BackendConfig):
 class PyTorchBackend(Backend):
     def __init__(self, model: str, task: str, device: str) -> None:
         super().__init__(model, task, device)
-        self.model_type = AutoConfig.from_pretrained(self.model).model_type
-        self.automodel_class = TasksManager.get_model_class_for_task(
-            task=self.task, model_type=self.model_type
-        )
+        self.pretrained_config = AutoConfig.from_pretrained(self.model)
 
     def configure(self, config: PyTorchConfig) -> None:
-        LOGGER.info("Configuring pytorch Backend:")
         super().configure(config)
 
         # Torch specific environment variables
@@ -64,15 +63,18 @@ class PyTorchBackend(Backend):
             torch.set_grad_enabled(False)
 
         # Load model
-        LOGGER.info(f"\t+ Loading {self.model} with {self.automodel_class.__name__}")
-        self.pretrained_model = self.automodel_class.from_pretrained(self.model)
+        automodel_class = TasksManager.get_model_class_for_task(
+            task=self.task, model_type=self.pretrained_config.model_type
+        )
+        LOGGER.info(f"\t+ Loading {self.model} with {automodel_class.__name__}")
+        self.pretrained_model = automodel_class.from_pretrained(self.model)
 
         # Move model to device
         if self.pretrained_model.device.type != self.device:
             LOGGER.info(f"\t+ Moving model to {self.device}")
             self.pretrained_model.to(self.device)
 
-        LOGGER.info(f"\t+ Device used memory: {get_used_memory(device=self.device)}")
+        LOGGER.debug(f"\t+ Device used memory: {get_used_memory(device=self.device)}")
 
         # Turn on eval mode
         if config.eval_mode:
@@ -85,7 +87,7 @@ class PyTorchBackend(Backend):
             self.pretrained_model = BetterTransformer.transform(
                 self.pretrained_model, keep_original_model=False
             )
-            LOGGER.info(
+            LOGGER.debug(
                 f"\t+ Device used memory: {get_used_memory(device=self.device)}"
             )
 
@@ -93,7 +95,7 @@ class PyTorchBackend(Backend):
         if config.torch_compile:
             LOGGER.info("\t+ Using torch.compile")
             self.pretrained_model.forward = torch.compile(self.pretrained_model.forward)
-            LOGGER.info(
+            LOGGER.debug(
                 f"\t+ Device used memory: {get_used_memory(device=self.device)}"
             )
 
@@ -113,11 +115,12 @@ class PyTorchBackend(Backend):
         with torch.cuda.amp.autocast(enabled=self.fp16):
             output = self.pretrained_model.generate(
                 **input,
+                pad_token_id=self.pretrained_model.config.eos_token_id,
                 max_new_tokens=new_tokens,
                 min_new_tokens=new_tokens,
                 do_sample=False,
-                num_beams=1,
                 use_cache=True,
+                num_beams=1,
             )
         return output
 
@@ -131,6 +134,10 @@ class PyTorchBackend(Backend):
         self.pretrained_model = FXProfilingWrapper(self.pretrained_model)
 
     def clean(self) -> None:
+        LOGGER.info("Cleaning onnxruntime backend")
+        self._delete_pretrained_model()
+
+    def _delete_pretrained_model(self) -> None:
         del self.pretrained_model
         gc.collect()
         torch.cuda.empty_cache()

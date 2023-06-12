@@ -12,7 +12,7 @@ from src.utils import bytes_to_mega_bytes
 LOGGER = getLogger("memory_tracker")
 
 
-class MemoryTracker:
+class MemoryTracker:    
     def __init__(self, device: str):
         self.device = device
         self.peak_memory: int = 0
