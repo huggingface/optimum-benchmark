@@ -1,8 +1,8 @@
 defaults:
-  - hydra_base
-  - _self_
+  - hydra_base # inherits from base config
+  - _self_ # for hydra 1.1 compatibility
+
+experiment_name: bert_baseline
 
 model: bert-base-uncased
 device: cuda
-
-experiment_name: bert_baseline

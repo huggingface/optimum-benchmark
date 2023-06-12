@@ -1,27 +1,16 @@
 defaults:
-  # default backend is pytorch
-  - backend: pytorch
-  # default benchmark is inference
-  - benchmark: inference
-  # other parameters are infered from:
-  - experiment # dataclass (contains environment state)
+  - backend: pytorch # default backend
+  - benchmark: inference # default benchmark
+  - experiment # inheriting from experiment config
   - _self_ # for hydra 1.1 compatibility
-  # use colorlog for logging (colorful output)
-  - override hydra/job_logging: colorlog
-  - override hydra/hydra_logging: colorlog
+  - override hydra/job_logging: colorlog # colorful logging
+  - override hydra/hydra_logging: colorlog # colorful logging
 
+# hydra behavior configuration
 hydra:
   run:
-    dir: runs/${experiment_name}
+    dir: runs/${experiment_name} # where to save a run's output
   sweep:
-    dir: sweeps/${experiment_name}
+    dir: sweeps/${experiment_name} # where to save a sweep's output
   job:
-    # enables changing the working directory to the run/sweep directory
-    chdir: true
-
-model: ??? # model is mandatory
-device: ??? # device to run on is mandatory
-task: ${infer_task:${model}} # task is infered from model
-
-# a distinct experiment name should be used for each experiment
-experiment_name: ??? # experiment name is mandatory
+    chdir: true # to change the working directory during the run/sweep directory

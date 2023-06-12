@@ -84,18 +84,18 @@ def format_row(row, style=""):
 
 
 def get_inference_rich_table(
-    inference_report, with_baseline=False, with_generate=False
+    inference_report, with_baseline=False, with_generate=False, subtitle=""
 ):
     perf_columns = [
         "forward.latency(s)",
-        "forward.throughput(iter/s)",
+        "forward.throughput(samples/s)",
     ]
 
     if with_baseline:
         perf_columns.append("forward.speedup(%)")
 
     if with_generate:
-        perf_columns += ["generate.throughput(tok/s)"]
+        perf_columns += ["generate.latency(s)", "generate.throughput(tokens/s)"]
         if with_baseline:
             perf_columns.append("generate.speedup(%)")
 
@@ -115,7 +115,9 @@ def get_inference_rich_table(
     )
 
     # create rich table
-    rich_table = Table(show_header=True, title="Inferencing Report", show_lines=True)
+    rich_table = Table(
+        show_header=True, title="Inference Report" + "\n" + subtitle, show_lines=True
+    )
     # we add a column for the index
     rich_table.add_column("Experiment Name", justify="left", header_style="")
     # then we add the rest of the columns
@@ -144,27 +146,27 @@ def get_inference_rich_table(
     return rich_table
 
 
-def get_inference_plots(report, with_baseline=False, with_generate=False):
+def get_inference_plots(report, with_baseline=False, with_generate=False, subtitle=""):
     # create bar charts seperately
     fig1, ax1 = plt.subplots(figsize=(20, 10))
-    fig2, ax2 = None, None
+    fig2, ax2 = plt.subplots(figsize=(20, 10))
 
     sns.barplot(
         x=report.index,
-        y=report["forward.throughput(iter/s)"],
+        y=report["forward.throughput(samples/s)"],
         ax=ax1,
         width=0.5,
     )
     ax1.set_xticklabels(ax1.get_xticklabels(), rotation=45, horizontalalignment="right")
     ax1.set_xlabel("Experiment")
-    ax1.set_ylabel("Forward Throughput (iter/s)")
-    ax1.set_title("Forward Throughput by Experiment")
+    ax1.set_ylabel("Forward Throughput (samples/s)")
+    ax1.set_title("Forward Throughput by Experiment" + "\n" + subtitle)
 
     if with_generate:
         fig2, ax2 = plt.subplots(figsize=(20, 10))
         sns.barplot(
             x=report.index,
-            y=report["generate.throughput(tok/s)"],
+            y=report["generate.throughput(tokens/s)"],
             ax=ax2,
             width=0.5,
         )
@@ -172,12 +174,12 @@ def get_inference_plots(report, with_baseline=False, with_generate=False):
             ax2.get_xticklabels(), rotation=45, horizontalalignment="right"
         )
         ax2.set_xlabel("Experiment")
-        ax2.set_ylabel("Generate Throughput (tok/s)")
-        ax2.set_title("Generate Throughput by Experiment")
+        ax2.set_ylabel("Generate Throughput (tokens/s)")
+        ax2.set_title("Generate Throughput by Experiment" + "\n" + subtitle)
 
     if with_baseline:
         # add speedup text on top of each bar
-        baselineforward_throughput = report["forward.throughput(iter/s)"].iloc[-1]
+        baselineforward_throughput = report["forward.throughput(samples/s)"].iloc[-1]
         for p in ax1.patches:
             speedup = (p.get_height() / baselineforward_throughput - 1) * 100
             ax1.annotate(
@@ -186,11 +188,13 @@ def get_inference_plots(report, with_baseline=False, with_generate=False):
                 ha="center",
                 va="center",
             )
-        ax1.set_title("Forward Throughput and Speedup by Experiment")
+        ax1.set_title("Forward Throughput and Speedup by Experiment" + "\n" + subtitle)
 
         if with_generate:
             # add speedup text on top of each bar
-            baseline_generate_throughput = report["generate.throughput(tok/s)"].iloc[-1]
+            baseline_generate_throughput = report["generate.throughput(tokens/s)"].iloc[
+                -1
+            ]
             for p in ax2.patches:
                 speedup = (p.get_height() / baseline_generate_throughput - 1) * 100
                 ax2.annotate(
@@ -199,23 +203,25 @@ def get_inference_plots(report, with_baseline=False, with_generate=False):
                     ha="center",
                     va="center",
                 )
-            ax2.set_title("Generate Throughput and Speedup by Experiment")
+            ax2.set_title(
+                "Generate Throughput and Speedup by Experiment" + "\n" + subtitle
+            )
 
-    return fig1, ax1, fig2, ax2
+    return fig1, fig2
 
 
 def compute_speedup(report, with_generate=False):
     # compute speedup for each experiment compared to baseline
     report["forward.speedup(%)"] = (
-        report["forward.throughput(iter/s)"]
-        / report["forward.throughput(iter/s)"].iloc[-1]
+        report["forward.throughput(samples/s)"]
+        / report["forward.throughput(samples/s)"].iloc[-1]
         - 1
     ) * 100
 
     if with_generate:
         report["generate.speedup(%)"] = (
-            report["generate.throughput(tok/s)"]
-            / report["generate.throughput(tok/s)"].iloc[-1]
+            report["generate.throughput(tokens/s)"]
+            / report["generate.throughput(tokens/s)"].iloc[-1]
             - 1
         ) * 100
 
@@ -231,12 +237,12 @@ def main(experiments_folders, baseline_folder=None):
 
     # sort by forward throughput
     inference_report.sort_values(
-        by="forward.throughput(iter/s)", ascending=False, inplace=True
+        by="forward.throughput(samples/s)", ascending=False, inplace=True
     )
 
     # some flags
     with_baseline = baseline_folder is not None
-    with_generate = "generate.throughput(tok/s)" in inference_report.columns
+    with_generate = "generate.throughput(tokens/s)" in inference_report.columns
 
     if with_baseline:
         # gather baseline report
@@ -249,7 +255,7 @@ def main(experiments_folders, baseline_folder=None):
         # compute speedup compared to baseline
         inference_report = compute_speedup(inference_report, with_generate)
 
-    # there should be only one device, batch_size and new_tokens (unique triplet)
+    # there should be only one device, one batch_size and one new_tokens (unique triplet)
     unique_devices = inference_report["device"].unique()
     assert (
         len(unique_devices) == 1
@@ -270,31 +276,28 @@ def main(experiments_folders, baseline_folder=None):
 
     # create reporting directory and title
     reporting_directory = f"reports/{device}_{batch_size}"
-    reportnig_title = f"Device: {device} | Batch Size: {batch_size}"
+    reportnig_subtitle = f"Device: {device} | Batch Size: {batch_size}"
     if with_generate:
         reporting_directory += f"_{new_tokens}"
-        reportnig_title += f" | New Tokens: {new_tokens}"
+        reportnig_subtitle += f" | New Tokens: {new_tokens}"
     Path(reporting_directory).mkdir(exist_ok=True, parents=True)
 
-    # rich
-    console = Console(record=True)
+    # rich table
     rich_table = get_inference_rich_table(
-        inference_report, with_baseline, with_generate
+        inference_report, with_baseline, with_generate, reportnig_subtitle
     )
-    rich_table.title = rich_table.title + f"\n{reportnig_title}"
+    console = Console(record=True)
     console.print(rich_table, justify="left", no_wrap=True)
     console.save_svg(f"{reporting_directory}/rich_table.svg", theme=MONOKAI)
 
     # plots
-    forward_fig, forward_ax, generate_fig, generate_ax = get_inference_plots(
-        inference_report, with_baseline, with_generate
+    forward_fig, generate_fig = get_inference_plots(
+        inference_report, with_baseline, with_generate, reportnig_subtitle
     )
-    forward_ax.set_title(forward_ax.get_title() + f"\n{reportnig_title}")
     forward_fig.tight_layout()
     forward_fig.savefig(f"{reporting_directory}/forward_throughput.png")
 
     if generate_fig is not None:
-        generate_ax.set_title(generate_ax.get_title() + f"\n{reportnig_title}")
         generate_fig.tight_layout()
         generate_fig.savefig(f"{reporting_directory}/generate_throughput.png")
 

@@ -2,7 +2,7 @@ defaults:
   - hydra_base
   - _self_
 
+experiment_name: gpt2_baseline
+
 model: gpt2
 device: cuda
-
-experiment_name: gpt2_baseline

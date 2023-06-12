@@ -2,8 +2,8 @@ defaults:
   - hydra_base
   - _self_
 
-# for whisper experiments I would like to separate them based :
-# on backend and device + batch_size and the new_tokens
+# for whisper experiments I would like to separate them based
+# on backend & device + batch_size & the new_tokens
 hydra:
   run:
     dir: experiments/${device}_${benchmark.batch_size}_${benchmark.new_tokens}/${backend.name}/${experiment_name}
@@ -11,5 +11,6 @@ hydra:
     dir: experiments/${device}_${benchmark.batch_size}_${benchmark.new_tokens}/${backend.name}/${experiment_name}
 
 experiment_name: whisper_baseline
+
 model: openai/whisper-base
-device: ???
+device: cuda
