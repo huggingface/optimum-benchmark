@@ -1,6 +1,0 @@
-- backend.auto_optimization=O3
-- backend.auto_quantization=avx512_vnni
-- +backend.auto_quantization_config.per_channel=False
-- +backend.auto_quantization_config.operators_to_quantize=['Gather','Transpose','EmbedLayerNormalization','Attention','LSTM','ArgMax','Gemm','MatMul','Add','Mul','Relu','Clip','LeakyRelu','Sigmoid','MaxPool','GlobalAveragePool','Split','Pad','Reshape','Squeeze','Unsqueeze','Resize','AveragePool','Concat','Softmax','Where','ConvTranspose','InstanceNormalization']
-- device=cpu
-- benchmark.new_tokens=10

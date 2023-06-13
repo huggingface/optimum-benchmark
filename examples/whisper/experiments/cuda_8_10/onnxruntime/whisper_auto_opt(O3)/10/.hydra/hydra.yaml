@@ -1,8 +1,8 @@
 hydra:
   run:
-    dir: runs/${device}_${backend.name}_${benchmark.batch_size}_${benchmark.new_tokens}/${experiment_name}
+    dir: experiments/${device}_${benchmark.batch_size}_${benchmark.new_tokens}/${backend.name}/${experiment_name}
   sweep:
-    dir: sweeps/${device}_${backend.name}_${benchmark.batch_size}_${benchmark.new_tokens}/${experiment_name}
+    dir: experiments/${device}_${benchmark.batch_size}_${benchmark.new_tokens}/${backend.name}/${experiment_name}
     subdir: ${hydra.job.num}
   launcher:
     _target_: hydra._internal.core_plugins.basic_launcher.BasicLauncher
@@ -142,12 +142,12 @@ hydra:
   runtime:
     version: 1.3.2
     version_base: '1.3'
-    cwd: /content/drive/MyDrive/AutoBenchmark
+    cwd: /content/optimum-benchmark
     config_sources:
     - path: hydra.conf
       schema: pkg
       provider: hydra
-    - path: /content/drive/MyDrive/AutoBenchmark/configs
+    - path: /content/optimum-benchmark/configs
       schema: file
       provider: main
     - path: hydra_plugins.hydra_colorlog.conf
@@ -156,7 +156,7 @@ hydra:
     - path: ''
       schema: structured
       provider: schema
-    output_dir: /content/drive/MyDrive/AutoBenchmark/sweeps/cuda_onnxruntime_8_10/whisper_auto_opt(O3)/10
+    output_dir: /content/optimum-benchmark/experiments/cuda_8_10/onnxruntime/whisper_auto_opt(O3)/10
     choices:
       benchmark: inference
       backend: onnxruntime

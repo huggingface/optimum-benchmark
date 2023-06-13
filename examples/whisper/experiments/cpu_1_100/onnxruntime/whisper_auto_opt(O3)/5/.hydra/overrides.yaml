@@ -1,3 +1,0 @@
-- backend.auto_optimization=O3
-- device=cpu
-- benchmark.new_tokens=100

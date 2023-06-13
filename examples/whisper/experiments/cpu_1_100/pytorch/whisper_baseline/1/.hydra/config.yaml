@@ -1,37 +1,35 @@
 backend:
-  _target_: src.backend.pytorch.PyTorchBackend
   name: pytorch
-  version: ${pytorch_version:}
+  version: 2.0.1+cu118
   inter_op_num_threads: null
   intra_op_num_threads: null
-  disable_grad: ${is_inference:${benchmark.name}}
-  eval_mode: ${is_inference:${benchmark.name}}
+  _target_: src.backend.pytorch.PyTorchBackend
+  disable_grad: ${is_inference:benchmark.name}
+  eval_mode: ${is_inference:benchmark.name}
+  fp16: false
   bettertransformer: false
   torch_compile: false
-  fp16: false
 benchmark:
-  _target_: src.benchmark.inference.InferenceBenchmark
   name: inference
-  profile: false
+  _target_: src.benchmark.inference.InferenceBenchmark
+  seed: 42
   memory: false
+  profile: false
   warmup_runs: 10
   benchmark_duration: 10
   batch_size: 1
   new_tokens: 100
-model: openai/whisper-base
-task: ${infer_task:${model}}
-device: cpu
 experiment_name: whisper_baseline
-experiment_datetime: 2023-06-07_09:39:31
+model: openai/whisper-base
+device: cpu
+task: ${infer_task:${model}}
 environment:
-  optimum_version: 1.8.7.dev0
+  optimum_version: 1.8.8.dev0
   transformers_version: 4.29.2
-  python_version: 3.10.11
+  python_version: 3.10.12
   system: Linux
-  architecture: 64bit
-  machine: x86_64
-  cpu: x86_64
+  cpu: ' Intel(R) Xeon(R) CPU @ 2.20GHz'
   cpu_count: 2
   cpu_ram_mb: 12982
   gpu: CUDA not available
-  gpu_ram_mb: CUDA not available
+  gpu_vram_mb: CUDA not available

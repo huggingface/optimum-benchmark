@@ -1,12 +1,12 @@
 backend:
-  _target_: src.backend.onnxruntime.ORTBackend
   name: onnxruntime
   version: 1.15.0
+  inter_op_num_threads: null
+  intra_op_num_threads: null
+  _target_: src.backend.onnxruntime.ORTBackend
   provider: CPUExecutionProvider
   use_io_binding: false
   enable_profiling: false
-  inter_op_num_threads: null
-  intra_op_num_threads: null
   optimization: false
   optimization_config:
     optimization_level: 1
@@ -80,28 +80,26 @@ backend:
     - ConvTranspose
     - InstanceNormalization
 benchmark:
-  _target_: src.benchmark.inference.InferenceBenchmark
   name: inference
-  profile: false
+  _target_: src.benchmark.inference.InferenceBenchmark
+  seed: 42
   memory: false
+  profile: false
   warmup_runs: 10
   benchmark_duration: 10
   batch_size: 1
   new_tokens: 10
-model: openai/whisper-base
-task: automatic-speech-recognition
-device: cpu
 experiment_name: whisper_auto_opt(O2)+auto_qnt(avx512_vnni)
-experiment_datetime: 2023-06-07_11:10:54
+model: openai/whisper-base
+device: cpu
+task: automatic-speech-recognition
 environment:
-  optimum_version: 1.8.7.dev0
+  optimum_version: 1.8.8.dev0
   transformers_version: 4.29.2
-  python_version: 3.10.11
+  python_version: 3.10.12
   system: Linux
-  architecture: 64bit
-  machine: x86_64
-  cpu: x86_64
+  cpu: ' Intel(R) Xeon(R) CPU @ 2.20GHz'
   cpu_count: 2
   cpu_ram_mb: 12982
   gpu: CUDA not available
-  gpu_ram_mb: CUDA not available
+  gpu_vram_mb: CUDA not available
