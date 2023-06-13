@@ -2,8 +2,9 @@
 
 ## The Goal
 
-A repository aiming to create a benchmarking utility for any model on HuggingFace's Hub while also supporting optimum's inference and training optimizations on different backends and hardware.
-The experiment management and tracking is handled by [hydra](https://hydra.cc/) and inspired from [tune](https://github.com/huggingface/tune).
+A repository aiming to create a benchmarking utility for any model on [HuggingFace's Hub](https://huggingface.co/models) supporting [Optimum](https://github.com/huggingface/optimum)'s [inference](https://github.com/huggingface/optimum#accelerated-inference) and [training](https://github.com/huggingface/optimum#accelerated-training) optimizations on different backends and hardware (OnnxRuntime, Intel Neural Compressor, OpenVINO, Habana Gaudi Processor (HPU), etc.).
+
+The experiment management and tracking is handled by [hydra](https://hydra.cc/) using the command line with minimum mandatory configuration changes and maximum flexibility (inspired from [tune](https://github.com/huggingface/tune))
 
 ## Motivation
 
@@ -12,6 +13,27 @@ The experiment management and tracking is handled by [hydra](https://hydra.cc/) 
 - Optimum offers a lot of optimizations that can be applied to models and improve their performance, but it's hard to know which ones to use if you don't know a lot about your hardware. It's also hard to estimate how much these optimizations will improve the performance before trying them out.
 - Benchmarks depend heavily on many factors, like the machine/hardware/os/releases/etc. And that makes most of the benchmarks available today, not very useful for decision making.
 - [...]
+
+## Features
+
+Inference:
+
+- [x] Pytorch backend for cpu
+- [x] Pytorch backend for cuda
+- [ ] Pytorch backend for hpu
+- [x] OnnxRuntime backend for cpu
+- [x] OnnxRuntime backend for cuda
+- [ ] OnnxRuntime backend for tensorrt
+- [ ] Intel Neural Compressor backend
+- [ ] OpenVINO backend
+
+Optimizations:
+
+- [x] Pytorch's FP16
+- [x] Optimum's BetterTransformer
+- [x] Optimum's Optimization and AutoOptimization
+- [x] Optimum's Quantization and AutoQuantization
+- [ ] Optimum's Calibration for Static Quantization
 
 ## Quickstart
 
@@ -31,9 +53,9 @@ This will run the benchmark on the default backend (`pytorch`) and device (`cuda
 
 Only key parameters are overriden/defined in the config file which inherits from `configs/hydra_base.yaml` where most of the experiment's logic is defined.
 
-The result files are `inference_results.csv` (and `profiling_results.csv` in case profiling is enabled), the program's logs `main.log` and the configuration that's been used `hydra_config.yaml`
+The result files are `inference_results.csv` and `profiling_results.csv` in case profiling is enabled (`benchmark.profile=true`), in addition to the program's logs `main.log` and the configuration that's been used `hydra_config.yaml`
 
-The directory for storing these results can be changed using the `hydra.run.dir` (and/or `hydra.sweep.dir`) in the command line or in the config file (see [`hydra_base.yaml`](configs/hydra_base.yaml) or how I changed it in the whisper branch).
+The directory for storing these results can be changed using the `hydra.run.dir` (and/or `hydra.sweep.dir`) in the command line or in the config file (see [`hydra_base.yaml`](configs/hydra_base.yaml)).
 
 ## Command-line configuration overrides
 
@@ -54,12 +76,12 @@ python main.py --config-name bert -m backend=pytorch,onnxruntime device=cpu,cuda
 Also, for integer parameters like `batch_size`, one can specify a range of values to sweep over:
 
 ```bash
-python main.py --config-name bert -m backend=pytorch,onnxruntime device=cpu,cuda benchmark.input.batch_size='range(1,10,step=2)'
+python main.py --config-name bert -m backend=pytorch,onnxruntime device=cpu,cuda benchmark.batch_size='range(1,10,step=2)'
 ```
 
 Other features like intervals and log scaled ranges of values are also supported through sweeper plugins: `hydra/sweeper=optuna`, `hydra/sweeper=nevergrad`, etc.
 
-## Reporting benchamrk results
+## Reporting benchamrk results (WIP)
 
 To aggregate the results of a benchmark (run(s) or sweep(s)), you can use the `reporter.py` script:
 
@@ -69,9 +91,11 @@ python reporter.py --baseline {baseline_folder} --experiments {experiments_folde
 
 Where baseline is optional (used to compute speedups) and experiments are the folders containing the results of the runs/sweeps you want to aggregate.
 
-The script will generate a few reporting files : a csv report (`inference_report.csv`), a rich table (`rich_table.svg`) and some plots (`forward_throughput.png` and `generate_throughput.png` if `generate.throughput(tok/s)` is tracked).
+The script will generate a few reporting files : a csv report (`inference_report.csv`), a rich table (`rich_table.svg`) and some plots (`forward_throughput.png` and `generate_throughput.png` when possible).
 
 These files will be stored in `reports/${device}_${batch_size}` (or `reports/${device}_${batch_size}_${new_tokens}` if generation is supported for the model).
+
+Check Whisper's example in [`examples/whisper/`](examples/whisper/) for a full example.
 
 ## Configurations structure
 
@@ -94,7 +118,7 @@ device: cpu
 
 This is especially useful for creating sweeps, where the cli commands become too long.
 
-An example is provided in [`examples/whisper_auto_opt+qnt.yaml`](examples/whisper_auto_opt+qnt.yaml) for an exhaustive sweep over all possible cominations of `optimum`'s AutoOptimizations and AutoQuantizations on CPU (checkout the `whisper` branch for the full benchmark).
+An example is provided in [`examples/whisper_auto_opt+qnt.yaml`](examples/whisper_auto_opt+qnt.yaml) for an exhaustive sweep over all possible cominations of `optimum`'s AutoOptimizations and AutoQuantizations on CPU.
 
 ## TODO
 
