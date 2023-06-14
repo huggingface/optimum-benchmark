@@ -32,6 +32,8 @@ class PyTorchConfig(BackendConfig):
 
     # graph optimization options
     fp16: bool = False
+    int8: bool = False
+    int4: bool = False
     bettertransformer: bool = False
     torch_compile: bool = False
 
@@ -67,7 +69,23 @@ class PyTorchBackend(Backend):
             task=self.task, model_type=self.pretrained_config.model_type
         )
         LOGGER.info(f"\t+ Loading {self.model} with {automodel_class.__name__}")
-        self.pretrained_model = automodel_class.from_pretrained(self.model)
+
+        if config.int8:
+            LOGGER.info("\t+ Weights loaded in int8")
+            self.pretrained_model = automodel_class.from_pretrained(
+                self.model,
+                load_in_8bit=config.int8,
+                device_map="auto",
+            )
+        elif config.int4:
+            LOGGER.info("\t+ Weights loaded in int4")
+            self.pretrained_model = automodel_class.from_pretrained(
+                self.model,
+                load_in_4bit=config.int4,
+                device_map="auto",
+            )
+        else:
+            self.pretrained_model = automodel_class.from_pretrained(self.model)
 
         # Move model to device
         if self.pretrained_model.device.type != self.device:
