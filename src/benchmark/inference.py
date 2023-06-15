@@ -108,8 +108,9 @@ class InferenceBenchmark(Benchmark):
         LOGGER.info("\t+ Testing and warming up the generation pass")
         try:
             outputs = backend.generate(generate_inputs, new_tokens=self.new_tokens)
-        except:
+        except Exception as e:
             LOGGER.info("\t+ Generation pass failed or not supported")
+            LOGGER.info(f"\t+ Raised exception: {e}")
             self.can_generate = False
             return
         else:

@@ -83,19 +83,19 @@ class PyTorchBackend(Backend):
         )
 
         if config.quantization == "int8":
-            LOGGER.info("\t+ Weights loaded in int8")
+            LOGGER.info("\t+ Loading weights in int8")
             self.pretrained_model = model_factory(
                 load_in_8bit=True,
                 device_map=config.device_map,
             )
         elif config.quantization == "int4":
-            LOGGER.info("\t+ Weights loaded in int4")
+            LOGGER.info("\t+ Loading weights in int4")
             self.pretrained_model = model_factory(
                 load_in_4bit=True,
                 device_map=config.device_map,
             )
         else:
-            LOGGER.info(f"\t+ Weights loaded in {config.torch_dtype}")
+            LOGGER.info(f"\t+ Loading weights in {config.torch_dtype}")
             self.pretrained_model = model_factory(
                 torch_dtype=getattr(torch, config.torch_dtype),
                 device_map=config.device_map,
