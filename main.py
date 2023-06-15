@@ -17,16 +17,7 @@ from src.backend.pytorch import PyTorchConfig
 from src.backend.onnxruntime import ORTConfig
 
 # Register resolvers (maybe should be moved to a separate file)
-OmegaConf.register_new_resolver(
-    "clean_string", lambda model: model.split("/")[-1].replace("-", "_")
-)
-OmegaConf.register_new_resolver("onnxruntime_version", lambda: ORTConfig.version)
-OmegaConf.register_new_resolver(
-    "is_profiling", lambda benchmark_name: benchmark_name == "profiling"
-)
-OmegaConf.register_new_resolver(
-    "is_inference", lambda benchmark_name: benchmark_name == "inference"
-)
+OmegaConf.register_new_resolver("is_inference", lambda benchmark: benchmark == "inference")
 OmegaConf.register_new_resolver("is_gpu", lambda device: device in ["cuda", "gpu"])
 OmegaConf.register_new_resolver("infer_task", TasksManager.infer_task_from_model)
 OmegaConf.register_new_resolver(
@@ -41,22 +32,23 @@ cs.store(group="backend", name="pytorch", node=PyTorchConfig)
 cs.store(group="backend", name="onnxruntime", node=ORTConfig)
 cs.store(group="benchmark", name="inference", node=InferenceConfig)
 
-LOGGER = getLogger("optimum-benchmark")
+LOGGER = getLogger("main")
 
 
 @hydra.main(config_path="configs", version_base=None)
 def run_experiment(config: ExperimentConfig) -> Optional[float]:
     # Save the config
     OmegaConf.save(config, "hydra_config.yaml", resolve=True)
+    
     # Allocate requested benchmark
-    benchmark_factory: Type[Benchmark] = get_class(config.benchmark._target_)  # type: ignore
-    benchmark: Benchmark = benchmark_factory(config.model, config.task, config.device)
+    benchmark_factory: Type[Benchmark] = get_class(config.benchmark._target_)
+    benchmark: Benchmark = benchmark_factory(config.model, config.device)
     benchmark.configure(config.benchmark)
 
     try:
         # Allocate requested backend
-        backend_factory: Type[Backend] = get_class(config.backend._target_)  # type: ignore
-        backend: Backend = backend_factory(config.model, config.task, config.device)
+        backend_factory: Type[Backend] = get_class(config.backend._target_)
+        backend: Backend = backend_factory(config.model, config.revision, config.task, config.device)
         backend.configure(config.backend)
 
         # Run the benchmark

@@ -18,16 +18,15 @@ class BenchmarkConfig(ABC):
 
 
 class Benchmark(ABC):
-    def __init__(self, model: str, task: str, device: str) -> None:
+    def __init__(self, model: str, device: str) -> None:
         self.model = model
-        self.task = task
         self.device = device
 
     def configure(self, config: BenchmarkConfig) -> None:
         LOGGER.info(f"Configuring {config.name} benchmark")
-        self.seed = config.seed
-        set_seed(self.seed)
-        LOGGER.info(f"\t+ Setting seed({self.seed})")
+
+        LOGGER.info(f"\t+ Setting seed({config.seed})")
+        set_seed(config.seed)
 
     @abstractmethod
     def run(self, backend: Backend) -> None:

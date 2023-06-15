@@ -1,7 +1,9 @@
+from typing import Dict, List, Optional
 from dataclasses import dataclass
 from logging import getLogger
-from typing import Dict, List
+from functools import partial
 import gc
+
 
 import torch
 from torch import Tensor
@@ -11,9 +13,7 @@ from transformers.utils.fx import symbolic_trace
 from optimum.bettertransformer import BetterTransformer
 
 from src.backend.base import Backend, BackendConfig
-
 from src.profiler.fx_profiler import FXProfilingWrapper
-
 from src.utils import get_used_memory
 
 BACKEND_NAME = "pytorch"
@@ -30,18 +30,26 @@ class PyTorchConfig(BackendConfig):
     disable_grad: bool = "${is_inference:benchmark.name}"
     eval_mode: bool = "${is_inference:benchmark.name}"
 
-    # graph optimization options
-    fp16: bool = False
-    int8: bool = False
-    int4: bool = False
+    # load options
+    torch_dtype: str = "float32"  # "float32" or "float16"
+    device_map: Optional[str] = None  # "auto"
+
+    # quantization options
+    quantization: Optional[str] = None  # "int8" or "int4"
+
+    # optimization options
     bettertransformer: bool = False
     torch_compile: bool = False
+    autocast: bool = False
 
 
 class PyTorchBackend(Backend):
-    def __init__(self, model: str, task: str, device: str) -> None:
-        super().__init__(model, task, device)
-        self.pretrained_config = AutoConfig.from_pretrained(self.model)
+    def __init__(self, model: str, revision: str, task: str, device: str) -> None:
+        super().__init__(model, revision, task, device)
+        self.model_type = AutoConfig.from_pretrained(self.model).model_type
+        self.automodel_class = TasksManager.get_model_class_for_task(
+            task=self.task, model_type=self.model_type
+        )
 
     def configure(self, config: PyTorchConfig) -> None:
         super().configure(config)
@@ -65,27 +73,33 @@ class PyTorchBackend(Backend):
             torch.set_grad_enabled(False)
 
         # Load model
-        automodel_class = TasksManager.get_model_class_for_task(
-            task=self.task, model_type=self.pretrained_config.model_type
+        LOGGER.info(
+            f"\t+ Loading {self.model} from HuggingFace Hub with {self.automodel_class.__name__}"
         )
-        LOGGER.info(f"\t+ Loading {self.model} with {automodel_class.__name__}")
+        model_factory = partial(
+            self.automodel_class.from_pretrained,
+            pretrained_model_name_or_path=self.model,
+            revision=self.revision,
+        )
 
-        if config.int8:
+        if config.quantization == "int8":
             LOGGER.info("\t+ Weights loaded in int8")
-            self.pretrained_model = automodel_class.from_pretrained(
-                self.model,
-                load_in_8bit=config.int8,
-                device_map="auto",
+            self.pretrained_model = model_factory(
+                load_in_8bit=True,
+                device_map=config.device_map,
             )
-        elif config.int4:
+        elif config.quantization == "int4":
             LOGGER.info("\t+ Weights loaded in int4")
-            self.pretrained_model = automodel_class.from_pretrained(
-                self.model,
-                load_in_4bit=config.int4,
-                device_map="auto",
+            self.pretrained_model = model_factory(
+                load_in_4bit=True,
+                device_map=config.device_map,
             )
         else:
-            self.pretrained_model = automodel_class.from_pretrained(self.model)
+            LOGGER.info(f"\t+ Weights loaded in {config.torch_dtype}")
+            self.pretrained_model = model_factory(
+                torch_dtype=getattr(torch, config.torch_dtype),
+                device_map=config.device_map,
+            )
 
         # Move model to device
         if self.pretrained_model.device.type != self.device:
@@ -117,20 +131,20 @@ class PyTorchBackend(Backend):
                 f"\t+ Device used memory: {get_used_memory(device=self.device)}"
             )
 
-        # Turn on fp16
-        if config.fp16:
-            LOGGER.info("\t+ Turning on fp16")
-            self.fp16 = True
+        # Turn on autocast
+        if config.autocast:
+            LOGGER.info("\t+ Turning on autocast")
+            self.autocast = True
         else:
-            self.fp16 = False
+            self.autocast = False
 
     def forward(self, input: Dict[str, Tensor]):
-        with torch.cuda.amp.autocast(enabled=self.fp16):
+        with torch.cuda.amp.autocast(enabled=self.autocast):
             output = self.pretrained_model(**input)
         return output
 
     def generate(self, input: Dict[str, Tensor], new_tokens: int) -> Tensor:
-        with torch.cuda.amp.autocast(enabled=self.fp16):
+        with torch.cuda.amp.autocast(enabled=self.autocast):
             output = self.pretrained_model.generate(
                 **input,
                 pad_token_id=self.pretrained_model.config.eos_token_id,

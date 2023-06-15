@@ -11,7 +11,6 @@ from src.backend.base import BackendConfig
 from src.benchmark.inference import BenchmarkConfig
 from src.utils import get_device_name, get_total_memory
 
-
 LOGGER = getLogger("experiment")
 
 
@@ -32,10 +31,12 @@ class ExperimentConfig:
     # MODEL CONFIGURATION
     # Name of the model to run (bert-base-uncased, ...)
     model: str = MISSING
-    # Device on which the model is loaded and run (cpu, cuda, ...)
-    device: str = MISSING
     # Task on which the model is run (sequence-classification, ...)
     task: str = "${infer_task:${model}}"
+    # Revision of the model to run (main, ...)
+    revision: str = "main"
+    # Device on which the model is loaded and run (cpu, cuda, ...)
+    device: str = "cpu"
 
     # ENVIRONMENT CONFIGURATION
     environment: DictConfig = DictConfig(
@@ -44,8 +45,8 @@ class ExperimentConfig:
             "transformers_version": transformers_version,
             "python_version": platform.python_version(),
             "system": platform.system(),
-            "cpu": get_device_name(device="cpu"),
             "cpu_count": os.cpu_count(),
+            "cpu": get_device_name(device="cpu"),
             "cpu_ram_mb": get_total_memory(device="cpu"),
             "gpu": get_device_name(device="cuda"),
             "gpu_vram_mb": get_total_memory(device="cuda"),

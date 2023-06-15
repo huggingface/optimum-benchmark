@@ -13,14 +13,16 @@ LOGGER = getLogger("backend")
 class BackendConfig(ABC):
     name: str = MISSING  # type: ignore
     version: str = MISSING  # type: ignore
+    _target_: str = MISSING  # type: ignore
 
     inter_op_num_threads: Optional[int] = None
     intra_op_num_threads: Optional[int] = None
 
 
 class Backend(ABC):
-    def __init__(self, model: str, task: str, device: str) -> None:
+    def __init__(self, model: str, revision: str, task: str, device: str):
         self.model = model
+        self.revision = revision
         self.task = task
         self.device = device
 

@@ -133,8 +133,8 @@ class ORTConfig(BackendConfig):
 
 
 class ORTBackend(Backend):
-    def __init__(self, model: str, task: str, device: str) -> None:
-        super().__init__(model, task, device)
+    def __init__(self, model: str, revision: str, task: str, device: str) -> None:
+        super().__init__(model, revision, task, device)
         self.ortmodel_class = ORT_SUPPORTED_TASKS[self.task]["class"][0]
 
     def configure(self, config: ORTConfig) -> None:
@@ -164,6 +164,7 @@ class ORTBackend(Backend):
         )
         self.pretrained_model = self.ortmodel_class.from_pretrained(
             model_id=self.model,
+            revision=self.revision,
             session_options=self.session_options,
             provider=config.provider,
             provider_options=PROVIDER_OPTIONS,

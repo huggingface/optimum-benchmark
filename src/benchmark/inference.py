@@ -39,8 +39,8 @@ class InferenceConfig(BenchmarkConfig):
 
 
 class InferenceBenchmark(Benchmark):
-    def __init__(self, model: str, task: str, device: str) -> None:
-        super().__init__(model, task, device)
+    def __init__(self, model: str, device: str) -> None:
+        super().__init__(model, device)
 
         self.forward_peak_memory: int = 0
         self.forward_latencies: List[float] = []
@@ -197,8 +197,9 @@ class InferenceBenchmark(Benchmark):
 
     def generate_dummy_inputs(self, mode) -> Dict[str, Tensor]:
         # hacky way to get what we need
+        task = TasksManager.infer_task_from_model(self.model)
         auto_config = AutoConfig.from_pretrained(self.model)
-        onnx_config = TasksManager._SUPPORTED_MODEL_TYPE[auto_config.model_type]["onnx"][self.task](auto_config)  # type: ignore
+        onnx_config = TasksManager._SUPPORTED_MODEL_TYPE[auto_config.model_type]["onnx"][task](auto_config)  # type: ignore
         normalized_config = onnx_config.NORMALIZED_CONFIG_CLASS(auto_config)
         generator_classes = onnx_config.DUMMY_INPUT_GENERATOR_CLASSES
 
@@ -215,7 +216,7 @@ class InferenceBenchmark(Benchmark):
             for generator_class in generator_classes:
                 if input_name in generator_class.SUPPORTED_INPUT_NAMES:
                     generator = generator_class(
-                        task=self.task,
+                        task=task,
                         normalized_config=normalized_config,
                         batch_size=self.batch_size,
                     )
