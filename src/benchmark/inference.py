@@ -14,6 +14,7 @@ from src.backend.base import Backend
 from src.tracker.memory import MemoryTracker
 from src.tracker.latency import LatencyTracker
 from src.benchmark.base import Benchmark, BenchmarkConfig
+from src.utils import LLM_MODEL_TYPES
 
 BENCHMARK_NAME = "inference"
 LOGGER = getLogger(BENCHMARK_NAME)
@@ -208,6 +209,12 @@ class InferenceBenchmark(Benchmark):
             input_names = list(onnx_config.inputs.keys())
         elif mode == "generate":
             input_names = get_preprocessor(self.model).model_input_names
+            if auto_config.model_type in LLM_MODEL_TYPES:
+                return {
+                    "input_ids": torch.ones(
+                        (self.batch_size, 1), dtype=torch.long, device=self.device
+                    )
+                }
         else:
             raise ValueError(f"Unknown mode {mode}")
 

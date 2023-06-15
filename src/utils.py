@@ -9,6 +9,23 @@ import numpy as np
 import py3nvml.py3nvml as nvml
 
 
+LLM_MODEL_TYPES = [
+    "mpt",
+    "codegen",
+    "RefinedWeb",
+    "gpt_bigcode",
+    "opt",
+    "gptj",
+    "gpt_neox",
+    "bloom",
+    "xglm",
+    "gpt2",
+    "gpt_neo",
+    "llama",
+    "RefinedWebModel",
+]
+
+
 def set_seed(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
