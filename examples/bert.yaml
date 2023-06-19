@@ -6,3 +6,7 @@ experiment_name: bert_baseline
 
 model: bert-base-uncased
 device: cuda
+
+model_kwargs:
+  revision: main
+  use_auth_token: true
