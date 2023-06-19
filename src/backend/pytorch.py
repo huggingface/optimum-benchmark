@@ -145,16 +145,31 @@ class PyTorchBackend(Backend):
         return output
 
     def generate(self, input: Dict[str, Tensor], new_tokens: int) -> Tensor:
-        with torch.cuda.amp.autocast(enabled=self.autocast):
-            output = self.pretrained_model.generate(
-                **input,
-                pad_token_id=self.pretrained_model.config.eos_token_id,
-                max_new_tokens=new_tokens,
-                min_new_tokens=new_tokens,
-                do_sample=False,
-                use_cache=True,
-                num_beams=1,
-            )
+        if self.device == "cpu":
+            with torch.cpu.amp.autocast(enabled=self.autocast):
+                output = self.pretrained_model.generate(
+                    **input,
+                    pad_token_id=self.pretrained_model.config.eos_token_id,
+                    max_new_tokens=new_tokens,
+                    min_new_tokens=new_tokens,
+                    do_sample=False,
+                    use_cache=True,
+                    num_beams=1,
+                )
+        elif self.device == "cuda":
+            with torch.cuda.amp.autocast(enabled=self.autocast):
+                output = self.pretrained_model.generate(
+                    **input,
+                    pad_token_id=self.pretrained_model.config.eos_token_id,
+                    max_new_tokens=new_tokens,
+                    min_new_tokens=new_tokens,
+                    do_sample=False,
+                    use_cache=True,
+                    num_beams=1,
+                )
+        else:
+            raise ValueError(f"Unknown device {self.device}")
+
         return output
 
     def prepare_for_profiling(self, input_names: List[str]) -> None:
