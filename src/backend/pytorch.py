@@ -31,8 +31,8 @@ class PyTorchConfig(BackendConfig):
     _target_: str = "src.backend.pytorch.PyTorchBackend"
 
     # inference options
-    disable_grad: bool = "${is_inference:benchmark.name}"
-    eval_mode: bool = "${is_inference:benchmark.name}"
+    disable_grad: bool = "${is_inference:benchmark.name}"  # type: ignore
+    eval_mode: bool = "${is_inference:benchmark.name}"  # type: ignore
 
     # load options
     torch_dtype: str = "float32"  # "float32" or "float16"
@@ -140,14 +140,21 @@ class PyTorchBackend(Backend):
         LOGGER.debug(f"\t+ Device used memory: {get_used_memory(device=self.device)}")
 
     def forward(self, input: Dict[str, Tensor]):
-        with torch.cuda.amp.autocast(enabled=self.autocast):
-            output = self.pretrained_model(**input)
+        if self.device == "cpu":
+            with torch.cpu.amp.autocast(enabled=self.autocast):  # type: ignore
+                output = self.pretrained_model(**input)
+        elif self.device == "cuda":
+            with torch.cuda.amp.autocast(enabled=self.autocast):  # type: ignore
+                output = self.pretrained_model(**input)
+        else:
+            raise ValueError(f"Unknown device: {self.device}")
+
         return output
 
     def generate(self, input: Dict[str, Tensor], new_tokens: int) -> Tensor:
         if self.device == "cpu":
-            with torch.cpu.amp.autocast(enabled=self.autocast):
-                output = self.pretrained_model.generate(
+            with torch.cpu.amp.autocast(enabled=self.autocast):  # type: ignore
+                output = self.pretrained_model.generate(  # type: ignore
                     **input,
                     pad_token_id=self.pretrained_model.config.eos_token_id,
                     max_new_tokens=new_tokens,
@@ -157,8 +164,8 @@ class PyTorchBackend(Backend):
                     num_beams=1,
                 )
         elif self.device == "cuda":
-            with torch.cuda.amp.autocast(enabled=self.autocast):
-                output = self.pretrained_model.generate(
+            with torch.cuda.amp.autocast(enabled=self.autocast):  # type: ignore
+                output = self.pretrained_model.generate(  # type: ignore
                     **input,
                     pad_token_id=self.pretrained_model.config.eos_token_id,
                     max_new_tokens=new_tokens,
