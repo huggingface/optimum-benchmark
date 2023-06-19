@@ -1,6 +1,8 @@
 from typing import Dict, List, Optional
 from dataclasses import dataclass
 from logging import getLogger
+import shutil
+import os
 import gc
 
 import torch
@@ -80,7 +82,8 @@ class PyTorchBackend(Backend):
         self.automodel_class = TasksManager.get_model_class_for_task(
             task=self.task, model_type=model_type
         )
-        LOGGER.info(f"\t+ Infered AutoModel class : {self.automodel_class.__name__}")
+        LOGGER.info(
+            f"\t+ Infered AutoModel class : {self.automodel_class.__name__}")
 
         # Load model
         if config.quantization == "int8":
@@ -107,6 +110,9 @@ class PyTorchBackend(Backend):
                 device_map=config.device_map,
                 **self.model_kwargs,
             )
+        
+        if config.device_map is not None:
+            LOGGER.info(self.pretrained_model.hf_device_map)
 
         # Move model to device
         if self.pretrained_model.device.type != self.device:
@@ -128,7 +134,8 @@ class PyTorchBackend(Backend):
         # Compile model
         if config.torch_compile:
             LOGGER.info("\t+ Using torch.compile")
-            self.pretrained_model.forward = torch.compile(self.pretrained_model.forward)
+            self.pretrained_model.forward = torch.compile(
+                self.pretrained_model.forward)
 
         # Turn on autocast
         if config.autocast:
@@ -136,8 +143,6 @@ class PyTorchBackend(Backend):
             self.autocast = True
         else:
             self.autocast = False
-
-        LOGGER.debug(f"\t+ Device used memory: {get_used_memory(device=self.device)}")
 
     def forward(self, input: Dict[str, Tensor]):
         if self.device == "cpu":
@@ -191,8 +196,16 @@ class PyTorchBackend(Backend):
     def clean(self) -> None:
         LOGGER.info("Cleaning onnxruntime backend")
         self._delete_pretrained_model()
+        self._delete_model_hub_cache()
 
     def _delete_pretrained_model(self) -> None:
         del self.pretrained_model
         gc.collect()
         torch.cuda.empty_cache()
+
+    def _delete_model_hub_cache(self) -> None:
+        model_cache_path = "models--" + self.model.replace("/", "--")
+        model_cache_path = os.path.join(os.path.expanduser(
+            "~/.cache/huggingface/hub"), model_cache_path)
+
+        shutil.rmtree(model_cache_path, ignore_errors=True)

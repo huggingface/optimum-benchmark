@@ -4,19 +4,21 @@ git+https://github.com/huggingface/optimum.git
 git+https://github.com/huggingface/transformers.git
 # accelerate
 git+https://github.com/huggingface/accelerate.git
+# bitsandbytes
+git+https://github.com/TimDettmers/bitsandbytes.git
 
 onnxruntime==1.15.0
-torch==2.0.1
 onnx==1.14.0
+torch
 
 omegaconf==2.3.0
 hydra-core==1.3.2
 hydra_colorlog==1.2.0
-psutil==5.9.5
 
-bitsandbytes
+
 flatten_dict
 matplotlib
 seaborn
+psutil
 pandas
 rich

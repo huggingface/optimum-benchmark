@@ -136,7 +136,7 @@ def get_inference_rich_table(
 
     # we populate the table with values
     for i, row in enumerate(display_report.itertuples(index=True)):
-        if i == display_report.shape[0] - 1:
+        if with_baseline and i == display_report.shape[0] - 1:
             table_row = format_row(row, style="yellow")
         else:
             table_row = format_row(row)

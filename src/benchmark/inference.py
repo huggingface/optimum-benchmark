@@ -39,14 +39,16 @@ class InferenceBenchmark(Benchmark):
         super().__init__(model, task, device, model_kwargs)
 
         # initialize dummy inputs generator
-        self.dummy_generator = DummyGenerator(model, task, device, model_kwargs)
+        self.dummy_generator = DummyGenerator(
+            model, task, device, model_kwargs)
 
         # initialize inference results
         self.forward_peak_memory: int = 0
         self.forward_latencies: List[float] = []
         self.generate_latencies: List[float] = []
         # might be better to seperate profiling benchmark from inference benchmark
-        self.forward_profile: List[Tuple[str, str, float]] = []  # kernel/node, op, time
+        # kernel/node, op, time
+        self.forward_profile: List[Tuple[str, str, float]] = []
 
     def configure(self, config: InferenceConfig):
         super().configure(config)
@@ -62,11 +64,10 @@ class InferenceBenchmark(Benchmark):
     def run(self, backend: Backend) -> None:
         LOGGER.info("Running inference benchmark")
 
-        if self.memory:
-            # let's start with memory tracking (no warmup)
-            self._run_memory_tracking(backend)
-
         self._run_forward_tracking(backend)
+
+        if self.memory:
+            self._run_memory_tracking(backend)
 
         self._run_generate_tracking(backend)
 
@@ -84,7 +85,8 @@ class InferenceBenchmark(Benchmark):
             outputs = backend.forward(memory_inputs)
 
         self.forward_peak_memory = memory_tracker.get_peak_memory()
-        LOGGER.info(f"\t+ Forward pass peak memory: {self.forward_peak_memory} (MB)")
+        LOGGER.info(
+            f"\t+ Forward pass peak memory: {self.forward_peak_memory} (MB)")
 
     def _run_forward_tracking(self, backend: Backend) -> None:
         forward_inputs = self.dummy_generator.generate(
@@ -102,7 +104,8 @@ class InferenceBenchmark(Benchmark):
                 outputs = backend.forward(forward_inputs)
 
         self.forward_latencies = latency_tracker.get_latencies()
-        LOGGER.info(f"\t+ Forward pass latency: {self.forward_latency:.2e} (s)")
+        LOGGER.info(
+            f"\t+ Forward pass latency: {self.forward_latency:.2e} (s)")
         LOGGER.info(
             f"\t+ Forward pass throughput: {self.forward_throughput:.2f} (samples/s)"
         )
@@ -114,7 +117,8 @@ class InferenceBenchmark(Benchmark):
 
         LOGGER.info("\t+ Testing and warming up the generation pass")
         try:
-            outputs = backend.generate(generate_inputs, new_tokens=self.new_tokens)
+            outputs = backend.generate(
+                generate_inputs, new_tokens=self.new_tokens)
         except Exception as e:
             LOGGER.info("\t+ Generation pass failed or not supported")
             LOGGER.info(f"\t+ Raised exception: {e}")
@@ -127,10 +131,12 @@ class InferenceBenchmark(Benchmark):
         latency_tracker = LatencyTracker(device=self.device)
         while sum(latency_tracker.get_latencies()) < self.benchmark_duration:
             with latency_tracker.track():
-                outputs = backend.generate(generate_inputs, new_tokens=self.new_tokens)
+                outputs = backend.generate(
+                    generate_inputs, new_tokens=self.new_tokens)
 
         self.generate_latencies = latency_tracker.get_latencies()
-        LOGGER.info(f"\t+ Generation pass latency: {self.generate_latency:.2e} (s)")
+        LOGGER.info(
+            f"\t+ Generation pass latency: {self.generate_latency:.2e} (s)")
 
         LOGGER.info(
             f"\t+ Generation pass throughput: {self.generate_throughput:.2f} (tokens/s)"
@@ -169,7 +175,8 @@ class InferenceBenchmark(Benchmark):
     def get_results_df(self) -> DataFrame:
         results_dict = dict()
 
-        results_dict["forward.latency(s)"] = significant_figures(self.forward_latency)
+        results_dict["forward.latency(s)"] = significant_figures(
+            self.forward_latency)
         results_dict["forward.throughput(samples/s)"] = significant_figures(
             self.forward_throughput
         )
