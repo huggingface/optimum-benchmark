@@ -1,20 +1,15 @@
-from typing import List, Tuple, Dict
+from typing import List, Tuple
 from dataclasses import dataclass
 from logging import getLogger
 
-import torch
 import statistics
-from torch import Tensor
 from pandas import DataFrame
-from transformers import AutoConfig
-from optimum.exporters import TasksManager
-from transformers.onnx.utils import get_preprocessor
 
 from src.backend.base import Backend
 from src.tracker.memory import MemoryTracker
 from src.tracker.latency import LatencyTracker
 from src.benchmark.base import Benchmark, BenchmarkConfig
-from src.utils import LLM_MODEL_TYPES
+from src.dummy_generator import DummyGenerator
 
 BENCHMARK_NAME = "inference"
 LOGGER = getLogger(BENCHMARK_NAME)
@@ -40,12 +35,17 @@ class InferenceConfig(BenchmarkConfig):
 
 
 class InferenceBenchmark(Benchmark):
-    def __init__(self, model: str, device: str) -> None:
-        super().__init__(model, device)
+    def __init__(self, model: str, task: str, device: str, model_kwargs: dict):
+        super().__init__(model, task, device, model_kwargs)
 
+        # initialize dummy inputs generator
+        self.dummy_generator = DummyGenerator(model, task, device, model_kwargs)
+
+        # initialize inference results
         self.forward_peak_memory: int = 0
         self.forward_latencies: List[float] = []
         self.generate_latencies: List[float] = []
+        # might be better to seperate profiling benchmark from inference benchmark
         self.forward_profile: List[Tuple[str, str, float]] = []  # kernel/node, op, time
 
     def configure(self, config: InferenceConfig):
@@ -74,7 +74,9 @@ class InferenceBenchmark(Benchmark):
             self._run_forward_profile(backend)
 
     def _run_memory_tracking(self, backend: Backend) -> None:
-        memory_inputs = self.generate_dummy_inputs(mode="forward")
+        memory_inputs = self.dummy_generator.generate(
+            mode="forward", batch_size=self.batch_size
+        )
 
         LOGGER.info("\t+ Tracking forward pass peak memory")
         memory_tracker = MemoryTracker(device=self.device)
@@ -85,7 +87,9 @@ class InferenceBenchmark(Benchmark):
         LOGGER.info(f"\t+ Forward pass peak memory: {self.forward_peak_memory} (MB)")
 
     def _run_forward_tracking(self, backend: Backend) -> None:
-        forward_inputs = self.generate_dummy_inputs(mode="forward")
+        forward_inputs = self.dummy_generator.generate(
+            mode="forward", batch_size=self.batch_size
+        )
 
         LOGGER.info("\t+ Warming up the forward pass")
         for _ in range(self.warmup_runs):
@@ -104,7 +108,9 @@ class InferenceBenchmark(Benchmark):
         )
 
     def _run_generate_tracking(self, backend: Backend) -> None:
-        generate_inputs = self.generate_dummy_inputs(mode="generate")
+        generate_inputs = self.dummy_generator.generate(
+            mode="generate", batch_size=self.batch_size
+        )
 
         LOGGER.info("\t+ Testing and warming up the generation pass")
         try:
@@ -113,7 +119,7 @@ class InferenceBenchmark(Benchmark):
             LOGGER.info("\t+ Generation pass failed or not supported")
             LOGGER.info(f"\t+ Raised exception: {e}")
             self.can_generate = False
-            return
+            return None
         else:
             self.can_generate = True
 
@@ -131,7 +137,9 @@ class InferenceBenchmark(Benchmark):
         )
 
     def _run_forward_profile(self, backend: Backend) -> None:
-        profile_inputs = self.generate_dummy_inputs(mode="forward")
+        profile_inputs = self.dummy_generator.generate(
+            mode="forward", batch_size=self.batch_size
+        )
 
         LOGGER.info("\t+ Preparing backend for profiling")
         backend.prepare_for_profiling(list(profile_inputs.keys()))
@@ -196,54 +204,6 @@ class InferenceBenchmark(Benchmark):
             LOGGER.info("Saving profiling results")
             profile_df = self.get_profile_df()
             profile_df.to_csv("inference_profile.csv")
-
-    def generate_dummy_inputs(self, mode) -> Dict[str, Tensor]:
-        # hacky way to get what we need
-        task = TasksManager.infer_task_from_model(self.model)
-        auto_config = AutoConfig.from_pretrained(self.model)
-        onnx_config = TasksManager._SUPPORTED_MODEL_TYPE[auto_config.model_type]["onnx"][task](auto_config)  # type: ignore
-        normalized_config = onnx_config.NORMALIZED_CONFIG_CLASS(auto_config)
-        generator_classes = onnx_config.DUMMY_INPUT_GENERATOR_CLASSES
-
-        if mode == "forward":
-            input_names = list(onnx_config.inputs.keys())
-        elif mode == "generate":
-            input_names = get_preprocessor(self.model).model_input_names
-            if auto_config.model_type in LLM_MODEL_TYPES:
-                return {
-                    "input_ids": torch.ones(
-                        (self.batch_size, 1), dtype=torch.long, device=self.device
-                    )
-                }
-        else:
-            raise ValueError(f"Unknown mode {mode}")
-
-        dummy_inputs = dict()
-        for input_name in input_names:
-            generator = None
-            for generator_class in generator_classes:
-                if input_name in generator_class.SUPPORTED_INPUT_NAMES:
-                    generator = generator_class(
-                        task=task,
-                        normalized_config=normalized_config,
-                        batch_size=self.batch_size,
-                    )
-
-            if generator is None:
-                raise ValueError(
-                    f"Could not find dummy input generator for {input_name}"
-                )
-
-            dummy_inputs[input_name] = generator.generate(input_name).to(self.device)
-
-            if input_name == "attention_mask":
-                # this is for bettertransformer (for now)
-                # since it only supports right padded attention mask
-                dummy_inputs["attention_mask"] = torch.ones_like(
-                    dummy_inputs["input_ids"]
-                )
-
-        return dummy_inputs
 
 
 def significant_figures(x):

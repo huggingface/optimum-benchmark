@@ -2,9 +2,9 @@ from dataclasses import dataclass, MISSING
 from typing import Dict, List, Optional
 from abc import abstractmethod, ABC
 from logging import getLogger
-from psutil import cpu_count
 
 from torch import Tensor
+from psutil import cpu_count
 
 LOGGER = getLogger("backend")
 
@@ -20,11 +20,11 @@ class BackendConfig(ABC):
 
 
 class Backend(ABC):
-    def __init__(self, model: str, revision: str, task: str, device: str):
+    def __init__(self, model: str, task: str, device: str, model_kwargs: dict):
         self.model = model
-        self.revision = revision
         self.task = task
         self.device = device
+        self.model_kwargs = model_kwargs
 
     @abstractmethod
     def configure(self, config: BackendConfig) -> None:

@@ -7,9 +7,12 @@ from tempfile import TemporaryDirectory
 
 import torch
 import onnxruntime
-from onnxruntime.quantization import QuantFormat, QuantizationMode, QuantType
-from optimum.onnxruntime import ORTOptimizer, ORTQuantizer
+from torch import Tensor
+from omegaconf import OmegaConf
+from omegaconf.dictconfig import DictConfig
 from optimum.pipelines import ORT_SUPPORTED_TASKS
+from optimum.onnxruntime import ORTOptimizer, ORTQuantizer
+from onnxruntime.quantization import QuantFormat, QuantizationMode, QuantType
 from optimum.onnxruntime.configuration import (
     OptimizationConfig,
     QuantizationConfig,
@@ -17,23 +20,27 @@ from optimum.onnxruntime.configuration import (
     AutoQuantizationConfig,
 )
 
-from torch import Tensor
-from omegaconf import OmegaConf
-from omegaconf.dictconfig import DictConfig
 
 from src.backend.base import Backend, BackendConfig
 from src.profiler.ort_profiler import ORTProfilingWrapper
-from src.utils import get_used_memory
+from src.utils import get_used_memory, PROVIDER_OPTIONS
 
-BACKEND_NAME = "onnxruntime"
-LOGGER = getLogger(BACKEND_NAME)
 
-PROVIDER_OPTIONS = {}  # {"arena_extend_strategy": "kSameAsRequested"}
+OmegaConf.register_new_resolver(
+    "is_gpu",
+    lambda device: device == "cuda",
+)
+OmegaConf.register_new_resolver(
+    "infer_provider",
+    lambda device: f"{device.upper()}ExecutionProvider",
+)
+
+LOGGER = getLogger("onnxruntime")
 
 
 @dataclass
 class ORTConfig(BackendConfig):
-    name: str = BACKEND_NAME
+    name: str = "onnxruntime"
     version: str = onnxruntime.__version__
     _target_: str = "src.backend.onnxruntime.ORTBackend"
 
@@ -73,6 +80,7 @@ class ORTConfig(BackendConfig):
     auto_optimization_config: DictConfig = DictConfig(
         {
             "for_gpu": "${is_gpu:${device}}",
+            # add auto optimization specific options
         }
     )
 
@@ -126,16 +134,16 @@ class ORTConfig(BackendConfig):
     auto_quantization: Optional[str] = None  # arm64,avx2,avx512,avx512_vnni,tensorrt
     auto_quantization_config: DictConfig = DictConfig(
         {
-            "is_static": False  # for now, only dynamic quantization is supported
+            # for now, only dynamic quantization is supported
+            "is_static": False
             # add auto quantization specific options
         }
     )
 
 
 class ORTBackend(Backend):
-    def __init__(self, model: str, revision: str, task: str, device: str) -> None:
-        super().__init__(model, revision, task, device)
-        self.ortmodel_class = ORT_SUPPORTED_TASKS[self.task]["class"][0]
+    def __init__(self, model: str, task: str, device: str, model_kwargs: dict) -> None:
+        super().__init__(model, task, device, model_kwargs)
 
     def configure(self, config: ORTConfig) -> None:
         super().configure(config)
@@ -159,17 +167,20 @@ class ORTBackend(Backend):
             LOGGER.info("\t+ Enabling onnxruntime profiling")
             self.session_options.enable_profiling = True
 
+        self.ortmodel_class = ORT_SUPPORTED_TASKS[self.task]["class"][0]
+        LOGGER.info(f"\t+ Infered ORTModel class: {self.ortmodel_class.__name__}")
+
         LOGGER.info(
-            f"\t+ Loading model {self.model} with {self.ortmodel_class.__name__}"
+            f"\t+ Exporting model to ONNX and loading it in onnxruntime {self.device}"
         )
         self.pretrained_model = self.ortmodel_class.from_pretrained(
             model_id=self.model,
-            revision=self.revision,
             session_options=self.session_options,
+            use_io_binding=config.use_io_binding,
             provider=config.provider,
             provider_options=PROVIDER_OPTIONS,
-            use_io_binding=config.use_io_binding,
             export=True,
+            **self.model_kwargs,
         )
         LOGGER.debug(f"\t+ Device used memory: {get_used_memory(device=self.device)}")
 

@@ -1,8 +1,13 @@
+# optimum
 git+https://github.com/huggingface/optimum.git
+# transformers
+git+https://github.com/huggingface/transformers.git
+# accelerate
+git+https://github.com/huggingface/accelerate.git
+
+
+
 onnxruntime-gpu==1.15.0
-transformers
-accelerate
-bitsandbytes
 torch==2.0.1
 onnx==1.14.0
 
@@ -13,6 +18,7 @@ hydra_colorlog==1.2.0
 py3nvml==0.2.7
 psutil==5.9.5
 
+bitsandbytes
 flatten_dict
 matplotlib
 seaborn

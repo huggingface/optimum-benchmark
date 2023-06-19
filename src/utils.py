@@ -8,6 +8,11 @@ import subprocess
 import numpy as np
 import py3nvml.py3nvml as nvml
 
+from logging import getLogger
+
+LOGGER = getLogger("utils")
+
+PROVIDER_OPTIONS = {}  # {"arena_extend_strategy": "kSameAsRequested"}
 
 LLM_MODEL_TYPES = [
     "mpt",

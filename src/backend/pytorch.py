@@ -1,12 +1,11 @@
 from typing import Dict, List, Optional
 from dataclasses import dataclass
 from logging import getLogger
-from functools import partial
 import gc
-
 
 import torch
 from torch import Tensor
+from omegaconf import OmegaConf
 from transformers import AutoConfig
 from optimum.exporters import TasksManager
 from transformers.utils.fx import symbolic_trace
@@ -16,13 +15,18 @@ from src.backend.base import Backend, BackendConfig
 from src.profiler.fx_profiler import FXProfilingWrapper
 from src.utils import get_used_memory
 
-BACKEND_NAME = "pytorch"
-LOGGER = getLogger(BACKEND_NAME)
+# bachend logger
+LOGGER = getLogger("pytorch")
+
+# backend resolvers
+OmegaConf.register_new_resolver(
+    "is_inference", lambda benchmark: benchmark == "inference"
+)
 
 
 @dataclass
 class PyTorchConfig(BackendConfig):
-    name: str = BACKEND_NAME
+    name: str = "pytorch"
     version: str = torch.__version__
     _target_: str = "src.backend.pytorch.PyTorchBackend"
 
@@ -44,12 +48,8 @@ class PyTorchConfig(BackendConfig):
 
 
 class PyTorchBackend(Backend):
-    def __init__(self, model: str, revision: str, task: str, device: str) -> None:
-        super().__init__(model, revision, task, device)
-        self.model_type = AutoConfig.from_pretrained(self.model).model_type
-        self.automodel_class = TasksManager.get_model_class_for_task(
-            task=self.task, model_type=self.model_type
-        )
+    def __init__(self, model: str, task: str, device: str, model_kwargs: dict):
+        super().__init__(model, task, device, model_kwargs)
 
     def configure(self, config: PyTorchConfig) -> None:
         super().configure(config)
@@ -72,41 +72,46 @@ class PyTorchBackend(Backend):
             LOGGER.info("\t+ Disabling gradients")
             torch.set_grad_enabled(False)
 
-        # Load model
-        LOGGER.info(
-            f"\t+ Loading {self.model} from HuggingFace Hub with {self.automodel_class.__name__}"
-        )
-        model_factory = partial(
-            self.automodel_class.from_pretrained,
-            pretrained_model_name_or_path=self.model,
-            revision=self.revision,
-        )
+        model_type = AutoConfig.from_pretrained(
+            self.model, **self.model_kwargs
+        ).model_type
+        LOGGER.info(f"\t+ Infered model type : {model_type}")
 
+        self.automodel_class = TasksManager.get_model_class_for_task(
+            task=self.task, model_type=model_type
+        )
+        LOGGER.info(f"\t+ Infered AutoModel class : {self.automodel_class.__name__}")
+
+        # Load model
         if config.quantization == "int8":
             LOGGER.info("\t+ Loading weights in int8")
-            self.pretrained_model = model_factory(
+            self.pretrained_model = self.automodel_class.from_pretrained(
+                pretrained_model_name_or_path=self.model,
                 load_in_8bit=True,
                 device_map=config.device_map,
+                **self.model_kwargs,
             )
         elif config.quantization == "int4":
             LOGGER.info("\t+ Loading weights in int4")
-            self.pretrained_model = model_factory(
+            self.pretrained_model = self.automodel_class.from_pretrained(
+                pretrained_model_name_or_path=self.model,
                 load_in_4bit=True,
                 device_map=config.device_map,
+                **self.model_kwargs,
             )
         else:
             LOGGER.info(f"\t+ Loading weights in {config.torch_dtype}")
-            self.pretrained_model = model_factory(
+            self.pretrained_model = self.automodel_class.from_pretrained(
+                pretrained_model_name_or_path=self.model,
                 torch_dtype=getattr(torch, config.torch_dtype),
                 device_map=config.device_map,
+                **self.model_kwargs,
             )
 
         # Move model to device
         if self.pretrained_model.device.type != self.device:
             LOGGER.info(f"\t+ Moving model to {self.device}")
             self.pretrained_model.to(self.device)
-
-        LOGGER.debug(f"\t+ Device used memory: {get_used_memory(device=self.device)}")
 
         # Turn on eval mode
         if config.eval_mode:
@@ -119,17 +124,11 @@ class PyTorchBackend(Backend):
             self.pretrained_model = BetterTransformer.transform(
                 self.pretrained_model, keep_original_model=False
             )
-            LOGGER.debug(
-                f"\t+ Device used memory: {get_used_memory(device=self.device)}"
-            )
 
         # Compile model
         if config.torch_compile:
             LOGGER.info("\t+ Using torch.compile")
             self.pretrained_model.forward = torch.compile(self.pretrained_model.forward)
-            LOGGER.debug(
-                f"\t+ Device used memory: {get_used_memory(device=self.device)}"
-            )
 
         # Turn on autocast
         if config.autocast:
@@ -137,6 +136,8 @@ class PyTorchBackend(Backend):
             self.autocast = True
         else:
             self.autocast = False
+
+        LOGGER.debug(f"\t+ Device used memory: {get_used_memory(device=self.device)}")
 
     def forward(self, input: Dict[str, Tensor]):
         with torch.cuda.amp.autocast(enabled=self.autocast):

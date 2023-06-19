@@ -3,7 +3,8 @@ from logging import getLogger
 import platform
 import os
 
-from omegaconf import DictConfig
+from optimum.exporters import TasksManager
+from omegaconf import DictConfig, OmegaConf
 from optimum.version import __version__ as optimum_version
 from transformers import __version__ as transformers_version
 
@@ -11,31 +12,43 @@ from src.backend.base import BackendConfig
 from src.benchmark.inference import BenchmarkConfig
 from src.utils import get_device_name, get_total_memory
 
-LOGGER = getLogger("experiment")
+OmegaConf.register_new_resolver(
+    "infer_task",
+    lambda model, revision: TasksManager.infer_task_from_model(
+        model=model, revision=revision
+    ),
+)
+
+LOGGER = getLogger("experiment")  # will be used in schema validation
 
 
 @dataclass
 class ExperimentConfig:
+    # EXPERIMENT CONFIGURATION
+    experiment_name: str = MISSING
+
     # BACKEND CONFIGURATION
-    # The backend to use for recording timing (pytorch, onnxruntime, ...)
     backend: BackendConfig = MISSING
 
     # BENCHMARK CONFIGURATION
-    # The kind of benchmark to run (inference, training, ...)
     benchmark: BenchmarkConfig = MISSING
 
-    # EXPERIMENT CONFIGURATION
-    # Experiment name
-    experiment_name: str = MISSING
-
     # MODEL CONFIGURATION
-    # Name of the model to run (bert-base-uncased, ...)
+    # Model name or path (bert-base-uncased, google/vit-base-patch16-224, ...)
     model: str = MISSING
-    # Task on which the model is run (sequence-classification, ...)
-    task: str = "${infer_task:${model}}"
-    # Revision of the model to run (main, ...)
-    revision: str = "main"
-    # Device on which the model is loaded and run (cpu, cuda, ...)
+    # model revision, use_auth_token, trust_remote_code
+    model_kwargs: DictConfig = DictConfig(
+        {
+            "revision": "main",
+            "use_auth_token": False,
+            "trust_remote_code": False,
+        }
+    )
+    # Task (sequence-classification, token-classification, question-answering, ...)
+    task: str = "${infer_task:${model},${model_kwargs.revision}}"  # TasksManager will try to
+
+    # DEVICE CONFIGURATION
+    # Device on which the model is loaded and run (cpu, cuda, hpu...)
     device: str = "cpu"
 
     # ENVIRONMENT CONFIGURATION

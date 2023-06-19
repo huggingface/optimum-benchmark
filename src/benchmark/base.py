@@ -18,9 +18,11 @@ class BenchmarkConfig(ABC):
 
 
 class Benchmark(ABC):
-    def __init__(self, model: str, device: str) -> None:
+    def __init__(self, model: str, task: str, device: str, model_kwargs: dict):
         self.model = model
+        self.task = task
         self.device = device
+        self.model_kwargs = model_kwargs
 
     def configure(self, config: BenchmarkConfig) -> None:
         LOGGER.info(f"Configuring {config.name} benchmark")
