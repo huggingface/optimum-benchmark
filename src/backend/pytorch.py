@@ -1,4 +1,6 @@
+from tempfile import TemporaryDirectory
 from typing import Dict, List, Optional
+from contextlib import contextmanager
 from dataclasses import dataclass
 from logging import getLogger
 import shutil
@@ -8,6 +10,7 @@ import gc
 import torch
 from torch import Tensor
 from omegaconf import OmegaConf
+
 from transformers import AutoConfig
 from optimum.exporters import TasksManager
 from transformers.utils.fx import symbolic_trace
@@ -15,7 +18,6 @@ from optimum.bettertransformer import BetterTransformer
 
 from src.backend.base import Backend, BackendConfig
 from src.profiler.fx_profiler import FXProfilingWrapper
-from src.utils import get_used_memory
 
 # bachend logger
 LOGGER = getLogger("pytorch")
@@ -31,6 +33,8 @@ class PyTorchConfig(BackendConfig):
     name: str = "pytorch"
     version: str = torch.__version__
     _target_: str = "src.backend.pytorch.PyTorchBackend"
+
+    no_weights: bool = False
 
     # inference options
     disable_grad: bool = "${is_inference:benchmark.name}"  # type: ignore
@@ -52,6 +56,16 @@ class PyTorchConfig(BackendConfig):
 class PyTorchBackend(Backend):
     def __init__(self, model: str, task: str, device: str, model_kwargs: dict):
         super().__init__(model, task, device, model_kwargs)
+        self.pretrained_config = AutoConfig.from_pretrained(
+            self.model, **self.model_kwargs
+        )
+        self.automodel_class = TasksManager.get_model_class_for_task(
+            task=self.task, framework="pt", model_type=self.pretrained_config.model_type
+        )
+        LOGGER.info(
+            f"\t+ Infered AutoModel class {self.automodel_class.__name__} "
+            f"for task {self.task} and model_type {self.pretrained_config.model_type}"
+        )
 
     def configure(self, config: PyTorchConfig) -> None:
         super().configure(config)
@@ -74,45 +88,27 @@ class PyTorchBackend(Backend):
             LOGGER.info("\t+ Disabling gradients")
             torch.set_grad_enabled(False)
 
-        model_type = AutoConfig.from_pretrained(
-            self.model, **self.model_kwargs
-        ).model_type
-        LOGGER.info(f"\t+ Infered model type : {model_type}")
-
-        self.automodel_class = TasksManager.get_model_class_for_task(
-            task=self.task, model_type=model_type
-        )
-        LOGGER.info(
-            f"\t+ Infered AutoModel class : {self.automodel_class.__name__}")
-
         # Load model
-        if config.quantization == "int8":
-            LOGGER.info("\t+ Loading weights in int8")
-            self.pretrained_model = self.automodel_class.from_pretrained(
-                pretrained_model_name_or_path=self.model,
-                load_in_8bit=True,
-                device_map=config.device_map,
-                **self.model_kwargs,
-            )
-        elif config.quantization == "int4":
-            LOGGER.info("\t+ Loading weights in int4")
-            self.pretrained_model = self.automodel_class.from_pretrained(
-                pretrained_model_name_or_path=self.model,
-                load_in_4bit=True,
-                device_map=config.device_map,
-                **self.model_kwargs,
-            )
-        else:
-            LOGGER.info(f"\t+ Loading weights in {config.torch_dtype}")
-            self.pretrained_model = self.automodel_class.from_pretrained(
-                pretrained_model_name_or_path=self.model,
+        if config.no_weights:
+            LOGGER.info("\t+ Creating model with random weights")
+            self.pretrained_model = self.automodel_class.from_config(
+                self.pretrained_config,
                 torch_dtype=getattr(torch, config.torch_dtype),
-                device_map=config.device_map,
-                **self.model_kwargs,
             )
-        
+
+            with TemporaryDirectory() as tmpdirname:
+                LOGGER.info("\t+ Saving the random weights model")
+                self.pretrained_model.save_pretrained(tmpdirname)
+                self.load_model(tmpdirname, config)
+
+        else:
+            # load hosted weights model
+            self.load_model(self.model, config)
+
         if config.device_map is not None:
-            LOGGER.info(self.pretrained_model.hf_device_map)
+            LOGGER.info("\t+ Resuling device map:")
+            for k, v in self.pretrained_model.hf_device_map.items():
+                LOGGER.info(f"\t\t+ {k} -> {v}")
 
         # Move model to device
         if self.pretrained_model.device.type != self.device:
@@ -144,44 +140,66 @@ class PyTorchBackend(Backend):
         else:
             self.autocast = False
 
-    def forward(self, input: Dict[str, Tensor]):
+    def load_model(self, pretrained_model_name_or_path: str, config: PyTorchConfig) -> None:
+        """
+        Model loading dispatcher for PyTorch backend
+        """
+        if config.quantization == "int8":
+            LOGGER.info("\t+ Loading weights in int8 quantization")
+            self.pretrained_model = self.automodel_class.from_pretrained(
+                pretrained_model_name_or_path=pretrained_model_name_or_path,
+                load_in_8bit=True,
+                device_map=config.device_map,
+                **self.model_kwargs,
+            )
+        elif config.quantization == "int4":
+            LOGGER.info("\t+ Loading weights in int4 quantization")
+            self.pretrained_model = self.automodel_class.from_pretrained(
+                pretrained_model_name_or_path=pretrained_model_name_or_path,
+                load_in_4bit=True,
+                device_map=config.device_map,
+                **self.model_kwargs,
+            )
+        else:
+            LOGGER.info(f"\t+ Loading weights in {config.torch_dtype}")
+            self.pretrained_model = self.automodel_class.from_pretrained(
+                pretrained_model_name_or_path=pretrained_model_name_or_path,
+                torch_dtype=getattr(torch, config.torch_dtype),
+                device_map=config.device_map,
+                **self.model_kwargs,
+            )
+
+    @contextmanager
+    def amp_autocast(self):
+        """
+        Autocast context dispatcher for mixed precision.
+        """
         if self.device == "cpu":
-            with torch.cpu.amp.autocast(enabled=self.autocast):  # type: ignore
-                output = self.pretrained_model(**input)
+            with torch.cpu.amp.autocast(enabled=self.autocast):
+                yield
         elif self.device == "cuda":
-            with torch.cuda.amp.autocast(enabled=self.autocast):  # type: ignore
-                output = self.pretrained_model(**input)
+            with torch.cuda.amp.autocast(enabled=self.autocast):
+                yield
         else:
             raise ValueError(f"Unknown device: {self.device}")
+
+    def forward(self, input: Dict[str, Tensor]):
+        with self.amp_autocast():
+            output = self.pretrained_model(**input)
 
         return output
 
     def generate(self, input: Dict[str, Tensor], new_tokens: int) -> Tensor:
-        if self.device == "cpu":
-            with torch.cpu.amp.autocast(enabled=self.autocast):  # type: ignore
-                output = self.pretrained_model.generate(  # type: ignore
-                    **input,
-                    pad_token_id=self.pretrained_model.config.eos_token_id,
-                    max_new_tokens=new_tokens,
-                    min_new_tokens=new_tokens,
-                    do_sample=False,
-                    use_cache=True,
-                    num_beams=1,
-                )
-        elif self.device == "cuda":
-            with torch.cuda.amp.autocast(enabled=self.autocast):  # type: ignore
-                output = self.pretrained_model.generate(  # type: ignore
-                    **input,
-                    pad_token_id=self.pretrained_model.config.eos_token_id,
-                    max_new_tokens=new_tokens,
-                    min_new_tokens=new_tokens,
-                    do_sample=False,
-                    use_cache=True,
-                    num_beams=1,
-                )
-        else:
-            raise ValueError(f"Unknown device {self.device}")
-
+        with self.amp_autocast():
+            output = self.pretrained_model.generate(  # type: ignore
+                **input,
+                pad_token_id=self.pretrained_model.config.eos_token_id,
+                max_new_tokens=new_tokens,
+                min_new_tokens=new_tokens,
+                do_sample=False,
+                use_cache=True,
+                num_beams=1,
+            )
         return output
 
     def prepare_for_profiling(self, input_names: List[str]) -> None:
@@ -193,19 +211,19 @@ class PyTorchBackend(Backend):
         LOGGER.info("\t+ Wrapping model with profiler")
         self.pretrained_model = FXProfilingWrapper(self.pretrained_model)
 
-    def clean(self) -> None:
-        LOGGER.info("Cleaning onnxruntime backend")
-        self._delete_pretrained_model()
-        self._delete_model_hub_cache()
-
-    def _delete_pretrained_model(self) -> None:
+    def delete_pretrained_model(self) -> None:
         del self.pretrained_model
         gc.collect()
         torch.cuda.empty_cache()
 
-    def _delete_model_hub_cache(self) -> None:
+    def delete_model_hub_cache(self) -> None:
         model_cache_path = "models--" + self.model.replace("/", "--")
         model_cache_path = os.path.join(os.path.expanduser(
             "~/.cache/huggingface/hub"), model_cache_path)
 
         shutil.rmtree(model_cache_path, ignore_errors=True)
+
+    def clean(self) -> None:
+        LOGGER.info("Cleaning onnxruntime backend")
+        self.delete_pretrained_model()
+        self.delete_model_hub_cache()

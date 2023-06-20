@@ -1,5 +1,6 @@
 import os
 import gc
+import shutil
 from logging import getLogger
 from dataclasses import dataclass
 from typing import Dict, List, Optional
@@ -131,7 +132,8 @@ class ORTConfig(BackendConfig):
         }
     )
 
-    auto_quantization: Optional[str] = None  # arm64,avx2,avx512,avx512_vnni,tensorrt
+    # arm64,avx2,avx512,avx512_vnni,tensorrt
+    auto_quantization: Optional[str] = None
     auto_quantization_config: DictConfig = DictConfig(
         {
             # for now, only dynamic quantization is supported
@@ -168,7 +170,8 @@ class ORTBackend(Backend):
             self.session_options.enable_profiling = True
 
         self.ortmodel_class = ORT_SUPPORTED_TASKS[self.task]["class"][0]
-        LOGGER.info(f"\t+ Infered ORTModel class: {self.ortmodel_class.__name__}")
+        LOGGER.info(
+            f"\t+ Infered ORTModel class: {self.ortmodel_class.__name__}")
 
         LOGGER.info(
             f"\t+ Exporting model to ONNX and loading it in onnxruntime {self.device}"
@@ -182,7 +185,8 @@ class ORTBackend(Backend):
             export=True,
             **self.model_kwargs,
         )
-        LOGGER.debug(f"\t+ Device used memory: {get_used_memory(device=self.device)}")
+        LOGGER.debug(
+            f"\t+ Device used memory: {get_used_memory(device=self.device)}")
 
         with TemporaryDirectory() as tmpdirname:
             if config.optimization or config.auto_optimization is not None:
@@ -199,7 +203,8 @@ class ORTBackend(Backend):
 
     def optimize_model(self, config: ORTConfig, tmpdirname: str) -> None:
         if config.auto_optimization is not None:
-            LOGGER.info(f"\t+ Using auto optimization {config.auto_optimization}")
+            LOGGER.info(
+                f"\t+ Using auto optimization {config.auto_optimization}")
             optimization_dict = OmegaConf.to_container(
                 config.auto_optimization_config, resolve=True
             )
@@ -220,7 +225,8 @@ class ORTBackend(Backend):
             optimization_config = OptimizationConfig(**optimization_dict)
 
         LOGGER.info("\t+ Attempting optimization")
-        optimizer = ORTOptimizer.from_pretrained(self.pretrained_model)  # type: ignore
+        optimizer = ORTOptimizer.from_pretrained(
+            self.pretrained_model)  # type: ignore
         optimizer.optimize(
             save_dir=f"{tmpdirname}/optimized",
             optimization_config=optimization_config,
@@ -238,7 +244,8 @@ class ORTBackend(Backend):
 
     def quantize_model(self, config: ORTConfig, tmpdirname: str) -> None:
         if config.auto_quantization is not None:
-            LOGGER.info(f"\t+ Using auto quantization {config.auto_quantization}")
+            LOGGER.info(
+                f"\t+ Using auto quantization {config.auto_quantization}")
             auto_quantization_class = getattr(
                 AutoQuantizationConfig, config.auto_quantization
             )
@@ -280,10 +287,12 @@ class ORTBackend(Backend):
 
         LOGGER.info("\t+ Attempting quantization")
         model_dir = self.pretrained_model.model_save_dir
-        components = [file for file in os.listdir(model_dir) if file.endswith(".onnx")]
+        components = [file for file in os.listdir(
+            model_dir) if file.endswith(".onnx")]
         for component in components:
             LOGGER.info(f"\t+ Quantizing {component}")
-            quantizer = ORTQuantizer.from_pretrained(model_dir, file_name=component)
+            quantizer = ORTQuantizer.from_pretrained(
+                model_dir, file_name=component)
             quantizer.quantize(
                 save_dir=f"{tmpdirname}/quantized",
                 quantization_config=quantization_config,
@@ -323,8 +332,16 @@ class ORTBackend(Backend):
     def clean(self) -> None:
         LOGGER.info("Cleaning onnxruntime backend")
         self._delete_pretrained_model()
+        self._delete_model_hub_cache()
 
     def _delete_pretrained_model(self) -> None:
         del self.pretrained_model
         gc.collect()
         torch.cuda.empty_cache()
+
+    def _delete_model_hub_cache(self) -> None:
+        model_cache_path = "models--" + self.model.replace("/", "--")
+        model_cache_path = os.path.join(os.path.expanduser(
+            "~/.cache/huggingface/hub"), model_cache_path)
+
+        shutil.rmtree(model_cache_path, ignore_errors=True)
