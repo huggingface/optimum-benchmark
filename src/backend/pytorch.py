@@ -1,4 +1,3 @@
-from tempfile import TemporaryDirectory
 from typing import Dict, List, Optional
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -15,6 +14,8 @@ from transformers import AutoConfig
 from optimum.exporters import TasksManager
 from transformers.utils.fx import symbolic_trace
 from optimum.bettertransformer import BetterTransformer
+from accelerate import init_empty_weights, dispatch_model, infer_auto_device_map
+from accelerate.utils import get_balanced_memory
 
 from src.backend.base import Backend, BackendConfig
 from src.profiler.fx_profiler import FXProfilingWrapper
@@ -35,6 +36,7 @@ class PyTorchConfig(BackendConfig):
     _target_: str = "src.backend.pytorch.PyTorchBackend"
 
     no_weights: bool = False
+    delete_cache: bool = False
 
     # inference options
     disable_grad: bool = "${is_inference:benchmark.name}"  # type: ignore
@@ -90,16 +92,38 @@ class PyTorchBackend(Backend):
 
         # Load model
         if config.no_weights:
-            LOGGER.info("\t+ Creating model with random weights")
-            self.pretrained_model = self.automodel_class.from_config(
-                self.pretrained_config,
-                torch_dtype=getattr(torch, config.torch_dtype),
-            )
+            LOGGER.info(
+                "\t+ Creating model with random weights on meta device")
+            with init_empty_weights():
+                self.pretrained_model = self.automodel_class.from_config(
+                    self.pretrained_config,
+                    torch_dtype=getattr(torch, config.torch_dtype),
+                )
 
-            with TemporaryDirectory() as tmpdirname:
-                LOGGER.info("\t+ Saving the random weights model")
-                self.pretrained_model.save_pretrained(tmpdirname)
-                self.load_model(tmpdirname, config)
+            LOGGER.info("\t+ Materializing the random weights model on cpu")
+            self.pretrained_model = self.pretrained_model.to_empty(
+                device="cpu")
+            self.pretrained_model.tie_weights()
+
+            if config.device_map is not None:
+                LOGGER.info("\t+ Infering the device map")
+                if config.device_map != "sequential":
+                    max_memory = get_balanced_memory(
+                        self.pretrained_model,
+                        dtype=getattr(torch, config.torch_dtype),
+                        low_zero=True,
+                    )
+                else:
+                    max_memory = None
+
+                device_map = infer_auto_device_map(
+                    self.pretrained_model,
+                    max_memory=max_memory,
+                    dtype=getattr(torch, config.torch_dtype)
+                )
+                LOGGER.info("\t+ Dispatching the model to the device map")
+                self.pretrained_model = dispatch_model(
+                    self.pretrained_model, device_map=device_map)
 
         else:
             # load hosted weights model
@@ -139,6 +163,13 @@ class PyTorchBackend(Backend):
             self.autocast = True
         else:
             self.autocast = False
+
+        # delete cache
+        if config.delete_cache:
+            LOGGER.info("\t+ Will delete cache after benchmarking")
+            self.delete_cache = True
+        else:
+            self.delete_cache = False
 
     def load_model(self, pretrained_model_name_or_path: str, config: PyTorchConfig) -> None:
         """
@@ -214,7 +245,9 @@ class PyTorchBackend(Backend):
     def delete_pretrained_model(self) -> None:
         del self.pretrained_model
         gc.collect()
-        torch.cuda.empty_cache()
+
+        if self.device == "cuda":
+            torch.cuda.empty_cache()
 
     def delete_model_hub_cache(self) -> None:
         model_cache_path = "models--" + self.model.replace("/", "--")
@@ -224,6 +257,8 @@ class PyTorchBackend(Backend):
         shutil.rmtree(model_cache_path, ignore_errors=True)
 
     def clean(self) -> None:
-        LOGGER.info("Cleaning onnxruntime backend")
+        LOGGER.info("Cleaning pytorch backend")
         self.delete_pretrained_model()
-        self.delete_model_hub_cache()
+
+        if self.delete_cache:
+            self.delete_model_hub_cache()
