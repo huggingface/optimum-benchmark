@@ -46,6 +46,7 @@ class ORTConfig(BackendConfig):
     _target_: str = "src.backend.onnxruntime.ORTBackend"
 
     # basic options
+    delete_cache: bool = False
     provider: str = "${infer_provider:${device}}"
     use_io_binding: bool = "${is_gpu:${device}}"
     enable_profiling: bool = "${benchmark.profile}"
@@ -201,6 +202,13 @@ class ORTBackend(Backend):
                     f"\t+ Device used memory: {get_used_memory(device=self.device)}"
                 )
 
+        # delete cache
+        if config.delete_cache:
+            LOGGER.info("\t+ Will delete cache after benchmarking")
+            self.delete_cache = True
+        else:
+            self.delete_cache = False
+
     def optimize_model(self, config: ORTConfig, tmpdirname: str) -> None:
         if config.auto_optimization is not None:
             LOGGER.info(
@@ -233,7 +241,7 @@ class ORTBackend(Backend):
         )
 
         LOGGER.info("\t+ Loading optimized model")
-        self._delete_pretrained_model()
+        self.delete_pretrained_model()
         self.pretrained_model = self.ortmodel_class.from_pretrained(
             model_id=f"{tmpdirname}/optimized",
             session_options=self.session_options,
@@ -299,7 +307,7 @@ class ORTBackend(Backend):
             )
 
         LOGGER.info("\t+ Loading quantized model")
-        self._delete_pretrained_model()
+        self.delete_pretrained_model()
         self.pretrained_model = self.ortmodel_class.from_pretrained(
             model_id=f"{tmpdirname}/quantized",
             session_options=self.session_options,
@@ -329,19 +337,23 @@ class ORTBackend(Backend):
         LOGGER.info("\t+ Wrapping model with profiler")
         self.pretrained_model = ORTProfilingWrapper(self.pretrained_model)
 
-    def clean(self) -> None:
-        LOGGER.info("Cleaning onnxruntime backend")
-        self._delete_pretrained_model()
-        self._delete_model_hub_cache()
-
-    def _delete_pretrained_model(self) -> None:
+    def delete_pretrained_model(self) -> None:
         del self.pretrained_model
         gc.collect()
-        torch.cuda.empty_cache()
 
-    def _delete_model_hub_cache(self) -> None:
+        if self.device == "cuda":
+            torch.cuda.empty_cache()
+
+    def delete_model_hub_cache(self) -> None:
         model_cache_path = "models--" + self.model.replace("/", "--")
         model_cache_path = os.path.join(os.path.expanduser(
             "~/.cache/huggingface/hub"), model_cache_path)
 
         shutil.rmtree(model_cache_path, ignore_errors=True)
+
+    def clean(self) -> None:
+        LOGGER.info("Cleaning pytorch backend")
+        self.delete_pretrained_model()
+
+        if self.delete_cache:
+            self.delete_model_hub_cache()
