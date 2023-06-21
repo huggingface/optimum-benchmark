@@ -102,7 +102,7 @@ def get_inference_rich_table(
     additional_columns = [
         col
         for col in inference_report.columns
-        if inference_report[col].nunique() > 1
+        if inference_report[col].fillna("").nunique() > 1
         and "backend" in col
         and "_target_" not in col
         and "version" not in col
