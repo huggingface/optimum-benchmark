@@ -21,8 +21,8 @@ class DummyGenerator:
         assert "batch_size" in kwargs, "batch_size must be provided in kwargs"
 
         # hacky way to get what we need
-        task = TasksManager.infer_task_from_model(self.model)
-        auto_config = AutoConfig.from_pretrained(self.model, **self.model_kwargs)
+        auto_config = AutoConfig.from_pretrained(
+            self.model, **self.model_kwargs)
         model_type = auto_config.model_type
 
         # patch for some LLMs
@@ -33,7 +33,7 @@ class DummyGenerator:
                 )
             }
 
-        onnx_config = TasksManager._SUPPORTED_MODEL_TYPE[model_type]["onnx"][task](
+        onnx_config = TasksManager._SUPPORTED_MODEL_TYPE[model_type]["onnx"][self.task](
             auto_config
         )
         normalized_config = onnx_config.NORMALIZED_CONFIG_CLASS(auto_config)
@@ -52,7 +52,7 @@ class DummyGenerator:
             for generator_class in generator_classes:
                 if input_name in generator_class.SUPPORTED_INPUT_NAMES:
                     generator = generator_class(
-                        task=task,
+                        task=self.task,
                         normalized_config=normalized_config,
                         batch_size=kwargs["batch_size"],
                     )
@@ -62,7 +62,8 @@ class DummyGenerator:
                     f"Could not find dummy input generator for {input_name}"
                 )
 
-            dummy_inputs[input_name] = generator.generate(input_name).to(self.device)
+            dummy_inputs[input_name] = generator.generate(
+                input_name).to(self.device)
 
             if input_name == "attention_mask":
                 # patch for bettertransformer

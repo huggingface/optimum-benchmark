@@ -14,8 +14,8 @@ from src.utils import get_device_name, get_total_memory
 
 OmegaConf.register_new_resolver(
     "infer_task",
-    lambda model, revision: TasksManager.infer_task_from_model(
-        model=model, revision=revision
+    lambda model, subfolder, revision: TasksManager.infer_task_from_model(
+        model=model, subfolder=subfolder, revision=revision
     ),
 )
 
@@ -36,21 +36,30 @@ class ExperimentConfig:
     # MODEL CONFIGURATION
     # Model name or path (bert-base-uncased, google/vit-base-patch16-224, ...)
     model: str = MISSING
-    # model revision, use_auth_token, trust_remote_code
-    model_kwargs: DictConfig = DictConfig(
-        {
-            "revision": "main",
-            "use_auth_token": False,
-            "trust_remote_code": False,
-        }
-    )
-    # Task (sequence-classification, token-classification, question-answering, ...)
-    task: str = "${infer_task:${model},${model_kwargs.revision}}"  # TasksManager will try to
 
-    # DEVICE CONFIGURATION
+    # DEVICE CONFIGURATION (might be moved to backend config in the future)
     # Device on which the model is loaded and run (cpu, cuda, hpu...)
     device: str = "cpu"
 
+    # ADDITIONAL MODEL CONFIGURATION
+    # Task (sequence-classification, token-classification, question-answering, ...)
+    # TasksManager will try to infer the task from the model
+    task: str = "${infer_task:${model},${cache_kwargs.subfolder},${cache_kwargs.revision}}"
+    # Model revision, use_auth_token, trust_remote_code
+    cache_kwargs: DictConfig = DictConfig(
+        {
+            "revision": "main",
+            "subfolder": "",
+
+            "cache_dir": None,
+            "proxies": None,
+
+            "force_download": False,
+            "resume_download": False,
+            "local_files_only": False,
+            "use_auth_token": False,
+        }
+    )
     # ENVIRONMENT CONFIGURATION
     environment: DictConfig = DictConfig(
         {

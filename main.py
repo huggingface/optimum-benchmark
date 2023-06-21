@@ -31,12 +31,13 @@ def run_experiment(experiment: ExperimentConfig) -> Optional[float]:
     OmegaConf.save(experiment, "hydra_config.yaml", resolve=True)
 
     # Allocate requested benchmark
-    benchmark_factory: Type[Benchmark] = get_class(experiment.benchmark._target_)
+    benchmark_factory: Type[Benchmark] = get_class(
+        experiment.benchmark._target_)
     benchmark: Benchmark = benchmark_factory(
         experiment.model,
         experiment.task,
         experiment.device,
-        experiment.model_kwargs,
+        experiment.cache_kwargs,
     )
     benchmark.configure(experiment.benchmark)
 
@@ -47,7 +48,7 @@ def run_experiment(experiment: ExperimentConfig) -> Optional[float]:
             experiment.model,
             experiment.task,
             experiment.device,
-            experiment.model_kwargs,
+            experiment.cache_kwargs,
         )
         backend.configure(experiment.backend)
 

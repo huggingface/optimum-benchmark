@@ -10,6 +10,7 @@ import torch
 import onnxruntime
 from torch import Tensor
 from omegaconf import OmegaConf
+from transformers import AutoConfig
 from omegaconf.dictconfig import DictConfig
 from optimum.pipelines import ORT_SUPPORTED_TASKS
 from optimum.onnxruntime import ORTOptimizer, ORTQuantizer
@@ -46,7 +47,10 @@ class ORTConfig(BackendConfig):
     _target_: str = "src.backend.onnxruntime.ORTBackend"
 
     # basic options
+    export: bool = True
     delete_cache: bool = False
+
+    # inference options
     provider: str = "${infer_provider:${device}}"
     use_io_binding: bool = "${is_gpu:${device}}"
     enable_profiling: bool = "${benchmark.profile}"
@@ -147,6 +151,14 @@ class ORTConfig(BackendConfig):
 class ORTBackend(Backend):
     def __init__(self, model: str, task: str, device: str, model_kwargs: dict) -> None:
         super().__init__(model, task, device, model_kwargs)
+        self.pretrained_config = AutoConfig.from_pretrained(
+            self.model, **self.model_kwargs
+        )
+        self.ortmodel_class = ORT_SUPPORTED_TASKS[self.task]["class"][0]
+        LOGGER.info(
+            f"\t+ Infered AutoModel class {self.ortmodel_class.__name__} "
+            f"for task {self.task} and model_type {self.pretrained_config.model_type}"
+        )
 
     def configure(self, config: ORTConfig) -> None:
         super().configure(config)
@@ -170,10 +182,6 @@ class ORTBackend(Backend):
             LOGGER.info("\t+ Enabling onnxruntime profiling")
             self.session_options.enable_profiling = True
 
-        self.ortmodel_class = ORT_SUPPORTED_TASKS[self.task]["class"][0]
-        LOGGER.info(
-            f"\t+ Infered ORTModel class: {self.ortmodel_class.__name__}")
-
         LOGGER.info(
             f"\t+ Exporting model to ONNX and loading it in onnxruntime {self.device}"
         )
@@ -183,7 +191,7 @@ class ORTBackend(Backend):
             use_io_binding=config.use_io_binding,
             provider=config.provider,
             provider_options=PROVIDER_OPTIONS,
-            export=True,
+            export=config.export,
             **self.model_kwargs,
         )
         LOGGER.debug(
@@ -344,7 +352,7 @@ class ORTBackend(Backend):
         if self.device == "cuda":
             torch.cuda.empty_cache()
 
-    def delete_model_hub_cache(self) -> None:
+    def delete_model_cache(self) -> None:
         model_cache_path = "models--" + self.model.replace("/", "--")
         model_cache_path = os.path.join(os.path.expanduser(
             "~/.cache/huggingface/hub"), model_cache_path)
@@ -356,4 +364,4 @@ class ORTBackend(Backend):
         self.delete_pretrained_model()
 
         if self.delete_cache:
-            self.delete_model_hub_cache()
+            self.delete_model_cache()

@@ -15,7 +15,6 @@ from optimum.exporters import TasksManager
 from transformers.utils.fx import symbolic_trace
 from optimum.bettertransformer import BetterTransformer
 from accelerate import init_empty_weights, dispatch_model, infer_auto_device_map
-from accelerate.utils import get_balanced_memory
 
 from src.backend.base import Backend, BackendConfig
 from src.profiler.fx_profiler import FXProfilingWrapper
@@ -44,7 +43,7 @@ class PyTorchConfig(BackendConfig):
 
     # load options
     torch_dtype: str = "float32"  # "float32" or "float16"
-    device_map: Optional[str] = None  # "auto"
+    device_map: Optional[str] = None  # "auto", "balanced", ...
 
     # quantization options
     quantization: Optional[str] = None  # "int8" or "int4"
@@ -58,6 +57,8 @@ class PyTorchConfig(BackendConfig):
 class PyTorchBackend(Backend):
     def __init__(self, model: str, task: str, device: str, model_kwargs: dict):
         super().__init__(model, task, device, model_kwargs)
+
+        # get pretrained AutoConfig and AutoModel class
         self.pretrained_config = AutoConfig.from_pretrained(
             self.model, **self.model_kwargs
         )
@@ -92,47 +93,10 @@ class PyTorchBackend(Backend):
 
         # Load model
         if config.no_weights:
-            LOGGER.info(
-                "\t+ Creating model with random weights on meta device")
-            with init_empty_weights():
-                self.pretrained_model = self.automodel_class.from_config(
-                    self.pretrained_config,
-                    torch_dtype=getattr(torch, config.torch_dtype),
-                )
-
-            LOGGER.info("\t+ Materializing the random weights model on cpu")
-            self.pretrained_model = self.pretrained_model.to_empty(
-                device="cpu")
-            self.pretrained_model.tie_weights()
-
-            if config.device_map is not None:
-                LOGGER.info("\t+ Infering the device map")
-                if config.device_map != "sequential":
-                    max_memory = get_balanced_memory(
-                        self.pretrained_model,
-                        dtype=getattr(torch, config.torch_dtype),
-                        low_zero=True,
-                    )
-                else:
-                    max_memory = None
-
-                device_map = infer_auto_device_map(
-                    self.pretrained_model,
-                    max_memory=max_memory,
-                    dtype=getattr(torch, config.torch_dtype)
-                )
-                LOGGER.info("\t+ Dispatching the model to the device map")
-                self.pretrained_model = dispatch_model(
-                    self.pretrained_model, device_map=device_map)
-
+            self.load_model_from_config(config)
         else:
             # load hosted weights model
-            self.load_model(self.model, config)
-
-        if config.device_map is not None:
-            LOGGER.info("\t+ Resuling device map:")
-            for k, v in self.pretrained_model.hf_device_map.items():
-                LOGGER.info(f"\t\t+ {k} -> {v}")
+            self.load_model_from_pretrained(config)
 
         # Move model to device
         if self.pretrained_model.device.type != self.device:
@@ -171,34 +135,72 @@ class PyTorchBackend(Backend):
         else:
             self.delete_cache = False
 
-    def load_model(self, pretrained_model_name_or_path: str, config: PyTorchConfig) -> None:
-        """
-        Model loading dispatcher for PyTorch backend
-        """
-        if config.quantization == "int8":
-            LOGGER.info("\t+ Loading weights in int8 quantization")
-            self.pretrained_model = self.automodel_class.from_pretrained(
-                pretrained_model_name_or_path=pretrained_model_name_or_path,
-                load_in_8bit=True,
-                device_map=config.device_map,
-                **self.model_kwargs,
-            )
-        elif config.quantization == "int4":
-            LOGGER.info("\t+ Loading weights in int4 quantization")
-            self.pretrained_model = self.automodel_class.from_pretrained(
-                pretrained_model_name_or_path=pretrained_model_name_or_path,
-                load_in_4bit=True,
-                device_map=config.device_map,
-                **self.model_kwargs,
-            )
-        else:
-            LOGGER.info(f"\t+ Loading weights in {config.torch_dtype}")
-            self.pretrained_model = self.automodel_class.from_pretrained(
-                pretrained_model_name_or_path=pretrained_model_name_or_path,
+    def load_model_from_config(self, config: PyTorchConfig) -> None:
+        LOGGER.info(
+            "\t+ Creating empty weights model from config with on meta device")
+        with init_empty_weights():
+            self.pretrained_model = self.automodel_class.from_config(
+                self.pretrained_config,
                 torch_dtype=getattr(torch, config.torch_dtype),
-                device_map=config.device_map,
-                **self.model_kwargs,
+                trust_remote_code=self.model_kwargs.get(
+                    "trust_remote_code", False),
             )
+
+        LOGGER.info(f"\t+ Materializing the model on {self.device}")
+        self.pretrained_model = self.pretrained_model.to_empty(
+            device=self.device)
+
+        if config.device_map is not None:
+            LOGGER.info(
+                "\t+ Empty weights model will be dispatched using auto device map")
+
+            LOGGER.info("\t+ Infering no_split_module_classes")
+            no_split_module_classes = list(set([layer[0].__class__.__name__ for _, layer in self.pretrained_model.named_modules(
+            ) if type(layer) == torch.nn.ModuleList]))
+
+            LOGGER.info("\t+ Resuling no_split_module_classes:")
+            for module_class in no_split_module_classes:
+                LOGGER.info(f"\t\t+ {module_class}")
+
+            LOGGER.info("\t+ Infering auto device map")
+            auto_device_map = infer_auto_device_map(
+                self.pretrained_model,
+                no_split_module_classes=no_split_module_classes,
+                dtype=getattr(torch, config.torch_dtype)
+            )
+
+            LOGGER.info("\t+ Resuling auto device map:")
+            for k, v in auto_device_map.items():
+                LOGGER.info(f"\t\t+ {k} -> {v}")
+
+            if any([v == "cpu" or v == "disk" for v in auto_device_map.values()]) and self.device != "cpu":
+                LOGGER.warning(
+                    f"\t+ Auto device map couldn't put the whole model on the target device {self.device}."
+                )
+
+            LOGGER.info("\t+ Dispatching the model")
+            self.pretrained_model = dispatch_model(
+                self.pretrained_model, device_map=auto_device_map, offload_dir="./offload_dir")
+
+        self.pretrained_model.tie_weights()
+
+    def load_model_from_pretrained(self, config: PyTorchConfig) -> None:
+        """
+        Model loading from pretrained weights.
+        """
+        LOGGER.info(
+            f"\t+ Loading pretrained model weights in {config.torch_dtype}" + (
+                f" and quantizing to {config.quantization}" if config.quantization else ""
+            )
+        )
+        self.pretrained_model = self.automodel_class.from_pretrained(
+            pretrained_model_name_or_path=self.model,
+            torch_dtype=getattr(torch, config.torch_dtype),
+            load_in_8bit=config.quantization == "int8",
+            load_in_4bit=config.quantization == "int4",
+            device_map=config.device_map,
+            **self.model_kwargs,
+        )
 
     @contextmanager
     def amp_autocast(self):
