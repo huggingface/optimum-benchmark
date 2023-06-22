@@ -1,8 +1,9 @@
-from typing import List, Tuple
 from dataclasses import dataclass
+from typing import List, Tuple
 from logging import getLogger
 
 import statistics
+from omegaconf import DictConfig
 from pandas import DataFrame
 
 from src.backend.base import Backend
@@ -29,7 +30,24 @@ class InferenceConfig(BenchmarkConfig):
     benchmark_duration: int = 10
 
     # input options
-    batch_size: int = 1
+    input_shapes: DictConfig = DictConfig(
+        {
+            "batch_size": 1,
+            # text
+            "sequence_length": 16,
+            "num_choices": 4,
+            # image
+            "width": 64,
+            "height": 64,
+            "num_channels": 3,
+            "point_batch_size": 3,
+            "nb_points_per_image": 2,
+            # audio
+            "feature_size": 80,
+            "nb_max_frames": 3000,
+            "audio_sequence_length": 16000,
+        }
+    )
     # output options
     new_tokens: int = 100
 
@@ -58,7 +76,7 @@ class InferenceBenchmark(Benchmark):
         self.warmup_runs = config.warmup_runs
         self.benchmark_duration = config.benchmark_duration
 
-        self.batch_size = config.batch_size
+        self.input_shapes = config.input_shapes
         self.new_tokens = config.new_tokens
 
     def run(self, backend: Backend) -> None:
@@ -76,7 +94,7 @@ class InferenceBenchmark(Benchmark):
 
     def _run_memory_tracking(self, backend: Backend) -> None:
         memory_inputs = self.dummy_generator.generate(
-            mode="forward", batch_size=self.batch_size
+            mode="forward", **self.input_shapes
         )
 
         LOGGER.info("\t+ Tracking forward pass peak memory")
@@ -90,7 +108,7 @@ class InferenceBenchmark(Benchmark):
 
     def _run_forward_tracking(self, backend: Backend) -> None:
         forward_inputs = self.dummy_generator.generate(
-            mode="forward", batch_size=self.batch_size
+            mode="forward", **self.input_shapes
         )
 
         LOGGER.info("\t+ Warming up the forward pass")
@@ -112,7 +130,7 @@ class InferenceBenchmark(Benchmark):
 
     def _run_generate_tracking(self, backend: Backend) -> None:
         generate_inputs = self.dummy_generator.generate(
-            mode="generate", batch_size=self.batch_size
+            mode="generate", **self.input_shapes
         )
 
         LOGGER.info("\t+ Testing and warming up the generation pass")
@@ -144,7 +162,7 @@ class InferenceBenchmark(Benchmark):
 
     def _run_forward_profile(self, backend: Backend) -> None:
         profile_inputs = self.dummy_generator.generate(
-            mode="forward", batch_size=self.batch_size
+            mode="forward", **self.input_shapes
         )
 
         LOGGER.info("\t+ Preparing backend for profiling")
@@ -162,7 +180,7 @@ class InferenceBenchmark(Benchmark):
 
     @property
     def forward_throughput(self) -> float:
-        return self.batch_size / self.forward_latency
+        return self.input_shapes.batch_size / self.forward_latency
 
     @property
     def generate_latency(self) -> float:
@@ -170,7 +188,7 @@ class InferenceBenchmark(Benchmark):
 
     @property
     def generate_throughput(self) -> float:
-        return self.new_tokens * self.batch_size / self.generate_latency
+        return self.new_tokens * self.input_shapes.batch_size / self.generate_latency
 
     def get_results_df(self) -> DataFrame:
         results_dict = dict()

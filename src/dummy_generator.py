@@ -1,3 +1,4 @@
+import inspect
 from typing import Dict
 
 import torch
@@ -16,20 +17,20 @@ class DummyGenerator:
         self.device = device
         self.model_kwargs = model_kwargs
 
-    def generate(self, mode, **kwargs) -> Dict[str, Tensor]:
+    def generate(self, mode, **input_shapes) -> Dict[str, Tensor]:
         assert mode in ["forward", "generate"], f"mode {mode} not supported"
-        assert "batch_size" in kwargs, "batch_size must be provided in kwargs"
+        assert "batch_size" in input_shapes, "batch_size must be provided in input_shapes"
 
         # hacky way to get what we need
         auto_config = AutoConfig.from_pretrained(
             self.model, **self.model_kwargs)
         model_type = auto_config.model_type
 
-        # patch for some LLMs
+        # patch for some LLMs model types not recognized by TasksManager
         if model_type in LLM_MODEL_TYPES:
             return {
                 "input_ids": torch.ones(
-                    (kwargs["batch_size"], 1), dtype=torch.long, device=self.device
+                    (input_shapes["batch_size"], 1), dtype=torch.long, device=self.device
                 )
             }
 
@@ -50,11 +51,21 @@ class DummyGenerator:
         for input_name in input_names:
             generator = None
             for generator_class in generator_classes:
-                if input_name in generator_class.SUPPORTED_INPUT_NAMES:
+                supported_generator_params = inspect.signature(
+                    generator_class.__init__
+                ).parameters.keys()
+                supported_generator_inputs = generator_class.SUPPORTED_INPUT_NAMES
+
+                if input_name in supported_generator_inputs:
                     generator = generator_class(
                         task=self.task,
                         normalized_config=normalized_config,
-                        batch_size=kwargs["batch_size"],
+                        # get the value from kwargs if it exists, otherwise use the default value
+                        **{
+                            param: input_shapes[param]
+                            for param in supported_generator_params
+                            if param in input_shapes
+                        },
                     )
 
             if generator is None:
