@@ -2,16 +2,16 @@
 
 ## The Goal
 
-A repository aiming to create a benchmarking utility for any model on [HuggingFace's Hub](https://huggingface.co/models) supporting [Optimum](https://github.com/huggingface/optimum)'s [inference](https://github.com/huggingface/optimum#accelerated-inference) and [training](https://github.com/huggingface/optimum#accelerated-training) optimizations on different backends and hardware (OnnxRuntime, Intel Neural Compressor, OpenVINO, Habana Gaudi Processor (HPU), etc.).
+A repository aiming to create a benchmarking utility for any model on [HuggingFace's Hub](https://huggingface.co/models) supporting [Optimum](https://github.com/huggingface/optimum)'s [inference](https://github.com/huggingface/optimum#accelerated-inference) & [training](https://github.com/huggingface/optimum#accelerated-training), optimizations & quantizations, on different backends & hardwares (OnnxRuntime, Intel Neural Compressor, OpenVINO, Habana Gaudi Processor (HPU), etc).
 
 The experiment management and tracking is handled by [hydra](https://hydra.cc/) using the command line with minimum mandatory configuration changes and maximum flexibility (inspired from [tune](https://github.com/huggingface/tune))
 
 ## Motivation
 
-- Many users would want to know how their chosen model performq (latency/throughput) before deploying it to production.
+- Many users would want to know how their chosen model performs (latency & throughput) before deploying it to production.
 - Many hardware vendors would want to know how their hardware performs on different models and how it compares to others.
-- Optimum offers a lot of optimizations that can be applied to models and improve their performance, but it's hard to know which ones to use if you don't know a lot about your hardware. It's also hard to estimate how much these optimizations will improve the performance before trying them out.
-- Benchmarks depend heavily on many factors, like the machine/hardware/os/releases/etc. And that makes most of the benchmarks available today, not very useful for decision making.
+- Optimum offers a lot of optimizations that can be applied to models and improve their performance, but it's hard to know which ones to use if you don't know a lot about your hardware. It's also hard to estimate how much these optimizations will improve the performance before training your model or downloading it from the hub and optimizing it.
+- Benchmarks depend heavily on many factors, like the machine/hardware/os/releases/etc but most of this information is not put forward with the results. And that makes most of the benchmarks available today, not very useful for decision making.
 - [...]
 
 ## Features
@@ -24,8 +24,8 @@ Inference:
 - [x] OnnxRuntime backend for cpu
 - [x] OnnxRuntime backend for cuda
 - [ ] OnnxRuntime backend for tensorrt
-- [ ] Intel Neural Compressor backend
-- [ ] OpenVINO backend
+- [ ] Intel Neural Compressor
+- [ ] OpenVINO
 
 Optimizations:
 
@@ -37,10 +37,10 @@ Optimizations:
 
 ## Quickstart
 
-Start by installing the required dependencies:
+Start by installing the required dependencies depending on your hardware and the backends you want to use. For example, for cuda support :
 
 ```bash
-python -m pip install -r requirements.txt
+python -m pip install -r cuda_requirements.txt
 ```
 
 Then copy `examples/bert.yaml` to `configs/bert.yaml` and run with:
