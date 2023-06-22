@@ -262,7 +262,7 @@ def main(experiments_folders, baseline_folder=None):
     ), "there should be only one device (apples to apples comparison)"
     device = unique_devices[0]
 
-    unique_batch_sizes = inference_report["benchmark.batch_size"].unique()
+    unique_batch_sizes = inference_report["benchmark.input_shapes.batch_size"].unique()
     assert (
         len(unique_batch_sizes) == 1
     ), "there should be only one batch_size (apples to apples comparison)"
