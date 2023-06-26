@@ -27,11 +27,11 @@ class LatencyTracker:
     def _cuda_latency(self):
         start_event = torch.cuda.Event(enable_timing=True)
         end_event = torch.cuda.Event(enable_timing=True)
-        torch.cuda.synchronize()
-        start_event.record(stream=torch.cuda.current_stream())
+        torch.cuda.synchronize(device=torch.device(self.device))
+        start_event.record(stream=torch.cuda.Stream(device=self.device))
         yield
-        end_event.record(stream=torch.cuda.current_stream())
-        torch.cuda.synchronize()
+        end_event.record(stream=torch.cuda.Stream(device=self.device))
+        torch.cuda.synchronize(device=torch.device(self.device))
         latency_ms = start_event.elapsed_time(end_event)
         latency = latency_ms / 1e3
 
