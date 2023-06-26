@@ -98,10 +98,13 @@ class PyTorchBackend(Backend):
             # load hosted weights model
             self.load_model_from_pretrained(config)
 
-        # Move model to device
-        if self.pretrained_model.device.type != self.device:
-            LOGGER.info(f"\t+ Moving model to {self.device}")
-            self.pretrained_model.to(self.device)
+        if config.device_map is not None and self.device == "cuda" and any(
+            [device == "cpu" or device ==
+                "disk" for device in self.pretrained_model.hf_device_map.values()]
+        ):
+            raise ValueError(
+                "Couldn't dispatch model on CUDA devices only; some layers were dispatched on CPU or disk"
+            )
 
         # Turn on eval mode
         if config.eval_mode:
@@ -146,13 +149,14 @@ class PyTorchBackend(Backend):
                     "trust_remote_code", False),
             )
 
-        LOGGER.info(f"\t+ Materializing the model on {self.device}")
-        self.pretrained_model = self.pretrained_model.to_empty(
-            device=self.device)
-
         if config.device_map is not None:
             LOGGER.info(
-                "\t+ Empty weights model will be dispatched using auto device map")
+                "\t+ Model will be dispatched on multiple devices")
+
+            LOGGER.info(
+                f"\t+ Materializing the model on CPU (necessary intermediate step)")
+            self.pretrained_model = self.pretrained_model.to_empty(
+                device="cpu")
 
             LOGGER.info("\t+ Infering no_split_module_classes")
             no_split_module_classes = list(set([layer[0].__class__.__name__ for _, layer in self.pretrained_model.named_modules(
@@ -173,14 +177,14 @@ class PyTorchBackend(Backend):
             for k, v in auto_device_map.items():
                 LOGGER.info(f"\t\t+ {k} -> {v}")
 
-            if any([v == "cpu" or v == "disk" for v in auto_device_map.values()]) and self.device != "cpu":
-                LOGGER.warning(
-                    f"\t+ Auto device map couldn't put the whole model on the target device {self.device}."
-                )
-
             LOGGER.info("\t+ Dispatching the model")
             self.pretrained_model = dispatch_model(
                 self.pretrained_model, device_map=auto_device_map, offload_dir="./offload_dir")
+
+        else:
+            LOGGER.info(f"\t+ Materializing the model on {config.device}")
+            self.pretrained_model = self.pretrained_model.to_empty(
+                device=config.device)
 
         self.pretrained_model.tie_weights()
 
@@ -193,14 +197,30 @@ class PyTorchBackend(Backend):
                 f" and quantizing to {config.quantization}" if config.quantization else ""
             )
         )
-        self.pretrained_model = self.automodel_class.from_pretrained(
-            pretrained_model_name_or_path=self.model,
-            torch_dtype=getattr(torch, config.torch_dtype),
-            load_in_8bit=config.quantization == "int8",
-            load_in_4bit=config.quantization == "int4",
-            device_map=config.device_map,
-            **self.model_kwargs,
-        )
+        if config.device_map is not None:
+            LOGGER.info(
+                "\t+ Model will be dispatched on multiple devices")
+
+            self.pretrained_model = self.automodel_class.from_pretrained(
+                pretrained_model_name_or_path=self.model,
+                torch_dtype=getattr(torch, config.torch_dtype),
+                load_in_8bit=config.quantization == "int8",
+                load_in_4bit=config.quantization == "int4",
+                device_map=config.device_map,
+                **self.model_kwargs,
+            )
+        else:
+            LOGGER.info(
+                f"\t+ Model will be loaded on {self.device} directly")
+
+            with torch.device(device=self.device):
+                self.pretrained_model = self.automodel_class.from_pretrained(
+                    pretrained_model_name_or_path=self.model,
+                    torch_dtype=getattr(torch, config.torch_dtype),
+                    load_in_8bit=config.quantization == "int8",
+                    load_in_4bit=config.quantization == "int4",
+                    **self.model_kwargs,
+                )
 
     @contextmanager
     def amp_autocast(self):
