@@ -6,6 +6,7 @@ import psutil
 import platform
 import subprocess
 import numpy as np
+from typing import Optional
 import py3nvml.py3nvml as nvml
 
 from logging import getLogger
@@ -46,7 +47,7 @@ def bytes_to_mega_bytes(bytes: int) -> int:
     return bytes >> 20
 
 
-def get_device_name(device: str) -> str:
+def get_device_name(device: str) -> Optional[str]:
     if device == "cuda":
         if not torch.cuda.is_available():
             return "CUDA not available"
@@ -63,7 +64,7 @@ def get_device_name(device: str) -> str:
         elif platform.system() == "Darwin":
             os.environ["PATH"] = os.environ["PATH"] + os.pathsep + "/usr/sbin"
             command = "sysctl -n machdep.cpu.brand_string"
-            return subprocess.check_output(command).strip()
+            return str(subprocess.check_output(command).strip())
         elif platform.system() == "Linux":
             command = "cat /proc/cpuinfo"
             all_info = subprocess.check_output(command, shell=True).decode().strip()
