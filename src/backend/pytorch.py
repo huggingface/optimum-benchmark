@@ -8,13 +8,15 @@ import gc
 
 import torch
 from torch import Tensor
-from omegaconf import OmegaConf
+from omegaconf import DictConfig, OmegaConf
 
 from transformers import AutoConfig
 from optimum.exporters import TasksManager
+from accelerate.utils import get_balanced_memory
 from transformers.utils.fx import symbolic_trace
 from optimum.bettertransformer import BetterTransformer
 from accelerate import init_empty_weights, dispatch_model, infer_auto_device_map
+
 
 from src.backend.base import Backend, BackendConfig
 from src.profiler.fx_profiler import FXProfilingWrapper
@@ -55,12 +57,12 @@ class PyTorchConfig(BackendConfig):
 
 
 class PyTorchBackend(Backend):
-    def __init__(self, model: str, task: str, device: str, model_kwargs: dict):
-        super().__init__(model, task, device, model_kwargs)
+    def __init__(self, model: str, task: str, device: str, cache_kwargs: DictConfig):
+        super().__init__(model, task, device, cache_kwargs)
 
         # get pretrained AutoConfig and AutoModel class
         self.pretrained_config = AutoConfig.from_pretrained(
-            self.model, **self.model_kwargs
+            self.model, **self.cache_kwargs
         )
         self.automodel_class = TasksManager.get_model_class_for_task(
             task=self.task, framework="pt", model_type=self.pretrained_config.model_type
@@ -97,14 +99,6 @@ class PyTorchBackend(Backend):
         else:
             # load hosted weights model
             self.load_model_from_pretrained(config)
-
-        if config.device_map is not None and self.device == "cuda" and any(
-            [device == "cpu" or device ==
-                "disk" for device in self.pretrained_model.hf_device_map.values()]
-        ):
-            raise ValueError(
-                "Couldn't dispatch model on CUDA devices only; some layers were dispatched on CPU or disk"
-            )
 
         # Turn on eval mode
         if config.eval_mode:
@@ -145,7 +139,7 @@ class PyTorchBackend(Backend):
             self.pretrained_model = self.automodel_class.from_config(
                 self.pretrained_config,
                 torch_dtype=getattr(torch, config.torch_dtype),
-                trust_remote_code=self.model_kwargs.get(
+                trust_remote_code=self.cache_kwargs.get(
                     "trust_remote_code", False),
             )
 
@@ -153,10 +147,7 @@ class PyTorchBackend(Backend):
             LOGGER.info(
                 "\t+ Model will be dispatched on multiple devices")
 
-            LOGGER.info(
-                f"\t+ Materializing the model on CPU (necessary intermediate step)")
-            self.pretrained_model = self.pretrained_model.to_empty(
-                device="cpu")
+            self.pretrained_model.tie_weights()
 
             LOGGER.info("\t+ Infering no_split_module_classes")
             no_split_module_classes = list(set([layer[0].__class__.__name__ for _, layer in self.pretrained_model.named_modules(
@@ -166,27 +157,45 @@ class PyTorchBackend(Backend):
             for module_class in no_split_module_classes:
                 LOGGER.info(f"\t\t+ {module_class}")
 
+            max_memory = None
+            if config.device_map != "sequential" and get_balanced_memory is not None:
+                max_memory = get_balanced_memory(
+                    self.pretrained_model,
+                    dtype=getattr(torch, config.torch_dtype),
+                    low_zero=(config.device_map == "balanced_low_0"),
+                    max_memory=max_memory,
+                )
+
             LOGGER.info("\t+ Infering auto device map")
-            auto_device_map = infer_auto_device_map(
+            device_map = infer_auto_device_map(
                 self.pretrained_model,
-                no_split_module_classes=no_split_module_classes,
-                dtype=getattr(torch, config.torch_dtype)
+                dtype=getattr(torch, config.torch_dtype),
+                max_memory=max_memory,
+                no_split_module_classes=no_split_module_classes
             )
 
             LOGGER.info("\t+ Resuling auto device map:")
-            for k, v in auto_device_map.items():
+            for k, v in device_map.items():
                 LOGGER.info(f"\t\t+ {k} -> {v}")
+
+            if torch.device(self.device).type == "cuda" and ("cpu" in device_map.values() or "disk" in device_map.values()):
+                raise ValueError(
+                    "Couldn't dispatch model on CUDA devices only; some layers were dispatched on CPU or disk"
+                )
+
+            LOGGER.info(
+                f"\t+ Materializing the model on CPU (necessary intermediate step)")
+            self.pretrained_model = self.pretrained_model.to_empty(
+                device="cpu")
 
             LOGGER.info("\t+ Dispatching the model")
             self.pretrained_model = dispatch_model(
-                self.pretrained_model, device_map=auto_device_map, offload_dir="./offload_dir")
+                self.pretrained_model, device_map=device_map, offload_dir="./offload_dir")
 
         else:
-            LOGGER.info(f"\t+ Materializing the model on {config.device}")
+            LOGGER.info(f"\t+ Materializing the model on {self.device}")
             self.pretrained_model = self.pretrained_model.to_empty(
-                device=config.device)
-
-        self.pretrained_model.tie_weights()
+                device=self.device)
 
     def load_model_from_pretrained(self, config: PyTorchConfig) -> None:
         """
@@ -207,7 +216,7 @@ class PyTorchBackend(Backend):
                 load_in_8bit=config.quantization == "int8",
                 load_in_4bit=config.quantization == "int4",
                 device_map=config.device_map,
-                **self.model_kwargs,
+                **self.cache_kwargs,
             )
         else:
             LOGGER.info(
@@ -219,7 +228,7 @@ class PyTorchBackend(Backend):
                     torch_dtype=getattr(torch, config.torch_dtype),
                     load_in_8bit=config.quantization == "int8",
                     load_in_4bit=config.quantization == "int4",
-                    **self.model_kwargs,
+                    **self.cache_kwargs,
                 )
 
     @contextmanager
@@ -227,14 +236,15 @@ class PyTorchBackend(Backend):
         """
         Autocast context dispatcher for mixed precision.
         """
-        if self.device == "cpu":
+        if torch.device(self.device).type == "cpu":
             with torch.cpu.amp.autocast(enabled=self.autocast):
                 yield
-        elif self.device == "cuda":
+        elif torch.device(self.device).type == "cuda":
             with torch.cuda.amp.autocast(enabled=self.autocast):
                 yield
         else:
-            raise ValueError(f"Unknown device: {self.device}")
+            raise ValueError(
+                f"Unknown device type: {torch.device(self.device).type}")
 
     def forward(self, input: Dict[str, Tensor]):
         with self.amp_autocast():

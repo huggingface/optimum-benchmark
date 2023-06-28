@@ -10,7 +10,7 @@ import torch
 import onnxruntime
 from torch import Tensor
 from omegaconf import OmegaConf
-from transformers import AutoConfig
+from transformers import AutoConfig  # type: ignore
 from omegaconf.dictconfig import DictConfig
 from optimum.pipelines import ORT_SUPPORTED_TASKS
 from optimum.onnxruntime import ORTOptimizer, ORTQuantizer
@@ -25,16 +25,20 @@ from optimum.onnxruntime.configuration import (
 
 from src.backend.base import Backend, BackendConfig
 from src.profiler.ort_profiler import ORTProfilingWrapper
-from src.utils import get_used_memory, PROVIDER_OPTIONS
+from src.utils import get_device_id
 
 
 OmegaConf.register_new_resolver(
     "is_gpu",
-    lambda device: device == "cuda",
+    lambda device: "cuda" in device,
 )
 OmegaConf.register_new_resolver(
     "infer_provider",
-    lambda device: f"{device.upper()}ExecutionProvider",
+    lambda device: f"{device.split(':')[0].upper()}ExecutionProvider",
+)
+OmegaConf.register_new_resolver(
+    "get_device_id",
+    lambda device: get_device_id(device),
 )
 
 LOGGER = getLogger("onnxruntime")
@@ -52,6 +56,11 @@ class ORTConfig(BackendConfig):
 
     # inference options
     provider: str = "${infer_provider:${device}}"
+    provider_options: DictConfig = DictConfig(
+        {
+            "device_id": "${get_device_id:${device}}",
+        }
+    )
     use_io_binding: bool = "${is_gpu:${device}}"
     enable_profiling: bool = "${benchmark.profile}"
 
@@ -149,10 +158,11 @@ class ORTConfig(BackendConfig):
 
 
 class ORTBackend(Backend):
-    def __init__(self, model: str, task: str, device: str, model_kwargs: dict) -> None:
-        super().__init__(model, task, device, model_kwargs)
+    def __init__(self, model: str, task: str, device: str, cache_kwargs: dict) -> None:
+        super().__init__(model, task, device, cache_kwargs)
+
         self.pretrained_config = AutoConfig.from_pretrained(
-            self.model, **self.model_kwargs
+            self.model, **self.cache_kwargs
         )
         self.ortmodel_class = ORT_SUPPORTED_TASKS[self.task]["class"][0]
         LOGGER.info(
@@ -163,6 +173,8 @@ class ORTBackend(Backend):
     def configure(self, config: ORTConfig) -> None:
         super().configure(config)
 
+        self.provider_options = OmegaConf.to_container(
+            config.provider_options, resolve=True)
         self.session_options = onnxruntime.SessionOptions()
         # self.session_options.enable_cpu_mem_arena = False
 
@@ -184,31 +196,27 @@ class ORTBackend(Backend):
 
         LOGGER.info(
             f"\t+ Exporting model to ONNX and loading it in onnxruntime {self.device}"
+            f" with provider {config.provider}:"
         )
+        for key, value in self.provider_options.items():
+            LOGGER.info(f"\t\t+ {key}: {value}")
+
         self.pretrained_model = self.ortmodel_class.from_pretrained(
             model_id=self.model,
             session_options=self.session_options,
             use_io_binding=config.use_io_binding,
             provider=config.provider,
-            provider_options=PROVIDER_OPTIONS,
+            provider_options=self.provider_options,
             export=config.export,
-            **self.model_kwargs,
+            **self.cache_kwargs,
         )
-        LOGGER.debug(
-            f"\t+ Device used memory: {get_used_memory(device=self.device)}")
 
         with TemporaryDirectory() as tmpdirname:
             if config.optimization or config.auto_optimization is not None:
                 self.optimize_model(config, tmpdirname)
-                LOGGER.debug(
-                    f"\t+ Device used memory: {get_used_memory(device=self.device)}"
-                )
 
             if config.quantization or config.auto_quantization is not None:
                 self.quantize_model(config, tmpdirname)
-                LOGGER.debug(
-                    f"\t+ Device used memory: {get_used_memory(device=self.device)}"
-                )
 
         # delete cache
         if config.delete_cache:
@@ -255,7 +263,7 @@ class ORTBackend(Backend):
             session_options=self.session_options,
             use_io_binding=config.use_io_binding,
             provider=config.provider,
-            provider_options=PROVIDER_OPTIONS,
+            provider_options=self.provider_options,
         )
 
     def quantize_model(self, config: ORTConfig, tmpdirname: str) -> None:
@@ -321,7 +329,7 @@ class ORTBackend(Backend):
             session_options=self.session_options,
             use_io_binding=config.use_io_binding,
             provider=config.provider,
-            provider_options=PROVIDER_OPTIONS,
+            provider_options=self.provider_options,
         )
 
     def forward(self, input: Dict[str, Tensor]):

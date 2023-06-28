@@ -141,6 +141,13 @@ class InferenceBenchmark(Benchmark):
             LOGGER.info("\t+ Generation pass failed or not supported")
             LOGGER.info(f"\t+ Raised exception: {e}")
             self.can_generate = False
+            if hasattr(backend.pretrained_model, "can_generate") and backend.pretrained_model.can_generate():
+                LOGGER.info(
+                    "\t+ Pretrained model can generate, but backend failed on generation pass."
+                    " Will raise exception to prevent further benchmarking."
+                )
+                raise e
+
             return None
         else:
             self.can_generate = True

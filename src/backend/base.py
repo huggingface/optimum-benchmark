@@ -3,8 +3,10 @@ from typing import Dict, List, Optional
 from abc import abstractmethod, ABC
 from logging import getLogger
 
+
 from torch import Tensor
 from psutil import cpu_count
+from omegaconf import DictConfig
 
 LOGGER = getLogger("backend")
 
@@ -20,11 +22,11 @@ class BackendConfig(ABC):
 
 
 class Backend(ABC):
-    def __init__(self, model: str, task: str, device: str, model_kwargs: dict):
+    def __init__(self, model: str, task: str, device: str, cache_kwargs: DictConfig):
         self.model = model
         self.task = task
         self.device = device
-        self.model_kwargs = model_kwargs
+        self.cache_kwargs = cache_kwargs
 
     @abstractmethod
     def configure(self, config: BackendConfig) -> None:
@@ -53,7 +55,8 @@ class Backend(ABC):
 
     @abstractmethod
     def prepare_for_profiling(self, input_names: List[str]) -> None:
-        raise NotImplementedError("Backend must implement prepare_for_profiling method")
+        raise NotImplementedError(
+            "Backend must implement prepare_for_profiling method")
 
     @abstractmethod
     def clean(self) -> None:

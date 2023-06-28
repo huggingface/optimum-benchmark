@@ -7,7 +7,7 @@ import os
 import psutil
 import py3nvml.py3nvml as nvml
 
-from src.utils import bytes_to_mega_bytes, extract_gpu_id
+from src.utils import bytes_to_mega_bytes, get_device_id
 
 LOGGER = getLogger("memory_tracker")
 
@@ -30,7 +30,7 @@ class MemoryTracker:
     def _track_cuda_peak_memory(self):
         nvml.nvmlInit()
         yield
-        handle = nvml.nvmlDeviceGetHandleByIndex(extract_gpu_id(self.device))
+        handle = nvml.nvmlDeviceGetHandleByIndex(get_device_id(self.device))
         meminfo = nvml.nvmlDeviceGetMemoryInfo(handle)
         nvml.nvmlShutdown()
 
