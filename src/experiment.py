@@ -52,10 +52,10 @@ class ExperimentConfig:
             "subfolder": "",
 
             "cache_dir": None,
-            "proxies": None,
+            # "proxies": None,
 
             "force_download": False,
-            "resume_download": False,
+            # "resume_download": False,
             "local_files_only": False,
             "use_auth_token": False,
         }
