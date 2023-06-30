@@ -6,9 +6,9 @@ defaults:
 # on backend & device + batch_size & the new_tokens
 hydra:
   run:
-    dir: experiments/${device}_${benchmark.batch_size}_${benchmark.new_tokens}/${backend.name}/${experiment_name}
+    dir: experiments/${device}_${benchmark.input_shapes.batch_size}_${benchmark.new_tokens}/${backend.name}/${experiment_name}
   sweep:
-    dir: experiments/${device}_${benchmark.batch_size}_${benchmark.new_tokens}/${backend.name}/${experiment_name}
+    dir: experiments/${device}_${benchmark.input_shapes.batch_size}_${benchmark.new_tokens}/${backend.name}/${experiment_name}
 
 experiment_name: whisper_baseline
 
