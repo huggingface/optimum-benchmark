@@ -8,10 +8,8 @@ import gc
 
 import torch
 from torch import Tensor
-from omegaconf import DictConfig, OmegaConf
-
-from transformers import AutoConfig
 from optimum.exporters import TasksManager
+from omegaconf import DictConfig, OmegaConf
 from accelerate.utils import get_balanced_memory
 from transformers.utils.fx import symbolic_trace
 from optimum.bettertransformer import BetterTransformer
@@ -36,13 +34,6 @@ class PyTorchConfig(BackendConfig):
     version: str = torch.__version__
     _target_: str = "src.backend.pytorch.PyTorchBackend"
 
-    no_weights: bool = False
-    delete_cache: bool = False
-
-    # inference options
-    disable_grad: bool = "${is_inference:benchmark.name}"  # type: ignore
-    eval_mode: bool = "${is_inference:benchmark.name}"  # type: ignore
-
     # load options
     torch_dtype: str = "float32"  # "float32" or "float16"
     device_map: Optional[str] = None  # "auto", "balanced", ...
@@ -55,15 +46,19 @@ class PyTorchConfig(BackendConfig):
     torch_compile: bool = False
     autocast: bool = False
 
+    # inference options
+    disable_grad: bool = "${is_inference:benchmark.name}"  # type: ignore
+    eval_mode: bool = "${is_inference:benchmark.name}"  # type: ignore
+
+    # model init options
+    no_weights: bool = False
+    delete_cache: bool = False
+
 
 class PyTorchBackend(Backend):
-    def __init__(self, model: str, task: str, device: str, cache_kwargs: DictConfig):
-        super().__init__(model, task, device, cache_kwargs)
+    def __init__(self, model: str, device: str, cache_kwargs: DictConfig):
+        super().__init__(model, device, cache_kwargs)
 
-        # get pretrained AutoConfig and AutoModel class
-        self.pretrained_config = AutoConfig.from_pretrained(
-            self.model, **self.cache_kwargs
-        )
         self.automodel_class = TasksManager.get_model_class_for_task(
             task=self.task, framework="pt", model_type=self.pretrained_config.model_type
         )
@@ -178,7 +173,7 @@ class PyTorchBackend(Backend):
             for k, v in device_map.items():
                 LOGGER.info(f"\t\t+ {k} -> {v}")
 
-            if torch.device(self.device).type == "cuda" and ("cpu" in device_map.values() or "disk" in device_map.values()):
+            if self.device.type == "cuda" and ("cpu" in device_map.values() or "disk" in device_map.values()):
                 raise ValueError(
                     "Couldn't dispatch model on CUDA devices only; some layers were dispatched on CPU or disk"
                 )
@@ -222,7 +217,7 @@ class PyTorchBackend(Backend):
             LOGGER.info(
                 f"\t+ Model will be loaded on {self.device} directly")
 
-            with torch.device(device=self.device):
+            with self.device:
                 self.pretrained_model = self.automodel_class.from_pretrained(
                     pretrained_model_name_or_path=self.model,
                     torch_dtype=getattr(torch, config.torch_dtype),
@@ -236,15 +231,15 @@ class PyTorchBackend(Backend):
         """
         Autocast context dispatcher for mixed precision.
         """
-        if torch.device(self.device).type == "cpu":
+        if self.device.type == "cpu":
             with torch.cpu.amp.autocast(enabled=self.autocast):
                 yield
-        elif torch.device(self.device).type == "cuda":
+        elif self.device.type == "cuda":
             with torch.cuda.amp.autocast(enabled=self.autocast):
                 yield
         else:
             raise ValueError(
-                f"Unknown device type: {torch.device(self.device).type}")
+                f"Unknown device type: {self.device.type}")
 
     def forward(self, input: Dict[str, Tensor]):
         with self.amp_autocast():
@@ -278,7 +273,7 @@ class PyTorchBackend(Backend):
         del self.pretrained_model
         gc.collect()
 
-        if self.device == "cuda":
+        if self.device.type == "cuda":
             torch.cuda.empty_cache()
 
     def delete_model_hub_cache(self) -> None:

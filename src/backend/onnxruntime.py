@@ -10,7 +10,6 @@ import torch
 import onnxruntime
 from torch import Tensor
 from omegaconf import OmegaConf
-from transformers import AutoConfig  # type: ignore
 from omegaconf.dictconfig import DictConfig
 from optimum.pipelines import ORT_SUPPORTED_TASKS
 from optimum.onnxruntime import ORTOptimizer, ORTQuantizer
@@ -158,13 +157,11 @@ class ORTConfig(BackendConfig):
 
 
 class ORTBackend(Backend):
-    def __init__(self, model: str, task: str, device: str, cache_kwargs: dict) -> None:
-        super().__init__(model, task, device, cache_kwargs)
+    def __init__(self, model: str, device: str, cache_kwargs: DictConfig) -> None:
+        super().__init__(model, device, cache_kwargs)
 
-        self.pretrained_config = AutoConfig.from_pretrained(
-            self.model, **self.cache_kwargs
-        )
         self.ortmodel_class = ORT_SUPPORTED_TASKS[self.task]["class"][0]
+        
         LOGGER.info(
             f"\t+ Infered AutoModel class {self.ortmodel_class.__name__} "
             f"for task {self.task} and model_type {self.pretrained_config.model_type}"

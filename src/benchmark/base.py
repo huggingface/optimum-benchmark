@@ -10,19 +10,16 @@ LOGGER = getLogger("benchmark")
 
 @dataclass
 class BenchmarkConfig(ABC):
-    name: str = MISSING
-    _target_: str = MISSING
+    name: str = MISSING  # type: ignore
+    _target_: str = MISSING  # type: ignore
 
     # seed for reproducibility
     seed: int = 42
 
 
 class Benchmark(ABC):
-    def __init__(self, model: str, task: str, device: str, model_kwargs: dict):
-        self.model = model
-        self.task = task
-        self.device = device
-        self.model_kwargs = model_kwargs
+    def __init__(self):
+        pass
 
     def configure(self, config: BenchmarkConfig) -> None:
         LOGGER.info(f"Configuring {config.name} benchmark")

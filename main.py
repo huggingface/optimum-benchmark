@@ -33,12 +33,7 @@ def run_experiment(experiment: ExperimentConfig) -> Optional[float]:
     # Allocate requested benchmark
     benchmark_factory: Type[Benchmark] = get_class(
         experiment.benchmark._target_)
-    benchmark: Benchmark = benchmark_factory(
-        experiment.model,
-        experiment.task,
-        experiment.device,
-        experiment.cache_kwargs,
-    )
+    benchmark: Benchmark = benchmark_factory()
     benchmark.configure(experiment.benchmark)
 
     try:
@@ -46,7 +41,6 @@ def run_experiment(experiment: ExperimentConfig) -> Optional[float]:
         backend_factory: Type[Backend] = get_class(experiment.backend._target_)
         backend: Backend = backend_factory(
             experiment.model,
-            experiment.task,
             experiment.device,
             experiment.cache_kwargs,
         )
