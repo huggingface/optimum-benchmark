@@ -4,22 +4,24 @@ from contextlib import contextmanager
 from logging import getLogger
 import os
 
+import torch
 import psutil
 import py3nvml.py3nvml as nvml
 
-from src.utils import bytes_to_mega_bytes, get_device_id
+
+from src.utils import bytes_to_mega_bytes
 
 LOGGER = getLogger("memory_tracker")
 
 
 class MemoryTracker:
-    def __init__(self, device: str):
+    def __init__(self, device: torch.device):
         self.device = device
         self.peak_memory: int = 0
 
     @contextmanager
     def track(self, interval: float = 0.01):
-        if self.device == "cuda":
+        if self.device.type == "cuda":
             yield from self._track_cuda_peak_memory()
         else:
             yield from self._track_cpu_peak_memory(interval)
@@ -29,8 +31,8 @@ class MemoryTracker:
 
     def _track_cuda_peak_memory(self):
         nvml.nvmlInit()
+        handle = nvml.nvmlDeviceGetHandleByIndex(self.device.index)
         yield
-        handle = nvml.nvmlDeviceGetHandleByIndex(get_device_id(self.device))
         meminfo = nvml.nvmlDeviceGetMemoryInfo(handle)
         nvml.nvmlShutdown()
 

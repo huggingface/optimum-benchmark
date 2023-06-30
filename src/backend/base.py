@@ -89,11 +89,16 @@ class Backend(ABC):
 
         # patch for some LLMs model types not recognized by TasksManager
         if self.pretrained_config.model_type in LLM_MODEL_TYPES:
-            return {
+            dummy_inputs = {
                 "input_ids": torch.ones(
                     (input_shapes["batch_size"], 1), dtype=torch.long, device=self.device
                 )
             }
+            if mode == "forward":
+                dummy_inputs["attention_mask"] = torch.ones(
+                    (input_shapes["batch_size"], 1), dtype=torch.long, device=self.device
+                )
+            return dummy_inputs
 
         onnx_config = TasksManager._SUPPORTED_MODEL_TYPE[self.pretrained_config.model_type]["onnx"][self.task](
             self.pretrained_config
@@ -108,6 +113,8 @@ class Backend(ABC):
             input_names = get_preprocessor(self.model).model_input_names
         else:
             raise ValueError(f"Unknown mode {mode}")
+
+        LOGGER.info(f"Generating dummy inputs for {input_names}")
 
         dummy_inputs = dict()
         for input_name in input_names:

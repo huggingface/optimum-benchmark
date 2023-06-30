@@ -69,20 +69,3 @@ def get_cpu() -> Optional[str]:
 
 def get_cpu_ram_mb():
     return bytes_to_mega_bytes(psutil.virtual_memory().total)
-
-
-def get_device_id(device: str) -> Optional[int]:
-    if torch.device(device=device).type == "cuda":
-        if not torch.cuda.is_available():
-            return None
-        else:
-            try:
-                return re.findall(r"\d+", device)[0]
-            except IndexError:
-                return 0
-
-    elif device == "cpu":
-        return None
-
-    else:
-        raise ValueError(f"Unknown device '{device}'")

@@ -24,7 +24,6 @@ from optimum.onnxruntime.configuration import (
 
 from src.backend.base import Backend, BackendConfig
 from src.profiler.ort_profiler import ORTProfilingWrapper
-from src.utils import get_device_id
 
 
 OmegaConf.register_new_resolver(
@@ -36,8 +35,8 @@ OmegaConf.register_new_resolver(
     lambda device: f"{device.split(':')[0].upper()}ExecutionProvider",
 )
 OmegaConf.register_new_resolver(
-    "get_device_id",
-    lambda device: get_device_id(device),
+    "infer_device_id",
+    lambda device: torch.device(device).index,
 )
 
 LOGGER = getLogger("onnxruntime")
@@ -51,13 +50,14 @@ class ORTConfig(BackendConfig):
 
     # basic options
     export: bool = True
+    no_weights: bool = False
     delete_cache: bool = False
 
     # inference options
     provider: str = "${infer_provider:${device}}"
     provider_options: DictConfig = DictConfig(
         {
-            "device_id": "${get_device_id:${device}}",
+            "device_id": "${infer_device_id:${device}}",
         }
     )
     use_io_binding: bool = "${is_gpu:${device}}"
@@ -114,33 +114,6 @@ class ORTConfig(BackendConfig):
             "operators_to_quantize": [
                 "MatMul",
                 "Add",
-                # "Gather",
-                # "Transpose",
-                # "EmbedLayerNormalization",
-                # "Attention",
-                # "LSTM",
-                # "ArgMax",
-                # "Conv",
-                # "Gemm",
-                # "Mul",
-                # "Relu",
-                # "Clip",
-                # "LeakyRelu",
-                # "Sigmoid",
-                # "MaxPool",
-                # "GlobalAveragePool",
-                # "Split",
-                # "Pad",
-                # "Reshape",
-                # "Squeeze",
-                # "Unsqueeze",
-                # "Resize",
-                # "AveragePool",
-                # "Concat",
-                # "Softmax",
-                # "Where",
-                # "ConvTranspose",
-                # "InstanceNormalization",
             ],
         }
     )
@@ -161,7 +134,7 @@ class ORTBackend(Backend):
         super().__init__(model, device, cache_kwargs)
 
         self.ortmodel_class = ORT_SUPPORTED_TASKS[self.task]["class"][0]
-        
+
         LOGGER.info(
             f"\t+ Infered AutoModel class {self.ortmodel_class.__name__} "
             f"for task {self.task} and model_type {self.pretrained_config.model_type}"
@@ -173,7 +146,6 @@ class ORTBackend(Backend):
         self.provider_options = OmegaConf.to_container(
             config.provider_options, resolve=True)
         self.session_options = onnxruntime.SessionOptions()
-        # self.session_options.enable_cpu_mem_arena = False
 
         if config.intra_op_num_threads is not None:
             LOGGER.info(
@@ -198,15 +170,20 @@ class ORTBackend(Backend):
         for key, value in self.provider_options.items():
             LOGGER.info(f"\t\t+ {key}: {value}")
 
-        self.pretrained_model = self.ortmodel_class.from_pretrained(
-            model_id=self.model,
-            session_options=self.session_options,
-            use_io_binding=config.use_io_binding,
-            provider=config.provider,
-            provider_options=self.provider_options,
-            export=config.export,
-            **self.cache_kwargs,
-        )
+        if config.no_weights:
+            raise NotImplementedError(
+                "No weights option is not supported for ONNXRuntime"
+            )
+        else:
+            self.pretrained_model = self.ortmodel_class.from_pretrained(
+                model_id=self.model,
+                session_options=self.session_options,
+                use_io_binding=config.use_io_binding,
+                provider=config.provider,
+                provider_options=self.provider_options,
+                export=config.export,
+                **self.cache_kwargs,
+            )
 
         with TemporaryDirectory() as tmpdirname:
             if config.optimization or config.auto_optimization is not None:
@@ -221,6 +198,17 @@ class ORTBackend(Backend):
             self.delete_cache = True
         else:
             self.delete_cache = False
+
+    def load_model_from_pretrained(self, config: ORTConfig) -> None:
+        self.pretrained_model = self.ortmodel_class.from_pretrained(
+            model_id=self.model,
+            session_options=self.session_options,
+            use_io_binding=config.use_io_binding,
+            provider=config.provider,
+            provider_options=self.provider_options,
+            export=config.export,
+            **self.cache_kwargs,
+        )
 
     def optimize_model(self, config: ORTConfig, tmpdirname: str) -> None:
         if config.auto_optimization is not None:
@@ -354,7 +342,7 @@ class ORTBackend(Backend):
         del self.pretrained_model
         gc.collect()
 
-        if self.device == "cuda":
+        if self.device.type == "cuda":
             torch.cuda.empty_cache()
 
     def delete_model_cache(self) -> None:
