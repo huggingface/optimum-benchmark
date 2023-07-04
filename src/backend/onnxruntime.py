@@ -1,6 +1,7 @@
 import os
 import gc
 import shutil
+from pathlib import Path
 from logging import getLogger
 from dataclasses import dataclass
 from typing import Dict, List, Optional
@@ -10,10 +11,22 @@ import torch
 import onnxruntime
 from torch import Tensor
 from omegaconf import OmegaConf
+from accelerate import init_empty_weights
+from optimum.exporters import TasksManager
 from omegaconf.dictconfig import DictConfig
+from optimum.utils import DEFAULT_DUMMY_SHAPES
 from optimum.pipelines import ORT_SUPPORTED_TASKS
+from transformers import AutoTokenizer, PreTrainedModel  # type: ignore
 from optimum.onnxruntime import ORTOptimizer, ORTQuantizer
+from optimum.utils.save_utils import maybe_save_preprocessors
 from onnxruntime.quantization import QuantFormat, QuantizationMode, QuantType
+from optimum.exporters.onnx import (
+    export_models,
+    OnnxConfigWithPast,
+    get_decoder_models_for_export,
+    get_encoder_decoder_models_for_export,
+    get_stable_diffusion_models_for_export,
+)
 from optimum.onnxruntime.configuration import (
     OptimizationConfig,
     QuantizationConfig,
@@ -28,15 +41,14 @@ from src.profiler.ort_profiler import ORTProfilingWrapper
 
 OmegaConf.register_new_resolver(
     "is_gpu",
-    lambda device: "cuda" in device,
+    lambda device: torch.device(device).type == "cuda",
 )
 OmegaConf.register_new_resolver(
     "infer_provider",
-    lambda device: f"{device.split(':')[0].upper()}ExecutionProvider",
+    lambda device: f"{torch.device(device).type.upper()}ExecutionProvider",
 )
 OmegaConf.register_new_resolver(
-    "infer_device_id",
-    lambda device: torch.device(device).index,
+    "infer_device_id", lambda device: torch.device(device).index,
 )
 
 LOGGER = getLogger("onnxruntime")
@@ -48,20 +60,18 @@ class ORTConfig(BackendConfig):
     version: str = onnxruntime.__version__
     _target_: str = "src.backend.onnxruntime.ORTBackend"
 
-    # basic options
+    # export options
     export: bool = True
     no_weights: bool = False
-    delete_cache: bool = False
+    torch_dtype: Optional[str] = None
+
+    # provider options
+    provider: str = "${infer_provider:${device}}"
+    device_id: Optional[int] = "${infer_device_id:${device}}"  # type: ignore
 
     # inference options
-    provider: str = "${infer_provider:${device}}"
-    provider_options: DictConfig = DictConfig(
-        {
-            "device_id": "${infer_device_id:${device}}",
-        }
-    )
-    use_io_binding: bool = "${is_gpu:${device}}"
-    enable_profiling: bool = "${benchmark.profile}"
+    use_io_binding: bool = "${is_gpu:${device}}"  # type: ignore
+    enable_profiling: bool = "${benchmark.profile}"  # type: ignore
 
     # optimization options
     optimization: bool = False
@@ -128,12 +138,18 @@ class ORTConfig(BackendConfig):
         }
     )
 
+    # clean up options
+    delete_cache: bool = False
+
 
 class ORTBackend(Backend):
     def __init__(self, model: str, device: str, cache_kwargs: DictConfig) -> None:
         super().__init__(model, device, cache_kwargs)
 
         self.ortmodel_class = ORT_SUPPORTED_TASKS[self.task]["class"][0]
+        self.automodel_class = TasksManager.get_model_class_for_task(
+            task=self.task, framework="pt", model_type=self.pretrained_config.model_type
+        )
 
         LOGGER.info(
             f"\t+ Infered AutoModel class {self.ortmodel_class.__name__} "
@@ -143,61 +159,97 @@ class ORTBackend(Backend):
     def configure(self, config: ORTConfig) -> None:
         super().configure(config)
 
-        self.provider_options = OmegaConf.to_container(
-            config.provider_options, resolve=True)
+        # session options
         self.session_options = onnxruntime.SessionOptions()
-
         if config.intra_op_num_threads is not None:
             LOGGER.info(
-                f"\t+ Setting onnxruntime intra_op_num_threads({config.intra_op_num_threads})"
+                f"\t+ Setting onnxruntime session intra_op_num_threads({config.intra_op_num_threads})"
             )
             self.session_options.intra_op_num_threads = config.intra_op_num_threads
-
         if config.inter_op_num_threads is not None:
             LOGGER.info(
-                f"\t+ Setting onnxruntime inter_op_num_threads({config.inter_op_num_threads})"
+                f"\t+ Setting onnxruntime session inter_op_num_threads({config.inter_op_num_threads})"
             )
             self.session_options.inter_op_num_threads = config.inter_op_num_threads
-
         if config.enable_profiling:
             LOGGER.info("\t+ Enabling onnxruntime profiling")
             self.session_options.enable_profiling = True
 
-        LOGGER.info(
-            f"\t+ Exporting model to ONNX and loading it in onnxruntime {self.device}"
-            f" with provider {config.provider}:"
-        )
-        for key, value in self.provider_options.items():
-            LOGGER.info(f"\t\t+ {key}: {value}")
+        # provider options
+        self.provider_options = {}
+        if config.device_id is not None:
+            LOGGER.info(
+                f"\t+ Setting onnxruntime provider device_id({config.device_id})"
+            )
+            self.provider_options["device_id"] = config.device_id
 
-        if config.no_weights:
-            raise NotImplementedError(
-                "No weights option is not supported for ONNXRuntime"
-            )
+        # clean up options
+        if config.delete_cache:
+            LOGGER.info("\t+ Will delete cache after benchmarking")
+            self.delete_cache = True
         else:
-            self.pretrained_model = self.ortmodel_class.from_pretrained(
-                model_id=self.model,
-                session_options=self.session_options,
-                use_io_binding=config.use_io_binding,
-                provider=config.provider,
-                provider_options=self.provider_options,
-                export=config.export,
-                **self.cache_kwargs,
-            )
+            self.delete_cache = False
+
+        # export options
+        self.torch_dtype = getattr(
+            torch, config.torch_dtype) if config.torch_dtype else None
+        LOGGER.info(f"\t+ Using torch_dtype {self.torch_dtype}")
 
         with TemporaryDirectory() as tmpdirname:
+            if config.no_weights:
+                self.load_model_from_config(config, tmpdirname)
+            else:
+                self.load_model_from_pretrained(config)
+
             if config.optimization or config.auto_optimization is not None:
                 self.optimize_model(config, tmpdirname)
 
             if config.quantization or config.auto_quantization is not None:
                 self.quantize_model(config, tmpdirname)
 
-        # delete cache
-        if config.delete_cache:
-            LOGGER.info("\t+ Will delete cache after benchmarking")
-            self.delete_cache = True
-        else:
-            self.delete_cache = False
+        # patch for ortmodel
+        self.pretrained_model.device = self.device
+
+    def load_model_from_config(self, config: ORTConfig, tmpdirname: str) -> None:
+        LOGGER.info(
+            "\t+ Creating empty weights model from config with on meta device")
+        with init_empty_weights():
+            self.pretrained_model = self.automodel_class.from_config(
+                self.pretrained_config,
+                torch_dtype=self.torch_dtype,
+                trust_remote_code=self.cache_kwargs.get(
+                    "trust_remote_code", False),
+            )
+            self.pretrained_model.tie_weights()
+
+        LOGGER.info(f"\t+ Materializing the model on {self.device}")
+        self.pretrained_model = self.pretrained_model.to_empty(
+            device=self.device)
+
+        LOGGER.info(f"\t+ Randomizing weights")
+        randomize_weights(self.pretrained_model)
+
+        LOGGER.info(f"\t+ Exporting the model to ONNX")
+        dummy_export(
+            model=self.pretrained_model,
+            device=self.device,
+            output=tmpdirname,
+            fp16=self.torch_dtype == torch.float16,
+        )
+
+        self.delete_pretrained_model()
+        LOGGER.info(f"\t+ Created files: {os.listdir(tmpdirname)}")
+
+        LOGGER.info("\t+ Loading exported model in onnxruntime")
+        self.pretrained_model = self.ortmodel_class.from_pretrained(
+            model_id=Path(tmpdirname),
+            session_options=self.session_options,
+            use_io_binding=config.use_io_binding,
+            provider=config.provider,
+            provider_options=self.provider_options,
+            export=False,
+            **self.cache_kwargs,
+        )
 
     def load_model_from_pretrained(self, config: ORTConfig) -> None:
         self.pretrained_model = self.ortmodel_class.from_pretrained(
@@ -207,8 +259,13 @@ class ORTBackend(Backend):
             provider=config.provider,
             provider_options=self.provider_options,
             export=config.export,
+            fp16=self.torch_dtype == torch.float16,
+            device=str(self.device),
             **self.cache_kwargs,
         )
+
+        LOGGER.info(
+            f"\t+ Created files: {os.listdir(self.pretrained_model.model_save_dir)}")
 
     def optimize_model(self, config: ORTConfig, tmpdirname: str) -> None:
         if config.auto_optimization is not None:
@@ -218,7 +275,7 @@ class ORTBackend(Backend):
                 config.auto_optimization_config, resolve=True
             )
             LOGGER.info("\t+ Setting auto optimization parameters:")
-            for key, value in optimization_dict.items():
+            for key, value in optimization_dict.items():  # type: ignore
                 LOGGER.info(f"\t\t+ {key}: {value}")
 
             optimization_config = AutoOptimizationConfig.with_optimization_level(
@@ -229,20 +286,20 @@ class ORTBackend(Backend):
                 config.optimization_config, resolve=True
             )
             LOGGER.info("\t+ Setting optimization parameters:")
-            for key, value in optimization_dict.items():
+            for key, value in optimization_dict.items():  # type: ignore
                 LOGGER.info(f"\t\t+ {key}: {value}")
             optimization_config = OptimizationConfig(**optimization_dict)
 
         LOGGER.info("\t+ Attempting optimization")
         optimizer = ORTOptimizer.from_pretrained(
-            self.pretrained_model)  # type: ignore
+            self.pretrained_model)
         optimizer.optimize(
             save_dir=f"{tmpdirname}/optimized",
             optimization_config=optimization_config,
         )
+        self.delete_pretrained_model()
 
         LOGGER.info("\t+ Loading optimized model")
-        self.delete_pretrained_model()
         self.pretrained_model = self.ortmodel_class.from_pretrained(
             model_id=f"{tmpdirname}/optimized",
             session_options=self.session_options,
@@ -263,7 +320,7 @@ class ORTBackend(Backend):
             )
 
             LOGGER.info("\t+ Setting quantization parameters:")
-            for key, value in quantization_dict.items():
+            for key, value in quantization_dict.items():  # type: ignore
                 LOGGER.info(f"\t\t+ {key}: {value}")
 
             quantization_config = auto_quantization_class(**quantization_dict)
@@ -306,9 +363,9 @@ class ORTBackend(Backend):
                 save_dir=f"{tmpdirname}/quantized",
                 quantization_config=quantization_config,
             )
+        self.delete_pretrained_model()
 
         LOGGER.info("\t+ Loading quantized model")
-        self.delete_pretrained_model()
         self.pretrained_model = self.ortmodel_class.from_pretrained(
             model_id=f"{tmpdirname}/quantized",
             session_options=self.session_options,
@@ -339,7 +396,9 @@ class ORTBackend(Backend):
         self.pretrained_model = ORTProfilingWrapper(self.pretrained_model)
 
     def delete_pretrained_model(self) -> None:
-        del self.pretrained_model
+        if hasattr(self, "pretrained_model"):
+            del self.pretrained_model
+
         gc.collect()
 
         if self.device.type == "cuda":
@@ -358,3 +417,131 @@ class ORTBackend(Backend):
 
         if self.delete_cache:
             self.delete_model_cache()
+
+
+def randomize_weights(model):
+    for name, param in model.named_parameters():
+        param.data = torch.rand_like(param.data) * 2 - 1
+
+
+def dummy_export(
+    model: PreTrainedModel,
+    device: torch.device,
+    output: str,
+    fp16: bool,
+):
+    output_path = Path(output)
+
+    original_task = "auto"
+    task = TasksManager.map_from_synonym(original_task)
+
+    if fp16 is True and device.type == "cpu":
+        raise ValueError(
+            "The fp16 option is supported only when exporting on GPU."
+        )
+
+    input_shapes = {}
+    for input_name in DEFAULT_DUMMY_SHAPES.keys():
+        input_shapes[input_name] = DEFAULT_DUMMY_SHAPES[input_name]
+
+    if task == "auto":
+        try:
+            task = TasksManager.infer_task_from_model(model)
+        except KeyError as e:
+            raise KeyError(
+                f"The task could not be automatically inferred. Please provide the argument --task with the task from {', '.join(TasksManager.get_all_tasks())}. Detailed error: {e}"
+            )
+
+    if task != "stable-diffusion" and task + "-with-past" in TasksManager.get_supported_tasks_for_model_type(
+        model.config.model_type.replace("_", "-"), "onnx"
+    ):
+        if original_task == "auto":  # Make -with-past the default if --task was not explicitely specified
+            task = task + "-with-past"
+
+    if task != "stable-diffusion":
+        onnx_config_constructor = TasksManager.get_exporter_config_constructor(
+            model=model, exporter="onnx", task=task)
+        onnx_config = onnx_config_constructor(model.config)
+
+        needs_pad_token_id = (
+            isinstance(onnx_config, OnnxConfigWithPast)
+            and getattr(model.config, "pad_token_id", None) is None
+            and task in ["text-classification"]
+        )
+        if needs_pad_token_id:
+            try:
+                tok = AutoTokenizer.from_pretrained(model.name_or_path)
+                model.config.pad_token_id = tok.pad_token_id
+            except Exception:
+                raise ValueError(
+                    "Could not infer the pad token id, which is needed in this case, please provide it with the --pad_token_id argument"
+                )
+
+        opset = onnx_config.DEFAULT_ONNX_OPSET
+        atol = onnx_config.ATOL_FOR_VALIDATION
+        if isinstance(atol, dict):
+            atol = atol[task.replace("-with-past", "")]
+
+        # Saving the model config and preprocessor as this is needed sometimes.
+        model.config.save_pretrained(output_path)
+        generation_config = getattr(model, "generation_config", None)
+        if generation_config is not None:
+            generation_config.save_pretrained(output_path)
+
+        maybe_save_preprocessors(output_path, output_path)
+
+    if task == "stable-diffusion":
+        onnx_files_subpaths = [
+            "text_encoder/model.onnx",
+            "unet/model.onnx",
+            "vae_encoder/model.onnx",
+            "vae_decoder/model.onnx",
+        ]
+
+        models_and_onnx_configs = get_stable_diffusion_models_for_export(
+            model)
+        # Saving the additional components needed to perform inference.
+        model.tokenizer.save_pretrained(output_path.joinpath("tokenizer"))
+        model.scheduler.save_pretrained(output_path.joinpath("scheduler"))
+        if model.feature_extractor is not None:
+            model.feature_extractor.save_pretrained(
+                output_path.joinpath("feature_extractor"))
+        model.save_config(output_path)
+    else:
+        if model.config.is_encoder_decoder and task.startswith("text-generation"):
+            raise ValueError(
+                f"model.config.is_encoder_decoder is True and task is `{task}`, which are incompatible. If the task was auto-inferred, please fill a bug report"
+                f"at https://github.com/huggingface/optimum, if --task was explicitely passed, make sure you selected the right task for the model,"
+                f" referring to `optimum.exporters.tasks.TaskManager`'s `_TASKS_TO_AUTOMODELS`."
+            )
+
+        onnx_files_subpaths = None
+        if (
+            model.config.is_encoder_decoder
+            and task.startswith(
+                (
+                    "text2text-generation",
+                    "automatic-speech-recognition",
+                    "image-to-text",
+                    "feature-extraction-with-past",
+                )
+            )
+        ):
+            models_and_onnx_configs = get_encoder_decoder_models_for_export(
+                model, onnx_config)
+
+        elif task.startswith("text-generation"):
+            models_and_onnx_configs = get_decoder_models_for_export(
+                model, onnx_config)
+        else:
+            models_and_onnx_configs = {"model": (model, onnx_config)}
+
+    _, onnx_outputs = export_models(
+        models_and_onnx_configs=models_and_onnx_configs,  # type: ignore
+        opset=opset,  # type: ignore
+        output_dir=output_path,
+        output_names=onnx_files_subpaths,
+        input_shapes=input_shapes,
+        device=str(device),
+        dtype="fp16" if fp16 is True else None,
+    )

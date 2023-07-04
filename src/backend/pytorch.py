@@ -24,7 +24,7 @@ LOGGER = getLogger("pytorch")
 
 # backend resolvers
 OmegaConf.register_new_resolver(
-    "is_inference", lambda benchmark: benchmark == "inference"
+    "is_inference", lambda benchmark_name: benchmark_name == "inference"
 )
 
 
@@ -47,8 +47,8 @@ class PyTorchConfig(BackendConfig):
     autocast: bool = False
 
     # inference options
-    disable_grad: bool = "${is_inference:benchmark.name}"  # type: ignore
-    eval_mode: bool = "${is_inference:benchmark.name}"  # type: ignore
+    disable_grad: bool = "${is_inference:${benchmark.name}}"  # type: ignore
+    eval_mode: bool = "${is_inference:${benchmark.name}}"  # type: ignore
 
     # model init options
     no_weights: bool = False
@@ -84,9 +84,21 @@ class PyTorchBackend(Backend):
             torch.set_num_interop_threads(config.intra_op_num_threads)
 
         # Disable gradients
-        if not config.disable_grad or config.eval_mode:
+        if config.disable_grad or config.eval_mode:
             LOGGER.info("\t+ Disabling gradients")
             torch.set_grad_enabled(False)
+
+        # Set torch dtype
+        self.torch_dtype = getattr(
+            torch, config.torch_dtype) if config.torch_dtype else None
+        LOGGER.info(f"\t+ Using torch_dtype {self.torch_dtype}")
+
+        # delete cache
+        if config.delete_cache:
+            LOGGER.info("\t+ Will delete cache after benchmarking")
+            self.delete_cache = True
+        else:
+            self.delete_cache = False
 
         # Load model
         if config.no_weights:
@@ -120,29 +132,26 @@ class PyTorchBackend(Backend):
         else:
             self.autocast = False
 
-        # delete cache
-        if config.delete_cache:
-            LOGGER.info("\t+ Will delete cache after benchmarking")
-            self.delete_cache = True
-        else:
-            self.delete_cache = False
-
     def load_model_from_config(self, config: PyTorchConfig) -> None:
+        if config.quantization is not None:
+            raise NotImplementedError(
+                "Quantization is not supported when loading from config"
+            )
+
         LOGGER.info(
             "\t+ Creating empty weights model from config with on meta device")
         with init_empty_weights():
             self.pretrained_model = self.automodel_class.from_config(
                 self.pretrained_config,
-                torch_dtype=getattr(torch, config.torch_dtype),
+                torch_dtype=self.torch_dtype,
                 trust_remote_code=self.cache_kwargs.get(
                     "trust_remote_code", False),
             )
+            self.pretrained_model.tie_weights()
 
         if config.device_map is not None:
             LOGGER.info(
                 "\t+ Model will be dispatched on multiple devices")
-
-            self.pretrained_model.tie_weights()
 
             LOGGER.info("\t+ Infering no_split_module_classes")
             no_split_module_classes = list(set([layer[0].__class__.__name__ for _, layer in self.pretrained_model.named_modules(
@@ -156,7 +165,7 @@ class PyTorchBackend(Backend):
             if config.device_map != "sequential" and get_balanced_memory is not None:
                 max_memory = get_balanced_memory(
                     self.pretrained_model,
-                    dtype=getattr(torch, config.torch_dtype),
+                    dtype=self.torch_dtype,
                     low_zero=(config.device_map == "balanced_low_0"),
                     max_memory=max_memory,
                 )
@@ -164,7 +173,7 @@ class PyTorchBackend(Backend):
             LOGGER.info("\t+ Infering auto device map")
             device_map = infer_auto_device_map(
                 self.pretrained_model,
-                dtype=getattr(torch, config.torch_dtype),
+                dtype=self.torch_dtype,
                 max_memory=max_memory,
                 no_split_module_classes=no_split_module_classes
             )
@@ -192,10 +201,10 @@ class PyTorchBackend(Backend):
             self.pretrained_model = self.pretrained_model.to_empty(
                 device=self.device)
 
+        LOGGER.info("\t+ Randomizing weights")
+        randomize_weights(self.pretrained_model)
+
     def load_model_from_pretrained(self, config: PyTorchConfig) -> None:
-        """
-        Model loading from pretrained weights.
-        """
         LOGGER.info(
             f"\t+ Loading pretrained model weights in {config.torch_dtype}" + (
                 f" and quantizing to {config.quantization}" if config.quantization else ""
@@ -204,10 +213,9 @@ class PyTorchBackend(Backend):
         if config.device_map is not None:
             LOGGER.info(
                 "\t+ Model will be dispatched on multiple devices")
-
             self.pretrained_model = self.automodel_class.from_pretrained(
                 pretrained_model_name_or_path=self.model,
-                torch_dtype=getattr(torch, config.torch_dtype),
+                torch_dtype=self.torch_dtype,
                 load_in_8bit=config.quantization == "int8",
                 load_in_4bit=config.quantization == "int4",
                 device_map=config.device_map,
@@ -215,12 +223,11 @@ class PyTorchBackend(Backend):
             )
         else:
             LOGGER.info(
-                f"\t+ Model will be loaded on {self.device} directly")
-
+                f"\t+ Model will be loaded on {self.device}")
             with self.device:
                 self.pretrained_model = self.automodel_class.from_pretrained(
                     pretrained_model_name_or_path=self.model,
-                    torch_dtype=getattr(torch, config.torch_dtype),
+                    torch_dtype=self.torch_dtype,
                     load_in_8bit=config.quantization == "int8",
                     load_in_4bit=config.quantization == "int4",
                     **self.cache_kwargs,
@@ -270,7 +277,9 @@ class PyTorchBackend(Backend):
         self.pretrained_model = FXProfilingWrapper(self.pretrained_model)
 
     def delete_pretrained_model(self) -> None:
-        del self.pretrained_model
+        if hasattr(self, "pretrained_model"):
+            del self.pretrained_model
+
         gc.collect()
 
         if self.device.type == "cuda":
@@ -289,3 +298,8 @@ class PyTorchBackend(Backend):
 
         if self.delete_cache:
             self.delete_model_hub_cache()
+
+
+def randomize_weights(model):
+    for name, param in model.named_parameters():
+        param.data = torch.rand_like(param.data) * 2 - 1
