@@ -36,26 +36,26 @@ def run_experiment(experiment: ExperimentConfig) -> Optional[float]:
     benchmark: Benchmark = benchmark_factory()
     benchmark.configure(experiment.benchmark)
 
-    try:
-        # Allocate requested backend
-        backend_factory: Type[Backend] = get_class(experiment.backend._target_)
-        backend: Backend = backend_factory(
-            experiment.model,
-            experiment.device,
-            experiment.cache_kwargs,
-        )
-        backend.configure(experiment.backend)
+    # Allocate requested backend
+    backend_factory: Type[Backend] = get_class(experiment.backend._target_)
+    backend: Backend = backend_factory(
+        experiment.model,
+        experiment.device,
+        experiment.cache_kwargs,
+    )
 
+    try:
+        backend.configure(experiment.backend)
         # Run the benchmark
         benchmark.run(backend)
-        # clean backend
-        backend.clean()
         # Save the benchmark results
         benchmark.save()
-
     # log error and traceback
     except Exception as e:
         LOGGER.error(e, exc_info=True)
+
+    # clean backend
+    backend.clean()
 
 
 if __name__ == "__main__":
