@@ -36,7 +36,8 @@ def gather_inference_report(root_folder: Path) -> DataFrame:
 
     # Merge inference and config dataframes
     inference_reports = [
-        config_dfs[name].merge(inference_dfs[name], left_index=True, right_index=True)
+        config_dfs[name].merge(inference_dfs[name],
+                               left_index=True, right_index=True)
         for name in inference_dfs.keys()
     ]
 
@@ -84,7 +85,7 @@ def format_row(row, style=""):
 
 
 def get_inference_rich_table(
-    inference_report, with_baseline=False, with_generate=False, subtitle=""
+    inference_report, with_baseline=False, with_generate=False, title=""
 ):
     perf_columns = [
         "forward.latency(s)",
@@ -95,14 +96,15 @@ def get_inference_rich_table(
         perf_columns.append("forward.speedup(%)")
 
     if with_generate:
-        perf_columns += ["generate.latency(s)", "generate.throughput(tokens/s)"]
+        perf_columns += ["generate.latency(s)",
+                         "generate.throughput(tokens/s)"]
         if with_baseline:
             perf_columns.append("generate.speedup(%)")
 
     additional_columns = [
         col
         for col in inference_report.columns
-        if inference_report[col].fillna("").nunique() > 1
+        if inference_report[col].nunique() > 1
         and "backend" in col
         and "_target_" not in col
         and "version" not in col
@@ -116,7 +118,7 @@ def get_inference_rich_table(
 
     # create rich table
     rich_table = Table(
-        show_header=True, title="Inference Report" + "\n" + subtitle, show_lines=True
+        show_header=True, title=title, show_lines=True
     )
     # we add a column for the index
     rich_table.add_column("Experiment Name", justify="left", header_style="")
@@ -132,7 +134,7 @@ def get_inference_rich_table(
                 rich_table.add_column(col, header_style="")
             pass
         else:
-            rich_table.add_row("", *columns, end_section=True)
+            rich_table.add_row("", *columns, end_section=True, )
 
     # we populate the table with values
     for i, row in enumerate(display_report.itertuples(index=True)):
@@ -157,7 +159,8 @@ def get_inference_plots(report, with_baseline=False, with_generate=False, subtit
         ax=ax1,
         width=0.5,
     )
-    ax1.set_xticklabels(ax1.get_xticklabels(), rotation=45, horizontalalignment="right")
+    ax1.set_xticklabels(ax1.get_xticklabels(), rotation=45,
+                        horizontalalignment="right")
     ax1.set_xlabel("Experiment")
     ax1.set_ylabel("Forward Throughput (samples/s)")
     ax1.set_title("Forward Throughput by Experiment" + "\n" + subtitle)
@@ -188,7 +191,8 @@ def get_inference_plots(report, with_baseline=False, with_generate=False, subtit
                 ha="center",
                 va="center",
             )
-        ax1.set_title("Forward Throughput and Speedup by Experiment" + "\n" + subtitle)
+        ax1.set_title(
+            "Forward Throughput and Speedup by Experiment" + "\n" + subtitle)
 
         if with_generate:
             # add speedup text on top of each bar
@@ -196,7 +200,8 @@ def get_inference_plots(report, with_baseline=False, with_generate=False, subtit
                 -1
             ]
             for p in ax2.patches:
-                speedup = (p.get_height() / baseline_generate_throughput - 1) * 100
+                speedup = (p.get_height() /
+                           baseline_generate_throughput - 1) * 100
                 ax2.annotate(
                     f"{'+' if speedup>0 else '-'}{abs(speedup):.2f}%",
                     (p.get_x() + p.get_width() / 2, 1.02 * p.get_height()),
@@ -228,12 +233,20 @@ def compute_speedup(report, with_generate=False):
     return report
 
 
-def main(experiments_folders, baseline_folder=None):
+def main(experiments_folders, filters=[], report_name=None, baseline_folder=None):
     # gather experiments reports
     inference_experiments = [
         gather_inference_report(experiment) for experiment in experiments_folders
     ]
     inference_report = pd.concat(inference_experiments, axis=0)
+
+    if len(filters) > 0:
+        # apply filters
+        for filter in filters:
+            left_side, right_side = filter.split("=")
+            inference_report = inference_report[
+                inference_report[left_side] == right_side
+            ]
 
     # sort by forward throughput
     inference_report.sort_values(
@@ -251,40 +264,34 @@ def main(experiments_folders, baseline_folder=None):
             inference_baseline.shape[0] == 1
         ), "baseline folder should contain only one experiment"
         # add baseline to experiment
-        inference_report = pd.concat([inference_report, inference_baseline], axis=0)
+        inference_report = pd.concat(
+            [inference_report, inference_baseline], axis=0)
         # compute speedup compared to baseline
         inference_report = compute_speedup(inference_report, with_generate)
 
-    # there should be only one device, one batch_size and one new_tokens (unique triplet)
-    unique_devices = inference_report["device"].unique()
-    assert (
-        len(unique_devices) == 1
-    ), "there should be only one device (apples to apples comparison)"
-    device = unique_devices[0]
+    # create reporting directory and title using the filters
+    if len(filters) == 0 and report_name is None:
+        report_name = "Inference Report"
+        reporting_directory = f"reports/inferece_reports"
+        reportnig_title = report_name + f"\nFilters: None"
+    elif len(filters) > 0 and report_name is None:
+        report_name = "Inference Report"
+        reporting_directory = f"reports/{'_'.join(filters)}"
+        reportnig_title = report_name + f"\nFilters: {' & '.join(filters)}"
+    elif len(filters) == 0 and report_name is not None:
+        reporting_directory = f"reports/{report_name}"
+        reportnig_title = report_name + f"\nFilters: None"
+    elif len(filters) > 0 and report_name is not None:
+        reporting_directory = f"reports/{report_name}"
+        reportnig_title = report_name + f"\nFilters: {' & '.join(filters)}"
+    else:
+        raise ValueError("report_name and filters are not compatible")
 
-    unique_batch_sizes = inference_report["benchmark.input_shapes.batch_size"].unique()
-    assert (
-        len(unique_batch_sizes) == 1
-    ), "there should be only one batch_size (apples to apples comparison)"
-    batch_size = unique_batch_sizes[0]
-
-    unique_new_tokens = inference_report["benchmark.new_tokens"].unique()
-    assert (
-        len(unique_new_tokens) == 1
-    ), "there should be only one new_tokens (apples to apples comparison)"
-    new_tokens = unique_new_tokens[0]
-
-    # create reporting directory and title
-    reporting_directory = f"reports/{device}_{batch_size}"
-    reportnig_subtitle = f"Device: {device} | Batch Size: {batch_size}"
-    if with_generate:
-        reporting_directory += f"_{new_tokens}"
-        reportnig_subtitle += f" | New Tokens: {new_tokens}"
     Path(reporting_directory).mkdir(exist_ok=True, parents=True)
 
     # rich table
     rich_table = get_inference_rich_table(
-        inference_report, with_baseline, with_generate, reportnig_subtitle
+        inference_report, with_baseline, with_generate, reportnig_title
     )
     console = Console(record=True)
     console.print(rich_table, justify="left", no_wrap=True)
@@ -292,7 +299,7 @@ def main(experiments_folders, baseline_folder=None):
 
     # plots
     forward_fig, generate_fig = get_inference_plots(
-        inference_report, with_baseline, with_generate, reportnig_subtitle
+        inference_report, with_baseline, with_generate, reportnig_title
     )
     forward_fig.tight_layout()
     forward_fig.savefig(f"{reporting_directory}/forward_throughput.png")
@@ -302,7 +309,8 @@ def main(experiments_folders, baseline_folder=None):
         generate_fig.savefig(f"{reporting_directory}/generate_throughput.png")
 
     # csv
-    inference_report.to_csv(f"{reporting_directory}/inference_report.csv", index=True)
+    inference_report.to_csv(
+        f"{reporting_directory}/inference_report.csv", index=True)
 
 
 if __name__ == "__main__":
@@ -313,18 +321,34 @@ if __name__ == "__main__":
         "--experiments",
         "-e",
         nargs="*",
-        required=True,
         type=Path,
-        default="experiments/",
+        required=True,
         help="The folder containing the results of experiments.",
     )
     parser.add_argument(
         "--baseline",
         "-b",
-        required=False,
         type=Path,
+        required=False,
         help="The folders containing the results of baseline.",
     )
-    args = parser.parse_args()
+    parser.add_argument(
+        "--filters",
+        "-f",
+        nargs="*",
+        type=str,
+        required=False,
+        default=[],
+        help="The filters to apply to the experiments.",
+    )
+    parser.add_argument(
+        "--report-name",
+        "-n",
+        type=str,
+        required=False,
+        help="The name of the report.",
+    )
 
-    main(args.experiments, args.baseline)
+    args = parser.parse_args()
+    main(args.experiments, args.filters,
+         args.report_name, args.baseline)

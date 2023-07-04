@@ -81,7 +81,7 @@ class InferenceBenchmark(Benchmark):
         self.run_forward_tracking(backend)
 
         if self.memory:
-            # if needed, run memory tracking
+            # if requested, run memory tracking
             self.run_memory_tracking(backend)
 
         if backend.can_generate():
