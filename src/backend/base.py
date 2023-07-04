@@ -36,9 +36,14 @@ class Backend(ABC):
         self.device = torch.device(device)
 
         # get pretrained config
-        self.pretrained_config = AutoConfig.from_pretrained(
-            self.model, **self.cache_kwargs
-        )
+        try:
+            self.pretrained_config = AutoConfig.from_pretrained(
+                self.model, **self.cache_kwargs
+            )
+        except OSError:
+            LOGGER.error(
+                f"Model {self.model} is not a transformers model. Will try to load it with diffusers"
+            )
 
         self.task = TasksManager.infer_task_from_model(
             model=model,
@@ -87,22 +92,19 @@ class Backend(ABC):
         assert mode in ["forward", "generate"], f"mode {mode} not supported"
         assert "batch_size" in input_shapes, "batch_size must be provided in input_shapes"
 
-        # patch for some LLMs model types not recognized by TasksManager
-        if self.pretrained_config.model_type in LLM_MODEL_TYPES:
-            dummy_inputs = {
-                "input_ids": torch.ones(
-                    (input_shapes["batch_size"], 1), dtype=torch.long, device=self.device
-                )
-            }
-            if mode == "forward":
-                dummy_inputs["attention_mask"] = torch.ones(
-                    (input_shapes["batch_size"], 1), dtype=torch.long, device=self.device
-                )
-            return dummy_inputs
+        # patch for some LLM model types not recognized by TasksManager
+        if self.pretrained_config.model_type in TasksManager._SUPPORTED_MODEL_TYPE:
+            model_type = self.pretrained_config.model_type
+        elif self.pretrained_config.model_type in LLM_MODEL_TYPES:
+            model_type = "gpt2"
+        else:
+            raise ValueError(
+                f"Unknown model type {self.pretrained_config.model_type}")
 
-        onnx_config = TasksManager._SUPPORTED_MODEL_TYPE[self.pretrained_config.model_type]["onnx"][self.task](
+        onnx_config = TasksManager._SUPPORTED_MODEL_TYPE[model_type]["onnx"][self.task](
             self.pretrained_config
         )
+
         normalized_config = onnx_config.NORMALIZED_CONFIG_CLASS(
             self.pretrained_config)
         generator_classes = onnx_config.DUMMY_INPUT_GENERATOR_CLASSES

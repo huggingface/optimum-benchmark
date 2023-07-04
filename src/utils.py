@@ -7,7 +7,7 @@ import platform
 import subprocess
 import numpy as np
 from typing import Optional
-import py3nvml.py3nvml as nvml
+
 
 from logging import getLogger
 
@@ -15,17 +15,17 @@ LOGGER = getLogger("utils")
 
 LLM_MODEL_TYPES = [
     "mpt",
-    "codegen",
-    "RefinedWeb",
-    "gpt_bigcode",
     "opt",
     "gptj",
-    "gpt_neox",
-    "bloom",
     "xglm",
     "gpt2",
-    "gpt_neo",
+    "bloom",
     "llama",
+    "gpt_neo",
+    "codegen",
+    "gpt_neox",
+    "RefinedWeb",
+    "gpt_bigcode",
     "RefinedWebModel",
 ]
 
@@ -37,8 +37,8 @@ def set_seed(seed: int) -> None:
 
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True  # type: ignore
+    torch.backends.cudnn.benchmark = False  # type: ignore
 
 
 def bytes_to_mega_bytes(bytes: int) -> int:
