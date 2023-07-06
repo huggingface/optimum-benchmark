@@ -112,7 +112,11 @@ class Backend(ABC):
         if mode == "forward":
             input_names = list(onnx_config.inputs.keys())
         elif mode == "generate":
-            input_names = get_preprocessor(self.model).model_input_names
+            if model_type in LLM_MODEL_TYPES:
+                input_names = ["input_ids"]
+            else:
+                # sometimes it fails because of recursive calls
+                input_names = get_preprocessor(self.model).model_input_names
         else:
             raise ValueError(f"Unknown mode {mode}")
 
