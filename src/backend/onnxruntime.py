@@ -63,6 +63,7 @@ class ORTConfig(BackendConfig):
     # export options
     export: bool = True
     no_weights: bool = False
+    use_merged: Optional[bool] = None
     torch_dtype: Optional[str] = None
 
     # provider options
@@ -235,10 +236,13 @@ class ORTBackend(Backend):
             device=self.device,
             output=tmpdirname,
             fp16=self.torch_dtype == torch.float16,
+            post_process=config.use_merged,
         )
+        LOGGER.info(
+            f"\t+ Created onnx files: {[f for f in os.listdir(tmpdirname) if f.endswith('.onnx')]}")
 
+        LOGGER.info("\t+ Deleting pytorch model")
         self.delete_pretrained_model()
-        LOGGER.info(f"\t+ Created files: {os.listdir(tmpdirname)}")
 
         LOGGER.info("\t+ Loading exported model in onnxruntime")
         self.pretrained_model = self.ortmodel_class.from_pretrained(
@@ -247,11 +251,16 @@ class ORTBackend(Backend):
             use_io_binding=config.use_io_binding,
             provider=config.provider,
             provider_options=self.provider_options,
+            use_merged=config.use_merged,
             export=False,
             **self.cache_kwargs,
         )
 
     def load_model_from_pretrained(self, config: ORTConfig) -> None:
+        if self.torch_dtype != torch.float32:
+            raise NotImplementedError(
+                "Loading from pretrained is only supported with torch_dtype float32")
+
         self.pretrained_model = self.ortmodel_class.from_pretrained(
             model_id=self.model,
             session_options=self.session_options,
@@ -259,13 +268,14 @@ class ORTBackend(Backend):
             provider=config.provider,
             provider_options=self.provider_options,
             export=config.export,
-            fp16=self.torch_dtype == torch.float16,
-            device=str(self.device),
+            # fp16=self.torch_dtype == torch.float16,
+            # device=str(self.device),
+            # use_merge=config.use_merge,
             **self.cache_kwargs,
         )
 
         LOGGER.info(
-            f"\t+ Created files: {os.listdir(self.pretrained_model.model_save_dir)}")
+            f"\t+ Created onnx files: {[f for f in os.listdir(self.pretrained_model.model_save_dir) if f.endswith('.onnx')]}")
 
     def optimize_model(self, config: ORTConfig, tmpdirname: str) -> None:
         if config.auto_optimization is not None:
@@ -412,7 +422,7 @@ class ORTBackend(Backend):
         shutil.rmtree(model_cache_path, ignore_errors=True)
 
     def clean(self) -> None:
-        LOGGER.info("Cleaning pytorch backend")
+        LOGGER.info("Cleaning onnxruntime backend")
         self.delete_pretrained_model()
 
         if self.delete_cache:
@@ -429,6 +439,7 @@ def dummy_export(
     device: torch.device,
     output: str,
     fp16: bool,
+    post_process: Optional[bool] = None,
 ):
     output_path = Path(output)
 
@@ -536,7 +547,7 @@ def dummy_export(
         else:
             models_and_onnx_configs = {"model": (model, onnx_config)}
 
-    _, onnx_outputs = export_models(
+    _, __ = export_models(
         models_and_onnx_configs=models_and_onnx_configs,  # type: ignore
         opset=opset,  # type: ignore
         output_dir=output_path,
@@ -545,3 +556,16 @@ def dummy_export(
         device=str(device),
         dtype="fp16" if fp16 is True else None,
     )
+
+    # post process is disabled in optimum ort api so you need to export models with cli
+    # and then load them with ort api to reproduce the same results
+    if post_process and task != "stable-diffusion":
+        try:
+            print("Attempting to merge the exported ONNX models...")
+            models_and_onnx_configs, onnx_files_subpaths = onnx_config.post_process_exported_models(
+                output, models_and_onnx_configs, onnx_files_subpaths
+            )
+        except Exception as e:
+            raise Exception(
+                f"The post-processing of the ONNX export failed. The export can still be performed by passing the option --no-post-process. Detailed error: {e}"
+            )
