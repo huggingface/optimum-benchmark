@@ -31,7 +31,8 @@ class MemoryTracker:
 
     def _track_cuda_peak_memory(self):
         nvml.nvmlInit()
-        handle = nvml.nvmlDeviceGetHandleByIndex(self.device.index)
+        handle = nvml.nvmlDeviceGetHandleByIndex(
+            self.device.index if self.device.index is not None else torch.cuda.current_device())
         yield
         meminfo = nvml.nvmlDeviceGetMemoryInfo(handle)
         nvml.nvmlShutdown()
