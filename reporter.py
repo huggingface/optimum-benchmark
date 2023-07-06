@@ -90,7 +90,10 @@ def get_inference_rich_table(
     perf_columns = [
         "forward.latency(s)",
         "forward.throughput(samples/s)",
-    ]
+    ] + ([
+        "forward.peak_memory(MB)",
+    ] if "forward.peak_memory(MB)" in inference_report.columns else []
+    )
 
     if with_baseline:
         perf_columns.append("forward.speedup(%)")
