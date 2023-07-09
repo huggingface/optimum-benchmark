@@ -2,9 +2,14 @@ from dataclasses import dataclass, MISSING
 from typing import Dict, List, Optional
 from abc import abstractmethod, ABC
 from logging import getLogger
+import subprocess
 import inspect
+import time
+import os
+
 
 import torch
+import threading
 from torch import Tensor
 from psutil import cpu_count
 from omegaconf import DictConfig
@@ -12,7 +17,7 @@ from optimum.exporters import TasksManager
 from transformers.onnx.utils import get_preprocessor
 from transformers import AutoConfig, PreTrainedModel  # type: ignore
 
-from src.utils import LLM_MODEL_TYPES
+from src.utils import LLM_MODEL_TYPES, check_no_process_is_running_on_cuda_device, check_only_this_process_is_running_on_cuda_device
 
 LOGGER = getLogger("backend")
 
@@ -31,25 +36,50 @@ class Backend(ABC):
     pretrained_model: PreTrainedModel
 
     def __init__(self, model: str, device: str, cache_kwargs: DictConfig):
+
         self.model = model
         self.cache_kwargs = cache_kwargs
         self.device = torch.device(device)
+        self.task = TasksManager.infer_task_from_model(
+            model=model,
+            subfolder=cache_kwargs.subfolder,
+            revision=cache_kwargs.revision
+        )
 
         # get pretrained config
         try:
             self.pretrained_config = AutoConfig.from_pretrained(
                 self.model, **self.cache_kwargs
             )
-        except OSError:
+        except OSError as e:
             LOGGER.error(
-                f"Model {self.model} is not a transformers model. Will try to load it with diffusers"
+                f"Could not load pretrained config for {self.model}."
+                f"Error: {e}"
             )
 
-        self.task = TasksManager.infer_task_from_model(
-            model=model,
-            subfolder=cache_kwargs.subfolder,
-            revision=cache_kwargs.revision
-        )
+        # run device isolation checks
+        self.check_initial_isolation()
+        self.check_contineous_isolation()
+
+    def check_initial_isolation(self) -> None:
+        if self.device.type == "cuda":
+            LOGGER.info("Checking initial device isolation")
+            check_no_process_is_running_on_cuda_device(
+                self.device
+            )
+            LOGGER.info(
+                f"Initial device isolation check passed: no process is running on device {self.device}"
+            )
+
+    def check_contineous_isolation(self) -> None:
+        if self.device.type == "cuda":
+            LOGGER.info("Checking contineous device isolation")
+            self.isolation_thread = threading.Thread(
+                target=check_only_this_process_is_running_on_cuda_device,
+                args=(self.device,),
+                daemon=True,
+            )
+            self.isolation_thread.start()
 
     @abstractmethod
     def configure(self, config: BackendConfig) -> None:
@@ -112,10 +142,10 @@ class Backend(ABC):
         if mode == "forward":
             input_names = list(onnx_config.inputs.keys())
         elif mode == "generate":
+            # sometimes get_preprocessor fails rasing a maximum recursion error
             if model_type in LLM_MODEL_TYPES:
-                input_names = ["input_ids"]
+                input_names = ["input_ids", "attention_mask"]
             else:
-                # sometimes it fails because of recursive calls
                 input_names = get_preprocessor(self.model).model_input_names
         else:
             raise ValueError(f"Unknown mode {mode}")
@@ -141,6 +171,7 @@ class Backend(ABC):
                             if param in input_shapes
                         },
                     )
+                    break
 
             if generator is None:
                 raise ValueError(
@@ -157,3 +188,17 @@ class Backend(ABC):
                 )
 
         return dummy_inputs
+
+
+def check_gpu_usage(device_id: int):
+    current_pid = os.getpid()
+    while True:
+        output = subprocess.check_output(
+            ["nvidia-smi", "--query-compute-apps=pid", "--format=csv,noheader"])
+        pids = [int(pid) for pid in output.decode().strip().split("\n")]
+        pids_on_device = [pid for pid in pids if subprocess.check_output(
+            ["nvidia-smi", f"--query-compute-apps=pid,used_memory", f"--format=csv,noheader,nounits", f"--id={device_id}"]).decode().startswith(f"{pid},")]
+        if len(pids_on_device) != 1 or pids_on_device[0] != current_pid:
+            raise RuntimeError(
+                f"Expected 1 process with PID {current_pid} on device {device_id}, found {len(pids_on_device)} processes with PIDs {pids_on_device}.")
+        time.sleep(1)

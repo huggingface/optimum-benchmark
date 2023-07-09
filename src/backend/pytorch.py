@@ -35,6 +35,7 @@ class PyTorchConfig(BackendConfig):
     _target_: str = "src.backend.pytorch.PyTorchBackend"
 
     # load options
+    no_weights: bool = False
     torch_dtype: str = "float32"  # "float32" or "float16"
     device_map: Optional[str] = None  # "auto", "balanced", ...
 
@@ -50,8 +51,7 @@ class PyTorchConfig(BackendConfig):
     disable_grad: bool = "${is_inference:${benchmark.name}}"  # type: ignore
     eval_mode: bool = "${is_inference:${benchmark.name}}"  # type: ignore
 
-    # model init options
-    no_weights: bool = False
+    # clean up options
     delete_cache: bool = False
 
 
@@ -70,7 +70,7 @@ class PyTorchBackend(Backend):
     def configure(self, config: PyTorchConfig) -> None:
         super().configure(config)
 
-        # Torch specific environment variables
+        # environment options
         if config.inter_op_num_threads is not None:
             LOGGER.info(
                 f"\t+ Setting pytorch inter_op_num_threads({config.inter_op_num_threads}))"
@@ -135,7 +135,7 @@ class PyTorchBackend(Backend):
     def load_model_from_config(self, config: PyTorchConfig) -> None:
         if config.quantization is not None:
             raise NotImplementedError(
-                "Quantization is not supported when loading from config"
+                "Quantization is not supported when creating empty weights model"
             )
 
         LOGGER.info(
