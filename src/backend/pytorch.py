@@ -1,23 +1,17 @@
+from omegaconf import DictConfig, OmegaConf
 from typing import Dict, List, Optional
-from contextlib import contextmanager
 from dataclasses import dataclass
 from logging import getLogger
-import shutil
-import os
-import gc
-
-import torch
 from torch import Tensor
-from optimum.exporters import TasksManager
-from omegaconf import DictConfig, OmegaConf
-from accelerate.utils import get_balanced_memory
+import torch
+
 from transformers.utils.fx import symbolic_trace
 from optimum.bettertransformer import BetterTransformer
-from accelerate import init_empty_weights, dispatch_model, infer_auto_device_map
-
+from optimum.exporters import TasksManager
 
 from src.backend.base import Backend, BackendConfig
 from src.profiler.fx_profiler import FXProfilingWrapper
+from src.backend.utils import randomize_weights
 
 # bachend logger
 LOGGER = getLogger("pytorch")
@@ -36,23 +30,21 @@ class PyTorchConfig(BackendConfig):
 
     # load options
     no_weights: bool = False
-    torch_dtype: str = "float32"  # "float32" or "float16"
-    device_map: Optional[str] = None  # "auto", "balanced", ...
+    torch_dtype: Optional[str] = None
 
     # quantization options
-    quantization: Optional[str] = None  # "int8" or "int4"
+    load_in_8bit: bool = False
+    load_in_4bit: bool = False
 
     # optimization options
     bettertransformer: bool = False
     torch_compile: bool = False
-    autocast: bool = False
+    amp_autocast: bool = False
+    amp_dtype: Optional[str] = None
 
     # inference options
     disable_grad: bool = "${is_inference:${benchmark.name}}"  # type: ignore
     eval_mode: bool = "${is_inference:${benchmark.name}}"  # type: ignore
-
-    # clean up options
-    delete_cache: bool = False
 
 
 class PyTorchBackend(Backend):
@@ -89,16 +81,11 @@ class PyTorchBackend(Backend):
             torch.set_grad_enabled(False)
 
         # Set torch dtype
-        self.torch_dtype = getattr(
-            torch, config.torch_dtype) if config.torch_dtype else None
-        LOGGER.info(f"\t+ Using torch_dtype {self.torch_dtype}")
-
-        # delete cache
-        if config.delete_cache:
-            LOGGER.info("\t+ Will delete cache after benchmarking")
-            self.delete_cache = True
-        else:
-            self.delete_cache = False
+        self.torch_dtype = (
+            getattr(torch, config.torch_dtype)  # in case of torch.dtype
+            if config.torch_dtype is not None and hasattr(torch, config.torch_dtype)
+            else config.torch_dtype  # in case of string or None
+        )
 
         # Load model
         if config.no_weights:
@@ -115,7 +102,7 @@ class PyTorchBackend(Backend):
         # Turn on better transformer inference
         if config.bettertransformer:
             LOGGER.info("\t+ Using optimum.bettertransformer")
-            self.pretrained_model = BetterTransformer.transform(
+            self.pretrained_model = BetterTransformer.transform(  # type: ignore
                 self.pretrained_model, keep_original_model=False
             )
 
@@ -126,137 +113,58 @@ class PyTorchBackend(Backend):
                 self.pretrained_model.forward)
 
         # Turn on autocast
-        if config.autocast:
-            LOGGER.info("\t+ Turning on autocast")
-            self.autocast = True
-        else:
-            self.autocast = False
+        if config.amp_autocast:
+            LOGGER.info("\t+ Enabling Automatic Mixed Precision")
+
+        self.amp_autocast = True
+        self.amp_dtype = (
+            getattr(torch, config.amp_dtype)  # in case of torch.dtype
+            if config.amp_dtype is not None and hasattr(torch, config.amp_dtype)
+            else None
+        )
 
     def load_model_from_config(self, config: PyTorchConfig) -> None:
-        if config.quantization is not None:
-            raise NotImplementedError(
-                "Quantization is not supported when creating empty weights model"
-            )
-
         LOGGER.info(
-            "\t+ Creating empty weights model from config with on meta device")
-        with init_empty_weights():
-            self.pretrained_model = self.automodel_class.from_config(
-                self.pretrained_config,
-                torch_dtype=self.torch_dtype,
-                trust_remote_code=self.cache_kwargs.get(
-                    "trust_remote_code", False),
-            )
-            self.pretrained_model.tie_weights()
-
-        if config.device_map is not None:
-            LOGGER.info(
-                "\t+ Model will be dispatched on multiple devices")
-
-            LOGGER.info("\t+ Infering no_split_module_classes")
-            no_split_module_classes = list(set([layer[0].__class__.__name__ for _, layer in self.pretrained_model.named_modules(
-            ) if type(layer) == torch.nn.ModuleList]))
-
-            LOGGER.info("\t+ Resuling no_split_module_classes:")
-            for module_class in no_split_module_classes:
-                LOGGER.info(f"\t\t+ {module_class}")
-
-            max_memory = None
-            if config.device_map != "sequential" and get_balanced_memory is not None:
-                max_memory = get_balanced_memory(
-                    self.pretrained_model,
-                    dtype=self.torch_dtype,
-                    low_zero=(config.device_map == "balanced_low_0"),
-                    max_memory=max_memory,
-                )
-
-            LOGGER.info("\t+ Infering auto device map")
-            device_map = infer_auto_device_map(
-                self.pretrained_model,
-                dtype=self.torch_dtype,
-                max_memory=max_memory,
-                no_split_module_classes=no_split_module_classes
-            )
-
-            LOGGER.info("\t+ Resuling auto device map:")
-            for k, v in device_map.items():
-                LOGGER.info(f"\t\t+ {k} -> {v}")
-
-            if self.device.type == "cuda" and ("cpu" in device_map.values() or "disk" in device_map.values()):
-                raise ValueError(
-                    "Couldn't dispatch model on CUDA devices only; some layers were dispatched on CPU or disk"
-                )
-
-            LOGGER.info(
-                f"\t+ Materializing the model on CPU (necessary intermediate step)")
-            self.pretrained_model = self.pretrained_model.to_empty(
-                device="cpu")
-
-            LOGGER.info("\t+ Dispatching the model")
-            self.pretrained_model = dispatch_model(
-                self.pretrained_model, device_map=device_map, offload_dir="./offload_dir")
-
-        else:
-            LOGGER.info(f"\t+ Materializing the model on {self.device}")
-            self.pretrained_model = self.pretrained_model.to_empty(
-                device=self.device)
-
-        LOGGER.info("\t+ Randomizing weights")
+            f"\t+ Loading model from config in {config.torch_dtype} on {self.device} "
+            f"with {'8bit' if config.load_in_8bit else '4bit' if config.load_in_4bit else 'no'} quantization"
+        )
+        # this depends on some modifications to the transformers library in my fork
+        # https://github.com/IlyasMoutawwakil/transformers.git@optimum-benchmark
+        self.pretrained_model = self.automodel_class.from_pretrained(
+            pretrained_model_name_or_path=None,
+            config=self.pretrained_config,
+            state_dict={},
+            torch_dtype=self.torch_dtype,
+            device_map=self.device,
+            load_in_8bit=config.load_in_8bit,
+            load_in_4bit=config.load_in_4bit,
+            **self.cache_kwargs,
+        )
         randomize_weights(self.pretrained_model)
 
     def load_model_from_pretrained(self, config: PyTorchConfig) -> None:
         LOGGER.info(
-            f"\t+ Loading pretrained model weights in {config.torch_dtype}" + (
-                f" and quantizing to {config.quantization}" if config.quantization else ""
-            )
+            f"\t+ Loading pretrained model weights in {config.torch_dtype} on {self.device}"
         )
-        if config.device_map is not None:
-            LOGGER.info(
-                "\t+ Model will be dispatched on multiple devices")
-            self.pretrained_model = self.automodel_class.from_pretrained(
-                pretrained_model_name_or_path=self.model,
-                torch_dtype=self.torch_dtype,
-                load_in_8bit=config.quantization == "int8",
-                load_in_4bit=config.quantization == "int4",
-                device_map=config.device_map,
-                **self.cache_kwargs,
-            )
-        else:
-            LOGGER.info(
-                f"\t+ Model will be loaded on {self.device}")
-            with self.device:
-                self.pretrained_model = self.automodel_class.from_pretrained(
-                    pretrained_model_name_or_path=self.model,
-                    torch_dtype=self.torch_dtype,
-                    load_in_8bit=config.quantization == "int8",
-                    load_in_4bit=config.quantization == "int4",
-                    **self.cache_kwargs,
-                )
 
-    @contextmanager
-    def amp_autocast(self):
-        """
-        Autocast context dispatcher for mixed precision.
-        """
-        if self.device.type == "cpu":
-            with torch.cpu.amp.autocast(enabled=self.autocast):
-                yield
-        elif self.device.type == "cuda":
-            with torch.cuda.amp.autocast(enabled=self.autocast):
-                yield
-        else:
-            raise ValueError(
-                f"Unknown device type: {self.device.type}")
+        self.pretrained_model = self.automodel_class.from_pretrained(
+            pretrained_model_name_or_path=self.model,
+            torch_dtype=self.torch_dtype,
+            device_map=self.device,
+            load_in_8bit=config.load_in_8bit,
+            load_in_4bit=config.load_in_4bit,
+            **self.cache_kwargs,
+        )
 
     def forward(self, input: Dict[str, Tensor]):
-        with self.amp_autocast():
-            output = self.pretrained_model(**input)
+        with torch.autocast(device_type=self.device.type, dtype=self.amp_dtype, enabled=self.amp_autocast):
+            output = self.pretrained_model(**input)[0]
 
         return output
 
     def generate(self, input: Dict[str, Tensor], new_tokens: int) -> Tensor:
-        with self.amp_autocast():
-            output = self.pretrained_model.generate(  # type: ignore
+        with torch.autocast(device_type=self.device.type, dtype=self.amp_dtype, enabled=self.amp_autocast):
+            output = self.pretrained_model.generate(
                 **input,
                 pad_token_id=self.pretrained_model.config.eos_token_id,
                 max_new_tokens=new_tokens,
@@ -264,42 +172,15 @@ class PyTorchBackend(Backend):
                 do_sample=False,
                 use_cache=True,
                 num_beams=1,
-            )
+            )[0]
+
         return output
 
     def prepare_for_profiling(self, input_names: List[str]) -> None:
         LOGGER.info("\t+ Symbolic tracing model")
-        self.pretrained_model = symbolic_trace(
+        self.pretrained_model = symbolic_trace(  # type: ignore
             model=self.pretrained_model,
             input_names=input_names,
         )
         LOGGER.info("\t+ Wrapping model with profiler")
         self.pretrained_model = FXProfilingWrapper(self.pretrained_model)
-
-    def delete_pretrained_model(self) -> None:
-        if hasattr(self, "pretrained_model"):
-            del self.pretrained_model
-
-        gc.collect()
-
-        if self.device.type == "cuda":
-            torch.cuda.empty_cache()
-
-    def delete_model_hub_cache(self) -> None:
-        model_cache_path = "models--" + self.model.replace("/", "--")
-        model_cache_path = os.path.join(os.path.expanduser(
-            "~/.cache/huggingface/hub"), model_cache_path)
-
-        shutil.rmtree(model_cache_path, ignore_errors=True)
-
-    def clean(self) -> None:
-        LOGGER.info("Cleaning pytorch backend")
-        self.delete_pretrained_model()
-
-        if self.delete_cache:
-            self.delete_model_hub_cache()
-
-
-def randomize_weights(model):
-    for name, param in model.named_parameters():
-        param.data = torch.rand_like(param.data) * 2 - 1
