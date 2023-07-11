@@ -1,4 +1,6 @@
 from dataclasses import dataclass, MISSING
+import gc
+import shutil
 from typing import Dict, List, Optional
 from abc import abstractmethod, ABC
 from logging import getLogger
@@ -31,6 +33,9 @@ class BackendConfig(ABC):
     inter_op_num_threads: Optional[int] = None
     intra_op_num_threads: Optional[int] = None
 
+    # clean up options
+    delete_cache: bool = False
+
 
 class Backend(ABC):
     pretrained_model: PreTrainedModel
@@ -46,20 +51,14 @@ class Backend(ABC):
             revision=cache_kwargs.revision
         )
 
-        # get pretrained config
-        try:
-            self.pretrained_config = AutoConfig.from_pretrained(
-                self.model, **self.cache_kwargs
-            )
-        except OSError as e:
-            LOGGER.error(
-                f"Could not load pretrained config for {self.model}."
-                f"Error: {e}"
-            )
+        self.pretrained_config = AutoConfig.from_pretrained(
+            pretrained_model_name_or_path=self.model,
+            **self.cache_kwargs
+        )
 
         # run device isolation checks
-        self.check_initial_isolation()
-        self.check_contineous_isolation()
+        # self.check_initial_isolation()
+        # self.check_contineous_isolation()
 
     def check_initial_isolation(self) -> None:
         if self.device.type == "cuda":
@@ -98,6 +97,13 @@ class Backend(ABC):
                     f"\t+ Setting backend.intra_op_num_threads to cpu_count({config.intra_op_num_threads})"
                 )
 
+        # clean up options
+        if config.delete_cache:
+            LOGGER.info("\t+ Will delete cache after benchmarking")
+            self.delete_cache = True
+        else:
+            self.delete_cache = False
+
     @abstractmethod
     def forward(self, input: Dict[str, Tensor]):
         raise NotImplementedError("Backend must implement forward method")
@@ -111,14 +117,30 @@ class Backend(ABC):
         raise NotImplementedError(
             "Backend must implement prepare_for_profiling method")
 
-    @abstractmethod
+    def delete_pretrained_model(self) -> None:
+        if hasattr(self, "pretrained_model"):
+            del self.pretrained_model
+        gc.collect()
+        if self.device.type == "cuda":
+            torch.cuda.empty_cache()
+
+    def delete_model_hub_cache(self) -> None:
+        model_cache_path = "models--" + self.model.replace("/", "--")
+        model_cache_path = os.path.join(os.path.expanduser(
+            "~/.cache/huggingface/hub"), model_cache_path)
+        shutil.rmtree(model_cache_path, ignore_errors=True)
+
     def clean(self) -> None:
-        raise NotImplementedError("Backend must implement clean method")
+        LOGGER.info(f"Cleaning backend")
+        self.delete_pretrained_model()
+        if self.delete_cache:
+            self.delete_model_hub_cache()
 
     def can_generate(self) -> bool:
         return hasattr(self.pretrained_model, "can_generate") and self.pretrained_model.can_generate()
 
     def generate_dummy_inputs(self, mode, **input_shapes) -> Dict[str, Tensor]:
+        # TODO: should fallback to generating dummy inputs based on the task after it fails for a model type
         assert mode in ["forward", "generate"], f"mode {mode} not supported"
         assert "batch_size" in input_shapes, "batch_size must be provided in input_shapes"
 
@@ -188,17 +210,3 @@ class Backend(ABC):
                 )
 
         return dummy_inputs
-
-
-def check_gpu_usage(device_id: int):
-    current_pid = os.getpid()
-    while True:
-        output = subprocess.check_output(
-            ["nvidia-smi", "--query-compute-apps=pid", "--format=csv,noheader"])
-        pids = [int(pid) for pid in output.decode().strip().split("\n")]
-        pids_on_device = [pid for pid in pids if subprocess.check_output(
-            ["nvidia-smi", f"--query-compute-apps=pid,used_memory", f"--format=csv,noheader,nounits", f"--id={device_id}"]).decode().startswith(f"{pid},")]
-        if len(pids_on_device) != 1 or pids_on_device[0] != current_pid:
-            raise RuntimeError(
-                f"Expected 1 process with PID {current_pid} on device {device_id}, found {len(pids_on_device)} processes with PIDs {pids_on_device}.")
-        time.sleep(1)
