@@ -1,8 +1,7 @@
 from dataclasses import dataclass
+from omegaconf import DictConfig
 from typing import List, Tuple
 from logging import getLogger
-
-from omegaconf import DictConfig
 from pandas import DataFrame
 import statistics
 
@@ -122,7 +121,7 @@ class InferenceBenchmark(Benchmark):
         )
 
         LOGGER.info("\t+ Warming up the generation pass")
-        outputs = backend.generate(generate_inputs, new_tokens=self.new_tokens)
+        outputs = backend.generate(generate_inputs, new_tokens=self.new_tokens // 10)
 
         LOGGER.info("\t+ Tracking generation latency and throughput")
         latency_tracker = LatencyTracker(device=backend.device)

@@ -211,6 +211,7 @@ class ORTBackend(Backend):
             torch_dtype=self.torch_dtype,
             auto_optimization=config.auto_optimization,
             use_merged=config.use_merged,
+            **self.cache_kwargs,
         )
         self.delete_pretrained_model()
 
