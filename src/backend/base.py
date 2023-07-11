@@ -57,8 +57,8 @@ class Backend(ABC):
         )
 
         # run device isolation checks
-        # self.check_initial_isolation()
-        # self.check_contineous_isolation()
+        self.check_initial_isolation()
+        self.check_contineous_isolation()
 
     def check_initial_isolation(self) -> None:
         if self.device.type == "cuda":
@@ -73,9 +73,10 @@ class Backend(ABC):
     def check_contineous_isolation(self) -> None:
         if self.device.type == "cuda":
             LOGGER.info("Checking contineous device isolation")
-            self.isolation_thread = threading.Thread(
+            from multiprocessing import Process
+            self.isolation_thread = Process(
                 target=check_only_this_process_is_running_on_cuda_device,
-                args=(self.device,),
+                args=(self.device, os.getpid()),
                 daemon=True,
             )
             self.isolation_thread.start()

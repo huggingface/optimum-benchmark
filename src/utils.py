@@ -103,16 +103,13 @@ def check_no_process_is_running_on_cuda_device(device: torch.device) -> None:
         )
 
 
-def check_only_this_process_is_running_on_cuda_device(device: torch.device) -> None:
+def check_only_this_process_is_running_on_cuda_device(device: torch.device, pid) -> None:
     """
     Raises a RuntimeError if at any point in time, there is a process running
     on the given cuda device that is not the current process.
     """
 
     cuda_device_id = device.index if device.index is not None else torch.cuda.current_device()
-
-    # get current process id
-    current_pid = os.getpid()
 
     while True:
         # get list of all PIDs running on nvidia devices
@@ -131,9 +128,9 @@ def check_only_this_process_is_running_on_cuda_device(device: torch.device) -> N
         ).decode().startswith(f"{pid},")])
 
         # check if there is a process running on device_id that is not the current process
-        if len(pids_on_device_id) > 1 or (len(pids_on_device_id) == 1 and (current_pid not in pids_on_device_id)):
+        if len(pids_on_device_id) > 1 or (len(pids_on_device_id) == 1 and (pid not in pids_on_device_id)):
             raise RuntimeError(
-                f"Expected only process {current_pid} on device {cuda_device_id}, "
+                f"Expected only process {pid} on device {cuda_device_id}, "
                 f"found {len(pids_on_device_id)} processes "
                 f"with PIDs {pids_on_device_id}."
             )
