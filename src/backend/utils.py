@@ -2,10 +2,11 @@ from typing import Optional
 from pathlib import Path
 import torch
 
+
 from optimum.exporters import TasksManager
 from optimum.onnxruntime import ORTOptimizer
 from optimum.utils import DEFAULT_DUMMY_SHAPES
-from transformers import PreTrainedModel, AutoTokenizer
+from transformers import AutoTokenizer, PretrainedConfig
 from optimum.utils.save_utils import maybe_save_preprocessors
 from optimum.onnxruntime.configuration import AutoOptimizationConfig
 from optimum.exporters.onnx import (
@@ -36,13 +37,27 @@ def randomize_weights(model):
 
 
 def dummy_export(
+    automodel_class,
+    pretrained_config: PretrainedConfig,
     output_dir: str,
-    model: PreTrainedModel,
     device: torch.device,
-    torch_dtype: torch.dtype,
+    torch_dtype: Optional[torch.dtype],
     auto_optimization: Optional[str] = None,
     use_merged: Optional[bool] = None,
+    **cache_kwargs,
 ):
+    ########################################
+    model = automodel_class.from_pretrained(
+        pretrained_model_name_or_path=None,
+        config=pretrained_config,
+        state_dict={},
+        torch_dtype=torch_dtype,
+        device_map=device,
+        **cache_kwargs,
+    )
+    randomize_weights(model)
+    ########################################
+
     input_shapes = {}
     original_task = "auto"
     output_path = Path(output_dir)
