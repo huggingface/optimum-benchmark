@@ -31,7 +31,7 @@ def dummy_main_export(
     pretrained_config: PretrainedConfig,
     output_dir: str,
     device: torch.device,
-    torch_dtype: Optional[torch.dtype],
+    torch_dtype: Optional[torch.dtype] = None,
     auto_optimization: Optional[str] = None,
     use_merged: Optional[bool] = None,
     **cache_kwargs,

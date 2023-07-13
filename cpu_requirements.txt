@@ -1,18 +1,13 @@
 # optimum
-git+https://github.com/huggingface/optimum.git
+git+https://github.com/huggingface/optimum.git#egg=optimum[onnxruntime,openvino,nncf]
 # accelerate
 git+https://github.com/huggingface/accelerate.git
 # transformers
 git+https://github.com/huggingface/transformers.git
 
-onnxruntime==1.15.0
-onnx==1.14.0
-torch
-
 omegaconf==2.3.0
 hydra-core==1.3.2
 hydra_colorlog==1.2.0
-
 
 flatten_dict
 matplotlib

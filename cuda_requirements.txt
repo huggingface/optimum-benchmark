@@ -8,10 +8,10 @@ git+https://github.com/huggingface/transformers.git
 omegaconf==2.3.0
 hydra-core==1.3.2
 hydra_colorlog==1.2.0
-py3nvml==0.2.7
 
 flatten_dict
 matplotlib
+py3nvml
 seaborn
 psutil
 pandas

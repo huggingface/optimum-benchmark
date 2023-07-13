@@ -9,11 +9,9 @@ from hydra.utils import get_class
 from typing import Dict, Optional
 from tempfile import TemporaryDirectory
 
-
 import optimum.intel.openvino as optimum_openvino
 from optimum.intel.openvino.utils import _HEAD_TO_AUTOMODELS
 from optimum.intel import OVConfig as OVQuantizationConfig, OVQuantizer
-
 
 from src.backend.base import Backend, BackendConfig
 

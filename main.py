@@ -19,7 +19,6 @@ cs.store(name="experiment", node=ExperimentConfig)
 cs.store(group="backend", name="pytorch", node=PyTorchConfig)
 cs.store(group="backend", name="onnxruntime", node=ORTConfig)
 cs.store(group="backend", name="openvino", node=OVConfig)
-
 cs.store(group="benchmark", name="inference", node=InferenceConfig)
 
 LOGGER = getLogger("main")
