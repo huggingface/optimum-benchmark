@@ -85,6 +85,8 @@ class PyTorchBackend(Backend):
 
         # Load model
         if config.no_weights:
+            if config.load_in_8bit or config.load_in_4bit:
+                raise ValueError("Cannot load model from config with bnb quantization")
             self.load_model_from_config(config)
         else:
             # load hosted weights model
@@ -107,25 +109,24 @@ class PyTorchBackend(Backend):
             LOGGER.info("\t+ Using torch.compile")
             self.pretrained_model.forward = torch.compile(self.pretrained_model.forward)
 
-        # Turn on autocast
-        if config.amp_autocast:
-            LOGGER.info("\t+ Enabling Automatic Mixed Precision")
-
+        # pytorch autocast
         self.amp_autocast = config.amp_autocast
         self.amp_dtype = (
             getattr(torch, config.amp_dtype)  # in case of torch.dtype
             if config.amp_dtype is not None and hasattr(torch, config.amp_dtype)
             else None
         )
+        if self.amp_autocast:
+            LOGGER.info(
+                f"\t+ Enabling Automatic Mixed Precision with dtype {self.amp_dtype}"
+            )
 
     def load_model_from_config(self, config: PyTorchConfig) -> None:
-        if config.load_in_8bit or config.load_in_4bit:
-            raise ValueError("Cannot load model from config with quantization enabled")
-
         LOGGER.info(
             f"\t+ Loading model from config in {config.torch_dtype} on {self.device}"
         )
         from accelerate import init_empty_weights
+
         with init_empty_weights():
             self.pretrained_model = self.automodel_class.from_config(
                 config=self.pretrained_config,
@@ -178,10 +179,11 @@ class PyTorchBackend(Backend):
         return output
 
     def prepare_for_profiling(self, input_names: List[str]) -> None:
+        LOGGER.info("Preparing model for profiling")
         LOGGER.info("\t+ Symbolic tracing model")
         self.pretrained_model = symbolic_trace(  # type: ignore
             model=self.pretrained_model,
             input_names=input_names,
         )
-        LOGGER.info("\t+ Wrapping model with profiler")
+        LOGGER.info("\t+ Wrapping model inside profiler")
         self.pretrained_model = FXProfilingWrapper(self.pretrained_model)

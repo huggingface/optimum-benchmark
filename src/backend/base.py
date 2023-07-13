@@ -1,17 +1,14 @@
 from dataclasses import dataclass, MISSING
 import gc
 import shutil
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from abc import abstractmethod, ABC
 from logging import getLogger
-import subprocess
 import inspect
-import time
 import os
 
 
 import torch
-import threading
 from torch import Tensor
 from psutil import cpu_count
 from omegaconf import DictConfig
@@ -19,7 +16,11 @@ from optimum.exporters import TasksManager
 from transformers.onnx.utils import get_preprocessor
 from transformers import AutoConfig, PreTrainedModel  # type: ignore
 
-from src.utils import LLM_MODEL_TYPES, check_no_process_is_running_on_cuda_device, check_only_this_process_is_running_on_cuda_device
+from src.utils import (
+    LLM_MODEL_TYPES,
+    check_no_process_is_running_on_cuda_device,
+    check_only_this_process_is_running_on_cuda_device,
+)
 
 LOGGER = getLogger("backend")
 
@@ -41,20 +42,18 @@ class Backend(ABC):
     pretrained_model: PreTrainedModel
 
     def __init__(self, model: str, device: str, cache_kwargs: DictConfig):
-
         self.model = model
         self.cache_kwargs = cache_kwargs
         self.device = torch.device(device)
         self.task = TasksManager.infer_task_from_model(
             model=model,
             subfolder=cache_kwargs.subfolder,
-            revision=cache_kwargs.revision
+            revision=cache_kwargs.revision,
         )
 
         # transformers autoconfig and automodel_class
         self.pretrained_config = AutoConfig.from_pretrained(
-            pretrained_model_name_or_path=self.model,
-            **self.cache_kwargs
+            pretrained_model_name_or_path=self.model, **self.cache_kwargs
         )
         self.automodel_class = TasksManager.get_model_class_for_task(
             task=self.task, framework="pt", model_type=self.pretrained_config.model_type
@@ -67,9 +66,7 @@ class Backend(ABC):
     def check_initial_isolation(self) -> None:
         if self.device.type == "cuda":
             LOGGER.info("Checking initial device isolation")
-            check_no_process_is_running_on_cuda_device(
-                self.device
-            )
+            check_no_process_is_running_on_cuda_device(self.device)
             LOGGER.info(
                 f"Initial device isolation check passed: no process is running on device {self.device}"
             )
@@ -78,6 +75,7 @@ class Backend(ABC):
         if self.device.type == "cuda":
             LOGGER.info("Checking contineous device isolation")
             from multiprocessing import Process
+
             self.isolation_thread = Process(
                 target=check_only_this_process_is_running_on_cuda_device,
                 args=(self.device, os.getpid()),
@@ -109,6 +107,12 @@ class Backend(ABC):
         else:
             self.delete_cache = False
 
+    def prepare_for_forward(self, input_shapes: Dict[str, int]) -> None:
+        pass
+
+    def prepare_for_profiling(self, input_names: List[str]) -> None:
+        pass
+
     @abstractmethod
     def forward(self, input: Dict[str, Tensor]):
         raise NotImplementedError("Backend must implement forward method")
@@ -116,11 +120,6 @@ class Backend(ABC):
     @abstractmethod
     def generate(self, input: Dict[str, Tensor], **kwargs) -> str:
         raise NotImplementedError("Backend must implement generate method")
-
-    @abstractmethod
-    def prepare_for_profiling(self, input_names: List[str]) -> None:
-        raise NotImplementedError(
-            "Backend must implement prepare_for_profiling method")
 
     def delete_pretrained_model(self) -> None:
         if hasattr(self, "pretrained_model"):
@@ -131,8 +130,9 @@ class Backend(ABC):
 
     def delete_model_hub_cache(self) -> None:
         model_cache_path = "models--" + self.model.replace("/", "--")
-        model_cache_path = os.path.join(os.path.expanduser(
-            "~/.cache/huggingface/hub"), model_cache_path)
+        model_cache_path = os.path.join(
+            os.path.expanduser("~/.cache/huggingface/hub"), model_cache_path
+        )
         shutil.rmtree(model_cache_path, ignore_errors=True)
 
     def clean(self) -> None:
@@ -142,12 +142,19 @@ class Backend(ABC):
             self.delete_model_hub_cache()
 
     def can_generate(self) -> bool:
-        return hasattr(self.pretrained_model, "can_generate") and self.pretrained_model.can_generate()
+        return (
+            hasattr(self.pretrained_model, "can_generate")
+            and self.pretrained_model.can_generate()
+        )
 
-    def generate_dummy_inputs(self, mode, **input_shapes) -> Dict[str, Tensor]:
+    def generate_dummy_input(
+        self, mode, **input_shapes
+    ) -> Tuple[Dict[str, Tensor], Dict[str, int]]:
         # TODO: should fallback to generating dummy inputs based on the task after it fails for a model type
         assert mode in ["forward", "generate"], f"mode {mode} not supported"
-        assert "batch_size" in input_shapes, "batch_size must be provided in input_shapes"
+        assert (
+            "batch_size" in input_shapes
+        ), "batch_size must be provided in input_shapes"
 
         # patch for some LLM model types not recognized by TasksManager
         if self.pretrained_config.model_type in TasksManager._SUPPORTED_MODEL_TYPE:
@@ -155,15 +162,13 @@ class Backend(ABC):
         elif self.pretrained_config.model_type in LLM_MODEL_TYPES:
             model_type = "gpt2"
         else:
-            raise ValueError(
-                f"Unknown model type {self.pretrained_config.model_type}")
+            raise ValueError(f"Unknown model type {self.pretrained_config.model_type}")
 
         onnx_config = TasksManager._SUPPORTED_MODEL_TYPE[model_type]["onnx"][self.task](
             self.pretrained_config
         )
 
-        normalized_config = onnx_config.NORMALIZED_CONFIG_CLASS(
-            self.pretrained_config)
+        normalized_config = onnx_config.NORMALIZED_CONFIG_CLASS(self.pretrained_config)
         generator_classes = onnx_config.DUMMY_INPUT_GENERATOR_CLASSES
 
         if mode == "forward":
@@ -179,39 +184,43 @@ class Backend(ABC):
 
         LOGGER.info(f"Generating dummy inputs for {input_names}")
 
-        dummy_inputs = dict()
+        dummy_input = dict()
+        dummy_input_shapes = dict()
         for input_name in input_names:
             generator = None
             for generator_class in generator_classes:
-                supported_generator_params = inspect.signature(
-                    generator_class.__init__
-                ).parameters.keys()
-                supported_generator_inputs = generator_class.SUPPORTED_INPUT_NAMES
+                supported_generator_input_names = generator_class.SUPPORTED_INPUT_NAMES
 
-                if input_name in supported_generator_inputs:
+                if input_name in supported_generator_input_names:
+                    supported_generator_input_shapes = {
+                        input_shape: input_shapes[input_shape]
+                        for input_shape in input_shapes
+                        if input_shape
+                        in inspect.signature(generator_class.__init__).parameters
+                    }
+
                     generator = generator_class(
                         task=self.task,
                         normalized_config=normalized_config,
-                        **{
-                            param: input_shapes[param]
-                            for param in supported_generator_params
-                            if param in input_shapes
-                        },
+                        **supported_generator_input_shapes,
                     )
+
+                    # we found a generator for this input name, let's use it
                     break
 
+            # if no generator was found, raise an error
             if generator is None:
                 raise ValueError(
                     f"Could not find dummy input generator for {input_name}"
                 )
 
-            dummy_inputs[input_name] = generator.generate(
-                input_name).to(self.device)
+            dummy_input[input_name] = generator.generate(input_name).to(self.device)
+            dummy_input_shapes.update(supported_generator_input_shapes)
 
             if input_name == "attention_mask":
                 # patch for until sparse attention is supported
-                dummy_inputs["attention_mask"] = torch.ones_like(
-                    dummy_inputs["attention_mask"]
+                dummy_input["attention_mask"] = torch.ones_like(
+                    dummy_input["attention_mask"]
                 )
 
-        return dummy_inputs
+        return dummy_input, dummy_input_shapes

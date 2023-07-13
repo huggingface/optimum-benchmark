@@ -22,12 +22,11 @@ def randomize_weights(model):
         if param.dtype == torch.float32 or param.dtype == torch.float16:
             # float between -1 and 1 following the normal distribution
             param.data = torch.randn_like(param.data) * 0.05
-
         else:
-            raise ValueError("Unsupported type")
+            raise ValueError("Unsupported dtype")
 
 
-def dummy_export(
+def dummy_main_export(
     automodel_class,
     pretrained_config: PretrainedConfig,
     output_dir: str,

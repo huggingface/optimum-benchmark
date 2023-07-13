@@ -94,74 +94,71 @@ class InferenceBenchmark(Benchmark):
             self.run_forward_profile(backend)
 
     def run_forward_tracking(self, backend: Backend) -> None:
-        forward_inputs = backend.generate_dummy_inputs(
+        forward_input, forward_input_shapes = backend.generate_dummy_input(
             mode="forward", **self.input_shapes  # type: ignore
         )
+        backend.prepare_for_forward(forward_input_shapes)
 
         LOGGER.info("\t+ Warming up the forward pass")
         for _ in range(self.warmup_runs):
-            outputs = backend.forward(forward_inputs)
+            outputs = backend.forward(forward_input)
 
         LOGGER.info("\t+ Tracking forward pass latency and throughput")
         latency_tracker = LatencyTracker(device=backend.device)
         while sum(latency_tracker.get_latencies()) < self.benchmark_duration:
             with latency_tracker.track():
-                outputs = backend.forward(forward_inputs)
+                outputs = backend.forward(forward_input)
 
         self.forward_latencies = latency_tracker.get_latencies()
-        LOGGER.info(
-            f"\t+ Forward pass latency: {self.forward_latency:.2e} (s)")
+        LOGGER.info(f"\t+ Forward pass latency: {self.forward_latency:.2e} (s)")
         LOGGER.info(
             f"\t+ Forward pass throughput: {self.forward_throughput:.2f} (samples/s)"
         )
 
     def run_generate_tracking(self, backend: Backend) -> None:
-        generate_inputs = backend.generate_dummy_inputs(
+        generate_input, generate_input_shapes = backend.generate_dummy_input(
             mode="generate", **self.input_shapes  # type: ignore
         )
 
         LOGGER.info("\t+ Warming up the generation pass")
-        outputs = backend.generate(generate_inputs, new_tokens=self.new_tokens // 10)
+        outputs = backend.generate(generate_input, new_tokens=self.new_tokens // 10)
 
         LOGGER.info("\t+ Tracking generation latency and throughput")
         latency_tracker = LatencyTracker(device=backend.device)
         while sum(latency_tracker.get_latencies()) < self.benchmark_duration:
             with latency_tracker.track():
-                outputs = backend.generate(
-                    generate_inputs, new_tokens=self.new_tokens)
+                outputs = backend.generate(generate_input, new_tokens=self.new_tokens)
 
         self.generate_latencies = latency_tracker.get_latencies()
-        LOGGER.info(
-            f"\t+ Generation pass latency: {self.generate_latency:.2e} (s)")
+        LOGGER.info(f"\t+ Generation pass latency: {self.generate_latency:.2e} (s)")
 
         LOGGER.info(
             f"\t+ Generation pass throughput: {self.generate_throughput:.2f} (tokens/s)"
         )
 
     def run_memory_tracking(self, backend: Backend) -> None:
-        memory_inputs = backend.generate_dummy_inputs(
+        memory_input, memory_input_shapes = backend.generate_dummy_input(
             mode="forward", **self.input_shapes  # type: ignore
         )
+        backend.prepare_for_forward(memory_input_shapes)
 
         LOGGER.info("\t+ Tracking forward pass peak memory")
         memory_tracker = MemoryTracker(device=backend.device)
         with memory_tracker.track(interval=self.forward_latency / 10):
-            outputs = backend.forward(memory_inputs)
+            outputs = backend.forward(memory_input)
 
         self.forward_peak_memory = memory_tracker.get_peak_memory()
-        LOGGER.info(
-            f"\t+ Forward pass peak memory: {self.forward_peak_memory} (MB)")
+        LOGGER.info(f"\t+ Forward pass peak memory: {self.forward_peak_memory} (MB)")
 
     def run_forward_profile(self, backend: Backend) -> None:
-        profile_inputs = backend.generate_dummy_inputs(
+        profile_input, profile_input_shapes = backend.generate_dummy_input(
             mode="forward", **self.input_shapes  # type: ignore
         )
-
-        LOGGER.info("\t+ Preparing backend for profiling")
-        backend.prepare_for_profiling(list(profile_inputs.keys()))
+        backend.prepare_for_forward(profile_input_shapes)
+        backend.prepare_for_profiling(list(profile_input.keys()))
 
         LOGGER.info("\t+ Running profiling")
-        backend.forward(profile_inputs)
+        backend.forward(profile_input)
 
         self.forward_profile = backend.pretrained_model.get_forward_profile()  # type: ignore
 
@@ -172,8 +169,7 @@ class InferenceBenchmark(Benchmark):
 
     @property
     def forward_throughput(self) -> float:
-        return significant_figures(
-            self.input_shapes.batch_size / self.forward_latency)
+        return significant_figures(self.input_shapes.batch_size / self.forward_latency)
 
     @property
     def generate_latency(self) -> float:
@@ -181,7 +177,9 @@ class InferenceBenchmark(Benchmark):
 
     @property
     def generate_throughput(self) -> float:
-        return significant_figures(self.new_tokens * self.input_shapes.batch_size / self.generate_latency)
+        return significant_figures(
+            self.new_tokens * self.input_shapes.batch_size / self.generate_latency
+        )
 
     def get_results_df(self) -> DataFrame:
         results_dict = dict()

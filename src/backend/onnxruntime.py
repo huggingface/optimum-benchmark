@@ -6,18 +6,19 @@ from pathlib import Path
 from logging import getLogger
 from omegaconf import OmegaConf
 from dataclasses import dataclass
+from hydra.utils import get_class
 from typing import Dict, List, Optional
 from tempfile import TemporaryDirectory
 from omegaconf.dictconfig import DictConfig
 
-
-from optimum.exporters import TasksManager
+from transformers import GenerationMixin
 from optimum.pipelines import ORT_SUPPORTED_TASKS
 from optimum.onnxruntime import ORTOptimizer, ORTQuantizer
 from onnxruntime.quantization import QuantFormat, QuantizationMode, QuantType
 from optimum.onnxruntime.configuration import (
     OptimizationConfig,
     QuantizationConfig,
+    AutoCalibrationConfig,
     AutoOptimizationConfig,
     AutoQuantizationConfig,
 )
@@ -25,7 +26,7 @@ from optimum.onnxruntime.configuration import (
 
 from src.profiler.ort_profiler import ORTProfilingWrapper
 from src.backend.base import Backend, BackendConfig
-from src.backend.utils import dummy_export
+from src.backend.utils import dummy_main_export
 from src.utils import infer_device_id
 
 OmegaConf.register_new_resolver(
@@ -33,11 +34,16 @@ OmegaConf.register_new_resolver(
     lambda device: torch.device(device).type == "cuda",
 )
 OmegaConf.register_new_resolver(
-    "infer_provider",
+    "infer_execution_provider",
     lambda device: f"{torch.device(device).type.upper()}ExecutionProvider",
 )
 OmegaConf.register_new_resolver(
-    "infer_device_id", lambda device: infer_device_id(device)
+    "infer_device_id",
+    lambda device: infer_device_id(device),
+)
+OmegaConf.register_new_resolver(
+    "perform_calibration",
+    lambda auto_qnt_static, qnt_static: auto_qnt_static or qnt_static,
 )
 
 LOGGER = getLogger("onnxruntime")
@@ -56,7 +62,7 @@ class ORTConfig(BackendConfig):
     torch_dtype: Optional[str] = None
 
     # provider options
-    provider: str = "${infer_provider:${device}}"
+    provider: str = "${infer_execution_provider:${device}}"
     device_id: Optional[int] = "${infer_device_id:${device}}"  # type: ignore
 
     # inference options
@@ -90,7 +96,8 @@ class ORTConfig(BackendConfig):
         }
     )
 
-    auto_optimization: Optional[str] = None  # O1, O2, O3, O4
+    # O1, O2, O3, O4
+    auto_optimization: Optional[str] = None
     auto_optimization_config: DictConfig = DictConfig(
         {
             "for_gpu": "${is_gpu:${device}}",
@@ -125,6 +132,20 @@ class ORTConfig(BackendConfig):
             # for now, only dynamic quantization is supported
             "is_static": False
             # add auto quantization specific options
+        }
+    )
+
+    # calibration options
+    calibration: bool = "${perform_calibration:${backend.auto_quantization_config.is_static}, ${backend.quantization_config.is_static}}"  # type: ignore
+    # calibration options
+    calibration_config: DictConfig = DictConfig(
+        {
+            "dataset_name": "glue",
+            "num_samples": 300,
+            "dataset_config_name": "sst2",
+            "dataset_split": "train",
+            "preprocess_batch": True,
+            "preprocess_class": "src.preprocessors.glue.GluePreprocessor",
         }
     )
 
@@ -195,7 +216,7 @@ class ORTBackend(Backend):
                 and not config.no_weights
             ):
                 raise NotImplementedError(
-                    "Optimization on merged model is only supported during export (no_weights=True)"
+                    "Optimization on merged model is only supported during export (no_weights=True) for now."
                 )
             if config.quantization or config.auto_quantization is not None:
                 self.quantize_model(config, tmpdirname)
@@ -205,7 +226,7 @@ class ORTBackend(Backend):
             f"\t+ Loading model from config in {config.torch_dtype} on {self.device}"
         )
 
-        dummy_export(
+        dummy_main_export(
             # dummy init options
             automodel_class=self.automodel_class,
             pretrained_config=self.pretrained_config,
@@ -243,8 +264,9 @@ class ORTBackend(Backend):
             use_io_binding=config.use_io_binding,
             provider=config.provider,
             provider_options=self.provider_options,
-            use_merged=config.use_merged,
             export=config.export,
+            # TODO: is this the right way to do it?
+            **({"use_merged": config.use_merged} if self.can_be_merged() else {}),
             **self.cache_kwargs,
         )
 
@@ -335,8 +357,32 @@ class ORTBackend(Backend):
         for component in components:
             LOGGER.info(f"\t+ Quantizing {component}")
             quantizer = ORTQuantizer.from_pretrained(model_dir, file_name=component)
+
+            if config.calibration:
+                preprocess_class = get_class(config.calibration_config.preprocess_class)
+                preprocess_function = preprocess_class(model_name_or_path=self.model)
+
+                calibration_dataset = quantizer.get_calibration_dataset(
+                    dataset_name=config.calibration_config.dataset_name,
+                    num_samples=config.calibration_config.num_samples,
+                    dataset_config_name=config.calibration_config.dataset_config_name,
+                    dataset_split=config.calibration_config.dataset_split,
+                    preprocess_function=preprocess_function,
+                )
+
+                # Create the calibration configuration containing the parameters related to calibration.
+                calibration_config = AutoCalibrationConfig.minmax(calibration_dataset)
+
+                # Perform the calibration step: computes the activations quantization ranges
+                calibration_tensors_range = quantizer.fit(
+                    dataset=calibration_dataset,
+                    calibration_config=calibration_config,
+                    operators_to_quantize=quantization_config.operators_to_quantize,
+                )
+
             quantizer.quantize(
                 save_dir=f"{tmpdirname}/quantized",
+                calibration_tensors_range=calibration_tensors_range,
                 quantization_config=quantization_config,
             )
         self.delete_pretrained_model()
@@ -368,8 +414,10 @@ class ORTBackend(Backend):
         return output
 
     def prepare_for_profiling(self, input_names: List[str]) -> None:
-        LOGGER.info("Preparing for profiling")
-        LOGGER.info("\t+ Wrapping model with profiler")
-        self.pretrained_model = ORTProfilingWrapper(
-            self.pretrained_model
-        )  # type: ignore
+        LOGGER.info("Preparing model for profiling")
+        LOGGER.info("\t+ Wrapping model inside profiler")
+        self.pretrained_model = ORTProfilingWrapper(self.pretrained_model)
+
+    def can_be_merged(self) -> bool:
+        # TODO: check if this is the right way to do it
+        return issubclass(self.ortmodel_class, GenerationMixin)

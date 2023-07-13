@@ -1,25 +1,25 @@
-from typing import Optional, Type
-from logging import getLogger
-
 import hydra
+from logging import getLogger
 from omegaconf import OmegaConf
 from hydra.utils import get_class
+from typing import Optional, Type
 from hydra.core.config_store import ConfigStore
 
 from src.experiment import ExperimentConfig
-
 from src.benchmark.base import Benchmark
 from src.benchmark.inference import InferenceConfig
-
 from src.backend.base import Backend
 from src.backend.pytorch import PyTorchConfig
 from src.backend.onnxruntime import ORTConfig
+from src.backend.openvino import OVConfig
 
 # Register configurations (maybe should be moved to a separate file)
 cs = ConfigStore.instance()
 cs.store(name="experiment", node=ExperimentConfig)
 cs.store(group="backend", name="pytorch", node=PyTorchConfig)
 cs.store(group="backend", name="onnxruntime", node=ORTConfig)
+cs.store(group="backend", name="openvino", node=OVConfig)
+
 cs.store(group="benchmark", name="inference", node=InferenceConfig)
 
 LOGGER = getLogger("main")
@@ -31,8 +31,7 @@ def run_experiment(experiment: ExperimentConfig) -> Optional[float]:
     OmegaConf.save(experiment, "hydra_config.yaml", resolve=True)
 
     # Allocate requested benchmark
-    benchmark_factory: Type[Benchmark] = get_class(
-        experiment.benchmark._target_)
+    benchmark_factory: Type[Benchmark] = get_class(experiment.benchmark._target_)
     benchmark: Benchmark = benchmark_factory()
     benchmark.configure(experiment.benchmark)
 

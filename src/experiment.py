@@ -1,10 +1,9 @@
 from dataclasses import dataclass, MISSING
+from omegaconf import DictConfig
 from logging import getLogger
 import platform
 import os
 
-from optimum.exporters import TasksManager
-from omegaconf import DictConfig, OmegaConf
 from optimum.version import __version__ as optimum_version
 from transformers import __version__ as transformers_version  # type: ignore
 
@@ -12,12 +11,11 @@ from src.backend.base import BackendConfig
 from src.benchmark.inference import BenchmarkConfig
 from src.utils import get_cpu, get_cpu_ram_mb
 
-LOGGER = getLogger("experiment")  # will be used in schema validation
+LOGGER = getLogger("experiment")
 
 
 @dataclass
 class ExperimentConfig:
-
     # BACKEND CONFIGURATION
     backend: BackendConfig = MISSING  # type: ignore
 
