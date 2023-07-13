@@ -51,9 +51,13 @@ class Backend(ABC):
             revision=cache_kwargs.revision
         )
 
+        # transformers autoconfig and automodel_class
         self.pretrained_config = AutoConfig.from_pretrained(
             pretrained_model_name_or_path=self.model,
             **self.cache_kwargs
+        )
+        self.automodel_class = TasksManager.get_model_class_for_task(
+            task=self.task, framework="pt", model_type=self.pretrained_config.model_type
         )
 
         # run device isolation checks
