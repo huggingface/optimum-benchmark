@@ -7,7 +7,6 @@ import torch
 
 from transformers.utils.fx import symbolic_trace
 from optimum.bettertransformer import BetterTransformer
-from optimum.exporters import TasksManager
 
 from src.backend.base import Backend, BackendConfig
 from src.profiler.fx_profiler import FXProfilingWrapper
@@ -51,9 +50,6 @@ class PyTorchBackend(Backend):
     def __init__(self, model: str, device: str, cache_kwargs: DictConfig):
         super().__init__(model, device, cache_kwargs)
 
-        self.automodel_class = TasksManager.get_model_class_for_task(
-            task=self.task, framework="pt", model_type=self.pretrained_config.model_type
-        )
         LOGGER.info(
             f"\t+ Infered AutoModel class {self.automodel_class.__name__} "
             f"for task {self.task} and model_type {self.pretrained_config.model_type}"
@@ -109,8 +105,7 @@ class PyTorchBackend(Backend):
         # Compile model
         if config.torch_compile:
             LOGGER.info("\t+ Using torch.compile")
-            self.pretrained_model.forward = torch.compile(
-                self.pretrained_model.forward)
+            self.pretrained_model.forward = torch.compile(self.pretrained_model.forward)
 
         # Turn on autocast
         if config.amp_autocast:
@@ -125,21 +120,19 @@ class PyTorchBackend(Backend):
 
     def load_model_from_config(self, config: PyTorchConfig) -> None:
         if config.load_in_8bit or config.load_in_4bit:
-            raise ValueError(
-                "Cannot load model from config with quantization enabled"
-            )
+            raise ValueError("Cannot load model from config with quantization enabled")
 
         LOGGER.info(
             f"\t+ Loading model from config in {config.torch_dtype} on {self.device}"
         )
-        self.pretrained_model = self.automodel_class.from_pretrained(
-            pretrained_model_name_or_path=None,
-            config=self.pretrained_config,
-            state_dict={},
-            torch_dtype=self.torch_dtype,
-            device_map=self.device,
-            **self.cache_kwargs,
-        )
+        from accelerate import init_empty_weights
+        with init_empty_weights():
+            self.pretrained_model = self.automodel_class.from_config(
+                config=self.pretrained_config,
+                torch_dtype=self.torch_dtype,
+                trust_remote_code=self.cache_kwargs.get("trust_remote_code", False),
+            )
+        self.pretrained_model.to_empty(device=self.device)
         randomize_weights(self.pretrained_model)
 
     def load_model_from_pretrained(self, config: PyTorchConfig) -> None:
@@ -157,13 +150,21 @@ class PyTorchBackend(Backend):
         )
 
     def forward(self, input: Dict[str, Tensor]):
-        with torch.autocast(device_type=self.device.type, dtype=self.amp_dtype, enabled=self.amp_autocast):
+        with torch.autocast(
+            device_type=self.device.type,
+            dtype=self.amp_dtype,
+            enabled=self.amp_autocast,
+        ):
             output = self.pretrained_model(**input)[0]
 
         return output
 
     def generate(self, input: Dict[str, Tensor], new_tokens: int) -> Tensor:
-        with torch.autocast(device_type=self.device.type, dtype=self.amp_dtype, enabled=self.amp_autocast):
+        with torch.autocast(
+            device_type=self.device.type,
+            dtype=self.amp_dtype,
+            enabled=self.amp_autocast,
+        ):
             output = self.pretrained_model.generate(
                 **input,
                 pad_token_id=self.pretrained_model.config.eos_token_id,
