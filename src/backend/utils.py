@@ -38,14 +38,15 @@ def dummy_export(
     **cache_kwargs,
 ):
     ########################################
-    model = automodel_class.from_pretrained(
-        pretrained_model_name_or_path=None,
-        config=pretrained_config,
-        state_dict={},
-        torch_dtype=torch_dtype,
-        device_map=device,
-        **cache_kwargs,
-    )
+    from accelerate import init_empty_weights
+
+    with init_empty_weights():
+        model = automodel_class.from_config(
+            config=pretrained_config,
+            torch_dtype=torch_dtype,
+            trust_remote_code=cache_kwargs.get("trust_remote_code", False),
+        )
+    model.to_empty(device=device)
     randomize_weights(model)
     ########################################
 
@@ -66,11 +67,14 @@ def dummy_export(
     if task + "-with-past" in TasksManager.get_supported_tasks_for_model_type(
         model.config.model_type.replace("_", "-"), "onnx"
     ):
-        if original_task == "auto":  # Make -with-past the default if --task was not explicitely specified
+        if (
+            original_task == "auto"
+        ):  # Make -with-past the default if --task was not explicitely specified
             task = task + "-with-past"
 
     onnx_config_constructor = TasksManager.get_exporter_config_constructor(
-        model=model, exporter="onnx", task=task)
+        model=model, exporter="onnx", task=task
+    )
     onnx_config = onnx_config_constructor(model.config)
 
     needs_pad_token_id = (
@@ -108,23 +112,20 @@ def dummy_export(
         )
 
     onnx_files_subpaths = None
-    if (
-        model.config.is_encoder_decoder
-        and task.startswith(
-            (
-                "text2text-generation",
-                "automatic-speech-recognition",
-                "image-to-text",
-                "feature-extraction-with-past",
-            )
+    if model.config.is_encoder_decoder and task.startswith(
+        (
+            "text2text-generation",
+            "automatic-speech-recognition",
+            "image-to-text",
+            "feature-extraction-with-past",
         )
     ):
         models_and_onnx_configs = get_encoder_decoder_models_for_export(
-            model, onnx_config)
+            model, onnx_config
+        )
 
     elif task.startswith("text-generation"):
-        models_and_onnx_configs = get_decoder_models_for_export(
-            model, onnx_config)
+        models_and_onnx_configs = get_decoder_models_for_export(model, onnx_config)
     else:
         models_and_onnx_configs = {"model": (model, onnx_config)}
 
@@ -142,15 +143,21 @@ def dummy_export(
         print("Attempting to optimize the exported ONNX models...")
         if onnx_files_subpaths is None:
             onnx_files_subpaths = [
-                key + ".onnx" for key in models_and_onnx_configs.keys()]
+                key + ".onnx" for key in models_and_onnx_configs.keys()
+            ]
         optimizer = ORTOptimizer.from_pretrained(
-            output_path, file_names=onnx_files_subpaths)
+            output_path, file_names=onnx_files_subpaths
+        )
 
         optimization_config = AutoOptimizationConfig.with_optimization_level(
-            optimization_level=auto_optimization)
+            optimization_level=auto_optimization
+        )
 
         optimizer.optimize(
-            save_dir=output_path, optimization_config=optimization_config, file_suffix="")
+            save_dir=output_path,
+            optimization_config=optimization_config,
+            file_suffix="",
+        )
         print("ONNX models successfully optimized.")
 
     # post process is disabled in optimum ort api so you need to export models with cli
@@ -158,7 +165,10 @@ def dummy_export(
     if use_merged:
         try:
             print("Attempting to merge the exported ONNX models...")
-            models_and_onnx_configs, onnx_files_subpaths = onnx_config.post_process_exported_models(
+            (
+                models_and_onnx_configs,
+                onnx_files_subpaths,
+            ) = onnx_config.post_process_exported_models(
                 output_path, models_and_onnx_configs, onnx_files_subpaths
             )
             print("ONNX models successfully merged.")
