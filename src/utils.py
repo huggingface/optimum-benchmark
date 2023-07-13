@@ -58,8 +58,7 @@ def get_cpu() -> Optional[str]:
 
     elif platform.system() == "Linux":
         command = "cat /proc/cpuinfo"
-        all_info = subprocess.check_output(
-            command, shell=True).decode().strip()
+        all_info = subprocess.check_output(command, shell=True).decode().strip()
         for line in all_info.split("\n"):
             if "model name" in line:
                 return re.sub(".*model name.*:", "", line, 1)
@@ -78,22 +77,39 @@ def check_no_process_is_running_on_cuda_device(device: torch.device) -> None:
     Raises a RuntimeError if any process is running on the given cuda device.
     """
 
-    cuda_device_id = device.index if device.index is not None else torch.cuda.current_device()
+    cuda_device_id = (
+        device.index if device.index is not None else torch.cuda.current_device()
+    )
 
     # get list of all PIDs running on nvidia devices
-    pids = [int(pid) for pid in subprocess.check_output(
-        ["nvidia-smi",
-         "--query-compute-apps=pid",
-         "--format=csv,noheader"]
-    ).decode().strip().split("\n")]
+    pids = [
+        int(pid)
+        for pid in subprocess.check_output(
+            ["nvidia-smi", "--query-compute-apps=pid", "--format=csv,noheader"]
+        )
+        .decode()
+        .strip()
+        .split("\n")
+        if pid != ""
+    ]
 
     # get list of PIDs running on cuda device_id
-    pids_on_device_id = set([pid for pid in pids if subprocess.check_output(
-        ["nvidia-smi",
-         f"--query-compute-apps=pid,used_memory",
-         f"--format=csv,noheader,nounits",
-         f"--id={cuda_device_id}"]
-    ).decode().startswith(f"{pid},")])
+    pids_on_device_id = set(
+        [
+            pid
+            for pid in pids
+            if subprocess.check_output(
+                [
+                    "nvidia-smi",
+                    f"--query-compute-apps=pid,used_memory",
+                    f"--format=csv,noheader,nounits",
+                    f"--id={cuda_device_id}",
+                ]
+            )
+            .decode()
+            .startswith(f"{pid},")
+        ]
+    )
 
     if len(pids_on_device_id) > 0:
         raise RuntimeError(
@@ -103,32 +119,53 @@ def check_no_process_is_running_on_cuda_device(device: torch.device) -> None:
         )
 
 
-def check_only_this_process_is_running_on_cuda_device(device: torch.device, pid) -> None:
+def check_only_this_process_is_running_on_cuda_device(
+    device: torch.device, pid
+) -> None:
     """
     Raises a RuntimeError if at any point in time, there is a process running
     on the given cuda device that is not the current process.
     """
 
-    cuda_device_id = device.index if device.index is not None else torch.cuda.current_device()
+    cuda_device_id = (
+        device.index if device.index is not None else torch.cuda.current_device()
+    )
 
     while True:
         # get list of all PIDs running on nvidia devices
-        pids = [int(pid) for pid in subprocess.check_output(
-            ["nvidia-smi",
-             "--query-compute-apps=pid",
-             "--format=csv,noheader"]
-        ).decode().strip().split("\n")]
+        pids = [
+            int(pid)
+            for pid in subprocess.check_output(
+                ["nvidia-smi", "--query-compute-apps=pid", "--format=csv,noheader"]
+            )
+            .decode()
+            .strip()
+            .split("\n")
+            if pid != ""
+        ]
 
         # get list of PIDs running on cuda device_id
-        pids_on_device_id = set([pid for pid in pids if subprocess.check_output(
-            ["nvidia-smi",
-             f"--query-compute-apps=pid,used_memory",
-             f"--format=csv,noheader,nounits",
-             f"--id={cuda_device_id}"]
-        ).decode().startswith(f"{pid},")])
+        pids_on_device_id = set(
+            [
+                pid
+                for pid in pids
+                if subprocess.check_output(
+                    [
+                        "nvidia-smi",
+                        f"--query-compute-apps=pid,used_memory",
+                        f"--format=csv,noheader,nounits",
+                        f"--id={cuda_device_id}",
+                    ]
+                )
+                .decode()
+                .startswith(f"{pid},")
+            ]
+        )
 
         # check if there is a process running on device_id that is not the current process
-        if len(pids_on_device_id) > 1 or (len(pids_on_device_id) == 1 and (pid not in pids_on_device_id)):
+        if len(pids_on_device_id) > 1 or (
+            len(pids_on_device_id) == 1 and (pid not in pids_on_device_id)
+        ):
             raise RuntimeError(
                 f"Expected only process {pid} on device {cuda_device_id}, "
                 f"found {len(pids_on_device_id)} processes "
@@ -144,13 +181,13 @@ def infer_device_id(device: str) -> int:
     Infer the device id from the given device string.
     """
 
-    if device == 'cuda':
+    if device == "cuda":
         return torch.cuda.current_device()
-    elif torch.device(device).type == 'cuda':
+    elif torch.device(device).type == "cuda":
         return torch.device(device).index
-    elif device == 'cpu':
+    elif device == "cpu":
         return -1
-    elif torch.device(device).type == 'cpu':
+    elif torch.device(device).type == "cpu":
         return -1
     else:
         raise ValueError(f"Unknown device '{device}'")
