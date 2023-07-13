@@ -116,7 +116,7 @@ class PyTorchBackend(Backend):
         if config.amp_autocast:
             LOGGER.info("\t+ Enabling Automatic Mixed Precision")
 
-        self.amp_autocast = True
+        self.amp_autocast = config.amp_autocast
         self.amp_dtype = (
             getattr(torch, config.amp_dtype)  # in case of torch.dtype
             if config.amp_dtype is not None and hasattr(torch, config.amp_dtype)
@@ -124,29 +124,29 @@ class PyTorchBackend(Backend):
         )
 
     def load_model_from_config(self, config: PyTorchConfig) -> None:
+        if config.load_in_8bit or config.load_in_4bit:
+            raise ValueError(
+                "Cannot load model from config with quantization enabled"
+            )
+
         LOGGER.info(
-            f"\t+ Loading model from config in {config.torch_dtype} on {self.device} "
-            f"with {'8bit' if config.load_in_8bit else '4bit' if config.load_in_4bit else 'no'} quantization"
+            f"\t+ Loading model from config in {config.torch_dtype} on {self.device}"
         )
-        # this depends on some modifications to the transformers library in my fork
-        # https://github.com/IlyasMoutawwakil/transformers.git@optimum-benchmark
         self.pretrained_model = self.automodel_class.from_pretrained(
             pretrained_model_name_or_path=None,
             config=self.pretrained_config,
             state_dict={},
             torch_dtype=self.torch_dtype,
             device_map=self.device,
-            load_in_8bit=config.load_in_8bit,
-            load_in_4bit=config.load_in_4bit,
             **self.cache_kwargs,
         )
         randomize_weights(self.pretrained_model)
 
     def load_model_from_pretrained(self, config: PyTorchConfig) -> None:
         LOGGER.info(
-            f"\t+ Loading pretrained model weights in {config.torch_dtype} on {self.device}"
+            f"\t+ Loading pretrained model weights in {config.torch_dtype} on {self.device} "
+            f"with {'8bit' if config.load_in_8bit else '4bit' if config.load_in_4bit else 'no'} quantization"
         )
-
         self.pretrained_model = self.automodel_class.from_pretrained(
             pretrained_model_name_or_path=self.model,
             torch_dtype=self.torch_dtype,

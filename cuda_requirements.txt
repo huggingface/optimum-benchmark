@@ -3,7 +3,7 @@ git+https://github.com/huggingface/optimum.git
 # accelerate
 git+https://github.com/huggingface/accelerate.git
 # transformers
-git+https://github.com/IlyasMoutawwakil/transformers.git@optimum-benchmark
+git+https://github.com/huggingface/transformers.git
 
 onnxruntime-gpu==1.15.0
 onnx==1.14.0

@@ -19,19 +19,10 @@ from optimum.exporters.onnx import (
 
 def randomize_weights(model):
     for param in model.parameters():
-        param.data[param.data != param.data] = 0
-
         if param.dtype == torch.float32 or param.dtype == torch.float16:
             # float between -1 and 1 following the normal distribution
-            param.data = torch.randn_like(param.data) * 0.1
-        elif param.dtype == torch.int8:
-            # integer (mostly) between -127 and 127 following the normal distribution
-            param.data = (torch.randn_like(param.data, dtype=torch.float32)
-                          * 127 / 5).to(torch.int8)
-        elif param.dtype == torch.uint8:
-            # integer between 0 and 127 following the uniform distribution
-            param.data = (torch.randint_like(
-                param.data, 0, 255)).to(torch.uint8)
+            param.data = torch.randn_like(param.data) * 0.05
+
         else:
             raise ValueError("Unsupported type")
 

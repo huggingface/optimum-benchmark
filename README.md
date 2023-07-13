@@ -4,7 +4,7 @@
 
 A repository aiming to create a benchmarking utility for any model on [HuggingFace's Hub](https://huggingface.co/models) supporting [Optimum](https://github.com/huggingface/optimum)'s [inference](https://github.com/huggingface/optimum#accelerated-inference) & [training](https://github.com/huggingface/optimum#accelerated-training), optimizations & quantizations, on different backends & hardwares (OnnxRuntime, Intel Neural Compressor, OpenVINO, Habana Gaudi Processor (HPU), etc).
 
-The experiment management and tracking is handled by [hydra](https://hydra.cc/) using the command line with minimum mandatory configuration changes and maximum flexibility (inspired from [tune](https://github.com/huggingface/tune))
+The experiment management and tracking is handled by [hydra](https://hydra.cc/) using the command line with minimum configuration changes and maximum flexibility (inspired from [tune](https://github.com/huggingface/tune))
 
 ## Motivation
 
@@ -16,6 +16,14 @@ The experiment management and tracking is handled by [hydra](https://hydra.cc/) 
 
 ## Features
 
+General:
+
+- [x] Latency tracking
+- [x] Peak memory tracking (`benchmark.memory=true`)
+- [x] Symbolic Profiling (`benchmark.profile=true`)
+- [x] Input shapes control (e.g. `benchmark.input_shapes.batch_size=8`)
+- [x] Random weights initialization (`backend.no_weights=true`)
+
 Inference:
 
 - [x] Pytorch backend for cpu
@@ -23,17 +31,17 @@ Inference:
 - [ ] Pytorch backend for hpu
 - [x] OnnxRuntime backend for cpu
 - [x] OnnxRuntime backend for cuda
-- [ ] OnnxRuntime backend for tensorrt
 - [ ] Intel Neural Compressor
 - [ ] OpenVINO
 
 Optimizations:
 
-- [x] Pytorch's FP16
+- [x] Pytorch's Automatic Mixed Precision
 - [x] Optimum's BetterTransformer
 - [x] Optimum's Optimization and AutoOptimization
 - [x] Optimum's Quantization and AutoQuantization
 - [ ] Optimum's Calibration for Static Quantization
+- [x] BitsAndBytes' quantization
 
 ## Quickstart
 
