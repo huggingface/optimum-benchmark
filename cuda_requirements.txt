@@ -1,13 +1,9 @@
 # optimum
-git+https://github.com/huggingface/optimum.git
+git+https://github.com/huggingface/optimum.git#egg=optimum[onnxruntime-gpu]
 # accelerate
 git+https://github.com/huggingface/accelerate.git
 # transformers
 git+https://github.com/huggingface/transformers.git
-
-onnxruntime-gpu==1.15.0
-onnx==1.14.0
-torch
 
 omegaconf==2.3.0
 hydra-core==1.3.2
