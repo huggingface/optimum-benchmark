@@ -1,16 +1,17 @@
 import os
+import torch
+import onnxruntime
+from torch import Tensor
 from pathlib import Path
 from logging import getLogger
 from omegaconf import OmegaConf
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 from tempfile import TemporaryDirectory
-
-import torch
-import onnxruntime
-from torch import Tensor
-from optimum.exporters import TasksManager
 from omegaconf.dictconfig import DictConfig
+
+
+from optimum.exporters import TasksManager
 from optimum.pipelines import ORT_SUPPORTED_TASKS
 from optimum.onnxruntime import ORTOptimizer, ORTQuantizer
 from onnxruntime.quantization import QuantFormat, QuantizationMode, QuantType
@@ -22,9 +23,9 @@ from optimum.onnxruntime.configuration import (
 )
 
 
-from src.backend.utils import dummy_export, randomize_weights
 from src.profiler.ort_profiler import ORTProfilingWrapper
 from src.backend.base import Backend, BackendConfig
+from src.backend.utils import dummy_export
 from src.utils import infer_device_id
 
 OmegaConf.register_new_resolver(
@@ -127,21 +128,15 @@ class ORTConfig(BackendConfig):
         }
     )
 
-    # clean up options
-    delete_cache: bool = False
-
 
 class ORTBackend(Backend):
     def __init__(self, model: str, device: str, cache_kwargs: DictConfig) -> None:
         super().__init__(model, device, cache_kwargs)
 
         self.ortmodel_class = ORT_SUPPORTED_TASKS[self.task]["class"][0]
-        self.automodel_class = TasksManager.get_model_class_for_task(
-            task=self.task, framework="pt", model_type=self.pretrained_config.model_type
-        )
 
         LOGGER.info(
-            f"\t+ Infered AutoModel class {self.ortmodel_class.__name__} "
+            f"\t+ Infered ORTModel class {self.ortmodel_class.__name__} "
             f"for task {self.task} and model_type {self.pretrained_config.model_type}"
         )
 
@@ -179,7 +174,8 @@ class ORTBackend(Backend):
             else None  # in case of string or None
         )
         LOGGER.info(
-            f"\t+ Using torch dtype({self.torch_dtype}) for weights loading and export")
+            f"\t+ Using torch dtype({self.torch_dtype}) for weights loading and export"
+        )
 
         with TemporaryDirectory() as tmpdirname:
             if config.no_weights:
@@ -187,9 +183,17 @@ class ORTBackend(Backend):
             else:
                 self.load_model_from_pretrained(config)
 
-            if (config.optimization or config.auto_optimization is not None) and not config.use_merged and not config.no_weights:
+            if (
+                (config.optimization or config.auto_optimization is not None)
+                and not config.use_merged
+                and not config.no_weights
+            ):
                 self.optimize_model(config, tmpdirname)
-            elif (config.optimization or config.auto_optimization is not None) and config.use_merged and not config.no_weights:
+            elif (
+                (config.optimization or config.auto_optimization is not None)
+                and config.use_merged
+                and not config.no_weights
+            ):
                 raise NotImplementedError(
                     "Optimization on merged model is only supported during export (no_weights=True)"
                 )
@@ -230,7 +234,8 @@ class ORTBackend(Backend):
     def load_model_from_pretrained(self, config: ORTConfig) -> None:
         if self.torch_dtype is not None and self.torch_dtype != torch.float32:
             raise NotImplementedError(
-                "Loading from pretrained is only supported with torch_dtype float32 for now")
+                "Loading from pretrained is only supported with torch_dtype float32 for now"
+            )
 
         self.pretrained_model = self.ortmodel_class.from_pretrained(
             model_id=self.model,
@@ -245,8 +250,7 @@ class ORTBackend(Backend):
 
     def optimize_model(self, config: ORTConfig, tmpdirname: str) -> None:
         if config.auto_optimization is not None:
-            LOGGER.info(
-                f"\t+ Using auto optimization {config.auto_optimization}")
+            LOGGER.info(f"\t+ Using auto optimization {config.auto_optimization}")
             optimization_dict = OmegaConf.to_container(
                 config.auto_optimization_config, resolve=True
             )
@@ -267,8 +271,7 @@ class ORTBackend(Backend):
             optimization_config = OptimizationConfig(**optimization_dict)
 
         LOGGER.info("\t+ Attempting optimization")
-        optimizer = ORTOptimizer.from_pretrained(
-            self.pretrained_model)
+        optimizer = ORTOptimizer.from_pretrained(self.pretrained_model)
         optimizer.optimize(
             save_dir=f"{tmpdirname}/optimized",
             optimization_config=optimization_config,
@@ -286,8 +289,7 @@ class ORTBackend(Backend):
 
     def quantize_model(self, config: ORTConfig, tmpdirname: str) -> None:
         if config.auto_quantization is not None:
-            LOGGER.info(
-                f"\t+ Using auto quantization {config.auto_quantization}")
+            LOGGER.info(f"\t+ Using auto quantization {config.auto_quantization}")
             auto_quantization_class = getattr(
                 AutoQuantizationConfig, config.auto_quantization
             )
@@ -329,12 +331,10 @@ class ORTBackend(Backend):
 
         LOGGER.info("\t+ Attempting quantization")
         model_dir = self.pretrained_model.model_save_dir
-        components = [file for file in os.listdir(
-            model_dir) if file.endswith(".onnx")]
+        components = [file for file in os.listdir(model_dir) if file.endswith(".onnx")]
         for component in components:
             LOGGER.info(f"\t+ Quantizing {component}")
-            quantizer = ORTQuantizer.from_pretrained(
-                model_dir, file_name=component)
+            quantizer = ORTQuantizer.from_pretrained(model_dir, file_name=component)
             quantizer.quantize(
                 save_dir=f"{tmpdirname}/quantized",
                 quantization_config=quantization_config,
@@ -371,4 +371,5 @@ class ORTBackend(Backend):
         LOGGER.info("Preparing for profiling")
         LOGGER.info("\t+ Wrapping model with profiler")
         self.pretrained_model = ORTProfilingWrapper(
-            self.pretrained_model)  # type: ignore
+            self.pretrained_model
+        )  # type: ignore
