@@ -1,5 +1,6 @@
 import re
 import os
+import signal
 import time
 import torch
 import random
@@ -166,6 +167,7 @@ def check_only_this_process_is_running_on_cuda_device(
         if len(pids_on_device_id) > 1 or (
             len(pids_on_device_id) == 1 and (pid not in pids_on_device_id)
         ):
+            os.kill(pid, signal.SIGTERM)
             raise RuntimeError(
                 f"Expected only process {pid} on device {cuda_device_id}, "
                 f"found {len(pids_on_device_id)} processes "

@@ -75,13 +75,12 @@ class InferenceBenchmark(Benchmark):
 
     def run(self, backend: Backend) -> None:
         LOGGER.info("Running inference benchmark")
-
-        # ALWAYS run forward pass
-        self.run_forward_tracking(backend)
-
         if self.memory:
             # if requested, run memory tracking
             self.run_memory_tracking(backend)
+
+        # ALWAYS run forward pass
+        self.run_forward_tracking(backend)
 
         if backend.can_generate():
             # if possible, run generation pass
@@ -144,7 +143,7 @@ class InferenceBenchmark(Benchmark):
 
         LOGGER.info("\t+ Tracking forward pass peak memory")
         memory_tracker = MemoryTracker(device=backend.device)
-        with memory_tracker.track(interval=self.forward_latency / 10):
+        with memory_tracker.track(interval=self.benchmark_duration // 100):
             outputs = backend.forward(memory_input)
 
         self.forward_peak_memory = memory_tracker.get_peak_memory()
