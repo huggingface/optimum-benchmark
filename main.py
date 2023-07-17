@@ -38,6 +38,7 @@ def run_experiment(experiment: ExperimentConfig) -> Optional[float]:
     backend_factory: Type[Backend] = get_class(experiment.backend._target_)
     backend: Backend = backend_factory(
         experiment.model,
+        experiment.task,
         experiment.device,
         experiment.cache_kwargs,
     )
