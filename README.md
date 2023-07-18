@@ -22,7 +22,7 @@ General:
 - [x] Peak memory tracking (`benchmark.memory=true`)
 - [x] Symbolic Profiling (`benchmark.profile=true`)
 - [x] Input shapes control (e.g. `benchmark.input_shapes.batch_size=8`)
-- [x] Random weights initialization (`backend.no_weights=true`)
+- [x] Random weights initialization (WIP `backend.no_weights=true`)
 
 Inference:
 
@@ -32,7 +32,7 @@ Inference:
 - [x] OnnxRuntime backend for cpu
 - [x] OnnxRuntime backend for cuda
 - [ ] Intel Neural Compressor
-- [ ] OpenVINO
+- [x] OpenVINO
 
 Optimizations:
 
@@ -40,7 +40,7 @@ Optimizations:
 - [x] Optimum's BetterTransformer
 - [x] Optimum's Optimization and AutoOptimization
 - [x] Optimum's Quantization and AutoQuantization
-- [ ] Optimum's Calibration for Static Quantization
+- [x] Optimum's Calibration for Static Quantization
 - [x] BitsAndBytes' quantization
 
 ## Quickstart
@@ -84,7 +84,7 @@ python main.py --config-name bert -m backend=pytorch,onnxruntime device=cpu,cuda
 Also, for integer parameters like `batch_size`, one can specify a range of values to sweep over:
 
 ```bash
-python main.py --config-name bert -m backend=pytorch,onnxruntime device=cpu,cuda benchmark.batch_size='range(1,10,step=2)'
+python main.py --config-name bert -m backend=pytorch,onnxruntime device=cpu,cuda benchmark.input_shapes.batch_size='range(1,10,step=2)'
 ```
 
 Other features like intervals and log scaled ranges of values are also supported through sweeper plugins: `hydra/sweeper=optuna`, `hydra/sweeper=nevergrad`, etc.
@@ -92,18 +92,6 @@ Other features like intervals and log scaled ranges of values are also supported
 ## Reporting benchamrk results (WIP)
 
 To aggregate the results of a benchmark (run(s) or sweep(s)), you can use the `reporter.py` script:
-
-```bash
-python reporter.py --baseline {baseline_folder} --experiments {experiments_folder_1} {experiments_folder_2} ...
-```
-
-Where baseline is optional (used to compute speedups) and experiments are the folders containing the results of the runs/sweeps you want to aggregate.
-
-The script will generate a few reporting files : a csv report (`inference_report.csv`), a rich table (`rich_table.svg`) and some plots (`forward_throughput.png` and `generate_throughput.png` when possible).
-
-These files will be stored in `reports/${device}_${batch_size}` (or `reports/${device}_${batch_size}_${new_tokens}` if generation is supported for the model).
-
-Check Whisper's example in [`examples/whisper/`](examples/whisper/) for a full example.
 
 ## Configurations structure
 
@@ -140,9 +128,8 @@ An example is provided in [`examples/whisper_auto_opt+qnt.yaml`](examples/whispe
 - [x] Add support for more metrics (memory usage, node execution time, etc.)
 - [x] Migrate configuration management to be handled solely by config store (practical or not?)
 - [ ] Add Pydantic for schema validation.
-- [ ] Find a way to seperate where experiments are stored from the configuration files (shouldn't be too long and should follow some kind of convention).
 - [ ] Make a consistent reporting utility.
-- [ ] Add support for static quantization + calibration.
+- [x] Add support for static quantization + calibration.
 - [ ] Add support for sparse inputs.
-- [ ] ...
 - [x] add Dana client to send results to the dashboard [(WIP)](https://github.com/IlyasMoutawwakil/optimum-dana)
+- [ ] ...
