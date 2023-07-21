@@ -100,13 +100,13 @@ class InferenceBenchmark(Benchmark):
 
         LOGGER.info("\t+ Warming up the forward pass")
         for _ in range(self.warmup_runs):
-            outputs = backend.forward(forward_input)
+            _ = backend.forward(forward_input)
 
         LOGGER.info("\t+ Tracking forward pass latency and throughput")
         latency_tracker = LatencyTracker(device=backend.device)
         while sum(latency_tracker.get_latencies()) < self.benchmark_duration:
             with latency_tracker.track():
-                outputs = backend.forward(forward_input)
+                _ = backend.forward(forward_input)
 
         self.forward_latencies = latency_tracker.get_latencies()
         LOGGER.info(f"\t+ Forward pass latency: {self.forward_latency:.2e} (s)")
@@ -115,18 +115,18 @@ class InferenceBenchmark(Benchmark):
         )
 
     def run_generate_tracking(self, backend: Backend) -> None:
-        generate_input, generate_input_shapes = backend.generate_dummy_input(
+        generate_input, _ = backend.generate_dummy_input(
             mode="generate", **self.input_shapes  # type: ignore
         )
 
         LOGGER.info("\t+ Warming up the generation pass")
-        outputs = backend.generate(generate_input, new_tokens=self.new_tokens // 10)
+        _ = backend.generate(generate_input, new_tokens=self.new_tokens // 10)
 
         LOGGER.info("\t+ Tracking generation latency and throughput")
         latency_tracker = LatencyTracker(device=backend.device)
         while sum(latency_tracker.get_latencies()) < self.benchmark_duration:
             with latency_tracker.track():
-                outputs = backend.generate(generate_input, new_tokens=self.new_tokens)
+                _ = backend.generate(generate_input, new_tokens=self.new_tokens)
 
         self.generate_latencies = latency_tracker.get_latencies()
         LOGGER.info(f"\t+ Generation pass latency: {self.generate_latency:.2e} (s)")

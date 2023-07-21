@@ -40,15 +40,11 @@ class BackendConfig(ABC):
 class Backend(ABC):
     pretrained_model: PreTrainedModel
 
-    def __init__(self, model: str, device: str, cache_kwargs: DictConfig):
+    def __init__(self, model: str, task:str, device: str, cache_kwargs: DictConfig):
         self.model = model
-        self.cache_kwargs = cache_kwargs
+        self.task = task
         self.device = torch.device(device)
-        self.task = TasksManager.infer_task_from_model(
-            model=model,
-            subfolder=cache_kwargs.subfolder,
-            revision=cache_kwargs.revision,
-        )
+        self.cache_kwargs = cache_kwargs
 
         # transformers autoconfig and automodel_class
         self.pretrained_config = AutoConfig.from_pretrained(
@@ -167,7 +163,6 @@ class Backend(ABC):
             self.pretrained_config
         )
 
-        normalized_config = onnx_config.NORMALIZED_CONFIG_CLASS(self.pretrained_config)
         generator_classes = onnx_config.DUMMY_INPUT_GENERATOR_CLASSES
 
         if mode == "forward":
@@ -197,12 +192,27 @@ class Backend(ABC):
                         if input_shape
                         in inspect.signature(generator_class.__init__).parameters
                     }
-
-                    generator = generator_class(
-                        task=self.task,
-                        normalized_config=normalized_config,
-                        **supported_generator_input_shapes,
-                    )
+                    try:
+                        generator = generator_class(
+                            task=self.task,
+                            normalized_config=onnx_config.NORMALIZED_CONFIG_CLASS(self.pretrained_config.encoder),
+                            **supported_generator_input_shapes,
+                        )
+                    except Exception as e:
+                        print(e)
+                        try:
+                            generator = generator_class(
+                                task=self.task,
+                                normalized_config=onnx_config.NORMALIZED_CONFIG_CLASS(self.pretrained_config.decoder),
+                                **supported_generator_input_shapes,
+                            )
+                        except Exception as e:
+                            print(e)
+                            generator = generator_class(
+                                task=self.task,
+                                normalized_config=onnx_config.NORMALIZED_CONFIG_CLASS(self.pretrained_config),
+                                **supported_generator_input_shapes,
+                            )
 
                     # we found a generator for this input name, let's use it
                     break
@@ -221,5 +231,7 @@ class Backend(ABC):
                 dummy_input["attention_mask"] = torch.ones_like(
                     dummy_input["attention_mask"]
                 )
+
+        LOGGER.info(f"Generating dummy inputs with shapes {dummy_input_shapes}")
 
         return dummy_input, dummy_input_shapes

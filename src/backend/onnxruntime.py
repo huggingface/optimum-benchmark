@@ -151,8 +151,10 @@ class ORTConfig(BackendConfig):
 
 
 class ORTBackend(Backend):
-    def __init__(self, model: str, device: str, cache_kwargs: DictConfig) -> None:
-        super().__init__(model, device, cache_kwargs)
+    def __init__(
+        self, model: str, task: str, device: str, cache_kwargs: DictConfig
+    ) -> None:
+        super().__init__(model, task, device, cache_kwargs)
 
         self.ortmodel_class = ORT_SUPPORTED_TASKS[self.task]["class"][0]
 
@@ -404,7 +406,9 @@ class ORTBackend(Backend):
     def generate(self, input: Dict[str, Tensor], new_tokens: int) -> Tensor:
         output = self.pretrained_model.generate(
             **input,
-            pad_token_id=self.pretrained_model.config.eos_token_id,
+            pad_token_id=self.pretrained_model.config.eos_token_id
+            if self.pretrained_model.config.eos_token_id is not None
+            else self.pretrained_model.config.decoder.eos_token_id,
             max_new_tokens=new_tokens,
             min_new_tokens=new_tokens,
             do_sample=False,

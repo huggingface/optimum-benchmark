@@ -59,8 +59,10 @@ class OVConfig(BackendConfig):
 
 
 class OVBackend(Backend):
-    def __init__(self, model: str, device: str, cache_kwargs: DictConfig) -> None:
-        super().__init__(model, device, cache_kwargs)
+    def __init__(
+        self, model: str, task: str, device: str, cache_kwargs: DictConfig
+    ) -> None:
+        super().__init__(model, task, device, cache_kwargs)
 
         self.ovmodel_class = getattr(optimum_openvino, _HEAD_TO_AUTOMODELS[self.task])
 

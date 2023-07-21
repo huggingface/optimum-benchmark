@@ -1,5 +1,5 @@
 # optimum
-git+https://github.com/huggingface/optimum.git#egg=optimum[onnxruntime-gpu]
+git+https://github.com/huggingface/optimum.git#egg=optimum[onnxruntime-gpu,openvino,nncf]
 # accelerate
 git+https://github.com/huggingface/accelerate.git
 # transformers
