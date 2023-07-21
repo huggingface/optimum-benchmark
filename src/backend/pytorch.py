@@ -5,7 +5,6 @@ from logging import getLogger
 from torch import Tensor
 import torch
 
-from accelerate import init_empty_weights
 from transformers.utils.fx import symbolic_trace
 from optimum.bettertransformer import BetterTransformer
 
@@ -106,8 +105,14 @@ class PyTorchBackend(Backend):
 
         # Compile model
         if config.torch_compile:
-            LOGGER.info("\t+ Using torch.compile")
+            LOGGER.info("\t+ Using torch.compile on forward pass")
             self.pretrained_model.forward = torch.compile(self.pretrained_model.forward)
+            if self.can_generate():
+                LOGGER.info("\t+ Using torch.compile on generate pass")
+                self.pretrained_model.generate = torch.compile(
+                    self.pretrained_model.generate,
+                    dynamic=True,
+                )
 
         # pytorch autocast
         self.amp_autocast = config.amp_autocast
@@ -126,8 +131,10 @@ class PyTorchBackend(Backend):
         LOGGER.info(
             f"\t+ Loading model from config in dtype : "
             f"{config.torch_dtype if config.torch_dtype is not None else 'default'} "
-            f"on device : {self.device}"
+            "on meta device"
         )
+
+        from accelerate import init_empty_weights
 
         with init_empty_weights():
             self.pretrained_model = self.automodel_class.from_config(
@@ -135,65 +142,51 @@ class PyTorchBackend(Backend):
                 torch_dtype=self.torch_dtype,
                 trust_remote_code=self.cache_kwargs.get("trust_remote_code", False),
             )
-            self.pretrained_model.tie_weights()
 
         if config.load_in_8bit or config.load_in_4bit:
             LOGGER.info(
-                f"\t+ Quantizing model to {'8bit' if config.load_in_8bit else '4bit'}"
+                f"\t+ Quantizing random weights model to {'8bit' if config.load_in_8bit else '4bit'}"
                 " using Accelerate's BitsAndBytes integration"
             )
             LOGGER.info("\t+ Materializing model on CPU")
             self.pretrained_model.to_empty(device="cpu")
+
+            LOGGER.info("\t+ Randomizing model weights while on CPU")
+            randomize_weights(self.pretrained_model)
             self.pretrained_model.tie_weights()
-            try:
-                from accelerate import infer_auto_device_map, dispatch_model
-
-                LOGGER.info("\t+ Dispatching model on GPUs for fast randomization")
-                device_map = infer_auto_device_map(
-                    self.pretrained_model,
-                    dtype=self.torch_dtype,
-                )
-                self.pretrained_model = dispatch_model(
-                    self.pretrained_model,
-                    device_map=device_map,
-                )
-                self.pretrained_model.tie_weights()
-
-                LOGGER.info("\t+ Randomizing model weights on GPU")
-                randomize_weights(self.pretrained_model)
-                LOGGER.info("\t+ Putting model back on CPU")
-                self.pretrained_model.to("cpu")
-
-            except ImportError:
-                LOGGER.info("\t+ Randomizing model weights on CPU")
-                randomize_weights(self.pretrained_model)
-
-            LOGGER.info("\t+ Quantizing model and putting it back on device")
 
             from accelerate.utils import BnbQuantizationConfig
 
             bnb_quantization_config = BnbQuantizationConfig(
                 load_in_4bit=config.load_in_4bit,
                 load_in_8bit=config.load_in_8bit,
-                llm_int8_threshold=0,
+                llm_int8_threshold=0 if config.load_in_8bit else 6,
                 torch_dtype=self.torch_dtype,
                 keep_in_fp32_modules=self.pretrained_model.keep_in_fp32_modules
                 if hasattr(self.pretrained_model, "keep_in_fp32_modules")
                 else None,
             )
 
+            LOGGER.info("\t+ Quantizing model while on CPU")
             self.pretrained_model = quantize_model(
                 model=self.pretrained_model,
                 bnb_quantization_config=bnb_quantization_config,
-                device=self.device,
             )
+
+            LOGGER.info(f"\t+ Putting model on device {self.device}")
+            self.pretrained_model.to(self.device)
 
         else:
             LOGGER.info(f"\t+ Materializing model on device {self.device}")
             self.pretrained_model.to_empty(device=self.device)
-            self.pretrained_model.tie_weights()
+
             LOGGER.info("\t+ Randomizing model weights")
             randomize_weights(self.pretrained_model)
+            self.pretrained_model.tie_weights()
+
+        # might be useful to make a helper method for this
+        if self.device.type == "cuda":
+            torch.cuda.empty_cache()
 
     def load_model_from_pretrained(self, config: PyTorchConfig) -> None:
         LOGGER.info(
@@ -206,7 +199,7 @@ class PyTorchBackend(Backend):
             device_map=self.device,
             load_in_8bit=config.load_in_8bit,
             load_in_4bit=config.load_in_4bit,
-            llm_int8_threshold=0,
+            llm_int8_threshold=0 if config.load_in_8bit else 6,
             **self.cache_kwargs,
         )
 

@@ -19,7 +19,6 @@ from optimum.exporters.onnx import (
 def quantize_model(
     model,
     bnb_quantization_config,
-    device: Optional[torch.device] = None,
 ):
     from accelerate.utils.bnb import (
         get_keys_to_not_convert,
@@ -68,17 +67,20 @@ def quantize_model(
         elif torch.is_floating_point(param):
             param.to(dtype)
 
-    model.to(device)
-
-    if device.type == "cuda":
-        torch.cuda.empty_cache()
-
     return model
 
 
 def randomize_weights(model):
     for param in model.parameters():
-        param.data = torch.randn_like(param.data) * 0.04
+        if torch.cuda.is_available() and param.device.type == "cpu":
+            # we take advantage of the fact that a cuda device
+            # is available to use cuda kernels for randomization
+            # this is slower than randomization while model is
+            # on gpu (because of data transfer) but faster than
+            # randomization while model is on cpu
+            param.data.cuda().normal_(mean=0.0, std=0.2).cpu()
+        else:
+            param.data.normal_(mean=0.0, std=0.2)
 
 
 def dummy_main_export(
