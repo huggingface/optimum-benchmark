@@ -43,7 +43,7 @@ OmegaConf.register_new_resolver(
 )
 OmegaConf.register_new_resolver(
     "perform_calibration",
-    lambda auto_qnt_static, qnt_static: auto_qnt_static or qnt_static,
+    lambda *static_quants: any(static_quants),
 )
 
 LOGGER = getLogger("onnxruntime")
@@ -136,8 +136,7 @@ class ORTConfig(BackendConfig):
     )
 
     # calibration options
-    calibration: bool = "${perform_calibration:${backend.auto_quantization_config.is_static}, ${backend.quantization_config.is_static}}"  # type: ignore
-    # calibration options
+    calibration: bool = "${perform_calibration:${backend.auto_quantization_config.is_static}, ${backend.quantization_config.is_static}}"
     calibration_config: DictConfig = DictConfig(
         {
             "dataset_name": "glue",

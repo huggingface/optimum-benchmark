@@ -11,9 +11,9 @@ device: cpu
 backend:
   auto_optimization: O1
   auto_quantization: arm64
-  # auto_quantization_config:
-  #   is_static: true
-  #   per_channel: false
+  auto_quantization_config:
+    is_static: true
+    per_channel: false
   
   calibration: true
   # use_merged: true
