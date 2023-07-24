@@ -4,14 +4,14 @@ defaults:
 
 experiment_name: pytorch_bert
 
-model: decapoda-research/llama-7b-hf
-device: cuda:2
+model: distilbert-base-uncased-finetuned-sst-2-english
+device: cuda
 
 backend:
-  delete_cache: true
   torch_dtype: float16
   no_weights: true
-  load_in_8bit: true
+  bettertransformer: true
+  torch_compile: true
 
 benchmark:
   memory: true

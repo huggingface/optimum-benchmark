@@ -12,13 +12,15 @@ from src.backend.base import Backend
 from src.backend.pytorch import PyTorchConfig
 from src.backend.onnxruntime import ORTConfig
 from src.backend.openvino import OVConfig
+from src.backend.neural_compressor import INCConfig
 
-# Register configurations (maybe should be moved to a separate file)
+# Register configurations
 cs = ConfigStore.instance()
 cs.store(name="experiment", node=ExperimentConfig)
 cs.store(group="backend", name="pytorch", node=PyTorchConfig)
 cs.store(group="backend", name="onnxruntime", node=ORTConfig)
 cs.store(group="backend", name="openvino", node=OVConfig)
+cs.store(group="backend", name="neural_compressor", node=INCConfig)
 cs.store(group="benchmark", name="inference", node=InferenceConfig)
 
 LOGGER = getLogger("main")
