@@ -221,9 +221,7 @@ class PyTorchBackend(Backend):
         ):
             output = self.pretrained_model.generate(
                 **input,
-                pad_token_id=self.pretrained_model.config.eos_token_id
-                if self.pretrained_model.config.eos_token_id is not None
-                else self.pretrained_model.config.decoder.eos_token_id,
+                pad_token_id=0,
                 max_new_tokens=new_tokens,
                 min_new_tokens=new_tokens,
                 do_sample=False,
