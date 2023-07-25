@@ -1,9 +1,11 @@
 from typing import List, Tuple
 from logging import getLogger
-
-from optimum.onnxruntime import ORTModel
 import pandas as pd
 import json
+
+
+from optimum.onnxruntime import ORTModel
+
 
 LOGGER = getLogger("ort_profiler")
 

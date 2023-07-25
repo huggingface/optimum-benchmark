@@ -2,11 +2,11 @@ import torch
 from torch import Tensor
 import neural_compressor
 from logging import getLogger
-from omegaconf import DictConfig, OmegaConf
 from hydra.utils import get_class
 from dataclasses import dataclass
 from typing import Dict, Optional
 from tempfile import TemporaryDirectory
+from omegaconf import DictConfig, OmegaConf
 
 
 import optimum.intel.neural_compressor as optimum_neural_compressor
@@ -18,7 +18,9 @@ from neural_compressor.config import (
     PostTrainingQuantConfig,
 )
 
-from src.backend.base import Backend, BackendConfig
+
+from optimum_benchmark.backends.base import Backend, BackendConfig
+
 
 OmegaConf.register_new_resolver(
     "ptq_approach_is_static",
@@ -33,7 +35,7 @@ LOGGER = getLogger("neural_compressor")
 class INCConfig(BackendConfig):
     name: str = "neural_compressor"
     version: str = neural_compressor.__version__
-    _target_: str = "src.backend.neural_compressor.INCBackend"
+    _target_: str = "optimum_benchmark.backends.neural_compressor.INCBackend"
 
     # export options
     no_weights: bool = False
@@ -87,16 +89,16 @@ class INCConfig(BackendConfig):
             "dataset_config_name": "sst2",
             "dataset_split": "train",
             "preprocess_batch": True,
-            "preprocess_class": "src.preprocessors.glue.GluePreprocessor",
+            "preprocess_class": "optimum_benchmark.preprocessors.glue.GluePreprocessor",
         }
     )
 
 
 class INCBackend(Backend):
     def __init__(
-        self, model: str, task: str, device: str, cache_kwargs: DictConfig
+        self, model: str, task: str, device: str, hub_kwargs: DictConfig
     ) -> None:
-        super().__init__(model, task, device, cache_kwargs)
+        super().__init__(model, task, device, hub_kwargs)
 
         self.incmodel_class = getattr(
             optimum_neural_compressor, _HEAD_TO_AUTOMODELS[self.task]
@@ -140,7 +142,7 @@ class INCBackend(Backend):
             model_name_or_path=self.model,
             torch_dtype=self.torch_dtype,
             device_map=self.device,
-            **self.cache_kwargs,
+            **self.hub_kwargs,
         )
 
     def quantize_model(self, config: INCConfig, tmpdirname: str) -> None:
@@ -155,7 +157,7 @@ class INCBackend(Backend):
         )
         quantization_config = PostTrainingQuantConfig(**quantization_config)
 
-        model = self.automodel_class.from_pretrained(self.model, **self.cache_kwargs)
+        model = self.automodel_class.from_pretrained(self.model, **self.hub_kwargs)
         quantizer = INCQuantizer.from_pretrained(model, task=self.task)
 
         if config.calibration:
@@ -191,7 +193,7 @@ class INCBackend(Backend):
     def generate(self, input: Dict[str, Tensor], new_tokens: int) -> Tensor:
         output = self.pretrained_model.generate(
             **input,
-            pad_token_id=self.pretrained_model.config.eos_token_id,
+            pad_token_id=0,
             max_new_tokens=new_tokens,
             min_new_tokens=new_tokens,
             do_sample=False,

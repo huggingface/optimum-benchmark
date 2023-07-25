@@ -13,7 +13,7 @@ import optimum.intel.openvino as optimum_openvino
 from optimum.intel.openvino.utils import _HEAD_TO_AUTOMODELS
 from optimum.intel import OVConfig as OVQuantizationConfig, OVQuantizer
 
-from src.backend.base import Backend, BackendConfig
+from optimum_benchmark.backends.base import Backend, BackendConfig
 
 LOGGER = getLogger("openvino")
 
@@ -22,7 +22,7 @@ LOGGER = getLogger("openvino")
 class OVConfig(BackendConfig):
     name: str = "openvino"
     version: str = openvino.runtime.get_version()
-    _target_: str = "src.backend.openvino.OVBackend"
+    _target_: str = "optimum_benchmark.backends.openvino.OVBackend"
 
     # export options
     export: bool = True
@@ -53,16 +53,16 @@ class OVConfig(BackendConfig):
             "dataset_config_name": "sst2",
             "dataset_split": "train",
             "preprocess_batch": True,
-            "preprocess_class": "src.preprocessors.glue.GluePreprocessor",
+            "preprocess_class": "optimum_benchmark.preprocessors.glue.GluePreprocessor",
         }
     )
 
 
 class OVBackend(Backend):
     def __init__(
-        self, model: str, task: str, device: str, cache_kwargs: DictConfig
+        self, model: str, task: str, device: str, hub_kwargs: DictConfig
     ) -> None:
-        super().__init__(model, task, device, cache_kwargs)
+        super().__init__(model, task, device, hub_kwargs)
 
         self.ovmodel_class = getattr(optimum_openvino, _HEAD_TO_AUTOMODELS[self.task])
 
@@ -112,13 +112,13 @@ class OVBackend(Backend):
             model_id=self.model,
             use_merged=config.use_merged,
             export=config.export,
-            **self.cache_kwargs,
+            **self.hub_kwargs,
         )
 
     def quantize_model(self, config: OVConfig, tmpdirname: str) -> None:
         LOGGER.info("\t+ Attempting quantization")
 
-        model = self.automodel_class.from_pretrained(self.model, **self.cache_kwargs)
+        model = self.automodel_class.from_pretrained(self.model, **self.hub_kwargs)
         quantizer = OVQuantizer.from_pretrained(model)
         quantization_config = OVQuantizationConfig(
             **config.quantization_config,
@@ -174,7 +174,7 @@ class OVBackend(Backend):
     def generate(self, input: Dict[str, Tensor], new_tokens: int) -> Tensor:
         output = self.pretrained_model.generate(
             **input,
-            pad_token_id=self.pretrained_model.config.eos_token_id,
+            pad_token_id=0,
             max_new_tokens=new_tokens,
             min_new_tokens=new_tokens,
             do_sample=False,

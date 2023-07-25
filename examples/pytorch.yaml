@@ -1,22 +1,8 @@
 defaults:
-  - hydra_base # inherits from base config
+  - base_config # inherits from base config
   - _self_ # for hydra 1.1 compatibility
 
 experiment_name: pytorch_bert
 
 model: distilbert-base-uncased-finetuned-sst-2-english
-device: cuda
-
-backend:
-  torch_dtype: float16
-  no_weights: true
-  bettertransformer: true
-  torch_compile: true
-
-benchmark:
-  memory: true
-  input_shapes:
-    batch_size: 1
-    sequence_length: 1
-  
-  new_tokens: 100
+device: cpu

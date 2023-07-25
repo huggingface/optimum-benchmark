@@ -1,15 +1,15 @@
 from multiprocessing.connection import Connection
 from multiprocessing import Pipe, Process
 from contextlib import contextmanager
+import py3nvml.py3nvml as nvml
 from logging import getLogger
+import psutil
+import torch
 import os
 
-import torch
-import psutil
-import py3nvml.py3nvml as nvml
 
+from optimum_benchmark.utils import bytes_to_mega_bytes
 
-from src.utils import bytes_to_mega_bytes
 
 LOGGER = getLogger("memory_tracker")
 
@@ -32,7 +32,10 @@ class MemoryTracker:
     def _track_cuda_peak_memory(self):
         nvml.nvmlInit()
         handle = nvml.nvmlDeviceGetHandleByIndex(
-            self.device.index if self.device.index is not None else torch.cuda.current_device())
+            self.device.index
+            if self.device.index is not None
+            else torch.cuda.current_device()
+        )
         yield
         meminfo = nvml.nvmlDeviceGetMemoryInfo(handle)
         nvml.nvmlShutdown()
@@ -72,8 +75,7 @@ class PeakMemoryMeasureProcess(Process):
         while True:
             process = psutil.Process(self.process_id)
             meminfo_attr = (
-                "memory_info" if hasattr(
-                    process, "memory_info") else "get_memory_info"
+                "memory_info" if hasattr(process, "memory_info") else "get_memory_info"
             )
             memory = getattr(process, meminfo_attr)()[0]
             self.mem_usage = max(self.mem_usage, memory)

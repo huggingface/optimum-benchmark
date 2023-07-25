@@ -24,10 +24,10 @@ from optimum.onnxruntime.configuration import (
 )
 
 
-from src.profiler.ort_profiler import ORTProfilingWrapper
-from src.backend.base import Backend, BackendConfig
-from src.backend.utils import dummy_main_export
-from src.utils import infer_device_id
+from optimum_benchmark.profilers.ort_profiler import ORTProfilingWrapper
+from optimum_benchmark.backends.base import Backend, BackendConfig
+from optimum_benchmark.backends.utils import export_dummy_model
+from optimum_benchmark.utils import infer_device_id
 
 OmegaConf.register_new_resolver(
     "is_gpu",
@@ -53,7 +53,7 @@ LOGGER = getLogger("onnxruntime")
 class ORTConfig(BackendConfig):
     name: str = "onnxruntime"
     version: str = onnxruntime.__version__
-    _target_: str = "src.backend.onnxruntime.ORTBackend"
+    _target_: str = "optimum_benchmark.backends.onnxruntime.ORTBackend"
 
     # export options
     export: bool = True
@@ -144,16 +144,16 @@ class ORTConfig(BackendConfig):
             "dataset_config_name": "sst2",
             "dataset_split": "train",
             "preprocess_batch": True,
-            "preprocess_class": "src.preprocessors.glue.GluePreprocessor",
+            "preprocess_class": "optimum_benchmark.preprocessors.glue.GluePreprocessor",
         }
     )
 
 
 class ORTBackend(Backend):
     def __init__(
-        self, model: str, task: str, device: str, cache_kwargs: DictConfig
+        self, model: str, task: str, device: str, hub_kwargs: DictConfig
     ) -> None:
-        super().__init__(model, task, device, cache_kwargs)
+        super().__init__(model, task, device, hub_kwargs)
 
         self.ortmodel_class = ORT_SUPPORTED_TASKS[self.task]["class"][0]
 
@@ -227,7 +227,7 @@ class ORTBackend(Backend):
             f"\t+ Loading model from config in {config.torch_dtype} on {self.device}"
         )
 
-        dummy_main_export(
+        export_dummy_model(
             # dummy init options
             automodel_class=self.automodel_class,
             pretrained_config=self.pretrained_config,
@@ -237,7 +237,7 @@ class ORTBackend(Backend):
             torch_dtype=self.torch_dtype,
             auto_optimization=config.auto_optimization,
             use_merged=config.use_merged,
-            **self.cache_kwargs,
+            **self.hub_kwargs,
         )
         self.delete_pretrained_model()
 
@@ -250,7 +250,7 @@ class ORTBackend(Backend):
             provider_options=self.provider_options,
             use_merged=config.use_merged,
             export=False,
-            **self.cache_kwargs,
+            **self.hub_kwargs,
         )
 
     def load_model_from_pretrained(self, config: ORTConfig) -> None:
@@ -268,7 +268,7 @@ class ORTBackend(Backend):
             export=config.export,
             # TODO: is this the right way to do it?
             **({"use_merged": config.use_merged} if self.can_be_merged() else {}),
-            **self.cache_kwargs,
+            **self.hub_kwargs,
         )
 
     def optimize_model(self, config: ORTConfig, tmpdirname: str) -> None:
@@ -405,9 +405,7 @@ class ORTBackend(Backend):
     def generate(self, input: Dict[str, Tensor], new_tokens: int) -> Tensor:
         output = self.pretrained_model.generate(
             **input,
-            pad_token_id=self.pretrained_model.config.eos_token_id
-            if self.pretrained_model.config.eos_token_id is not None
-            else self.pretrained_model.config.decoder.eos_token_id,
+            pad_token_id=0,
             max_new_tokens=new_tokens,
             min_new_tokens=new_tokens,
             do_sample=False,

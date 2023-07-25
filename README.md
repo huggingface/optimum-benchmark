@@ -1,10 +1,10 @@
-# Optimum-Benchmark
+# Optimum-Benchmark (🚧 WIP 🚧)
 
 ## The Goal
 
 A repository aiming to create a benchmarking utility for any model on [HuggingFace's Hub](https://huggingface.co/models) supporting [Optimum](https://github.com/huggingface/optimum)'s [inference](https://github.com/huggingface/optimum#accelerated-inference) & [training](https://github.com/huggingface/optimum#accelerated-training), optimizations & quantizations, on different backends & hardwares (OnnxRuntime, Intel Neural Compressor, OpenVINO, Habana Gaudi Processor (HPU), etc).
 
-The experiment management and tracking is handled by [hydra](https://hydra.cc/) using the command line with minimum configuration changes and maximum flexibility (inspired from [tune](https://github.com/huggingface/tune))
+The experiment management and tracking is handled by [hydra](https://hydra.cc/) using the command line with minimum configuration changes and maximum flexibility (inspired from [tune](https://github.com/huggingface/tune)).
 
 ## Motivation
 
@@ -18,21 +18,21 @@ The experiment management and tracking is handled by [hydra](https://hydra.cc/) 
 
 General:
 
-- [x] Latency tracking
+- [x] Latency and throughput tracking (default behavior)
 - [x] Peak memory tracking (`benchmark.memory=true`)
 - [x] Symbolic Profiling (`benchmark.profile=true`)
 - [x] Input shapes control (e.g. `benchmark.input_shapes.batch_size=8`)
-- [x] Random weights initialization (WIP `backend.no_weights=true`)
+- [x] Random weights initialization (`backend.no_weights=true` support depends on backend)
 
 Inference:
 
-- [x] Pytorch backend for cpu
-- [x] Pytorch backend for cuda
-- [ ] Pytorch backend for hpu
-- [x] OnnxRuntime backend for cpu
-- [x] OnnxRuntime backend for cuda
-- [ ] Intel Neural Compressor
-- [x] OpenVINO
+- [x] Pytorch backend for CPU
+- [x] Pytorch backend for CUDA
+- [ ] Pytorch backend for Habana Gaudi Processor (HPU)
+- [x] OnnxRuntime backend for CPUExecutionProvider
+- [x] OnnxRuntime backend for CUDAExecutionProvider
+- [x] Intel Neural Compressor backend for CPU
+- [x] OpenVINO backend for CPU
 
 Optimizations:
 
@@ -45,32 +45,38 @@ Optimizations:
 
 ## Quickstart
 
-Start by installing the required dependencies depending on your hardware and the backends you want to use. For example, for cuda support :
+Start by installing the required dependencies depending on your hardware and the backends you want to use.
+For example, if you're gonna be running some GPU benchmarks, you can install the requirements with:
 
 ```bash
-python -m pip install -r cuda_requirements.txt
+python -m pip install -r gpu_requirements.txt
 ```
 
-Then copy `examples/bert.yaml` to `configs/bert.yaml` and run with:
+Then install the package:
 
 ```bash
-python main.py --config-name bert
+python -m pip install -e .
 ```
 
-This will run the benchmark on the default backend (`pytorch`) and device (`cuda`) and store the results in `runs/bert_baseline`.
+You can now run a benchmark using the command line by specifying the configuration directory and the configuration name.
+Both arguments are mandatory. The `config-dir` is the directory where the configuration files are stored and the `config-name` is the name of the configuration file without the `.yaml` extension.
 
-Only key parameters are overriden/defined in the config file which inherits from `configs/hydra_base.yaml` where most of the experiment's logic is defined.
+```bash
+optimum-benchmark --config-dir examples --config-name pytorch
+```
+
+This will run the benchmark on the `pytorch` backend and `cpu` device. Resultq will be stored in `runs/bert_baseline`.
 
 The result files are `inference_results.csv` and `profiling_results.csv` in case profiling is enabled (`benchmark.profile=true`), in addition to the program's logs `main.log` and the configuration that's been used `hydra_config.yaml`
 
-The directory for storing these results can be changed using the `hydra.run.dir` (and/or `hydra.sweep.dir`) in the command line or in the config file (see [`hydra_base.yaml`](configs/hydra_base.yaml)).
+The directory for storing these results can be changed using the `hydra.run.dir` (and/or `hydra.sweep.dir`) in the command line or in the config file (see [`base_config.yaml`](examples/base_config.yaml)).
 
 ## Command-line configuration overrides
 
 It's easy to override the default behavior of a benchmark from the command line.
 
-```
-python main.py --config-name bert backend=onnxruntime device=cpu
+```bash
+optimum-benchmark --config-dir examples --config-name pytorch model=gpt2 device=cuda:1
 ```
 
 ## Multirun configuration sweeps
@@ -78,31 +84,37 @@ python main.py --config-name bert backend=onnxruntime device=cpu
 You can easily run configuration sweeps using the `-m` or `--multirun` option. By default, configurations will be executed serially but other kinds of executions are supported with hydra's launcher plugins : `hydra/launcher=submitit`, `hydra/launcher=rays`, etc.
 
 ```bash
-python main.py --config-name bert -m backend=pytorch,onnxruntime device=cpu,cuda
+optimum-benchmark --config-dir examples --config-name pytorch -m device=cpu,cuda
 ```
 
 Also, for integer parameters like `batch_size`, one can specify a range of values to sweep over:
 
 ```bash
-python main.py --config-name bert -m backend=pytorch,onnxruntime device=cpu,cuda benchmark.input_shapes.batch_size='range(1,10,step=2)'
+optimum-benchmark --config-dir examples --config-name pytorch -m device=cpu,cuda benchmark.input_shapes.batch_size='range(1,10,step=2)'
 ```
 
 Other features like intervals and log scaled ranges of values are also supported through sweeper plugins: `hydra/sweeper=optuna`, `hydra/sweeper=nevergrad`, etc.
 
 ## Reporting benchamrk results (WIP)
 
-To aggregate the results of a benchmark (run(s) or sweep(s)), you can use the `reporter.py` script:
+To aggregate the results of a benchmark (run(s) or sweep(s)), you can use the `optimum-report` command.
+
+```bash
+optimum-report --experiments {experiments_folder_1} {experiments_folder_2} --baseline {baseline_folder} --report-name {report_name}
+```
+
+This will create a report in the `reports` folder with the name `{report_name}`. The report will contain the results of the experiments in `{experiments_folder_1}` and `{experiments_folder_2}` compared to the results of the baseline in `{baseline_folder}`. The baseline is optional.
 
 ## Configurations structure
 
 You can create custom configuration files following the [examples here](examples).
-The easiest way to do so is by using `hydra`'s [composition](https://hydra.cc/docs/0.11/tutorial/composition/) with a base configuratin [`configs/hydra_base.yaml`](configs/hydra_base.yaml).
+The easiest way to do so is by using `hydra`'s [composition](https://hydra.cc/docs/0.11/tutorial/composition/) with a base configuratin [`configs/base_config.yaml`](configs/base_config.yaml).
 
 To create a configuration that uses a `wav2vec2` model and `onnxruntime` backend, it's as easy as:
 
 ```yaml
 defaults:
-  - hydra_base
+  - base_config
   - _self_
   - override backend: onnxruntime
 
@@ -111,8 +123,6 @@ experiment_name: onnxruntime_wav2vec2
 model: bookbot/distil-wav2vec2-adult-child-cls-37m
 device: cpu
 ```
-
-This is especially useful for creating sweeps, where the cli commands become too long.
 
 An example is provided in [`examples/whisper_auto_opt+qnt.yaml`](examples/whisper_auto_opt+qnt.yaml) for an exhaustive sweep over all possible cominations of `optimum`'s AutoOptimizations and AutoQuantizations on CPU.
 
@@ -126,10 +136,10 @@ An example is provided in [`examples/whisper_auto_opt+qnt.yaml`](examples/whispe
 - [x] Add support for sweepers latency optimization (optuna, nevergrad, etc.)
 - [x] Add support for profiling nodes/kernels execution time.
 - [x] Add support for more metrics (memory usage, node execution time, etc.)
-- [x] Migrate configuration management to be handled solely by config store (practical or not?)
-- [ ] Add Pydantic for schema validation.
-- [ ] Make a consistent reporting utility.
+- [x] Migrate configuration management to be handled solely by config store.
 - [x] Add support for static quantization + calibration.
+- [x] Make a consistent reporting utility.
+- [ ] Add Pydantic for schema validation.
 - [ ] Add support for sparse inputs.
-- [x] add Dana client to send results to the dashboard [(WIP)](https://github.com/IlyasMoutawwakil/optimum-dana)
 - [ ] ...
+- [x] add Dana client to send results to the dashboard [(WIP)](https://github.com/IlyasMoutawwakil/optimum-dana)

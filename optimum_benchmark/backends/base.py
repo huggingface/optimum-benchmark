@@ -13,9 +13,9 @@ import gc
 
 from optimum.exporters import TasksManager
 from transformers.onnx.utils import get_preprocessor
-from transformers import AutoConfig, PreTrainedModel  # type: ignore
+from transformers import AutoConfig, PreTrainedModel
 
-from src.utils import (
+from optimum_benchmark.utils import (
     LLM_MODEL_TYPES,
     check_no_process_is_running_on_cuda_device,
     check_only_this_process_is_running_on_cuda_device,
@@ -26,9 +26,9 @@ LOGGER = getLogger("backend")
 
 @dataclass
 class BackendConfig(ABC):
-    name: str = MISSING  # type: ignore
-    version: str = MISSING  # type: ignore
-    _target_: str = MISSING  # type: ignore
+    name: str = MISSING
+    version: str = MISSING
+    _target_: str = MISSING
 
     inter_op_num_threads: Optional[int] = None
     intra_op_num_threads: Optional[int] = None
@@ -40,18 +40,21 @@ class BackendConfig(ABC):
 class Backend(ABC):
     pretrained_model: PreTrainedModel
 
-    def __init__(self, model: str, task:str, device: str, cache_kwargs: DictConfig):
+    def __init__(self, model: str, task: str, device: str, hub_kwargs: DictConfig):
         self.model = model
         self.task = task
         self.device = torch.device(device)
-        self.cache_kwargs = cache_kwargs
+        self.hub_kwargs = hub_kwargs
 
-        # transformers autoconfig and automodel_class
+        # transformers autoconfig and automodel
         self.pretrained_config = AutoConfig.from_pretrained(
-            pretrained_model_name_or_path=self.model, **self.cache_kwargs
+            pretrained_model_name_or_path=self.model,
+            **self.hub_kwargs,
         )
         self.automodel_class = TasksManager.get_model_class_for_task(
-            task=self.task, framework="pt", model_type=self.pretrained_config.model_type
+            task=self.task,
+            framework="pt",
+            model_type=self.pretrained_config.model_type,
         )
 
         # run device isolation checks
@@ -77,6 +80,9 @@ class Backend(ABC):
                 daemon=True,
             )
             self.isolation_thread.start()
+
+        elif self.device.type == "cpu":
+            pass
 
     @abstractmethod
     def configure(self, config: BackendConfig) -> None:
@@ -195,22 +201,26 @@ class Backend(ABC):
                     try:
                         generator = generator_class(
                             task=self.task,
-                            normalized_config=onnx_config.NORMALIZED_CONFIG_CLASS(self.pretrained_config.encoder),
+                            normalized_config=onnx_config.NORMALIZED_CONFIG_CLASS(
+                                self.pretrained_config.encoder
+                            ),
                             **supported_generator_input_shapes,
                         )
                     except Exception as e:
-                        print(e)
                         try:
                             generator = generator_class(
                                 task=self.task,
-                                normalized_config=onnx_config.NORMALIZED_CONFIG_CLASS(self.pretrained_config.decoder),
+                                normalized_config=onnx_config.NORMALIZED_CONFIG_CLASS(
+                                    self.pretrained_config.decoder
+                                ),
                                 **supported_generator_input_shapes,
                             )
                         except Exception as e:
-                            print(e)
                             generator = generator_class(
                                 task=self.task,
-                                normalized_config=onnx_config.NORMALIZED_CONFIG_CLASS(self.pretrained_config),
+                                normalized_config=onnx_config.NORMALIZED_CONFIG_CLASS(
+                                    self.pretrained_config
+                                ),
                                 **supported_generator_input_shapes,
                             )
 

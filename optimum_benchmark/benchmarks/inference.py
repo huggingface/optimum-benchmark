@@ -5,19 +5,20 @@ from logging import getLogger
 from pandas import DataFrame
 import statistics
 
-from src.backend.base import Backend
-from src.tracker.memory import MemoryTracker
-from src.tracker.latency import LatencyTracker
-from src.benchmark.base import Benchmark, BenchmarkConfig
 
-BENCHMARK_NAME = "inference"
-LOGGER = getLogger(BENCHMARK_NAME)
+from optimum_benchmark.backends.base import Backend
+from optimum_benchmark.trackers.memory import MemoryTracker
+from optimum_benchmark.trackers.latency import LatencyTracker
+from optimum_benchmark.benchmarks.base import Benchmark, BenchmarkConfig
+
+
+LOGGER = getLogger("inference")
 
 
 @dataclass
 class InferenceConfig(BenchmarkConfig):
-    name: str = BENCHMARK_NAME
-    _target_: str = "src.benchmark.inference.InferenceBenchmark"
+    name: str = "inference"
+    _target_: str = "optimum_benchmark.benchmarks.inference.InferenceBenchmark"
 
     # run options
     memory: bool = False

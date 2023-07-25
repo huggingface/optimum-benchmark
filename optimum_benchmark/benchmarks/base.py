@@ -2,8 +2,8 @@ from dataclasses import dataclass, MISSING
 from abc import ABC, abstractmethod
 from logging import getLogger
 
-from src.backend.base import Backend
-from src.utils import set_seed
+from optimum_benchmark.backends.base import Backend
+from optimum_benchmark.utils import set_seed
 
 LOGGER = getLogger("benchmark")
 

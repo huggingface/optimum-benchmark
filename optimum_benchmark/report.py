@@ -1,12 +1,10 @@
 import pandas as pd
+import seaborn as sns
 from pathlib import Path
 from pandas import DataFrame
-
+import matplotlib.pyplot as plt
 from omegaconf import OmegaConf
 from flatten_dict import flatten
-
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 from rich.table import Table
 from rich.console import Console
@@ -36,8 +34,7 @@ def gather_inference_report(root_folder: Path) -> DataFrame:
 
     # Merge inference and config dataframes
     inference_reports = [
-        config_dfs[name].merge(inference_dfs[name],
-                               left_index=True, right_index=True)
+        config_dfs[name].merge(inference_dfs[name], left_index=True, right_index=True)
         for name in inference_dfs.keys()
     ]
 
@@ -90,17 +87,19 @@ def get_inference_rich_table(
     perf_columns = [
         "forward.latency(s)",
         "forward.throughput(samples/s)",
-    ] + ([
-        "forward.peak_memory(MB)",
-    ] if "forward.peak_memory(MB)" in inference_report.columns else []
+    ] + (
+        [
+            "forward.peak_memory(MB)",
+        ]
+        if "forward.peak_memory(MB)" in inference_report.columns
+        else []
     )
 
     if with_baseline:
         perf_columns.append("forward.speedup(%)")
 
     if with_generate:
-        perf_columns += ["generate.latency(s)",
-                         "generate.throughput(tokens/s)"]
+        perf_columns += ["generate.latency(s)", "generate.throughput(tokens/s)"]
         if with_baseline:
             perf_columns.append("generate.speedup(%)")
 
@@ -120,9 +119,7 @@ def get_inference_rich_table(
     )
 
     # create rich table
-    rich_table = Table(
-        show_header=True, title=title, show_lines=True
-    )
+    rich_table = Table(show_header=True, title=title, show_lines=True)
     # we add a column for the index
     rich_table.add_column("Experiment Name", justify="left", header_style="")
     # then we add the rest of the columns
@@ -137,7 +134,11 @@ def get_inference_rich_table(
                 rich_table.add_column(col, header_style="")
             pass
         else:
-            rich_table.add_row("", *columns, end_section=True, )
+            rich_table.add_row(
+                "",
+                *columns,
+                end_section=True,
+            )
 
     # we populate the table with values
     for i, row in enumerate(display_report.itertuples(index=True)):
@@ -162,8 +163,7 @@ def get_inference_plots(report, with_baseline=False, with_generate=False, subtit
         ax=ax1,
         width=0.5,
     )
-    ax1.set_xticklabels(ax1.get_xticklabels(), rotation=45,
-                        horizontalalignment="right")
+    ax1.set_xticklabels(ax1.get_xticklabels(), rotation=45, horizontalalignment="right")
     ax1.set_xlabel("Experiment")
     ax1.set_ylabel("Forward Throughput (samples/s)")
     ax1.set_title("Forward Throughput by Experiment" + "\n" + subtitle)
@@ -194,8 +194,7 @@ def get_inference_plots(report, with_baseline=False, with_generate=False, subtit
                 ha="center",
                 va="center",
             )
-        ax1.set_title(
-            "Forward Throughput and Speedup by Experiment" + "\n" + subtitle)
+        ax1.set_title("Forward Throughput and Speedup by Experiment" + "\n" + subtitle)
 
         if with_generate:
             # add speedup text on top of each bar
@@ -203,8 +202,7 @@ def get_inference_plots(report, with_baseline=False, with_generate=False, subtit
                 -1
             ]
             for p in ax2.patches:
-                speedup = (p.get_height() /
-                           baseline_generate_throughput - 1) * 100
+                speedup = (p.get_height() / baseline_generate_throughput - 1) * 100
                 ax2.annotate(
                     f"{'+' if speedup>0 else '-'}{abs(speedup):.2f}%",
                     (p.get_x() + p.get_width() / 2, 1.02 * p.get_height()),
@@ -236,87 +234,7 @@ def compute_speedup(report, with_generate=False):
     return report
 
 
-def main(experiments_folders, filters=[], report_name=None, baseline_folder=None):
-    # gather experiments reports
-    inference_experiments = [
-        gather_inference_report(experiment) for experiment in experiments_folders
-    ]
-    inference_report = pd.concat(inference_experiments, axis=0)
-
-    if len(filters) > 0:
-        # apply filters
-        for filter in filters:
-            left_side, right_side = filter.split("=")
-            inference_report = inference_report[
-                inference_report[left_side] == right_side
-            ]
-
-    # sort by forward throughput
-    inference_report.sort_values(
-        by="forward.throughput(samples/s)", ascending=False, inplace=True
-    )
-
-    # some flags
-    with_baseline = baseline_folder is not None
-    with_generate = "generate.throughput(tokens/s)" in inference_report.columns
-
-    if with_baseline:
-        # gather baseline report
-        inference_baseline = gather_inference_report(baseline_folder)
-        assert (
-            inference_baseline.shape[0] == 1
-        ), "baseline folder should contain only one experiment"
-        # add baseline to experiment
-        inference_report = pd.concat(
-            [inference_report, inference_baseline], axis=0)
-        # compute speedup compared to baseline
-        inference_report = compute_speedup(inference_report, with_generate)
-
-    # create reporting directory and title using the filters
-    if len(filters) == 0 and report_name is None:
-        report_name = "Inference Report"
-        reporting_directory = f"reports/inferece_reports"
-        reportnig_title = report_name + f"\nFilters: None"
-    elif len(filters) > 0 and report_name is None:
-        report_name = "Inference Report"
-        reporting_directory = f"reports/{'_'.join(filters)}"
-        reportnig_title = report_name + f"\nFilters: {' & '.join(filters)}"
-    elif len(filters) == 0 and report_name is not None:
-        reporting_directory = f"reports/{report_name}"
-        reportnig_title = report_name + f"\nFilters: None"
-    elif len(filters) > 0 and report_name is not None:
-        reporting_directory = f"reports/{report_name}"
-        reportnig_title = report_name + f"\nFilters: {' & '.join(filters)}"
-    else:
-        raise ValueError("report_name and filters are not compatible")
-
-    Path(reporting_directory).mkdir(exist_ok=True, parents=True)
-
-    # rich table
-    rich_table = get_inference_rich_table(
-        inference_report, with_baseline, with_generate, reportnig_title
-    )
-    console = Console(record=True)
-    console.print(rich_table, justify="left", no_wrap=True)
-    console.save_svg(f"{reporting_directory}/rich_table.svg", theme=MONOKAI)
-
-    # plots
-    forward_fig, generate_fig = get_inference_plots(
-        inference_report, with_baseline, with_generate, reportnig_title
-    )
-    forward_fig.tight_layout()
-    forward_fig.savefig(f"{reporting_directory}/forward_throughput.png")
-
-    if generate_fig is not None:
-        generate_fig.tight_layout()
-        generate_fig.savefig(f"{reporting_directory}/generate_throughput.png")
-
-    # csv
-    inference_report.to_csv(
-        f"{reporting_directory}/inference_report.csv", index=True)
-
-
-if __name__ == "__main__":
+def generate_report():
     from argparse import ArgumentParser
 
     parser = ArgumentParser()
@@ -336,15 +254,6 @@ if __name__ == "__main__":
         help="The folders containing the results of baseline.",
     )
     parser.add_argument(
-        "--filters",
-        "-f",
-        nargs="*",
-        type=str,
-        required=False,
-        default=[],
-        help="The filters to apply to the experiments.",
-    )
-    parser.add_argument(
         "--report-name",
         "-n",
         type=str,
@@ -353,5 +262,64 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    main(args.experiments, args.filters,
-         args.report_name, args.baseline)
+
+    experiments_folders = args.experiments
+    baseline_folder = args.baseline
+    report_name = args.report_name
+
+    # gather experiments reports
+    inference_experiments = [
+        gather_inference_report(experiment) for experiment in experiments_folders
+    ]
+    inference_report = pd.concat(inference_experiments, axis=0)
+
+    # sort by forward throughput
+    inference_report.sort_values(
+        by="forward.throughput(samples/s)", ascending=False, inplace=True
+    )
+
+    # some flags
+    with_baseline = baseline_folder is not None
+    with_generate = "generate.throughput(tokens/s)" in inference_report.columns
+
+    if with_baseline:
+        # gather baseline report
+        inference_baseline = gather_inference_report(baseline_folder)
+        assert (
+            inference_baseline.shape[0] == 1
+        ), "baseline folder should contain only one experiment"
+        # add baseline to experiment
+        inference_report = pd.concat([inference_report, inference_baseline], axis=0)
+        # compute speedup compared to baseline
+        inference_report = compute_speedup(inference_report, with_generate)
+
+    # create reporting directory and title using the filters
+    if report_name is None:
+        report_name = "Inference Report"
+        reporting_directory = f"reports/inferece_report"
+    else:
+        reporting_directory = f"reports/{report_name}"
+
+    Path(reporting_directory).mkdir(exist_ok=True, parents=True)
+
+    # rich table
+    rich_table = get_inference_rich_table(
+        inference_report, with_baseline, with_generate, report_name
+    )
+    console = Console(record=True)
+    console.print(rich_table, justify="left", no_wrap=True)
+    console.save_svg(f"{reporting_directory}/rich_table.svg", theme=MONOKAI)
+
+    # plots
+    # forward_fig, generate_fig = get_inference_plots(
+    #     inference_report, with_baseline, with_generate, report_name
+    # )
+    # forward_fig.tight_layout()
+    # forward_fig.savefig(f"{reporting_directory}/forward_throughput.png")
+
+    # if generate_fig is not None:
+    #     generate_fig.tight_layout()
+    #     generate_fig.savefig(f"{reporting_directory}/generate_throughput.png")
+
+    # csv
+    inference_report.to_csv(f"{reporting_directory}/inference_report.csv", index=True)

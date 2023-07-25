@@ -8,9 +8,8 @@ import torch
 from transformers.utils.fx import symbolic_trace
 from optimum.bettertransformer import BetterTransformer
 
-from src.backend.base import Backend, BackendConfig
-from src.profiler.fx_profiler import FXProfilingWrapper
-from src.backend.utils import randomize_weights, quantize_model
+from optimum_benchmark.backends.base import Backend, BackendConfig
+from optimum_benchmark.profilers.fx_profiler import FXProfilingWrapper
 
 
 # bachend logger
@@ -26,7 +25,7 @@ OmegaConf.register_new_resolver(
 class PyTorchConfig(BackendConfig):
     name: str = "pytorch"
     version: str = torch.__version__
-    _target_: str = "src.backend.pytorch.PyTorchBackend"
+    _target_: str = "optimum_benchmark.backends.pytorch.PyTorchBackend"
 
     # load options
     no_weights: bool = False
@@ -48,8 +47,8 @@ class PyTorchConfig(BackendConfig):
 
 
 class PyTorchBackend(Backend):
-    def __init__(self, model: str, task: str, device: str, cache_kwargs: DictConfig):
-        super().__init__(model, task, device, cache_kwargs)
+    def __init__(self, model: str, task: str, device: str, hub_kwargs: DictConfig):
+        super().__init__(model, task, device, hub_kwargs)
 
         LOGGER.info(
             f"\t+ Infered AutoModel class {self.automodel_class.__name__} "
@@ -135,15 +134,18 @@ class PyTorchBackend(Backend):
         )
 
         from accelerate import init_empty_weights
+        from optimum_benchmark.backends.utils import randomize_weights
 
         with init_empty_weights():
             self.pretrained_model = self.automodel_class.from_config(
                 config=self.pretrained_config,
                 torch_dtype=self.torch_dtype,
-                trust_remote_code=self.cache_kwargs.get("trust_remote_code", False),
+                trust_remote_code=self.hub_kwargs.get("trust_remote_code", False),
             )
 
         if config.load_in_8bit or config.load_in_4bit:
+            from optimum_benchmark.backends.utils import quantize_dummy_model
+
             LOGGER.info(
                 f"\t+ Quantizing random weights model to {'8bit' if config.load_in_8bit else '4bit'}"
                 " using Accelerate's BitsAndBytes integration"
@@ -160,7 +162,7 @@ class PyTorchBackend(Backend):
             bnb_quantization_config = BnbQuantizationConfig(
                 load_in_4bit=config.load_in_4bit,
                 load_in_8bit=config.load_in_8bit,
-                llm_int8_threshold=0 if config.load_in_8bit else 6,
+                llm_int8_threshold=0,
                 torch_dtype=self.torch_dtype,
                 keep_in_fp32_modules=self.pretrained_model.keep_in_fp32_modules
                 if hasattr(self.pretrained_model, "keep_in_fp32_modules")
@@ -168,8 +170,8 @@ class PyTorchBackend(Backend):
             )
 
             LOGGER.info("\t+ Quantizing model while on CPU")
-            self.pretrained_model = quantize_model(
-                model=self.pretrained_model,
+            self.pretrained_model = quantize_dummy_model(
+                dummy_model=self.pretrained_model,
                 bnb_quantization_config=bnb_quantization_config,
             )
 
@@ -199,8 +201,8 @@ class PyTorchBackend(Backend):
             device_map=self.device,
             load_in_8bit=config.load_in_8bit,
             load_in_4bit=config.load_in_4bit,
-            llm_int8_threshold=0 if config.load_in_8bit else 6,
-            **self.cache_kwargs,
+            llm_int8_threshold=0,
+            **self.hub_kwargs,
         )
 
     def forward(self, input: Dict[str, Tensor]):
@@ -221,9 +223,7 @@ class PyTorchBackend(Backend):
         ):
             output = self.pretrained_model.generate(
                 **input,
-                pad_token_id=self.pretrained_model.config.eos_token_id
-                if self.pretrained_model.config.eos_token_id is not None
-                else self.pretrained_model.config.decoder.eos_token_id,
+                pad_token_id=0,
                 max_new_tokens=new_tokens,
                 min_new_tokens=new_tokens,
                 do_sample=False,

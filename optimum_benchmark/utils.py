@@ -1,19 +1,19 @@
 import re
 import os
-import signal
 import time
 import torch
+import signal
 import random
 import psutil
 import platform
 import subprocess
 import numpy as np
 from typing import Optional
-
-
 from logging import getLogger
 
+
 LOGGER = getLogger("utils")
+
 
 LLM_MODEL_TYPES = [
     "mpt",

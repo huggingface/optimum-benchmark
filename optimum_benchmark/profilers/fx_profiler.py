@@ -1,11 +1,13 @@
 from typing import Any, List, Tuple
 from logging import getLogger
+import torch
+import time
+
 
 from torch.fx.graph_module import GraphModule
 from torch.fx import Interpreter
 from torch.fx.node import Node
-import torch
-import time
+
 
 LOGGER = getLogger("fx_profiler")
 
