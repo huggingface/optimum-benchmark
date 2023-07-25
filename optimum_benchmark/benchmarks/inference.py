@@ -121,7 +121,7 @@ class InferenceBenchmark(Benchmark):
         )
 
         LOGGER.info("\t+ Warming up the generation pass")
-        _ = backend.generate(generate_input, new_tokens=self.new_tokens // 10)
+        _ = backend.generate(generate_input, new_tokens=self.new_tokens)
 
         LOGGER.info("\t+ Tracking generation latency and throughput")
         latency_tracker = LatencyTracker(device=backend.device)

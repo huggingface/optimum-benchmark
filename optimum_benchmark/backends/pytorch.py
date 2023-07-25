@@ -177,6 +177,7 @@ class PyTorchBackend(Backend):
 
             LOGGER.info(f"\t+ Putting model on device {self.device}")
             self.pretrained_model.to(self.device)
+            self.pretrained_model.tie_weights()
 
         else:
             LOGGER.info(f"\t+ Materializing model on device {self.device}")
