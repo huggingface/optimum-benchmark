@@ -1,7 +1,6 @@
 from multiprocessing.connection import Connection
 from multiprocessing import Pipe, Process
 from contextlib import contextmanager
-import py3nvml.py3nvml as nvml
 from logging import getLogger
 import psutil
 import torch
@@ -30,6 +29,8 @@ class MemoryTracker:
         return bytes_to_mega_bytes(self.peak_memory)
 
     def _track_cuda_peak_memory(self):
+        import py3nvml.py3nvml as nvml
+
         nvml.nvmlInit()
         handle = nvml.nvmlDeviceGetHandleByIndex(
             self.device.index
