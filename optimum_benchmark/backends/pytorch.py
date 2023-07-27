@@ -105,13 +105,10 @@ class PyTorchBackend(Backend):
         # Compile model
         if config.torch_compile:
             LOGGER.info("\t+ Using torch.compile on forward pass")
-            self.pretrained_model.forward = torch.compile(self.pretrained_model.forward)
-            if self.can_generate():
-                LOGGER.info("\t+ Using torch.compile on generate pass")
-                self.pretrained_model.generate = torch.compile(
-                    self.pretrained_model.generate,
-                    dynamic=True,
-                )
+            self.pretrained_model.forward = torch.compile(
+                self.pretrained_model.forward,
+                dynamic=True,
+            )
 
         # pytorch autocast
         self.amp_autocast = config.amp_autocast
@@ -171,7 +168,7 @@ class PyTorchBackend(Backend):
 
             LOGGER.info("\t+ Quantizing model while on CPU")
             self.pretrained_model = quantize_dummy_model(
-                dummy_model=self.pretrained_model,
+                model=self.pretrained_model,
                 bnb_quantization_config=bnb_quantization_config,
             )
 

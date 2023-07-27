@@ -123,12 +123,8 @@ def run_experiment(experiment: ExperimentConfig) -> None:
         # clean backend
         backend.clean()
 
-        raised_error = False
     # log error and traceback
     except Exception as e:
         LOGGER.error("Error during benchmarking: %s", e)
         backend.clean()
-        raised_error = True
-
-    if raised_error:
         raise e

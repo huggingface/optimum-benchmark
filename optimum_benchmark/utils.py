@@ -16,20 +16,20 @@ LOGGER = getLogger("utils")
 
 
 LLM_MODEL_TYPES = [
-    "mpt",
-    "opt",
-    "gptj",
-    "xglm",
-    "gpt2",
-    "falcon",
-    "bloom",
-    "llama",
-    "gpt_neo",
-    "codegen",
     "gpt_neox",
-    "RefinedWeb",
+    "gptj",
+    "gpt_neo",
+    "gpt2",
+    "llama",
+    "opt",
     "gpt_bigcode",
+    "mpt",
+    "codegen",
     "RefinedWebModel",
+    "RefinedWeb",
+    "xglm",
+    "baichuan",
+    "chatglm",
 ]
 
 
