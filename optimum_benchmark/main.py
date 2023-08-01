@@ -13,6 +13,15 @@ from optimum.exporters import TasksManager
 from optimum.version import __version__ as optimum_version
 from transformers import __version__ as transformers_version
 
+try:
+    from accelerate import __version__ as accelerate_version
+except ImportError:
+    accelerate_version = None
+try:
+    from diffusers import __version__ as diffusers_version
+except ImportError:
+    diffusers_version = None
+
 
 from optimum_benchmark.backends.base import Backend
 from optimum_benchmark.benchmarks.base import Benchmark
@@ -28,9 +37,8 @@ from optimum_benchmark.utils import get_cpu, get_cpu_ram_mb
 
 OmegaConf.register_new_resolver(
     "infer_task",
-    lambda model, subfolder, revision: TasksManager.infer_task_from_model(
+    lambda model, revision: TasksManager.infer_task_from_model(
         model=model,
-        subfolder=subfolder,
         revision=revision,
     ),
 )
@@ -53,19 +61,14 @@ class ExperimentConfig:
     # Device name or path (cpu, cuda, cuda:0, ...)
     device: str = MISSING
     # task
-    task: str = (
-        "${infer_task:${model}, ${hub_kwargs.subfolder}, ${hub_kwargs.revision}}"
-    )
+    task: str = "${infer_task:${model}, ${hub_kwargs.revision}}"
 
     # ADDITIONAL MODEL CONFIGURATION: Model revision, use_auth_token, trust_remote_code
     hub_kwargs: DictConfig = DictConfig(
         {
             "revision": "main",
-            "subfolder": "",
             "cache_dir": None,
-            # "proxies": None,
             "force_download": False,
-            # "resume_download": False,
             "local_files_only": False,
             "use_auth_token": False,
         }
@@ -76,6 +79,8 @@ class ExperimentConfig:
         {
             "optimum_version": optimum_version,
             "transformers_version": transformers_version,
+            "accelerate_version": accelerate_version,
+            "diffusers_version": diffusers_version,
             "python_version": platform.python_version(),
             "system": platform.system(),
             "cpu": get_cpu(),

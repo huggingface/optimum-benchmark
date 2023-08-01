@@ -52,7 +52,7 @@ class PyTorchBackend(Backend):
 
         LOGGER.info(
             f"\t+ Infered AutoModel class {self.automodel_class.__name__} "
-            f"for task {self.task} and model_type {self.pretrained_config.model_type}"
+            f"for task {self.task} and model_type {self.model_type}"
         )
 
     def configure(self, config: PyTorchConfig) -> None:
@@ -91,7 +91,7 @@ class PyTorchBackend(Backend):
             self.load_model_from_pretrained(config)
 
         # Turn on eval mode
-        if config.eval_mode:
+        if config.eval_mode and self.task != "stable-diffusion":
             LOGGER.info("\t+ Turning on eval mode")
             self.pretrained_model.eval()
 
@@ -193,15 +193,24 @@ class PyTorchBackend(Backend):
             f"\t+ Loading pretrained model weights in {config.torch_dtype} on {self.device} "
             f"with {'8bit' if config.load_in_8bit else '4bit' if config.load_in_4bit else 'no'} quantization"
         )
-        self.pretrained_model = self.automodel_class.from_pretrained(
-            pretrained_model_name_or_path=self.model,
-            torch_dtype=self.torch_dtype,
-            device_map=self.device,
-            load_in_8bit=config.load_in_8bit,
-            load_in_4bit=config.load_in_4bit,
-            llm_int8_threshold=0,
-            **self.hub_kwargs,
-        )
+        if self.task != "stable-diffusion":
+            self.pretrained_model = self.automodel_class.from_pretrained(
+                pretrained_model_name_or_path=self.model,
+                torch_dtype=self.torch_dtype,
+                device_map=self.device,
+                load_in_8bit=config.load_in_8bit,
+                load_in_4bit=config.load_in_4bit,
+                llm_int8_threshold=0,
+                **self.hub_kwargs,
+            )
+        else:
+            self.pretrained_model = self.automodel_class.from_pretrained(
+                pretrained_model_name_or_path=self.model,
+                torch_dtype=self.torch_dtype,
+                **self.hub_kwargs,
+            )
+            # since device_map doesn't work with torch.device in diffusers
+            self.pretrained_model.to(self.device)
 
     def forward(self, input: Dict[str, Tensor]):
         with torch.autocast(

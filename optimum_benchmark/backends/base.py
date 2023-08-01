@@ -47,14 +47,20 @@ class Backend(ABC):
         self.hub_kwargs = hub_kwargs
 
         # transformers autoconfig and automodel
-        self.pretrained_config = AutoConfig.from_pretrained(
-            pretrained_model_name_or_path=self.model,
-            **self.hub_kwargs,
-        )
+        if self.task != "stable-diffusion":
+            self.pretrained_config = AutoConfig.from_pretrained(
+                pretrained_model_name_or_path=self.model,
+                **self.hub_kwargs,
+            )
+            self.model_type = self.pretrained_config.model_type
+        else:
+            self.pretrained_config = None
+            self.model_type = "stable-diffusion"
+
         self.automodel_class = TasksManager.get_model_class_for_task(
+            model_type=self.model_type,
             task=self.task,
             framework="pt",
-            model_type=self.pretrained_config.model_type,
         )
 
         # run device isolation checks
@@ -153,32 +159,41 @@ class Backend(ABC):
     ) -> Tuple[Dict[str, Tensor], Dict[str, int]]:
         # TODO: should fallback to generating dummy inputs based on the task after it fails for a model type
         assert mode in ["forward", "generate"], f"mode {mode} not supported"
-        assert (
-            "batch_size" in input_shapes
-        ), "batch_size must be provided in input_shapes"
 
-        # patch for some LLM model types not recognized by TasksManager
-        if self.pretrained_config.model_type in TasksManager._SUPPORTED_MODEL_TYPE:
-            model_type = self.pretrained_config.model_type
-        elif self.pretrained_config.model_type in LLM_MODEL_TYPES:
-            model_type = "gpt2"
-        else:
-            raise ValueError(f"Unknown model type {self.pretrained_config.model_type}")
+        if self.model_type == "stable-diffusion":
+            # patch for stable-diffusion not recognized by TasksManager
+            return {
+                "prompt": ["This is a sample prompt"] * input_shapes["batch_size"]
+            }, {"batch_size": input_shapes["batch_size"]}
 
-        onnx_config = TasksManager._SUPPORTED_MODEL_TYPE[model_type]["onnx"][self.task](
-            self.pretrained_config
-        )
+        if self.model_type in LLM_MODEL_TYPES:
+            # patch for some LLM model types not recognized by TasksManager
+            return {
+                "input_ids": torch.randint(
+                    0,
+                    self.pretrained_config.vocab_size,
+                    (input_shapes["batch_size"], input_shapes["sequence_length"]),
+                ),
+                "attention_mask": torch.ones(
+                    (input_shapes["batch_size"], input_shapes["sequence_length"])
+                ),
+            }, {
+                "batch_size": input_shapes["batch_size"],
+                "sequence_length": input_shapes["sequence_length"],
+            }
+
+        onnx_config = TasksManager.get_exporter_config_constructor(
+            model_type=self.model_type,
+            task=self.task,
+            exporter="onnx",
+        )(self.pretrained_config)
 
         generator_classes = onnx_config.DUMMY_INPUT_GENERATOR_CLASSES
 
         if mode == "forward":
             input_names = list(onnx_config.inputs.keys())
         elif mode == "generate":
-            # sometimes get_preprocessor fails rasing a maximum recursion error
-            if model_type in LLM_MODEL_TYPES:
-                input_names = ["input_ids", "attention_mask"]
-            else:
-                input_names = get_preprocessor(self.model).model_input_names
+            input_names = get_preprocessor(self.model).model_input_names
         else:
             raise ValueError(f"Unknown mode {mode}")
 
@@ -202,7 +217,7 @@ class Backend(ABC):
                         generator = generator_class(
                             task=self.task,
                             normalized_config=onnx_config.NORMALIZED_CONFIG_CLASS(
-                                self.pretrained_config.encoder
+                                self.pretrained_config
                             ),
                             **supported_generator_input_shapes,
                         )
@@ -223,7 +238,6 @@ class Backend(ABC):
                                 ),
                                 **supported_generator_input_shapes,
                             )
-
                     # we found a generator for this input name, let's use it
                     break
 
@@ -241,7 +255,5 @@ class Backend(ABC):
                 dummy_input["attention_mask"] = torch.ones_like(
                     dummy_input["attention_mask"]
                 )
-
-        LOGGER.info(f"Generating dummy inputs with shapes {dummy_input_shapes}")
 
         return dummy_input, dummy_input_shapes

@@ -22,7 +22,6 @@ class InferenceConfig(BenchmarkConfig):
 
     # run options
     memory: bool = False
-    profile: bool = False
 
     # loop options
     warmup_runs: int = 10
@@ -47,7 +46,8 @@ class InferenceConfig(BenchmarkConfig):
             "audio_sequence_length": 16000,
         }
     )
-    # output options
+
+    # generation options
     new_tokens: int = 100
 
 
@@ -59,14 +59,11 @@ class InferenceBenchmark(Benchmark):
         self.forward_peak_memory: int = 0
         self.forward_latencies: List[float] = []
         self.generate_latencies: List[float] = []
-        # might be better to seperate profiling benchmark from inference benchmark
-        # kernel/node, op, time
-        self.forward_profile: List[Tuple[str, str, float]] = []
 
     def configure(self, config: InferenceConfig):
         super().configure(config)
+
         self.memory = config.memory
-        self.profile = config.profile
 
         self.warmup_runs = config.warmup_runs
         self.benchmark_duration = config.benchmark_duration
@@ -76,6 +73,8 @@ class InferenceBenchmark(Benchmark):
 
     def run(self, backend: Backend) -> None:
         LOGGER.info("Running inference benchmark")
+        self.can_generate = backend.can_generate()
+
         if self.memory:
             # if requested, run memory tracking
             self.run_memory_tracking(backend)
@@ -83,19 +82,13 @@ class InferenceBenchmark(Benchmark):
         # ALWAYS run forward pass
         self.run_forward_tracking(backend)
 
-        if backend.can_generate():
+        if self.can_generate:
             # if possible, run generation pass
             self.run_generate_tracking(backend)
-            self.can_generate = True
-        else:
-            self.can_generate = False
-
-        if self.profile:
-            self.run_forward_profile(backend)
 
     def run_forward_tracking(self, backend: Backend) -> None:
         forward_input, forward_input_shapes = backend.generate_dummy_input(
-            mode="forward", **self.input_shapes  # type: ignore
+            mode="forward", **self.input_shapes
         )
         backend.prepare_for_forward(forward_input_shapes)
 
@@ -117,7 +110,7 @@ class InferenceBenchmark(Benchmark):
 
     def run_generate_tracking(self, backend: Backend) -> None:
         generate_input, _ = backend.generate_dummy_input(
-            mode="generate", **self.input_shapes  # type: ignore
+            mode="generate", **self.input_shapes
         )
 
         LOGGER.info("\t+ Warming up the generation pass")
@@ -145,22 +138,10 @@ class InferenceBenchmark(Benchmark):
         LOGGER.info("\t+ Tracking forward pass peak memory")
         memory_tracker = MemoryTracker(device=backend.device)
         with memory_tracker.track(interval=self.benchmark_duration // 100):
-            outputs = backend.forward(memory_input)
+            _ = backend.forward(memory_input)
 
         self.forward_peak_memory = memory_tracker.get_peak_memory()
         LOGGER.info(f"\t+ Forward pass peak memory: {self.forward_peak_memory} (MB)")
-
-    def run_forward_profile(self, backend: Backend) -> None:
-        profile_input, profile_input_shapes = backend.generate_dummy_input(
-            mode="forward", **self.input_shapes  # type: ignore
-        )
-        backend.prepare_for_forward(profile_input_shapes)
-        backend.prepare_for_profiling(list(profile_input.keys()))
-
-        LOGGER.info("\t+ Running profiling")
-        backend.forward(profile_input)
-
-        self.forward_profile = backend.pretrained_model.get_forward_profile()  # type: ignore
 
     # Metrics
     @property
@@ -184,11 +165,11 @@ class InferenceBenchmark(Benchmark):
     def get_results_df(self) -> DataFrame:
         results_dict = dict()
 
-        results_dict["forward.latency(s)"] = self.forward_latency
-        results_dict["forward.throughput(samples/s)"] = self.forward_throughput
-
         if self.memory:
             results_dict["forward.peak_memory(MB)"] = self.forward_peak_memory
+
+        results_dict["forward.latency(s)"] = self.forward_latency
+        results_dict["forward.throughput(samples/s)"] = self.forward_throughput
 
         if self.can_generate:
             results_dict["generate.latency(s)"] = self.generate_latency
@@ -196,21 +177,10 @@ class InferenceBenchmark(Benchmark):
 
         return DataFrame(results_dict, index=[0])
 
-    def get_profile_df(self) -> DataFrame:
-        return DataFrame(
-            self.forward_profile,
-            columns=["Node/Kernel", "Operator", "Latency (s)"],
-        )
-
     def save(self) -> None:
         LOGGER.info("Saving inference results")
         results_df = self.get_results_df()
         results_df.to_csv("inference_results.csv")
-
-        if self.profile:
-            LOGGER.info("Saving profiling results")
-            profile_df = self.get_profile_df()
-            profile_df.to_csv("inference_profile.csv")
 
 
 def significant_figures(x):

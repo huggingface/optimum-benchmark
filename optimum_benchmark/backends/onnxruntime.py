@@ -34,7 +34,11 @@ OmegaConf.register_new_resolver(
     lambda device: torch.device(device).type == "cuda",
 )
 OmegaConf.register_new_resolver(
-    "infer_execution_provider",
+    "is_profiling",
+    lambda benchmark_name: benchmark_name == "profiling",
+)
+OmegaConf.register_new_resolver(
+    "infer_provider",
     lambda device: f"{torch.device(device).type.upper()}ExecutionProvider",
 )
 OmegaConf.register_new_resolver(
@@ -42,7 +46,7 @@ OmegaConf.register_new_resolver(
     lambda device: infer_device_id(device),
 )
 OmegaConf.register_new_resolver(
-    "perform_calibration",
+    "requires_calibration",
     lambda *static_quants: any(static_quants),
 )
 
@@ -62,12 +66,12 @@ class ORTConfig(BackendConfig):
     torch_dtype: Optional[str] = None
 
     # provider options
-    provider: str = "${infer_execution_provider:${device}}"
+    provider: str = "${infer_provider:${device}}"
     device_id: Optional[int] = "${infer_device_id:${device}}"  # type: ignore
 
     # inference options
     use_io_binding: bool = "${is_gpu:${device}}"  # type: ignore
-    enable_profiling: bool = "${benchmark.profile}"  # type: ignore
+    enable_profiling: bool = "${is_profiling:${benchmark.name}}"
 
     # optimization options
     optimization: bool = False
@@ -136,7 +140,7 @@ class ORTConfig(BackendConfig):
     )
 
     # calibration options
-    calibration: bool = "${perform_calibration:${backend.auto_quantization_config.is_static}, ${backend.quantization_config.is_static}}"
+    calibration: bool = "${requires_calibration:${backend.auto_quantization_config.is_static}, ${backend.quantization_config.is_static}}"
     calibration_config: DictConfig = DictConfig(
         {
             "dataset_name": "glue",

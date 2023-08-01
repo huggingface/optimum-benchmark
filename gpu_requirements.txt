@@ -4,6 +4,11 @@ git+https://github.com/huggingface/optimum.git#egg=optimum[onnxruntime-gpu,openv
 git+https://github.com/huggingface/accelerate.git
 # transformers
 git+https://github.com/huggingface/transformers.git
+# diffusers
+git+https://github.com/huggingface/diffusers.git
+
+# dunno why the above installs onnxruntime and not onnxruntime-gpu
+onnxruntime-gpu==1.15.1
 
 omegaconf==2.3.0
 hydra-core==1.3.2

@@ -4,6 +4,8 @@ git+https://github.com/huggingface/optimum.git#egg=optimum[onnxruntime,openvino,
 git+https://github.com/huggingface/accelerate.git
 # transformers
 git+https://github.com/huggingface/transformers.git
+# diffusers
+git+https://github.com/huggingface/diffusers.git
 
 omegaconf==2.3.0
 hydra-core==1.3.2
