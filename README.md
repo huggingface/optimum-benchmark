@@ -93,8 +93,6 @@ Also, for integer parameters like `batch_size`, one can specify a range of value
 optimum-benchmark --config-dir examples --config-name pytorch -m device=cpu,cuda benchmark.input_shapes.batch_size='range(1,10,step=2)'
 ```
 
-Other features like intervals and log scaled ranges of values are also supported through sweeper plugins: `hydra/sweeper=optuna`, `hydra/sweeper=nevergrad`, etc.
-
 ## Reporting benchamrk results (WIP)
 
 To aggregate the results of a benchmark (run(s) or sweep(s)), you can use the `optimum-report` command.
@@ -108,7 +106,7 @@ This will create a report in the `reports` folder with the name `{report_name}`.
 ## Configurations structure
 
 You can create custom configuration files following the [examples here](examples).
-The easiest way to do so is by using `hydra`'s [composition](https://hydra.cc/docs/0.11/tutorial/composition/) with a base configuratin [`configs/base_config.yaml`](configs/base_config.yaml).
+The easiest way to do so is by using `hydra`'s [composition](https://hydra.cc/docs/0.11/tutorial/composition/) with a base configuratin [`examples/base_config.yaml`](examples/base_config.yaml).
 
 To create a configuration that uses a `wav2vec2` model and `onnxruntime` backend, it's as easy as:
 
@@ -124,22 +122,22 @@ model: bookbot/distil-wav2vec2-adult-child-cls-37m
 device: cpu
 ```
 
-An example is provided in [`examples/whisper_auto_opt+qnt.yaml`](examples/whisper_auto_opt+qnt.yaml) for an exhaustive sweep over all possible cominations of `optimum`'s AutoOptimizations and AutoQuantizations on CPU.
+Some examples are provided in the [`examples`](examples) folder for different backends and models.
 
 ## TODO
 
 - [x] Add support for any kind of input (text, audio, image, etc.)
 - [x] Add support for onnxruntime backend
-- [x] Add support for omptimum graph optimizations
 - [x] Add support for optimum quantization
+- [x] Add support for omptimum graph optimizations
+- [x] Add support for static quantization + calibration.
+- [x] Add support for profiling nodes/kernels execution time.
 - [x] Add experiments aggregator to report on data from different runs/sweeps.
 - [x] Add support for sweepers latency optimization (optuna, nevergrad, etc.)
-- [x] Add support for profiling nodes/kernels execution time.
 - [x] Add support for more metrics (memory usage, node execution time, etc.)
 - [x] Migrate configuration management to be handled solely by config store.
-- [x] Add support for static quantization + calibration.
+- [x] Add Dana client to send results to the dashboard [(WIP)](https://github.com/huggingface/dana)
 - [x] Make a consistent reporting utility.
 - [ ] Add Pydantic for schema validation.
 - [ ] Add support for sparse inputs.
 - [ ] ...
-- [x] add Dana client to send results to the dashboard [(WIP)](https://github.com/IlyasMoutawwakil/optimum-dana)

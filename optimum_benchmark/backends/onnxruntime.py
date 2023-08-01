@@ -159,11 +159,18 @@ class ORTBackend(Backend):
     ) -> None:
         super().__init__(model, task, device, hub_kwargs)
 
-        self.ortmodel_class = ORT_SUPPORTED_TASKS[self.task]["class"][0]
+        if self.task == "stable-diffusion":
+            self.ortmodel_class = get_class(
+                "optimum.onnxruntime.ORTStableDiffusionPipeline"
+            )
+        elif self.task in ORT_SUPPORTED_TASKS:
+            self.ortmodel_class = ORT_SUPPORTED_TASKS[self.task]["class"][0]
+        else:
+            raise ValueError(f"Unsupported task {self.task}")
 
         LOGGER.info(
             f"\t+ Infered ORTModel class {self.ortmodel_class.__name__} "
-            f"for task {self.task} and model_type {self.pretrained_config.model_type}"
+            f"for task {self.task} and model_type {self.model_type}"
         )
 
     def configure(self, config: ORTConfig) -> None:

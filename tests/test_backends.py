@@ -4,7 +4,7 @@ from tempfile import TemporaryDirectory
 CONFIG_DIR = "examples"
 
 
-def test_pytorch():
+def test_pytorch_bert():
     with TemporaryDirectory() as tmpdir:
         result = subprocess.run(
             [
@@ -12,7 +12,7 @@ def test_pytorch():
                 "--config-dir",
                 CONFIG_DIR,
                 "--config-name",
-                "pytorch",
+                "pytorch_bert",
                 f"hydra.run.dir={tmpdir}",
             ],
             capture_output=True,
@@ -21,7 +21,7 @@ def test_pytorch():
     assert result.returncode == 0, result.stderr.decode("utf-8")
 
 
-def test_onnxruntime():
+def test_onnxruntime_bert():
     with TemporaryDirectory() as tmpdir:
         result = subprocess.run(
             [
@@ -29,7 +29,7 @@ def test_onnxruntime():
                 "--config-dir",
                 CONFIG_DIR,
                 "--config-name",
-                "onnxruntime",
+                "onnxruntime_bert",
                 f"hydra.run.dir={tmpdir}",
             ],
             capture_output=True,
@@ -38,7 +38,7 @@ def test_onnxruntime():
     assert result.returncode == 0, result.stderr.decode("utf-8")
 
 
-def test_openvino():
+def test_openvino_bert():
     with TemporaryDirectory() as tmpdir:
         result = subprocess.run(
             [
@@ -46,7 +46,7 @@ def test_openvino():
                 "--config-dir",
                 CONFIG_DIR,
                 "--config-name",
-                "openvino",
+                "openvino_bert",
                 f"hydra.run.dir={tmpdir}",
             ],
             capture_output=True,
@@ -55,7 +55,7 @@ def test_openvino():
     assert result.returncode == 0, result.stderr.decode("utf-8")
 
 
-def test_neural_compressor():
+def test_neural_compressor_bert():
     with TemporaryDirectory() as tmpdir:
         result = subprocess.run(
             [
@@ -63,7 +63,7 @@ def test_neural_compressor():
                 "--config-dir",
                 CONFIG_DIR,
                 "--config-name",
-                "neural_compressor",
+                "neural_compressor_bert",
                 f"hydra.run.dir={tmpdir}",
             ],
             capture_output=True,

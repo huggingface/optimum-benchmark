@@ -11,9 +11,11 @@ import torch
 import os
 import gc
 
+
 from optimum.exporters import TasksManager
-from transformers.onnx.utils import get_preprocessor
 from transformers import AutoConfig, PreTrainedModel
+from transformers.onnx.utils import get_preprocessor
+
 
 from optimum_benchmark.utils import (
     LLM_MODEL_TYPES,
@@ -36,6 +38,10 @@ class BackendConfig(ABC):
     # clean up options
     delete_cache: bool = False
 
+    # isolation options
+    initial_isolation_check: bool = True
+    contineous_isolation_check: bool = True
+
 
 class Backend(ABC):
     pretrained_model: PreTrainedModel
@@ -47,25 +53,21 @@ class Backend(ABC):
         self.hub_kwargs = hub_kwargs
 
         # transformers autoconfig and automodel
-        if self.task != "stable-diffusion":
+        if self.task == "stable-diffusion":
+            self.pretrained_config = None
+            self.model_type = "stable-diffusion"
+        else:
             self.pretrained_config = AutoConfig.from_pretrained(
                 pretrained_model_name_or_path=self.model,
                 **self.hub_kwargs,
             )
             self.model_type = self.pretrained_config.model_type
-        else:
-            self.pretrained_config = None
-            self.model_type = "stable-diffusion"
 
         self.automodel_class = TasksManager.get_model_class_for_task(
             model_type=self.model_type,
             task=self.task,
             framework="pt",
         )
-
-        # run device isolation checks
-        self.check_initial_isolation()
-        self.check_contineous_isolation()
 
     def check_initial_isolation(self) -> None:
         if self.device.type == "cuda":
@@ -113,6 +115,12 @@ class Backend(ABC):
             self.delete_cache = True
         else:
             self.delete_cache = False
+
+        # isolation options
+        if config.initial_isolation_check:
+            self.check_initial_isolation()
+        if config.contineous_isolation_check:
+            self.check_contineous_isolation()
 
     def prepare_for_forward(self, input_shapes: Dict[str, int]) -> None:
         pass
