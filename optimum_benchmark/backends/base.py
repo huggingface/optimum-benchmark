@@ -40,7 +40,7 @@ class BackendConfig(ABC):
 
     # isolation options
     initial_isolation_check: bool = True
-    contineous_isolation_check: bool = True
+    continous_isolation_check: bool = True
 
 
 class Backend(ABC):
@@ -77,7 +77,7 @@ class Backend(ABC):
                 f"Initial device isolation check passed: no process is running on device {self.device}"
             )
 
-    def check_contineous_isolation(self) -> None:
+    def check_continous_isolation(self) -> None:
         if self.device.type == "cuda":
             LOGGER.info("Checking contineous device isolation")
             from multiprocessing import Process
@@ -119,8 +119,8 @@ class Backend(ABC):
         # isolation options
         if config.initial_isolation_check:
             self.check_initial_isolation()
-        if config.contineous_isolation_check:
-            self.check_contineous_isolation()
+        if config.continous_isolation_check:
+            self.check_continous_isolation()
 
     def prepare_for_forward(self, input_shapes: Dict[str, int]) -> None:
         pass
