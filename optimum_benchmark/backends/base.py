@@ -128,6 +128,9 @@ class Backend(ABC):
     def prepare_for_profiling(self, input_names: List[str]) -> None:
         pass
 
+    def prepare_for_training(self, train_dataset: Dict[str, int]) -> None:
+        pass
+
     @abstractmethod
     def forward(self, input: Dict[str, Tensor]):
         raise NotImplementedError("Backend must implement forward method")
@@ -135,6 +138,9 @@ class Backend(ABC):
     @abstractmethod
     def generate(self, input: Dict[str, Tensor], **kwargs) -> str:
         raise NotImplementedError("Backend must implement generate method")
+
+    def train(self):
+        raise NotImplementedError("Backend must implement train method")
 
     def delete_pretrained_model(self) -> None:
         if hasattr(self, "pretrained_model"):
