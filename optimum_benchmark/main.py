@@ -14,6 +14,7 @@ from optimum.version import __version__ as optimum_version
 from transformers import __version__ as transformers_version
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 try:
     from accelerate import __version__ as accelerate_version
 except ImportError:
@@ -28,6 +29,8 @@ from optimum_benchmark.backends.base import Backend
 from optimum_benchmark.benchmarks.base import Benchmark
 =======
 >>>>>>> added initial training support
+=======
+>>>>>>> a22f5c77a7dbf11550c81d5eb3d878664dfb049f
 from optimum_benchmark.backends.openvino import OVConfig
 from optimum_benchmark.backends.pytorch import PyTorchConfig
 from optimum_benchmark.backends.onnxruntime import ORTConfig
