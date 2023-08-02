@@ -234,9 +234,42 @@ class PyTorchBackend(Backend):
     def prepare_for_profiling(self, input_names: List[str]) -> None:
         LOGGER.info("Preparing model for profiling")
         LOGGER.info("\t+ Symbolic tracing model")
-        self.pretrained_model = symbolic_trace(  # type: ignore
+        self.pretrained_model = symbolic_trace(
             model=self.pretrained_model,
             input_names=input_names,
         )
         LOGGER.info("\t+ Wrapping model inside profiler")
         self.pretrained_model = FXProfilingWrapper(self.pretrained_model)
+
+    def prepare_for_training(self, train_dataset: Dict[str, Tensor]) -> None:
+        LOGGER.info("Preparing model for training")
+        from transformers import Trainer, TrainingArguments
+        from datasets import Dataset
+
+        LOGGER.info("\t+ Creating training arguments")
+        default_args = {
+            "output_dir": "tmp",
+            "evaluation_strategy": "steps",
+            "num_train_epochs": 1,
+            "log_level": "error",
+            "report_to": "none",
+        }
+        train_args = TrainingArguments(per_device_train_batch_size=4, **default_args)
+
+        LOGGER.info("\t+ Creating training dataset")
+        train_dataset = Dataset.from_dict(train_dataset)
+        train_dataset.set_format(type="torch", columns=["input_ids", "labels"])
+
+        LOGGER.info("\t+ Wrapping model inside trainer")
+        self.trainer = Trainer(
+            model=self.pretrained_model,
+            args=train_args,
+            train_dataset=train_dataset,
+        )
+
+    def train(self) -> None:
+        LOGGER.info("Training model")
+        results = self.trainer.train()
+        LOGGER.info(f"Training result : {results}")
+
+        return results
