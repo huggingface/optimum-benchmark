@@ -1,8 +1,0 @@
-defaults:
-  - base_config # inherits from base config
-  - _self_ # for hydra 1.1 compatibility
-
-experiment_name: pytorch_bert
-
-model: distilbert-base-uncased-finetuned-sst-2-english
-device: cpu

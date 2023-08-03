@@ -1,0 +1,16 @@
+defaults:
+  - base_config # inherits from base config
+  - _self_ # for hydra 1.1 compatibility
+
+experiment_name: pytorch_bert_inference
+
+model: hf-internal-testing/tiny-random-bert
+task: text-classification
+device: cpu
+
+backend:
+  no_weights: true
+  bettertransformer: true
+
+benchmark:
+  memory: true

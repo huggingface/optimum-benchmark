@@ -3,14 +3,11 @@ defaults:
   - _self_ # for hydra 1.1 compatibility
   - override backend: onnxruntime # override backend to onnxruntime
 
-experiment_name: onnxruntime_diffusion
+experiment_name: onnxruntime_diffusion_inference
 
-model: hf-internal-testing/tiny-random-OnnxStableDiffusionPipeline
+model: hf-internal-testing/tiny-stable-diffusion-torch
 task: stable-diffusion
 device: cpu
-
-backend:
-  export: false
 
 benchmark:
   warmup_runs: 1

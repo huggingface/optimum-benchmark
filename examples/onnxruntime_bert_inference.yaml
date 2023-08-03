@@ -1,0 +1,10 @@
+defaults:
+  - base_config # inherits from base config
+  - _self_ # for hydra 1.1 compatibility
+  - override backend: onnxruntime # override backend to onnxruntime
+
+experiment_name: onnxruntime_bert_inference
+
+model: hf-internal-testing/tiny-random-bert
+task: text-classification
+device: cpu

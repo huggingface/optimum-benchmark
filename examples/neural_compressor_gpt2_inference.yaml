@@ -1,0 +1,10 @@
+defaults:
+  - base_config # inherits from base config
+  - _self_ # for hydra 1.1 compatibility
+  - override backend: neural_compressor # override backend to openvino
+
+experiment_name: neural_compressor_gpt2_inference
+
+model: hf-internal-testing/tiny-random-gpt2
+task: text-generation
+device: cpu
