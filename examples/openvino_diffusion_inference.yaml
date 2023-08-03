@@ -9,9 +9,5 @@ model: hf-internal-testing/tiny-stable-diffusion-torch
 task: stable-diffusion
 device: cpu
 
-backend:
-  half: true
-  reshape: true
-
 benchmark:
   warmup_runs: 1

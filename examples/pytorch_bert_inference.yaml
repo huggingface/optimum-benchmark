@@ -7,7 +7,3 @@ experiment_name: pytorch_bert_inference
 model: hf-internal-testing/tiny-random-bert
 task: text-classification
 device: cpu
-
-backend:
-  no_weights: true
-  bettertransformer: true

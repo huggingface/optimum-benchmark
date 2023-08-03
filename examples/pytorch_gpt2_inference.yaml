@@ -7,7 +7,3 @@ experiment_name: pytorch_gpt2_inference
 model: hf-internal-testing/tiny-random-gpt2
 task: text-generation
 device: cpu
-
-backend:
-  no_weights: true
-  bettertransformer: true

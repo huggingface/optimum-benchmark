@@ -38,7 +38,7 @@ class DummyInputGenerator:
             return {
                 "input_ids": torch.randint(
                     0,
-                    100,
+                    backend.pretrained_config.vocab_size,
                     (
                         self.input_shapes["batch_size"],
                         self.input_shapes["sequence_length"],
