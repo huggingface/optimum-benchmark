@@ -1,20 +1,23 @@
 import os
+from datasets import Dataset
 import torch
-import onnxruntime
 from torch import Tensor
 from pathlib import Path
 from logging import getLogger
 from omegaconf import OmegaConf
 from dataclasses import dataclass
 from hydra.utils import get_class
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from tempfile import TemporaryDirectory
 from omegaconf.dictconfig import DictConfig
 
-from transformers import GenerationMixin
-from optimum.pipelines import ORT_SUPPORTED_TASKS
+try:
+    from onnxruntime import __version__ as onnxruntime_version
+except ImportError:
+    onnxruntime_version = "Not installed"
+
+from transformers import GenerationMixin, TrainingArguments
 from optimum.onnxruntime import ORTOptimizer, ORTQuantizer
-from onnxruntime.quantization import QuantFormat, QuantizationMode, QuantType
 from optimum.onnxruntime.configuration import (
     OptimizationConfig,
     QuantizationConfig,
@@ -56,7 +59,7 @@ LOGGER = getLogger("onnxruntime")
 @dataclass
 class ORTConfig(BackendConfig):
     name: str = "onnxruntime"
-    version: str = onnxruntime.__version__
+    version: str = onnxruntime_version
     _target_: str = "optimum_benchmark.backends.onnxruntime.ORTBackend"
 
     # export options
@@ -159,6 +162,8 @@ class ORTBackend(Backend):
     ) -> None:
         super().__init__(model, task, device, hub_kwargs)
 
+        from optimum.pipelines import ORT_SUPPORTED_TASKS
+
         if self.task == "stable-diffusion":
             self.ortmodel_class = get_class(
                 "optimum.onnxruntime.ORTStableDiffusionPipeline"
@@ -175,6 +180,8 @@ class ORTBackend(Backend):
 
     def configure(self, config: ORTConfig) -> None:
         super().configure(config)
+
+        import onnxruntime
 
         # session options
         self.session_options = onnxruntime.SessionOptions()
@@ -221,7 +228,7 @@ class ORTBackend(Backend):
                 and not config.use_merged
                 and not config.no_weights
             ):
-                self.optimize_model(config, tmpdirname)
+                self.optimize(config, tmpdirname)
             elif (
                 (config.optimization or config.auto_optimization is not None)
                 and config.use_merged
@@ -231,7 +238,7 @@ class ORTBackend(Backend):
                     "Optimization on merged model is only supported during export (no_weights=True) for now."
                 )
             if config.quantization or config.auto_quantization is not None:
-                self.quantize_model(config, tmpdirname)
+                self.quantize(config, tmpdirname)
 
     def load_model_from_config(self, config: ORTConfig, tmpdirname: str) -> None:
         LOGGER.info(
@@ -247,7 +254,11 @@ class ORTBackend(Backend):
             device=self.device,
             torch_dtype=self.torch_dtype,
             auto_optimization=config.auto_optimization,
-            use_merged=config.use_merged,
+            **(
+                {"use_merged": config.use_merged}
+                if config.use_merged is not None
+                else {}
+            ),
             **self.hub_kwargs,
         )
         self.delete_pretrained_model()
@@ -259,7 +270,11 @@ class ORTBackend(Backend):
             use_io_binding=config.use_io_binding,
             provider=config.provider,
             provider_options=self.provider_options,
-            use_merged=config.use_merged,
+            **(
+                {"use_merged": config.use_merged}
+                if config.use_merged is not None
+                else {}
+            ),
             export=False,
             **self.hub_kwargs,
         )
@@ -277,12 +292,15 @@ class ORTBackend(Backend):
             provider=config.provider,
             provider_options=self.provider_options,
             export=config.export,
-            # TODO: is this the right way to do it?
-            **({"use_merged": config.use_merged} if self.can_be_merged() else {}),
+            **(
+                {"use_merged": config.use_merged}
+                if config.use_merged is not None
+                else {}
+            ),
             **self.hub_kwargs,
         )
 
-    def optimize_model(self, config: ORTConfig, tmpdirname: str) -> None:
+    def optimize(self, config: ORTConfig, tmpdirname: str) -> None:
         if config.auto_optimization is not None:
             LOGGER.info(f"\t+ Using auto optimization {config.auto_optimization}")
             optimization_dict = OmegaConf.to_container(
@@ -321,7 +339,7 @@ class ORTBackend(Backend):
             provider_options=self.provider_options,
         )
 
-    def quantize_model(self, config: ORTConfig, tmpdirname: str) -> None:
+    def quantize(self, config: ORTConfig, tmpdirname: str) -> None:
         if config.auto_quantization is not None:
             LOGGER.info(f"\t+ Using auto quantization {config.auto_quantization}")
             auto_quantization_class = getattr(
@@ -338,10 +356,15 @@ class ORTBackend(Backend):
             quantization_config = auto_quantization_class(**quantization_dict)
 
         else:
+            from onnxruntime.quantization import (
+                QuantFormat,
+                QuantizationMode,
+                QuantType,
+            )
+
             quantization_dict = OmegaConf.to_container(
                 config.quantization_config, resolve=True
             )
-            # should be handeled by Pydantic later
             if quantization_dict.get("format", None) is not None:
                 quantization_dict["format"] = QuantFormat.from_string(
                     quantization_dict["format"]
@@ -408,22 +431,36 @@ class ORTBackend(Backend):
             provider_options=self.provider_options,
         )
 
-    def forward(self, input: Dict[str, Tensor]) -> Tensor:
-        output = self.pretrained_model(**input)[0]
+    def forward(self, input: Dict[str, Tensor], **kwargs) -> Tensor:
+        output = self.pretrained_model(**input, **kwargs)[0]
 
         return output
 
-    def generate(self, input: Dict[str, Tensor], new_tokens: int) -> Tensor:
-        output = self.pretrained_model.generate(
-            **input,
-            pad_token_id=0,
-            max_new_tokens=new_tokens,
-            min_new_tokens=new_tokens,
-            do_sample=False,
-            use_cache=True,
-            num_beams=1,
-        )[0]
+    def generate(self, input: Dict[str, Tensor], **kwargs) -> Tensor:
+        output = self.pretrained_model.generate(**input, **kwargs)[0]
         return output
+
+    def prepare_for_training(
+        self, training_dataset: Dataset, training_arguments: Dict[str, Any]
+    ) -> None:
+        LOGGER.info("Preparing model for training")
+        LOGGER.info("\t+ Wrapping model inside trainer")
+
+        from optimum.onnxruntime import ORTTrainer, ORTTrainingArguments
+
+        training_arguments = ORTTrainingArguments(**training_arguments)
+        self.trainer = ORTTrainer(
+            model=self.pretrained_model,
+            args=training_arguments,
+            train_dataset=training_dataset,
+            feature=self.feature,
+        )
+
+    def train(self) -> None:
+        LOGGER.info("Training model")
+        results = self.trainer.train()
+
+        return results
 
     def prepare_for_profiling(self, input_names: List[str]) -> None:
         LOGGER.info("Preparing model for profiling")

@@ -1,7 +1,8 @@
 from omegaconf import DictConfig, OmegaConf
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
 from logging import getLogger
+from datasets import Dataset
 from torch import Tensor
 import torch
 
@@ -212,73 +213,59 @@ class PyTorchBackend(Backend):
             # since device_map doesn't work with torch.device in diffusers
             self.pretrained_model.to(self.device)
 
-    def forward(self, input: Dict[str, Tensor]):
+    def forward(self, input: Dict[str, Tensor], **kwargs) -> Tensor:
         with torch.autocast(
             device_type=self.device.type,
             dtype=self.amp_dtype,
             enabled=self.amp_autocast,
         ):
-            output = self.pretrained_model(**input)[0]
+            output = self.pretrained_model(**input, **kwargs)[0]
 
         return output
 
-    def generate(self, input: Dict[str, Tensor], new_tokens: int) -> Tensor:
+    def generate(self, input: Dict[str, Tensor], **kwargs) -> Tensor:
         with torch.autocast(
             device_type=self.device.type,
             dtype=self.amp_dtype,
             enabled=self.amp_autocast,
         ):
-            output = self.pretrained_model.generate(
-                **input,
-                pad_token_id=0,
-                max_new_tokens=new_tokens,
-                min_new_tokens=new_tokens,
-                do_sample=False,
-                use_cache=True,
-                num_beams=1,
-            )[0]
+            output = self.pretrained_model.generate(**input, **kwargs)[0]
 
         return output
 
-    def prepare_for_profiling(self, input_names: List[str]) -> None:
-        LOGGER.info("Preparing model for profiling")
-        LOGGER.info("\t+ Symbolic tracing model")
-        self.pretrained_model = symbolic_trace(
-            model=self.pretrained_model,
-            input_names=input_names,
-        )
-        LOGGER.info("\t+ Wrapping model inside profiler")
-        self.pretrained_model = FXProfilingWrapper(self.pretrained_model)
-
-    def prepare_for_training(self, train_dataset: Dict[str, Tensor]) -> None:
-        LOGGER.info("Preparing model for training")
+    def prepare_for_training(
+        self,
+        training_dataset: Dataset,
+        training_arguments: Dict[str, Any],
+    ) -> None:
         from transformers import Trainer, TrainingArguments
-        from datasets import Dataset
 
-        LOGGER.info("\t+ Creating training arguments")
-        default_args = {
-            "output_dir": "tmp",
-            "evaluation_strategy": "steps",
-            "num_train_epochs": 1,
-            "log_level": "error",
-            "report_to": "none",
-        }
-        train_args = TrainingArguments(per_device_train_batch_size=4, **default_args)
-
-        LOGGER.info("\t+ Creating training dataset")
-        train_dataset = Dataset.from_dict(train_dataset)
-        train_dataset.set_format(type="torch", columns=["input_ids", "labels"])
-
-        LOGGER.info("\t+ Wrapping model inside trainer")
+        LOGGER.info("\t+ Wrapping model with transformers.Trainer")
+        training_arguments = TrainingArguments(**training_arguments)
         self.trainer = Trainer(
             model=self.pretrained_model,
-            args=train_args,
-            train_dataset=train_dataset,
+            train_dataset=training_dataset,
+            args=training_arguments,
         )
 
     def train(self) -> None:
         LOGGER.info("Training model")
         results = self.trainer.train()
-        LOGGER.info(f"Training result : {results}")
 
         return results
+
+    def prepare_for_profiling(
+        self,
+        input_names: List[str],
+        input_shapes: Dict[str, int],
+    ) -> None:
+        LOGGER.info("Preparing model for profiling")
+
+        LOGGER.info("\t+ Symbolicly tracing model")
+        self.pretrained_model = symbolic_trace(
+            model=self.pretrained_model,
+            input_names=input_names,
+        )
+
+        LOGGER.info("\t+ Wrapping model with FXProfilingWrapper")
+        self.pretrained_model = FXProfilingWrapper(self.pretrained_model)

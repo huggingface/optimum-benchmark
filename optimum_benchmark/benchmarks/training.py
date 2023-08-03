@@ -1,17 +1,20 @@
+from omegaconf import DictConfig, OmegaConf
+from transformers import TrainingArguments
 from dataclasses import dataclass
-from omegaconf import DictConfig
-from typing import List, Tuple
 from logging import getLogger
 from pandas import DataFrame
+from datasets import Dataset
 import torch
 
+
 from optimum_benchmark.backends.base import Backend
-from optimum_benchmark.trackers.memory import MemoryTracker
-from optimum_benchmark.trackers.latency import LatencyTracker
 from optimum_benchmark.benchmarks.base import Benchmark, BenchmarkConfig
 
 
 LOGGER = getLogger("training")
+
+# resolvers
+OmegaConf.register_new_resolver("is_cpu", lambda device: device == "cpu")
 
 
 @dataclass
@@ -24,44 +27,46 @@ class TrainingConfig(BenchmarkConfig):
     sequence_length: int = 16
 
     # training options
-    batch_size: int = 32
-    epochs: int = 10
-
-    # optimizer options
-    learning_rate: float = 0.001
-    momentum: float = 0.9
-    weight_decay: float = 0.0005
-
-    # data loader options
-    num_workers: int = 4
-    pin_memory: bool = True
-    shuffle: bool = True
-    drop_last: bool = True
+    trainer_config: DictConfig = DictConfig(
+        {
+            "output_dir": "./trainer_output",
+            "use_cpu": "${is_cpu:${device}}",
+            # add any other training arguments here
+        }
+    )
 
 
 class TrainingBenchmark(Benchmark):
     def __init__(self):
         super().__init__()
 
-        training_throughput: float = 0
-        training_runtime: float = 0
+        self.training_throughput: float = 0
+        self.training_runtime: float = 0
 
     def configure(self, config: TrainingConfig):
         super().configure(config)
+        self.trainer_config = config.trainer_config
 
-        from datasets import Dataset
-
-        self.training_dataset = {
-            "input_ids": torch.randint(
-                100, 30000, (config.dataset_size, config.sequence_length)
-            ),
-            "labels": torch.randint(0, 1, (config.dataset_size,)),
-        }
+        self.training_dataset = Dataset.from_dict(
+            {
+                "input_ids": torch.randint(
+                    0, 100, (config.dataset_size, config.sequence_length)
+                ),
+                "labels": torch.randint(0, 1, (config.dataset_size,)),
+            }
+        )
+        self.training_dataset.set_format(
+            type="torch",
+            columns=["input_ids", "labels"],
+        )
 
     def run(self, backend: Backend) -> None:
         LOGGER.info("Running training benchmark")
 
-        backend.prepare_for_training(self.training_dataset)
+        backend.prepare_for_training(
+            training_dataset=self.training_dataset,
+            training_arguments=self.trainer_config,
+        )
         results = backend.train().metrics
 
         self.training_throughput = results["train_samples_per_second"]
