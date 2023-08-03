@@ -11,6 +11,3 @@ device: cpu
 backend:
   no_weights: true
   bettertransformer: true
-
-benchmark:
-  memory: true
