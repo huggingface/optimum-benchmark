@@ -135,8 +135,9 @@ class INCBackend(Backend):
             )
         self.pretrained_model = self.incmodel_class.from_pretrained(
             # something is wrong here, modeling is not consistent
-            model_id=self.model,
             model_name_or_path=self.model,
+            # for some reason causalLM expects model_id instead of model_name_or_path
+            **({"model_id": self.model} if self.task == "text-generation" else {}),
             torch_dtype=self.torch_dtype,
             device_map=self.device,
             **self.hub_kwargs,
