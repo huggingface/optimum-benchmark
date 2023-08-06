@@ -1,9 +1,8 @@
-import torch
+from typing import Dict
 from torch import Tensor
 from logging import getLogger
 from hydra.utils import get_class
 from dataclasses import dataclass
-from typing import Dict, Optional
 from tempfile import TemporaryDirectory
 from omegaconf import DictConfig, OmegaConf
 
@@ -32,7 +31,6 @@ class INCConfig(BackendConfig):
 
     # export options
     no_weights: bool = False
-    torch_dtype: Optional[str] = None
 
     # quantization options
     quantization: bool = False
@@ -107,16 +105,6 @@ class INCBackend(Backend):
     def configure(self, config: INCConfig) -> None:
         super().configure(config)
 
-        # Set torch dtype
-        self.torch_dtype = (
-            getattr(torch, config.torch_dtype)  # in case of torch.dtype
-            if config.torch_dtype is not None and hasattr(torch, config.torch_dtype)
-            else None  # in case of string or None
-        )
-        LOGGER.info(
-            f"\t+ Using torch dtype({self.torch_dtype}) for weights loading and export"
-        )
-
         with TemporaryDirectory() as tmpdirname:
             if config.no_weights:
                 raise NotImplementedError(
@@ -129,16 +117,11 @@ class INCBackend(Backend):
                 self.quantize_model(config, tmpdirname)
 
     def load_model_from_pretrained(self, config: INCConfig) -> None:
-        if self.torch_dtype is not None and self.torch_dtype != torch.float32:
-            raise NotImplementedError(
-                "Loading from pretrained is only supported with torch_dtype float32 for now"
-            )
         self.pretrained_model = self.incmodel_class.from_pretrained(
             # something is wrong here, modeling is not consistent
             model_name_or_path=self.model,
-            # for some reason causalLM expects model_id instead of model_name_or_path
+            # for some reason only causalLM expects model_id instead of model_name_or_path
             **({"model_id": self.model} if self.task == "text-generation" else {}),
-            torch_dtype=self.torch_dtype,
             device_map=self.device,
             **self.hub_kwargs,
         )

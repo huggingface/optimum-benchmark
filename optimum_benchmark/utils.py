@@ -146,9 +146,7 @@ def check_only_this_process_is_running_on_cuda_device(
         )
 
         # check if there is a process running on device_id that is not the current process
-        if len(pids_on_device_id) > 1 or (
-            len(pids_on_device_id) == 1 and (pid not in pids_on_device_id)
-        ):
+        if len(pids_on_device_id) > 1:
             os.kill(pid, signal.SIGTERM)
             raise RuntimeError(
                 f"Expected only process {pid} on device {cuda_device_id}, "

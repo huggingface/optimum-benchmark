@@ -34,12 +34,12 @@ class BackendConfig(ABC):
     inter_op_num_threads: Optional[int] = None
     intra_op_num_threads: Optional[int] = None
 
-    # clean up options
-    delete_cache: bool = False
-
     # isolation options
     initial_isolation_check: bool = True
     continous_isolation_check: bool = True
+
+    # clean up options
+    delete_cache: bool = False
 
 
 class Backend(ABC):
@@ -70,10 +70,15 @@ class Backend(ABC):
         )
 
     def can_generate(self) -> bool:
-        return (
-            hasattr(self.pretrained_model, "can_generate")
-            and self.pretrained_model.can_generate()
-        )
+        from accelerate import init_empty_weights
+
+        with init_empty_weights():
+            dummy_model = self.automodel_class.from_pretrained(
+                pretrained_model_name_or_path=self.model,
+                **self.hub_kwargs,
+            )
+
+        return hasattr(dummy_model, "can_generate") and dummy_model.can_generate()
 
     def check_initial_isolation(self) -> None:
         if self.device.type == "cuda":

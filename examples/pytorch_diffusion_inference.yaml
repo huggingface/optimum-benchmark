@@ -5,7 +5,7 @@ defaults:
 experiment_name: pytorch_diffusion
 
 model: hf-internal-testing/tiny-stable-diffusion-torch
-task: stable-diffusion # TasksManager fails to find the task for this model
+task: stable-diffusion
 device: cpu
 
 benchmark:

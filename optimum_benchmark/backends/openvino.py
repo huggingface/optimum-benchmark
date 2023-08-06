@@ -161,7 +161,9 @@ class OVBackend(Backend):
                 if k
                 in inspect.signature(self.pretrained_model.reshape).parameters.keys()
             }
-            LOGGER.info(f"\t+ Reshaping model with input shapes {relevant_shapes}")
+            LOGGER.info(
+                f"\t+ Reshaping model with relevant input shapes: {relevant_shapes}"
+            )
             self.pretrained_model.reshape(**relevant_shapes)
 
         if self.half:

@@ -1,22 +1,21 @@
 import os
-from datasets import Dataset
 import torch
 from torch import Tensor
-from pathlib import Path
+from datasets import Dataset
 from logging import getLogger
 from omegaconf import OmegaConf
 from dataclasses import dataclass
 from hydra.utils import get_class
-from typing import Any, Dict, List, Optional
 from tempfile import TemporaryDirectory
 from omegaconf.dictconfig import DictConfig
+from typing import Any, Dict, List, Optional
+
 
 try:
     from onnxruntime import __version__ as onnxruntime_version
 except ImportError:
     onnxruntime_version = "Not installed"
 
-from transformers import GenerationMixin, TrainingArguments
 from optimum.onnxruntime import ORTOptimizer, ORTQuantizer
 from optimum.onnxruntime.configuration import (
     OptimizationConfig,
@@ -27,9 +26,9 @@ from optimum.onnxruntime.configuration import (
 )
 
 
-from optimum_benchmark.profilers.ort_profiler import ORTProfilingWrapper
 from optimum_benchmark.backends.base import Backend, BackendConfig
-from optimum_benchmark.backends.utils import export_dummy_model
+from optimum_benchmark.backends.utils import main_export, randomize_weights
+from optimum_benchmark.profilers.ort_profiler import ORTProfilingWrapper
 from optimum_benchmark.utils import infer_device_id
 
 OmegaConf.register_new_resolver(
@@ -65,15 +64,16 @@ class ORTConfig(BackendConfig):
     # export options
     export: bool = True
     no_weights: bool = False
-    use_merged: Optional[bool] = None
+    use_merged: bool = False
+    use_cache: bool = True
     torch_dtype: Optional[str] = None
 
     # provider options
     provider: str = "${infer_provider:${device}}"
-    device_id: Optional[int] = "${infer_device_id:${device}}"  # type: ignore
+    device_id: Optional[int] = "${infer_device_id:${device}}"
 
     # inference options
-    use_io_binding: bool = "${is_gpu:${device}}"  # type: ignore
+    use_io_binding: bool = "${is_gpu:${device}}"
     enable_profiling: bool = "${is_profiling:${benchmark.name}}"
 
     # optimization options
@@ -108,7 +108,8 @@ class ORTConfig(BackendConfig):
     auto_optimization_config: DictConfig = DictConfig(
         {
             "for_gpu": "${is_gpu:${device}}",
-            # add auto optimization specific options
+            # add auto optimization specific options in config file or cli
+            # using +backend.auto_optimization_config.option_name: value
         }
     )
 
@@ -136,9 +137,9 @@ class ORTConfig(BackendConfig):
     auto_quantization: Optional[str] = None
     auto_quantization_config: DictConfig = DictConfig(
         {
-            # for now, only dynamic quantization is supported
             "is_static": False
-            # add auto quantization specific options
+            # add auto quantization specific options in config file or cli
+            # using +backend.auto_quantization_config.option_name: value
         }
     )
 
@@ -155,18 +156,26 @@ class ORTConfig(BackendConfig):
         }
     )
 
+    # this will skip exporting the model and will use automodel instead
+    use_ortmodel: bool = "${is_inference:${benchmark.name}}"
+
 
 class ORTBackend(Backend):
     def __init__(
         self, model: str, task: str, device: str, hub_kwargs: DictConfig
     ) -> None:
         super().__init__(model, task, device, hub_kwargs)
+        self.feature = self.task
 
         from optimum.pipelines import ORT_SUPPORTED_TASKS
 
         if self.task == "stable-diffusion":
             self.ortmodel_class = get_class(
                 "optimum.onnxruntime.ORTStableDiffusionPipeline"
+            )
+        elif self.task == "stable-diffusion-xl":
+            self.ortmodel_class = get_class(
+                "optimum.onnxruntime.ORTStableDiffusionXLPipeline"
             )
         elif self.task in ORT_SUPPORTED_TASKS:
             self.ortmodel_class = ORT_SUPPORTED_TASKS[self.task]["class"][0]
@@ -211,75 +220,76 @@ class ORTBackend(Backend):
         self.torch_dtype = (
             getattr(torch, config.torch_dtype)  # in case of torch.dtype
             if config.torch_dtype is not None and hasattr(torch, config.torch_dtype)
-            else None  # in case of string or None
+            else config.torch_dtype
         )
         LOGGER.info(
             f"\t+ Using torch dtype({self.torch_dtype}) for weights loading and export"
         )
 
         with TemporaryDirectory() as tmpdirname:
-            if config.no_weights:
-                self.load_model_from_config(config, tmpdirname)
+            if config.use_ortmodel:
+                if config.no_weights:
+                    self.load_ortmodel_from_config(config, tmpdirname)
+                else:
+                    self.load_ortmodel_from_pretrained(config, tmpdirname)
             else:
-                self.load_model_from_pretrained(config)
+                if config.no_weights:
+                    self.load_automodel_from_config(config)
+                else:
+                    self.load_automodel_from_pretrained(config)
 
-            if (
-                (config.optimization or config.auto_optimization is not None)
-                and not config.use_merged
-                and not config.no_weights
-            ):
-                self.optimize(config, tmpdirname)
-            elif (
-                (config.optimization or config.auto_optimization is not None)
-                and config.use_merged
-                and not config.no_weights
-            ):
-                raise NotImplementedError(
-                    "Optimization on merged model is only supported during export (no_weights=True) for now."
-                )
-            if config.quantization or config.auto_quantization is not None:
-                self.quantize(config, tmpdirname)
-
-    def load_model_from_config(self, config: ORTConfig, tmpdirname: str) -> None:
+    def load_ortmodel_from_config(self, config: ORTConfig, tmpdirname: str) -> None:
         LOGGER.info(
             f"\t+ Loading model from config in {config.torch_dtype} on {self.device}"
         )
 
-        export_dummy_model(
-            # dummy init options
-            automodel_class=self.automodel_class,
-            pretrained_config=self.pretrained_config,
-            # export options
-            output_dir=tmpdirname,
-            device=self.device,
-            torch_dtype=self.torch_dtype,
-            auto_optimization=config.auto_optimization,
-            **(
-                {"use_merged": config.use_merged}
-                if config.use_merged is not None
-                else {}
-            ),
+        self.load_automodel_from_config(config)
+        main_export(
+            model_name_or_path=self.model,
+            output=f"{tmpdirname}/exported_model",
+            task=self.task + "-with-past"
+            if self.can_generate() and config.use_cache
+            else self.task,
+            device=self.device.type,
+            fp16=self.torch_dtype == torch.float16,
+            optimize=config.auto_optimization,
+            no_post_process=not config.use_merged,
+            for_ort=True,
+            do_validation=False,
             **self.hub_kwargs,
+            # we hijack the model instantiation and use our random weights model
+            model=self.pretrained_model,
         )
         self.delete_pretrained_model()
 
         LOGGER.info("\t+ Loading exported model in onnxruntime")
         self.pretrained_model = self.ortmodel_class.from_pretrained(
-            model_id=Path(tmpdirname),
+            model_id=f"{tmpdirname}/exported_model",
             session_options=self.session_options,
             use_io_binding=config.use_io_binding,
             provider=config.provider,
             provider_options=self.provider_options,
             **(
-                {"use_merged": config.use_merged}
-                if config.use_merged is not None
+                {
+                    "use_merged": config.use_merged,
+                    "use_cache": config.use_cache,
+                }
+                if self.can_generate()
                 else {}
             ),
             export=False,
             **self.hub_kwargs,
         )
 
-    def load_model_from_pretrained(self, config: ORTConfig) -> None:
+        if config.optimization:
+            raise NotImplementedError(
+                "Only AutoOptimization is supported when loading a model with random weights"
+            )
+
+        if config.quantization or config.auto_quantization is not None:
+            self.quantize(config, tmpdirname)
+
+    def load_ortmodel_from_pretrained(self, config: ORTConfig, tmpdirname: str) -> None:
         if self.torch_dtype is not None and self.torch_dtype != torch.float32:
             raise NotImplementedError(
                 "Loading from pretrained is only supported with torch_dtype float32 for now"
@@ -293,12 +303,21 @@ class ORTBackend(Backend):
             provider_options=self.provider_options,
             export=config.export,
             **(
-                {"use_merged": config.use_merged}
-                if config.use_merged is not None
+                {
+                    "use_merged": config.use_merged,
+                    "use_cache": config.use_cache,
+                }
+                if self.can_generate()
                 else {}
             ),
             **self.hub_kwargs,
         )
+
+        if config.optimization or config.auto_optimization is not None:
+            self.optimize(config, tmpdirname)
+
+        if config.quantization or config.auto_quantization is not None:
+            self.quantize(config, tmpdirname)
 
     def optimize(self, config: ORTConfig, tmpdirname: str) -> None:
         if config.auto_optimization is not None:
@@ -341,50 +360,27 @@ class ORTBackend(Backend):
 
     def quantize(self, config: ORTConfig, tmpdirname: str) -> None:
         if config.auto_quantization is not None:
-            LOGGER.info(f"\t+ Using auto quantization {config.auto_quantization}")
-            auto_quantization_class = getattr(
+            LOGGER.info(
+                f"\t+ Using auto quantization {config.auto_quantization} and its config"
+            )
+            auto_quantization_config_class = getattr(
                 AutoQuantizationConfig, config.auto_quantization
             )
             quantization_dict = OmegaConf.to_container(
                 config.auto_quantization_config, resolve=True
             )
-
-            LOGGER.info("\t+ Setting quantization parameters:")
-            for key, value in quantization_dict.items():  # type: ignore
-                LOGGER.info(f"\t\t+ {key}: {value}")
-
-            quantization_config = auto_quantization_class(**quantization_dict)
+            quantization_dict = format_ort_quantization_dict(quantization_dict)
+            quantization_config = auto_quantization_config_class(**quantization_dict)
 
         else:
-            from onnxruntime.quantization import (
-                QuantFormat,
-                QuantizationMode,
-                QuantType,
-            )
+            LOGGER.info("\t+ Using manual quantization and its config")
+            from optimum_benchmark.backends.utils import format_ort_quantization_dict
 
             quantization_dict = OmegaConf.to_container(
                 config.quantization_config, resolve=True
             )
-            if quantization_dict.get("format", None) is not None:
-                quantization_dict["format"] = QuantFormat.from_string(
-                    quantization_dict["format"]
-                )
-            if quantization_dict.get("mode", None) is not None:
-                quantization_dict["mode"] = QuantizationMode.from_string(
-                    quantization_dict["mode"]
-                )
-            if quantization_dict.get("activations_dtype", None) is not None:
-                quantization_dict["activations_dtype"] = QuantType.from_string(
-                    quantization_dict["activations_dtype"]
-                )
-            if quantization_dict.get("weights_dtype", None) is not None:
-                quantization_dict["weights_dtype"] = QuantType.from_string(
-                    quantization_dict["weights_dtype"]
-                )
-
-            quantization_config = QuantizationConfig(
-                **quantization_dict,
-            )
+            quantization_dict = format_ort_quantization_dict(quantization_dict)
+            quantization_config = QuantizationConfig(**quantization_dict)
 
         LOGGER.info("\t+ Attempting quantization")
         model_dir = self.pretrained_model.model_save_dir
@@ -431,17 +427,35 @@ class ORTBackend(Backend):
             provider_options=self.provider_options,
         )
 
-    def forward(self, input: Dict[str, Tensor], **kwargs) -> Tensor:
-        output = self.pretrained_model(**input, **kwargs)[0]
+    def load_automodel_from_config(self, config: ORTConfig) -> None:
+        from accelerate import init_empty_weights
 
-        return output
+        with init_empty_weights():
+            self.pretrained_model = self.automodel_class.from_config(
+                config=self.pretrained_config,
+                torch_dtype=self.torch_dtype,
+                trust_remote_code=self.hub_kwargs.get("trust_remote_code", False),
+            )
+        self.pretrained_model.to_empty(device=self.device)
+        randomize_weights(self.pretrained_model)
 
-    def generate(self, input: Dict[str, Tensor], **kwargs) -> Tensor:
-        output = self.pretrained_model.generate(**input, **kwargs)[0]
-        return output
+    def load_automodel_from_pretrained(self, config: ORTConfig) -> None:
+        with self.device:
+            self.pretrained_model = self.automodel_class.from_pretrained(
+                pretrained_model_name_or_path=self.model,
+                torch_dtype=self.torch_dtype,
+                **self.hub_kwargs,
+            )
+
+    def prepare_for_profiling(self, input_names: List[str]) -> None:
+        LOGGER.info("Preparing model for profiling")
+        LOGGER.info("\t+ Wrapping model inside profiler")
+        self.pretrained_model = ORTProfilingWrapper(self.pretrained_model)
 
     def prepare_for_training(
-        self, training_dataset: Dataset, training_arguments: Dict[str, Any]
+        self,
+        training_dataset: Dataset,
+        training_arguments: Dict[str, Any],
     ) -> None:
         LOGGER.info("Preparing model for training")
         LOGGER.info("\t+ Wrapping model inside trainer")
@@ -454,19 +468,27 @@ class ORTBackend(Backend):
             args=training_arguments,
             train_dataset=training_dataset,
             feature=self.feature,
+            # tokenizer: Optional[PreTrainedTokenizerBase] = None,
+            # data_collator: Optional[DataCollator] = None,
+            # model_init: Optional[Callable[[], PreTrainedModel]] = None,
+            # compute_metrics: Optional[Callable[[EvalPrediction], Dict]] = None,
+            # callbacks: Optional[List[TrainerCallback]] = None,
+            # optimizers: Tuple[torch.optim.Optimizer, torch.optim.lr_scheduler.LambdaLR] = (None, None),
+            # preprocess_logits_for_metrics: Optional[Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = None,
+            # onnx_model_path: Union[str, os.PathLike] = None,
         )
+
+    def forward(self, input: Dict[str, Tensor], **kwargs) -> Tensor:
+        output = self.pretrained_model(**input, **kwargs)[0]
+
+        return output
+
+    def generate(self, input: Dict[str, Tensor], **kwargs) -> Tensor:
+        output = self.pretrained_model.generate(**input, **kwargs)[0]
+        return output
 
     def train(self) -> None:
         LOGGER.info("Training model")
         results = self.trainer.train()
 
         return results
-
-    def prepare_for_profiling(self, input_names: List[str]) -> None:
-        LOGGER.info("Preparing model for profiling")
-        LOGGER.info("\t+ Wrapping model inside profiler")
-        self.pretrained_model = ORTProfilingWrapper(self.pretrained_model)
-
-    def can_be_merged(self) -> bool:
-        # TODO: check if this is the right way to do it
-        return issubclass(self.ortmodel_class, GenerationMixin)
