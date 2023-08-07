@@ -15,24 +15,6 @@ from logging import getLogger
 LOGGER = getLogger("utils")
 
 
-LLM_MODEL_TYPES = [
-    "gpt_neox",
-    "gptj",
-    "gpt_neo",
-    "gpt2",
-    "llama",
-    "opt",
-    "gpt_bigcode",
-    "mpt",
-    "codegen",
-    "RefinedWebModel",
-    "RefinedWeb",
-    "xglm",
-    "baichuan",
-    "chatglm",
-]
-
-
 def set_seed(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
@@ -40,8 +22,8 @@ def set_seed(seed: int) -> None:
 
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True  # type: ignore
-    torch.backends.cudnn.benchmark = False  # type: ignore
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 
 def bytes_to_mega_bytes(bytes: int) -> int:
@@ -164,9 +146,7 @@ def check_only_this_process_is_running_on_cuda_device(
         )
 
         # check if there is a process running on device_id that is not the current process
-        if len(pids_on_device_id) > 1 or (
-            len(pids_on_device_id) == 1 and (pid not in pids_on_device_id)
-        ):
+        if len(pids_on_device_id) > 1:
             os.kill(pid, signal.SIGTERM)
             raise RuntimeError(
                 f"Expected only process {pid} on device {cuda_device_id}, "
@@ -187,8 +167,6 @@ def infer_device_id(device: str) -> int:
         return torch.cuda.current_device()
     elif torch.device(device).type == "cuda":
         return torch.device(device).index
-    elif device == "cpu":
-        return -1
     elif torch.device(device).type == "cpu":
         return -1
     else:

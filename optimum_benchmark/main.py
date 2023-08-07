@@ -26,12 +26,15 @@ except ImportError:
 from optimum_benchmark.backends.base import Backend
 from optimum_benchmark.benchmarks.base import Benchmark
 from optimum_benchmark.backends.openvino import OVConfig
-from optimum_benchmark.backends.base import BackendConfig
 from optimum_benchmark.backends.pytorch import PyTorchConfig
 from optimum_benchmark.backends.onnxruntime import ORTConfig
 from optimum_benchmark.backends.neural_compressor import INCConfig
+from optimum_benchmark.backends.base import Backend, BackendConfig
+
+from optimum_benchmark.benchmarks.training import TrainingConfig
 from optimum_benchmark.benchmarks.inference import InferenceConfig
-from optimum_benchmark.benchmarks.inference import BenchmarkConfig
+from optimum_benchmark.benchmarks.base import Benchmark, BenchmarkConfig
+
 from optimum_benchmark.utils import get_cpu, get_cpu_ram_mb
 
 
@@ -98,6 +101,7 @@ cs.store(group="backend", name="onnxruntime", node=ORTConfig)
 cs.store(group="backend", name="openvino", node=OVConfig)
 cs.store(group="backend", name="neural_compressor", node=INCConfig)
 cs.store(group="benchmark", name="inference", node=InferenceConfig)
+cs.store(group="benchmark", name="training", node=TrainingConfig)
 
 
 @hydra.main(version_base=None)

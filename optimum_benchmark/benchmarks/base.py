@@ -2,8 +2,10 @@ from dataclasses import dataclass, MISSING
 from abc import ABC, abstractmethod
 from logging import getLogger
 
+
 from optimum_benchmark.backends.base import Backend
 from optimum_benchmark.utils import set_seed
+
 
 LOGGER = getLogger("benchmark")
 
@@ -21,9 +23,9 @@ class Benchmark(ABC):
     def __init__(self):
         pass
 
+    @abstractmethod
     def configure(self, config: BenchmarkConfig) -> None:
         LOGGER.info(f"Configuring {config.name} benchmark")
-
         LOGGER.info(f"\t+ Setting seed({config.seed})")
         set_seed(config.seed)
 

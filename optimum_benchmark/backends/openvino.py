@@ -1,6 +1,5 @@
 import torch
 import inspect
-import openvino
 from torch import Tensor
 from logging import getLogger
 from omegaconf import DictConfig
@@ -9,9 +8,10 @@ from hydra.utils import get_class
 from typing import Dict, Optional
 from tempfile import TemporaryDirectory
 
-import optimum.intel.openvino as optimum_openvino
-from optimum.intel.openvino.utils import _HEAD_TO_AUTOMODELS
-from optimum.intel import OVConfig as OVQuantizationConfig, OVQuantizer
+try:
+    from openvino.runtime import __version__ as openvino_version
+except ImportError:
+    openvino_version = "Not installed"
 
 from optimum_benchmark.backends.base import Backend, BackendConfig
 
@@ -21,7 +21,7 @@ LOGGER = getLogger("openvino")
 @dataclass
 class OVConfig(BackendConfig):
     name: str = "openvino"
-    version: str = openvino.runtime.get_version()
+    version: str = openvino_version
     _target_: str = "optimum_benchmark.backends.openvino.OVBackend"
 
     # export options
@@ -64,11 +64,15 @@ class OVBackend(Backend):
     ) -> None:
         super().__init__(model, task, device, hub_kwargs)
 
-        self.ovmodel_class = getattr(optimum_openvino, _HEAD_TO_AUTOMODELS[self.task])
+        from optimum.intel.openvino.utils import _HEAD_TO_AUTOMODELS
+
+        self.ovmodel_class = get_class(
+            f"optimum.intel.openvino.{_HEAD_TO_AUTOMODELS[self.task]}"
+        )
 
         LOGGER.info(
             f"\t+ Infered OVModel class {self.ovmodel_class.__name__} "
-            f"for task {self.task} and model_type {self.pretrained_config.model_type}"
+            f"for task {self.task} and model_type {self.model_type}"
         )
 
     def configure(self, config: OVConfig) -> None:
@@ -93,7 +97,7 @@ class OVBackend(Backend):
                 self.load_model_from_pretrained(config)
 
             if config.quantization:
-                self.quantize_model(config, tmpdirname)
+                self.quantize(config, tmpdirname)
 
         self.reshape = config.reshape
         if self.reshape:
@@ -115,8 +119,10 @@ class OVBackend(Backend):
             **self.hub_kwargs,
         )
 
-    def quantize_model(self, config: OVConfig, tmpdirname: str) -> None:
+    def quantize(self, config: OVConfig, tmpdirname: str) -> None:
         LOGGER.info("\t+ Attempting quantization")
+
+        from optimum.intel import OVConfig as OVQuantizationConfig, OVQuantizer
 
         model = self.automodel_class.from_pretrained(self.model, **self.hub_kwargs)
         quantizer = OVQuantizer.from_pretrained(model)
@@ -155,7 +161,9 @@ class OVBackend(Backend):
                 if k
                 in inspect.signature(self.pretrained_model.reshape).parameters.keys()
             }
-            LOGGER.info(f"\t+ Reshaping model with input shapes {relevant_shapes}")
+            LOGGER.info(
+                f"\t+ Reshaping model with relevant input shapes: {relevant_shapes}"
+            )
             self.pretrained_model.reshape(**relevant_shapes)
 
         if self.half:
@@ -166,20 +174,15 @@ class OVBackend(Backend):
             LOGGER.info(f"\t+ Compiling model")
             self.pretrained_model.compile()
 
-    def forward(self, input: Dict[str, Tensor]) -> Tensor:
-        output = self.pretrained_model(**input)[0]
+    def forward(self, input: Dict[str, Tensor], **kwargs) -> Tensor:
+        output = self.pretrained_model(**input, **kwargs)[0]
 
         return output
 
-    def generate(self, input: Dict[str, Tensor], new_tokens: int) -> Tensor:
-        output = self.pretrained_model.generate(
-            **input,
-            pad_token_id=0,
-            max_new_tokens=new_tokens,
-            min_new_tokens=new_tokens,
-            do_sample=False,
-            use_cache=True,
-            num_beams=1,
-        )[0]
+    def generate(self, input: Dict[str, Tensor], **kwargs) -> Tensor:
+        output = self.pretrained_model.generate(**input, **kwargs)[0]
 
         return output
+
+    def train(self, **kwargs) -> None:
+        pass

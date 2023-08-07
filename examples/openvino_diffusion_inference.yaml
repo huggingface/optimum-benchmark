@@ -1,0 +1,13 @@
+defaults:
+  - base_config # inherits from base config
+  - _self_ # for hydra 1.1 compatibility
+  - override backend: openvino # override backend to openvino
+
+experiment_name: openvino_diffusion_inference
+
+model: hf-internal-testing/tiny-stable-diffusion-torch
+task: stable-diffusion
+device: cpu
+
+benchmark:
+  warmup_runs: 1
