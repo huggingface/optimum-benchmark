@@ -176,6 +176,11 @@ class TrainingBenchmark(Benchmark):
                 type="torch",
                 columns=["input_ids", "labels"],
             )
+        else:
+            raise NotImplementedError(
+                f"Training benchmark not implemented for task {backend.task}."
+                "Please submit a PR to add support for this task."
+            )
 
         backend.prepare_for_training(
             training_dataset=self.training_dataset,
