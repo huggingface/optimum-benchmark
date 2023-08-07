@@ -165,7 +165,6 @@ class ORTBackend(Backend):
         self, model: str, task: str, device: str, hub_kwargs: DictConfig
     ) -> None:
         super().__init__(model, task, device, hub_kwargs)
-        self.feature = self.task
 
         from optimum.pipelines import ORT_SUPPORTED_TASKS
 
@@ -467,15 +466,7 @@ class ORTBackend(Backend):
             model=self.pretrained_model,
             args=training_arguments,
             train_dataset=training_dataset,
-            feature=self.feature,
-            # tokenizer: Optional[PreTrainedTokenizerBase] = None,
-            # data_collator: Optional[DataCollator] = None,
-            # model_init: Optional[Callable[[], PreTrainedModel]] = None,
-            # compute_metrics: Optional[Callable[[EvalPrediction], Dict]] = None,
-            # callbacks: Optional[List[TrainerCallback]] = None,
-            # optimizers: Tuple[torch.optim.Optimizer, torch.optim.lr_scheduler.LambdaLR] = (None, None),
-            # preprocess_logits_for_metrics: Optional[Callable[[torch.Tensor, torch.Tensor], torch.Tensor]] = None,
-            # onnx_model_path: Union[str, os.PathLike] = None,
+            feature=self.task,
         )
 
     def forward(self, input: Dict[str, Tensor], **kwargs) -> Tensor:
