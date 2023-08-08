@@ -3,7 +3,7 @@ defaults:
   - _self_ # for hydra 1.1 compatibility
   - override benchmark: training
 
-experiment_name: pytorch_bert_training
+experiment_name: cpu_pytorch_training_bert
 
 model: hf-internal-testing/tiny-random-bert
 task: text-classification

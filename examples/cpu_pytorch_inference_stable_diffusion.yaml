@@ -1,9 +1,8 @@
 defaults:
   - base_config # inherits from base config
   - _self_ # for hydra 1.1 compatibility
-  - override backend: onnxruntime # override backend to onnxruntime
 
-experiment_name: onnxruntime_diffusion_inference
+experiment_name: cpu_pytorch_inference_stable_diffusion
 
 model: hf-internal-testing/tiny-stable-diffusion-torch
 task: stable-diffusion

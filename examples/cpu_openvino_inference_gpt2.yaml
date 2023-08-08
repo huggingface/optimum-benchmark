@@ -3,11 +3,8 @@ defaults:
   - _self_ # for hydra 1.1 compatibility
   - override backend: openvino # override backend to openvino
 
-experiment_name: openvino_diffusion_inference
+experiment_name: cpu_openvino_inference_gpt2
 
-model: hf-internal-testing/tiny-stable-diffusion-torch
-task: stable-diffusion
+model: hf-internal-testing/tiny-random-gpt2
+task: text-generation
 device: cpu
-
-benchmark:
-  warmup_runs: 1
