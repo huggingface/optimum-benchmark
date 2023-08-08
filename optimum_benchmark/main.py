@@ -8,7 +8,9 @@ from dataclasses import dataclass, MISSING, field
 from omegaconf import OmegaConf
 from hydra.core.config_store import ConfigStore
 
+from .import_utils import is_torch_available, is_onnxruntime_available, is_openvino_available, is_neural_compressor_available
 from .utils import get_git_revision_hash
+
 from optimum.exporters import TasksManager
 from optimum.version import __version__ as optimum_version
 from transformers import __version__ as transformers_version
@@ -25,10 +27,6 @@ except ImportError:
 
 from optimum_benchmark.backends.base import Backend
 from optimum_benchmark.benchmarks.base import Benchmark
-from optimum_benchmark.backends.openvino import OVConfig
-from optimum_benchmark.backends.pytorch import PyTorchConfig
-from optimum_benchmark.backends.onnxruntime import ORTConfig
-from optimum_benchmark.backends.neural_compressor import INCConfig
 from optimum_benchmark.backends.base import Backend, BackendConfig
 
 from optimum_benchmark.benchmarks.training import TrainingConfig
@@ -96,10 +94,23 @@ class ExperimentConfig:
 # Register configurations
 cs = ConfigStore.instance()
 cs.store(name="experiment", node=ExperimentConfig)
-cs.store(group="backend", name="pytorch", node=PyTorchConfig)
-cs.store(group="backend", name="onnxruntime", node=ORTConfig)
-cs.store(group="backend", name="openvino", node=OVConfig)
-cs.store(group="backend", name="neural_compressor", node=INCConfig)
+
+if is_torch_available():
+    from optimum_benchmark.backends.pytorch import PyTorchConfig
+    cs.store(group="backend", name="pytorch", node=PyTorchConfig)
+
+if is_onnxruntime_available():
+    from optimum_benchmark.backends.onnxruntime import ORTConfig
+    cs.store(group="backend", name="onnxruntime", node=ORTConfig)
+
+if is_openvino_available():
+    from optimum_benchmark.backends.openvino import OVConfig
+    cs.store(group="backend", name="openvino", node=OVConfig)
+
+if is_neural_compressor_available():
+    from optimum_benchmark.backends.neural_compressor import INCConfig
+    cs.store(group="backend", name="neural_compressor", node=INCConfig)
+
 cs.store(group="benchmark", name="inference", node=InferenceConfig)
 cs.store(group="benchmark", name="training", node=TrainingConfig)
 
