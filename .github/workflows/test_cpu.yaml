@@ -1,4 +1,4 @@
-name: Unit Tests
+name: CPU Unit Tests
 
 on:
   push:

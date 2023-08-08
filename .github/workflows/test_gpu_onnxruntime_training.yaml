@@ -1,4 +1,4 @@
-name: ONNX Runtime / Test ORTTrainer
+name: GPU OnnxRuntime Training Unit Tests
 
 on:
   workflow_dispatch:

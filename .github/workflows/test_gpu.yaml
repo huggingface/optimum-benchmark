@@ -1,4 +1,4 @@
-name: ONNX Runtime / Test GPU
+name: GPU Unit Tests
 
 on:
   workflow_dispatch:
