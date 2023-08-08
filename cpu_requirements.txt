@@ -7,6 +7,10 @@ git+https://github.com/huggingface/transformers.git
 # diffusers
 git+https://github.com/huggingface/diffusers.git
 
+onnxruntime
+neural-compressor
+openvino
+
 omegaconf==2.3.0
 hydra-core==1.3.2
 hydra_colorlog==1.2.0
