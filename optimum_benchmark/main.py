@@ -1,14 +1,14 @@
 import os
 import hydra
 import platform
-from typing import Type
+from typing import Type, Dict
 from logging import getLogger
 from hydra.utils import get_class
-from dataclasses import dataclass, MISSING
-from omegaconf import DictConfig, OmegaConf
+from dataclasses import dataclass, MISSING, field
+from omegaconf import OmegaConf
 from hydra.core.config_store import ConfigStore
 
-
+from .utils import get_git_revision_hash
 from optimum.exporters import TasksManager
 from optimum.version import __version__ as optimum_version
 from transformers import __version__ as transformers_version
@@ -67,8 +67,7 @@ class ExperimentConfig:
     task: str = "${infer_task:${model}, ${hub_kwargs.revision}}"
 
     # ADDITIONAL MODEL CONFIGURATION: Model revision, use_auth_token, trust_remote_code
-    hub_kwargs: DictConfig = DictConfig(
-        {
+    hub_kwargs: Dict = field(default_factory=lambda: {
             "revision": "main",
             "cache_dir": None,
             "force_download": False,
@@ -78,11 +77,12 @@ class ExperimentConfig:
     )
 
     # ENVIRONMENT CONFIGURATION
-    environment: DictConfig = DictConfig(
-        {
+    environment: Dict = field(default_factory=lambda: {
             "optimum_version": optimum_version,
             "transformers_version": transformers_version,
+            "transformers_commit": None,
             "accelerate_version": accelerate_version,
+            "accelerate_commit": None,
             "diffusers_version": diffusers_version,
             "python_version": platform.python_version(),
             "system": platform.system(),
@@ -106,6 +106,9 @@ cs.store(group="benchmark", name="training", node=TrainingConfig)
 
 @hydra.main(version_base=None)
 def run_experiment(experiment: ExperimentConfig) -> None:
+    experiment.environment.transformers_commit = get_git_revision_hash(os.getenv("TRANSFORMERS_PATH"))
+    experiment.environment.accelerate_commit = get_git_revision_hash(os.getenv("ACCELERATE_PATH"))
+
     # Save the config
     OmegaConf.save(experiment, "hydra_config.yaml", resolve=True)
 

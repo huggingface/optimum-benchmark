@@ -171,3 +171,16 @@ def infer_device_id(device: str) -> int:
         return -1
     else:
         raise ValueError(f"Unknown device '{device}'")
+
+def get_git_revision_hash(path: Optional[str]) -> str:
+    """
+    Returns the git commit SHA for the git repository in `path`.
+    """
+    if path is None:
+        return None
+    else:
+        try:
+            return subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=path).decode('ascii').strip()
+        except Exception as e:
+            LOGGER.warning(f"Asked to log the git commit SHA for {path}, but it does not appear to be a git repository: {e}")
+            return None
