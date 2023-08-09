@@ -15,6 +15,4 @@ jobs:
       - name: Build Docker image
         run: docker build -f docker/gpu_onnxruntime_training.Dockerfile -t gpu-onnxruntime-training .
       - name: Run Docker container
-        run:
-          docker run --rm --gpus all --workdir=/workspace/optimum-benchmark gpu-onnxruntime-training \
-          pytest -k "(cuda or tensorrt) and onnxruntime_training"
+        run: docker run --rm --gpus all --workdir=/workspace/optimum-benchmark gpu-onnxruntime-training pytest -k "(cuda or tensorrt) and onnxruntime_training"
