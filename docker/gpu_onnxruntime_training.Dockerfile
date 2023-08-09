@@ -67,8 +67,7 @@ RUN $PYTHON_EXE -m torch_ort.configure
 # Install Optimum-Benchmark
 COPY . /workspace/optimum-benchmark
 WORKDIR /workspace/optimum-benchmark
-RUN pip install -r gpu_ort_training_requirements.txt
+RUN pip install -r gpu_onnxruntime_training_requirements.txt
 RUN pip install -e .[test]
 
-# Run cuda onnxruntime training tests
-CMD ["pytest", "-k", "(cuda or tensorrt) and onnxruntime_training"]
+CMD /bin/bash

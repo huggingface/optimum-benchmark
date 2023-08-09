@@ -1,11 +1,10 @@
 name: GPU Unit Tests
 
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: 0 1 */3 * * # at 1am every 3 days
+  push:
+    branches: [main]
   pull_request:
-    types: [opened, synchronize, reopened, labeled]
+    branches: [main]
 
 jobs:
   build-and-test:
@@ -14,6 +13,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Build Docker image
-        run: docker build -f examples/docker/gpu.Dockerfile -t optimum-benchmark-gpu .
+        run: docker build -f docker/gpu.Dockerfile -t optimum-benchmark-gpu .
       - name: Run Docker container
-        run: docker run --rm --gpus all --workdir=/workspace/optimum-benchmark optimum-benchmark-gpu
+        run:
+          docker run --rm --gpus all --workdir=/workspace/optimum-benchmark optimum-benchmark-gpu \
+          pytest -k "(cuda or tensorrt) and not onnxruntime_training"

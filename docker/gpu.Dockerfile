@@ -31,8 +31,8 @@ RUN apt-get autoremove -y
 # Install Optimum
 COPY . /workspace/optimum-benchmark
 WORKDIR /workspace/optimum-benchmark
-RUN python -m pip install -U pip
+RUN pip install -U pip
 RUN pip install -r gpu_requirements.txt
 RUN pip install -e .[test]
 
-CMD ["pytest", "-k", "(cuda or tensorrt) and not onnxruntime_training"]
+CMD /bin/bash
