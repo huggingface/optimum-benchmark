@@ -2,10 +2,9 @@ name: GPU OnnxRuntime Training Unit Tests
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: 0 1 */3 * * # at 1am every 3 days
-  pull_request:
-    types: [opened, synchronize, reopened, labeled]
+    inputs:
+      run_tests:
+        description: "Run the tests"
 
 jobs:
   start-runner:
