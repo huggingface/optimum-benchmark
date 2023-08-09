@@ -2,9 +2,10 @@ name: GPU Unit Tests
 
 on:
   workflow_dispatch:
-    inputs:
-      run_tests:
-        description: "Run the tests"
+  schedule:
+    - cron: 0 1 */3 * * # at 1am every 3 days
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
 
 jobs:
   start-runner:
