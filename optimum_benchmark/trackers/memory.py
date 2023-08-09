@@ -94,7 +94,7 @@ class PyTorchMemoryTracker(MemoryTracker):
     def __init__(self, backend):
         super().__init__(backend)
 
-        if backend.device_map:
+        if backend.config.device_map:
             self.hf_device_map = backend.pretrained_model.hf_device_map
             self.device_indexes = list(self.hf_device_map.values())
         else:

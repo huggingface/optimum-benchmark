@@ -103,7 +103,7 @@ class InferenceBenchmark(Benchmark):
         )
 
         LOGGER.info("\t+ Tracking forward pass peak memory")
-        memory_tracker = memory_tracker_class_for_backend[backend.name](backend)
+        memory_tracker = memory_tracker_class_for_backend[backend.config.name](backend)
         with memory_tracker.track(interval=self.benchmark_duration // 100):
             _ = backend.forward(memory_input)
 
@@ -126,7 +126,7 @@ class InferenceBenchmark(Benchmark):
             _ = backend.forward(forward_input)
 
         LOGGER.info("\t+ Tracking forward pass latency and throughput")
-        latency_tracker = latency_tracker_class_for_backend[backend.name](backend)
+        latency_tracker = latency_tracker_class_for_backend[backend.config.name](backend)
         while sum(self.forward_latencies) < self.benchmark_duration:
             with latency_tracker.track():
                 _ = backend.forward(forward_input)
@@ -155,7 +155,7 @@ class InferenceBenchmark(Benchmark):
         )
 
         LOGGER.info("\t+ Tracking generation latency and throughput")
-        latency_tracker = latency_tracker_class_for_backend[backend.name](backend)
+        latency_tracker = latency_tracker_class_for_backend[backend.config.name](backend)
         while sum(self.generate_latencies) < self.benchmark_duration:
             with latency_tracker.track():
                 _ = backend.generate(

@@ -50,7 +50,7 @@ class LatencyTracker:
 class PyTorchLatencyTracker(LatencyTracker):
     def __init__(self, backend):
         super().__init__(backend)
-        if backend.device_map:
+        if backend.config.device_map:
             self.hf_device_map = backend.pretrained_model.hf_device_map
             # This logic will break if anything else than device_map="auto" is used.
             self.start_device = min(self.hf_device_map.values())
