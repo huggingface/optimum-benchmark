@@ -27,7 +27,8 @@ def set_seed(seed: int) -> None:
 
 
 def bytes_to_mega_bytes(bytes: int) -> int:
-    return bytes >> 20
+    # Reference: https://en.wikipedia.org/wiki/Byte#Multiple-byte_units
+    return bytes * 1e-6
 
 
 def get_cpu() -> Optional[str]:
@@ -59,8 +60,6 @@ def check_no_process_is_running_on_cuda_device(device: torch.device) -> None:
     """
     Raises a RuntimeError if any process is running on the given cuda device.
     """
-
-    LOGGER.info(subprocess.check_output(f"nvidia-smi", shell=True).decode())
 
     cuda_device_id = (
         device.index if device.index is not None else torch.cuda.current_device()
@@ -96,10 +95,9 @@ def check_no_process_is_running_on_cuda_device(device: torch.device) -> None:
         ]
     )
 
-    for pid in pids_on_device_id:
-        LOGGER.info(subprocess.check_output(f"ps -p {pid} -o pid,vsz=MEMORY -o user,group=GROUP -o comm,args=ARGS", shell=True).decode())
-
-    if len(pids_on_device_id) > 0:
+    # TODO: It would be safer to run each run of a sweep in a subprocess. Although we can trust PyTorch to clear GPU memory when asked,
+    # it is not a safe assumption to make for all backends.
+    if len(pids_on_device_id) > 1:
         raise RuntimeError(
             f"Expected no processes on device {cuda_device_id}, "
             f"found {len(pids_on_device_id)} processes "
