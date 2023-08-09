@@ -15,7 +15,6 @@ flatten_dict
 matplotlib
 py3nvml
 seaborn
-pytest
 psutil
 pandas
 rich
