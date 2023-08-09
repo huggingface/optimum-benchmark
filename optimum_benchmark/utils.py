@@ -60,6 +60,8 @@ def check_no_process_is_running_on_cuda_device(device: torch.device) -> None:
     Raises a RuntimeError if any process is running on the given cuda device.
     """
 
+    LOGGER.info(subprocess.check_output(f"nvidia-smi", shell=True).decode())
+
     cuda_device_id = (
         device.index if device.index is not None else torch.cuda.current_device()
     )
@@ -93,6 +95,9 @@ def check_no_process_is_running_on_cuda_device(device: torch.device) -> None:
             .startswith(f"{pid},")
         ]
     )
+
+    for pid in pids_on_device_id:
+        LOGGER.info(subprocess.check_output(f"ps -p {pid} -o pid,vsz=MEMORY -o user,group=GROUP -o comm,args=ARGS", shell=True).decode())
 
     if len(pids_on_device_id) > 0:
         raise RuntimeError(

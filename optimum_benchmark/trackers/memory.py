@@ -6,7 +6,6 @@ import psutil
 import torch
 import os
 
-
 from optimum_benchmark.utils import bytes_to_mega_bytes
 
 
@@ -96,9 +95,9 @@ class PyTorchMemoryTracker(MemoryTracker):
 
         if backend.config.device_map:
             self.hf_device_map = backend.pretrained_model.hf_device_map
-            self.device_indexes = list(self.hf_device_map.values())
+            self.device_indexes = set(self.hf_device_map.values())
         else:
-            self.device_indexes = [self.device.index]
+            self.device_indexes = {self.device.index if self.device.index is not None else 0}
 
         # This variable is used only when CUDA device is used.
         self.peak_per_device = [0 for _ in range(len(self.device_indexes))]
