@@ -3,7 +3,7 @@ defaults:
   - _self_ # for hydra 1.1 compatibility
   - override backend: onnxruntime # override backend to onnxruntime
 
-experiment_name: onnxruntime_gpt2_inference
+experiment_name: cpu_onnxruntime_inference_gpt2
 
 model: hf-internal-testing/tiny-random-gpt2
 task: text-generation

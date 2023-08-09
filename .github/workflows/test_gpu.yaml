@@ -1,0 +1,18 @@
+name: GPU Unit Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Build Docker image
+        run: docker build -f docker/gpu.Dockerfile -t optimum-benchmark-gpu .
+      - name: Run Docker container
+        run: docker run --rm --gpus all --workdir=/workspace/optimum-benchmark optimum-benchmark-gpu pytest -k "(cuda or tensorrt) and not onnxruntime_training"

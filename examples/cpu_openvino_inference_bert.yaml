@@ -3,8 +3,8 @@ defaults:
   - _self_ # for hydra 1.1 compatibility
   - override backend: openvino # override backend to openvino
 
-experiment_name: openvino_gpt2_inference
+experiment_name: cpu_openvino_inference_bert
 
-model: hf-internal-testing/tiny-random-gpt2
-task: text-generation
+model: hf-internal-testing/tiny-random-bert
+task: text-classification
 device: cpu

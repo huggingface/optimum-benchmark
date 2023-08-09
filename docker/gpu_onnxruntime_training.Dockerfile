@@ -53,12 +53,6 @@ ENV PATH=$MINICONDA_PREFIX/bin:${PATH}
 
 ARG PYTHON_EXE=$MINICONDA_PREFIX/bin/python
 
-# (Optional) Intall test dependencies
-RUN $PYTHON_EXE -m pip install git+https://github.com/huggingface/transformers
-RUN $PYTHON_EXE -m pip install datasets accelerate evaluate coloredlogs absl-py rouge_score seqeval scipy sacrebleu nltk scikit-learn parameterized sentencepiece
-RUN $PYTHON_EXE -m pip install fairscale deepspeed mpi4py
-# RUN $PYTHON_EXE -m pip install optuna ray sigopt wandb
-
 # PyTorch
 RUN $PYTHON_EXE -m pip install onnx ninja
 RUN $PYTHON_EXE -m pip install torch==${TORCH_VERSION} torchvision==${TORCHVISION_VERSION} -f https://download.pytorch.org/whl/${TORCH_CUDA_VERSION}
@@ -70,4 +64,10 @@ ENV TORCH_CUDA_ARCH_LIST="5.2 6.0 6.1 7.0 7.5 8.0 8.6+PTX"
 RUN $PYTHON_EXE -m pip install --upgrade protobuf==3.20.2
 RUN $PYTHON_EXE -m torch_ort.configure
 
-CMD ["/bin/bash"]
+# Install Optimum-Benchmark
+COPY . /workspace/optimum-benchmark
+WORKDIR /workspace/optimum-benchmark
+RUN pip install -r gpu_onnxruntime_training_requirements.txt
+RUN pip install -e .[test]
+
+CMD /bin/bash
