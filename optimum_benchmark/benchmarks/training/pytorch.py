@@ -1,17 +1,16 @@
 import torch
 from torch.distributed.launcher.api import elastic_launch, LaunchConfig
 from torch.distributed.elastic.multiprocessing import Std
-from dataclasses import dataclass, field, MISSING
+from dataclasses import dataclass, field
 from logging import getLogger
 import logging.config
 
 from .base import TrainingBenchmark, TrainingConfig
-from transformers import Trainer, TrainingArguments, PreTrainedModel
+from transformers import Trainer, TrainingArguments
 
 from omegaconf import OmegaConf
 from typing import TYPE_CHECKING, Dict, Any, Optional
 import os
-import gc
 
 if TYPE_CHECKING:
     from optimum_benchmark.backends.base import Backend
