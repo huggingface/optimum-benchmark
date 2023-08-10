@@ -38,7 +38,6 @@ class TrainingConfig(BenchmarkConfig):
         {
             "output_dir": "./trainer_output",
             "use_cpu": "${is_cpu:${device}}",
-            "no_cuda": "${is_cpu:${device}}",
             "do_train": True,
             "do_eval": False,
             "do_predict": False,
@@ -158,9 +157,7 @@ class TrainingBenchmark(Benchmark):
         self.training_arguments = config.training_arguments
         self.dataset_shapes = config.dataset_shapes
 
-    def run(self, backend: "Backend") -> None:
-        LOGGER.info("Running training benchmark")
-
+    def generate_dataset(self, backend):
         if backend.task == "text-classification":
             self.training_dataset = Dataset.from_dict(
                 {
@@ -184,6 +181,11 @@ class TrainingBenchmark(Benchmark):
                 f"Training benchmark not implemented for task {backend.task}."
                 "Please submit a PR to add support for this task."
             )
+
+    def run(self, backend: "Backend") -> None:
+        LOGGER.info("Running training benchmark")
+
+        self.training_dataset = self.generate_dataset(backend)
 
         backend.prepare_for_training(
             training_dataset=self.training_dataset,

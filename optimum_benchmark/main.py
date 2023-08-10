@@ -135,17 +135,15 @@ def run_experiment(experiment: ExperimentConfig) -> None:
         experiment.device,
         experiment.hub_kwargs,
     )
-
+    
     try:
         backend.configure(experiment.backend)
-        # Run the benchmark
+
         benchmark.run(backend)
         # Save the benchmark results
         benchmark.save()
-        # clean backend
-        backend.clean()
 
-    # log error and traceback
+        backend.clean()
     except Exception as e:
         LOGGER.error("Error during benchmarking: %s", e)
         backend.clean()

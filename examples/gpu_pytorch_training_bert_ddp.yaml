@@ -5,16 +5,12 @@ defaults:
 
 experiment_name: gpu_pytorch_training_bert_ddp
 
-model: hf-internal-testing/tiny-random-bert
+model: bert-base-uncased
 task: text-classification
 device: cuda
 
 benchmark:
   use_ddp: true
-  ddp_config:
-    min_nodes: 1
-    max_nodes: 1
-    nproc_per_node: 2
   dataset_shapes:
     sequence_length: 256
   training_arguments:

@@ -5,7 +5,7 @@ defaults:
 
 experiment_name: gpu_pytorch_training_bert_dp
 
-model: hf-internal-testing/tiny-random-bert
+model: bert-base-uncased
 task: text-classification
 device: cuda
 
