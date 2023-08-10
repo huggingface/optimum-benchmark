@@ -185,7 +185,7 @@ class TrainingBenchmark(Benchmark):
     def run(self, backend: "Backend") -> None:
         LOGGER.info("Running training benchmark")
 
-        self.training_dataset = self.generate_dataset(backend)
+        self.generate_dataset(backend)
 
         backend.prepare_for_training(
             training_dataset=self.training_dataset,
