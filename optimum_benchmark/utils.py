@@ -26,7 +26,7 @@ def set_seed(seed: int) -> None:
     torch.backends.cudnn.benchmark = False
 
 
-def bytes_to_mega_bytes(bytes: int) -> int:
+def bytes_to_mega_bytes(bytes: int) -> float:
     # Reference: https://en.wikipedia.org/wiki/Byte#Multiple-byte_units
     return bytes * 1e-6
 
