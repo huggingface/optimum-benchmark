@@ -82,15 +82,17 @@ class Backend(ABC):
 
     def check_initial_isolation(self) -> None:
         if self.device.type == "cuda":
-            check_no_process_is_running_on_cuda_device(self.device)
+            device_ids = {self.device.index if self.device.index is not None else 0}
+            check_no_process_is_running_on_cuda_device(device_ids)
 
     def check_continous_isolation(self) -> None:
         if self.device.type == "cuda":
             from multiprocessing import Process
 
+            device_ids = {self.device.index if self.device.index is not None else 0}
             self.isolation_thread = Process(
                 target=check_only_this_process_is_running_on_cuda_device,
-                args=(self.device, os.getpid()),
+                args=(device_ids, os.getpid()),
                 daemon=True,
             )
             self.isolation_thread.start()

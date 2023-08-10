@@ -5,12 +5,18 @@ from logging import getLogger
 from datasets import Dataset
 from torch import Tensor
 import torch
+import os
 
 from transformers.utils.fx import symbolic_trace
 from optimum.bettertransformer import BetterTransformer
 
 from optimum_benchmark.backends.base import Backend, BackendConfig
 from optimum_benchmark.profilers.fx_profiler import FXProfilingWrapper
+
+from optimum_benchmark.utils import (
+    check_no_process_is_running_on_cuda_device,
+    check_only_this_process_is_running_on_cuda_device,
+)
 
 
 # bachend logger
@@ -71,8 +77,7 @@ class PyTorchBackend(Backend):
         )
 
     def configure(self, config: PyTorchConfig) -> None:
-        super().configure(config)
-
+    
         # environment options
         if config.inter_op_num_threads is not None:
             LOGGER.info(
@@ -104,6 +109,9 @@ class PyTorchBackend(Backend):
             self.load_model_from_config(config)
         else:
             self.load_model_from_pretrained(config)
+        
+        # The isolation checks for PyTorch require the model to be already loaded.
+        super().configure(config)
 
         # Turn on eval mode
         if config.eval_mode and self.task not in [
@@ -299,3 +307,30 @@ class PyTorchBackend(Backend):
         LOGGER.info("Training model")
         results = self.trainer.train()
         return results
+
+    def check_initial_isolation(self) -> None:
+        if self.device.type == "cuda":
+            if self.config.device_map:
+                hf_device_map = self.pretrained_model.hf_device_map
+                device_ids = set(hf_device_map.values())
+            else:
+                device_ids = {self.device.index if self.device.index is not None else 0}
+
+            check_no_process_is_running_on_cuda_device(device_ids)
+
+    def check_continous_isolation(self) -> None:
+        if self.device.type == "cuda":
+            from multiprocessing import Process
+
+            if self.config.device_map:
+                hf_device_map = self.pretrained_model.hf_device_map
+                device_ids = set(hf_device_map.values())
+            else:
+                device_ids = {self.device.index if self.device.index is not None else 0}
+
+            self.isolation_thread = Process(
+                target=check_only_this_process_is_running_on_cuda_device,
+                args=(device_ids, os.getpid()),
+                daemon=True,
+            )
+            self.isolation_thread.start()
