@@ -44,7 +44,7 @@ class PyTorchTrainingConfig(TrainingConfig):
     name: str = "training-pytorch"
     _target_: str = "optimum_benchmark.benchmarks.training.pytorch.PyTorchTrainingBenchmark"
 
-    use_ddp: bool = True
+    use_ddp: bool = False
     ddp_config: PyTorchDDPLaunchConfig = field(default_factory=PyTorchDDPLaunchConfig)
 
 def get_logger(name: Optional[str] = None, log_all: bool = False):
