@@ -25,6 +25,7 @@ class TrainingConfig(BenchmarkConfig):
         {
             "dataset_size": 500,
             "sequence_length": 16,
+            "num_choices": 4,
         }
     )
 

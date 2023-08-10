@@ -57,6 +57,44 @@ def generate_sequence_labels(num_labels: int, batch_size: int) -> Tensor:
     )
 
 
+def generate_token_type_ids(batch_size: int, sequence_length: int) -> Tensor:
+    return torch.zeros(
+        (batch_size, sequence_length),
+        dtype=torch.long,
+    )
+
+
+def generate_multiple_choice_input_ids(
+    vocab_size: int, batch_size: int, sequence_length: int, num_choices: int
+) -> Tensor:
+    return torch.randint(
+        0,
+        vocab_size,
+        (
+            batch_size,
+            num_choices,
+            sequence_length,
+        ),
+    )
+
+
+def generate_multiple_choice_token_type_ids(
+    batch_size: int, sequence_length: int, num_choices: int
+) -> Tensor:
+    return torch.zeros(
+        (batch_size, num_choices, sequence_length),
+        dtype=torch.long,
+    )
+
+
+def generate_multiple_choice_labels(batch_size: int, num_choices: int) -> Tensor:
+    return torch.randint(
+        0,
+        num_choices,
+        (batch_size,),
+    )
+
+
 def generate_start_positions(batch_size: int) -> Tensor:
     return torch.full((batch_size,), 0)
 

@@ -49,6 +49,9 @@ class DummyDatasetGenerator:
                 batch_size=self.dataset_shapes["dataset_size"],
                 sequence_length=self.dataset_shapes["sequence_length"],
             )
+            attention_mask = generate_attention_mask(
+                input_ids_or_values=input_ids,
+            )
             labels = generate_token_labels(
                 num_labels=dataset_config["num_labels"],
                 batch_size=self.dataset_shapes["dataset_size"],
@@ -57,6 +60,7 @@ class DummyDatasetGenerator:
             return Dataset.from_dict(
                 {
                     "input_ids": input_ids,
+                    "attention_mask": attention_mask,
                     "labels": labels,
                 }
             )
@@ -116,17 +120,84 @@ class DummyDatasetGenerator:
             )
 
         elif task == "multiple-choice":
-            input_ids = generate_input_ids(
+            input_ids = generate_multiple_choice_input_ids(
                 vocab_size=dataset_config["vocab_size"],
                 batch_size=self.dataset_shapes["dataset_size"],
                 sequence_length=self.dataset_shapes["sequence_length"],
+                num_choices=self.dataset_shapes["num_choices"],
+            )
+            token_type_ids = generate_multiple_choice_token_type_ids(
+                batch_size=self.dataset_shapes["dataset_size"],
+                sequence_length=self.dataset_shapes["sequence_length"],
+                num_choices=self.dataset_shapes["num_choices"],
             )
             attention_mask = generate_attention_mask(
                 input_ids_or_values=input_ids,
             )
+            label = generate_multiple_choice_labels(
+                num_choices=self.dataset_shapes["num_choices"],
+                batch_size=self.dataset_shapes["dataset_size"],
+            )
+            return Dataset.from_dict(
+                {
+                    "input_ids": input_ids,
+                    "attention_mask": attention_mask,
+                    "token_type_ids": token_type_ids,
+                    "label": label,
+                }
+            )
+
+        # elif task == "image-classification":
+        #     pixel_values = generate_pixel_values(
+        #         batch_size=self.dataset_shapes["dataset_size"],
+        #         image_size=self.dataset_shapes["image_size"],
+        #     )
+        #     labels = generate_image_classification_labels(
+        #         num_labels=dataset_config["num_labels"],
+        #         batch_size=self.dataset_shapes["dataset_size"],
+        #     )
+        #     return Dataset.from_dict(
+        #         {
+        #             "pixel_values": pixel_values,
+        #             "labels": labels,
+        #         }
+        #     )
+
+        # elif task == "object-detection":
+        #     pixel_values = generate_pixel_values(
+        #         batch_size=self.dataset_shapes["dataset_size"],
+        #         image_size=self.dataset_shapes["image_size"],
+        #     )
+        #     labels = generate_object_detection_labels(
+        #         batch_size=self.dataset_shapes["dataset_size"],
+        #         image_size=self.dataset_shapes["image_size"],
+        #     )
+        #     return Dataset.from_dict(
+        #         {
+        #             "pixel_values": pixel_values,
+        #             "labels": labels,
+        #         }
+        #     )
+
+        # elif task == "sematic-segmentation":
+        #     pixel_values = generate_pixel_values(
+        #         batch_size=self.dataset_shapes["dataset_size"],
+        #         image_size=self.dataset_shapes["image_size"],
+        #     )
+        #     labels = generate_image_segmentation_labels(
+        #         batch_size=self.dataset_shapes["dataset_size"],
+        #         image_size=self.dataset_shapes["image_size"],
+        #     )
+        #     return Dataset.from_dict(
+        #         {
+        #             "pixel_values": pixel_values,
+        #             "labels": labels,
+        #         }
+        #     )
 
         else:
             raise NotImplementedError(
                 f"Training benchmark not implemented for task {task}."
                 "Please submit a PR to add support for this task."
             )
+
