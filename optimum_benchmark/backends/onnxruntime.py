@@ -41,7 +41,7 @@ OmegaConf.register_new_resolver(
 )
 OmegaConf.register_new_resolver(
     "infer_provider",
-    lambda device: f"{torch.device(device).type.upper()}ExecutionProvider",
+    lambda device, execution_provider: f"{torch.device(device).type.upper()}ExecutionProvider" if execution_provider == "Default" else f"{execution_provider}ExecutionProvider",
 )
 OmegaConf.register_new_resolver(
     "infer_device_id",
@@ -50,6 +50,10 @@ OmegaConf.register_new_resolver(
 OmegaConf.register_new_resolver(
     "requires_calibration",
     lambda *static_quants: any(static_quants),
+)
+OmegaConf.register_new_resolver(
+    "use_io_binding",
+    lambda device, execution_provider: torch.device(device).type == "cuda" and execution_provider != "Tensorrt",
 )
 
 LOGGER = getLogger("onnxruntime")
@@ -69,11 +73,11 @@ class ORTConfig(BackendConfig):
     torch_dtype: Optional[str] = None
 
     # provider options
-    provider: str = "${infer_provider:${device}}"
+    provider: str = "${infer_provider:${device},${execution_provider}}"
     device_id: Optional[int] = "${infer_device_id:${device}}"
 
     # inference options
-    use_io_binding: bool = "${is_gpu:${device}}"
+    use_io_binding: bool = "${use_io_binding:${device},${execution_provider}}"
     enable_profiling: bool = "${is_profiling:${benchmark.name}}"
 
     # optimization options

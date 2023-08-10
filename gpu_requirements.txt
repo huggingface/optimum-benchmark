@@ -10,6 +10,7 @@ git+https://github.com/huggingface/diffusers.git
 # dunno why the above installs onnxruntime and not onnxruntime-gpu
 onnxruntime-gpu==1.15.1
 
+tensorrt
 omegaconf==2.3.0
 hydra-core==1.3.2
 hydra_colorlog==1.2.0

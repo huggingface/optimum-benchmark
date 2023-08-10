@@ -62,6 +62,8 @@ class ExperimentConfig:
     device: str = MISSING
     # task
     task: str = "${infer_task:${model}, ${hub_kwargs.revision}}"
+    # Execution provider for onnxruntime (CPU, CUDA, Tensorrt)
+    execution_provider: str = "Default"
 
     # ADDITIONAL MODEL CONFIGURATION: Model revision, use_auth_token, trust_remote_code
     hub_kwargs: DictConfig = DictConfig(
