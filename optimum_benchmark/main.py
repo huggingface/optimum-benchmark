@@ -28,7 +28,7 @@ from optimum_benchmark.backends.base import Backend
 from optimum_benchmark.benchmarks.base import Benchmark
 from optimum_benchmark.backends.base import Backend, BackendConfig
 
-from optimum_benchmark.benchmarks.training import TrainingConfig
+from optimum_benchmark.benchmarks.training.base import TrainingConfig
 from optimum_benchmark.benchmarks.inference import InferenceConfig
 from optimum_benchmark.benchmarks.base import Benchmark, BenchmarkConfig
 
@@ -96,7 +96,10 @@ cs.store(name="experiment", node=ExperimentConfig)
 
 if is_torch_available():
     from optimum_benchmark.backends.pytorch import PyTorchConfig
+    from optimum_benchmark.benchmarks.training.pytorch import PyTorchTrainingConfig
     cs.store(group="backend", name="pytorch", node=PyTorchConfig)
+    cs.store(group="benchmark", name="training-pytorch", node=PyTorchTrainingConfig)
+    LOGGER.info("Stored training-pytorch")
 
 if is_onnxruntime_available():
     from optimum_benchmark.backends.onnxruntime import ORTConfig

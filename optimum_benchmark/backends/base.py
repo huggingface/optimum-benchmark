@@ -98,6 +98,8 @@ class Backend(ABC):
     @abstractmethod
     def configure(self, config: BackendConfig) -> None:
         LOGGER.info(f"Configuring {config.name} backend")
+        
+        self.config = config
         if config.inter_op_num_threads is not None:
             if config.inter_op_num_threads == -1:
                 config.inter_op_num_threads = cpu_count()

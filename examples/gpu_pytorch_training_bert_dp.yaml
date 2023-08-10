@@ -1,0 +1,22 @@
+defaults:
+  - base_config # inherits from base config
+  - _self_ # for hydra 1.1 compatibility
+  - override benchmark: training-pytorch
+
+experiment_name: gpu_pytorch_training_bert_dp
+
+model: hf-internal-testing/tiny-random-bert
+task: text-classification
+device: cuda
+
+benchmark:
+  use_ddp: false
+  dataset_shapes:
+    sequence_length: 256
+  training_arguments:
+    per_device_train_batch_size: 32
+
+hydra:
+  job:
+    env_set:
+      CUDA_VISIBLE_DEVICES: 0,1

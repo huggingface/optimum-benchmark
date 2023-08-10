@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional
 from omegaconf import DictConfig, OmegaConf
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from logging import getLogger
 from datasets import Dataset
 from torch import Tensor
@@ -58,7 +58,6 @@ class PyTorchConfig(BackendConfig):
     # inference options
     disable_grad: bool = "${is_inference:${benchmark.name}}"  # type: ignore
     eval_mode: bool = "${is_inference:${benchmark.name}}"  # type: ignore
-
 
 class PyTorchBackend(Backend):
     def __init__(self, model: str, task: str, device: str, hub_kwargs: DictConfig):
