@@ -4,7 +4,7 @@ defaults:
 
 experiment_name: cuda_pytorch_inference_bert_2gpu
 
-model: hf-internal-testing/tiny-random-bert
+model: gpt2
 device: cuda
 
 backend:
