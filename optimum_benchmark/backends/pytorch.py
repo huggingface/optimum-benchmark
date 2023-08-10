@@ -31,6 +31,7 @@ class PyTorchConfig(BackendConfig):
     # load options
     no_weights: bool = False
     torch_dtype: Optional[str] = None
+    device_map: Optional[str] = None
 
     # quantization options
     load_in_8bit: bool = False
@@ -202,32 +203,35 @@ class PyTorchBackend(Backend):
         LOGGER.info(
             f"\t+ Loading pretrained model weights in dtype: {config.torch_dtype} on device: {self.device}"
         )
-        if self.task not in ["stable-diffusion", "stable-diffusion-xl"] and (
-            config.load_in_8bit or config.load_in_4bit
-        ):
-            self.pretrained_model = self.automodel_class.from_pretrained(
-                pretrained_model_name_or_path=self.model,
-                torch_dtype=self.torch_dtype,
-                device_map=self.device,
-                load_in_8bit=config.load_in_8bit,
-                load_in_4bit=config.load_in_4bit,
-                llm_int8_threshold=0,
-                **self.hub_kwargs,
-            )
-        elif self.task not in ["stable-diffusion", "stable-diffusion-xl"]:
-            with self.device:
+        if self.task not in ["stable-diffusion", "stable-diffusion-xl"]:
+            if config.load_in_8bit or config.load_in_4bit or config.device_map is not None:
                 self.pretrained_model = self.automodel_class.from_pretrained(
                     pretrained_model_name_or_path=self.model,
                     torch_dtype=self.torch_dtype,
+                    device_map=config.device_map if config.device_map is not None else self.device,
+                    load_in_8bit=config.load_in_8bit,
+                    load_in_4bit=config.load_in_4bit,
+                    llm_int8_threshold=0,
                     **self.hub_kwargs,
                 )
+            else:
+                # When a device_map is not specified, we do not rely on accelerate to load the load and rather try PyTorch-native context.
+                with self.device:
+                    self.pretrained_model = self.automodel_class.from_pretrained(
+                        pretrained_model_name_or_path=self.model,
+                        torch_dtype=self.torch_dtype,
+                        **self.hub_kwargs,
+                    )
         else:
             self.pretrained_model = self.automodel_class.from_pretrained(
                 pretrained_model_name_or_path=self.model,
                 torch_dtype=self.torch_dtype,
+                device_map=config.device_map,
                 **self.hub_kwargs,
             )
-            self.pretrained_model.to(self.device)
+            if config.device_map is None:
+                # Diffusers does not support device_map being a torch.device, thus if not provided, move to device here.
+                self.pretrained_model.to(self.device)
 
     def prepare_for_profiling(
         self,

@@ -97,6 +97,8 @@ class Backend(ABC):
 
     @abstractmethod
     def configure(self, config: BackendConfig) -> None:
+        self.config = config
+
         LOGGER.info(f"Configuring {config.name} backend")
         if config.inter_op_num_threads is not None:
             if config.inter_op_num_threads == -1:

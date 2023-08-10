@@ -7,8 +7,8 @@ import statistics
 
 
 from optimum_benchmark.backends.base import Backend
-from optimum_benchmark.trackers.memory import MemoryTracker
-from optimum_benchmark.trackers.latency import LatencyTracker
+from optimum_benchmark.trackers.memory import memory_tracker_class_for_backend
+from optimum_benchmark.trackers.latency import latency_tracker_class_for_backend
 from optimum_benchmark.generators.dummy_input import DummyInputGenerator
 from optimum_benchmark.benchmarks.base import Benchmark, BenchmarkConfig
 
@@ -103,7 +103,7 @@ class InferenceBenchmark(Benchmark):
         )
 
         LOGGER.info("\t+ Tracking forward pass peak memory")
-        memory_tracker = MemoryTracker(device=backend.device)
+        memory_tracker = memory_tracker_class_for_backend[backend.config.name](backend)
         with memory_tracker.track(interval=self.benchmark_duration // 100):
             _ = backend.forward(memory_input)
 
@@ -126,7 +126,7 @@ class InferenceBenchmark(Benchmark):
             _ = backend.forward(forward_input)
 
         LOGGER.info("\t+ Tracking forward pass latency and throughput")
-        latency_tracker = LatencyTracker(device=backend.device)
+        latency_tracker = latency_tracker_class_for_backend[backend.config.name](backend)
         while sum(self.forward_latencies) < self.benchmark_duration:
             with latency_tracker.track():
                 _ = backend.forward(forward_input)
@@ -155,7 +155,7 @@ class InferenceBenchmark(Benchmark):
         )
 
         LOGGER.info("\t+ Tracking generation latency and throughput")
-        latency_tracker = LatencyTracker(device=backend.device)
+        latency_tracker = latency_tracker_class_for_backend[backend.config.name](backend)
         while sum(self.generate_latencies) < self.benchmark_duration:
             with latency_tracker.track():
                 _ = backend.generate(
