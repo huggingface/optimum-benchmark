@@ -19,11 +19,11 @@ class DummyDatasetGenerator:
         task: str,
         pretrained_config: PretrainedConfig,
     ) -> Dataset:
-        dataset_config = parse_pretrained_config(pretrained_config)
+        model_config = parse_pretrained_config(pretrained_config)
 
         if task == "text-classification":
             input_ids = generate_input_ids(
-                vocab_size=dataset_config["vocab_size"],
+                vocab_size=model_config["vocab_size"],
                 batch_size=self.dataset_shapes["dataset_size"],
                 sequence_length=self.dataset_shapes["sequence_length"],
             )
@@ -31,7 +31,7 @@ class DummyDatasetGenerator:
                 input_ids_or_values=input_ids,
             )
             labels = generate_sequence_labels(
-                num_labels=dataset_config["num_labels"],
+                num_labels=model_config["num_labels"],
                 batch_size=self.dataset_shapes["dataset_size"],
             )
 
@@ -45,7 +45,7 @@ class DummyDatasetGenerator:
 
         elif task == "token-classification":
             input_ids = generate_input_ids(
-                vocab_size=dataset_config["vocab_size"],
+                vocab_size=model_config["vocab_size"],
                 batch_size=self.dataset_shapes["dataset_size"],
                 sequence_length=self.dataset_shapes["sequence_length"],
             )
@@ -53,7 +53,7 @@ class DummyDatasetGenerator:
                 input_ids_or_values=input_ids,
             )
             labels = generate_token_labels(
-                num_labels=dataset_config["num_labels"],
+                num_labels=model_config["num_labels"],
                 batch_size=self.dataset_shapes["dataset_size"],
                 sequence_length=self.dataset_shapes["sequence_length"],
             )
@@ -67,7 +67,7 @@ class DummyDatasetGenerator:
 
         elif task == "text-generation":
             input_ids = generate_input_ids(
-                vocab_size=dataset_config["vocab_size"],
+                vocab_size=model_config["vocab_size"],
                 batch_size=self.dataset_shapes["dataset_size"],
                 sequence_length=self.dataset_shapes["sequence_length"],
             )
@@ -80,7 +80,7 @@ class DummyDatasetGenerator:
 
         elif task == "question-answering":
             input_ids = generate_input_ids(
-                vocab_size=dataset_config["vocab_size"],
+                vocab_size=model_config["vocab_size"],
                 batch_size=self.dataset_shapes["dataset_size"],
                 sequence_length=self.dataset_shapes["sequence_length"],
             )
@@ -104,7 +104,7 @@ class DummyDatasetGenerator:
 
         elif task == "fill-mask":
             input_ids = generate_input_ids(
-                vocab_size=dataset_config["vocab_size"],
+                vocab_size=model_config["vocab_size"],
                 batch_size=self.dataset_shapes["dataset_size"],
                 sequence_length=self.dataset_shapes["sequence_length"],
             )
@@ -121,7 +121,7 @@ class DummyDatasetGenerator:
 
         elif task == "multiple-choice":
             input_ids = generate_multiple_choice_input_ids(
-                vocab_size=dataset_config["vocab_size"],
+                vocab_size=model_config["vocab_size"],
                 batch_size=self.dataset_shapes["dataset_size"],
                 sequence_length=self.dataset_shapes["sequence_length"],
                 num_choices=self.dataset_shapes["num_choices"],
@@ -147,30 +147,35 @@ class DummyDatasetGenerator:
                 }
             )
 
-        # elif task == "image-classification":
-        #     pixel_values = generate_pixel_values(
-        #         batch_size=self.dataset_shapes["dataset_size"],
-        #         image_size=self.dataset_shapes["image_size"],
-        #     )
-        #     labels = generate_image_classification_labels(
-        #         num_labels=dataset_config["num_labels"],
-        #         batch_size=self.dataset_shapes["dataset_size"],
-        #     )
-        #     return Dataset.from_dict(
-        #         {
-        #             "pixel_values": pixel_values,
-        #             "labels": labels,
-        #         }
-        #     )
+        elif task == "image-classification":
+            pixel_values = generate_pixel_values(
+                batch_size=self.dataset_shapes["dataset_size"],
+                num_channels=model_config["num_channels"],
+                height=model_config["height"],
+                width=model_config["width"],
+            )
+            labels = generate_sequence_labels(
+                num_labels=model_config["num_labels"],
+                batch_size=self.dataset_shapes["dataset_size"],
+            )
+            return Dataset.from_dict(
+                {
+                    "pixel_values": pixel_values,
+                    "labels": labels,
+                }
+            )
 
         # elif task == "object-detection":
         #     pixel_values = generate_pixel_values(
         #         batch_size=self.dataset_shapes["dataset_size"],
-        #         image_size=self.dataset_shapes["image_size"],
+        #         num_channels=model_config["num_channels"],
+        #         height=model_config["height"],
+        #         width=model_config["width"],
         #     )
         #     labels = generate_object_detection_labels(
         #         batch_size=self.dataset_shapes["dataset_size"],
-        #         image_size=self.dataset_shapes["image_size"],
+        #         num_labels=model_config["num_labels"],
+        #         num_boxes=model_config["num_boxes"],
         #     )
         #     return Dataset.from_dict(
         #         {
@@ -200,4 +205,3 @@ class DummyDatasetGenerator:
                 f"Training benchmark not implemented for task {task}."
                 "Please submit a PR to add support for this task."
             )
-
