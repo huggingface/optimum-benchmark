@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 from omegaconf import DictConfig, OmegaConf
 from dataclasses import dataclass
 from logging import getLogger
@@ -250,6 +250,7 @@ class PyTorchBackend(Backend):
     def prepare_for_training(
         self,
         training_dataset: Dataset,
+        training_data_collator: Callable,
         training_arguments: Dict[str, Any],
     ) -> None:
         if self.device.type in ["cpu", "cuda"]:
@@ -260,6 +261,7 @@ class PyTorchBackend(Backend):
             self.trainer = Trainer(
                 model=self.pretrained_model,
                 train_dataset=training_dataset,
+                data_collator=training_data_collator,
                 args=training_arguments,
             )
         elif self.device.type == "hpu":

@@ -1,10 +1,17 @@
 from logging import getLogger
-from typing import Dict
+from typing import Dict, Optional, Union
 
 from datasets import Dataset
-from transformers import PretrainedConfig
+from transformers import (
+    PretrainedConfig,
+    PreTrainedTokenizer,
+    ImageProcessingMixin,
+    FeatureExtractionMixin,
+    ProcessorMixin,
+)
 
-from optimum_benchmark.generators.base import *
+
+from optimum_benchmark.generators.utils import *
 
 
 LOGGER = getLogger("dummy_dataset")
@@ -18,8 +25,19 @@ class DummyDatasetGenerator:
         self,
         task: str,
         pretrained_config: PretrainedConfig,
+        pretrained_preprocessor: Optional[
+            Union[
+                PreTrainedTokenizer,
+                ImageProcessingMixin,
+                FeatureExtractionMixin,
+                ProcessorMixin,
+            ]
+        ],
     ) -> Dataset:
-        model_config = parse_pretrained_config(pretrained_config)
+        model_config = get_model_config(
+            pretrained_config=pretrained_config,
+            pretrained_preprocessor=pretrained_preprocessor,
+        )
 
         if task == "text-classification":
             input_ids = generate_input_ids(
@@ -34,14 +52,15 @@ class DummyDatasetGenerator:
                 num_labels=model_config["num_labels"],
                 batch_size=self.dataset_shapes["dataset_size"],
             )
-
-            return Dataset.from_dict(
+            text_classification_dataset = Dataset.from_dict(
                 {
                     "input_ids": input_ids,
                     "attention_mask": attention_mask,
                     "labels": labels,
                 }
             )
+
+            return text_classification_dataset
 
         elif task == "token-classification":
             input_ids = generate_input_ids(
@@ -57,13 +76,15 @@ class DummyDatasetGenerator:
                 batch_size=self.dataset_shapes["dataset_size"],
                 sequence_length=self.dataset_shapes["sequence_length"],
             )
-            return Dataset.from_dict(
+            token_classification_dataset = Dataset.from_dict(
                 {
                     "input_ids": input_ids,
                     "attention_mask": attention_mask,
                     "labels": labels,
                 }
             )
+
+            return token_classification_dataset
 
         elif task == "text-generation":
             input_ids = generate_input_ids(
@@ -94,13 +115,15 @@ class DummyDatasetGenerator:
                 batch_size=self.dataset_shapes["dataset_size"],
                 sequence_length=self.dataset_shapes["sequence_length"],
             )
-            return Dataset.from_dict(
+            question_answering_dataset = Dataset.from_dict(
                 {
                     "input_ids": input_ids,
                     "start_positions": start_positions,
                     "end_positions": end_positions,
                 }
             )
+
+            return question_answering_dataset
 
         elif task == "fill-mask":
             input_ids = generate_input_ids(
@@ -111,13 +134,15 @@ class DummyDatasetGenerator:
             attention_mask = generate_attention_mask(
                 input_ids_or_values=input_ids,
             )
-            return Dataset.from_dict(
+            fill_mask_dataset = Dataset.from_dict(
                 {
                     "input_ids": input_ids,
                     "attention_mask": attention_mask,
                     "labels": input_ids,
                 }
             )
+
+            return fill_mask_dataset
 
         elif task == "multiple-choice":
             input_ids = generate_multiple_choice_input_ids(
@@ -138,7 +163,7 @@ class DummyDatasetGenerator:
                 num_choices=self.dataset_shapes["num_choices"],
                 batch_size=self.dataset_shapes["dataset_size"],
             )
-            return Dataset.from_dict(
+            multiple_choice_dataset = Dataset.from_dict(
                 {
                     "input_ids": input_ids,
                     "attention_mask": attention_mask,
@@ -147,58 +172,84 @@ class DummyDatasetGenerator:
                 }
             )
 
+            return multiple_choice_dataset
+
         elif task == "image-classification":
-            pixel_values = generate_pixel_values(
-                batch_size=self.dataset_shapes["dataset_size"],
-                num_channels=model_config["num_channels"],
-                height=model_config["height"],
-                width=model_config["width"],
+            pixel_values = (
+                generate_pixel_values(
+                    batch_size=self.dataset_shapes["dataset_size"],
+                    num_channels=model_config["num_channels"],
+                    height=model_config["height"],
+                    width=model_config["width"],
+                )
+                / 255
             )
             labels = generate_sequence_labels(
                 num_labels=model_config["num_labels"],
                 batch_size=self.dataset_shapes["dataset_size"],
             )
-            return Dataset.from_dict(
+            image_classification_dataset = Dataset.from_dict(
                 {
                     "pixel_values": pixel_values,
                     "labels": labels,
                 }
             )
 
-        # elif task == "object-detection":
-        #     pixel_values = generate_pixel_values(
-        #         batch_size=self.dataset_shapes["dataset_size"],
-        #         num_channels=model_config["num_channels"],
-        #         height=model_config["height"],
-        #         width=model_config["width"],
-        #     )
-        #     labels = generate_object_detection_labels(
-        #         batch_size=self.dataset_shapes["dataset_size"],
-        #         num_labels=model_config["num_labels"],
-        #         num_boxes=model_config["num_boxes"],
-        #     )
-        #     return Dataset.from_dict(
-        #         {
-        #             "pixel_values": pixel_values,
-        #             "labels": labels,
-        #         }
-        #     )
+            return image_classification_dataset
 
-        # elif task == "sematic-segmentation":
-        #     pixel_values = generate_pixel_values(
-        #         batch_size=self.dataset_shapes["dataset_size"],
-        #         image_size=self.dataset_shapes["image_size"],
-        #     )
-        #     labels = generate_image_segmentation_labels(
-        #         batch_size=self.dataset_shapes["dataset_size"],
-        #         image_size=self.dataset_shapes["image_size"],
-        #     )
-        #     return Dataset.from_dict(
-        #         {
-        #             "pixel_values": pixel_values,
-        #             "labels": labels,
-        #         }
-        #     )
+        elif task == "object-detection":
+            pixel_values = (
+                generate_pixel_values(
+                    batch_size=self.dataset_shapes["dataset_size"],
+                    num_channels=model_config["num_channels"],
+                    height=model_config["height"],
+                    width=model_config["width"],
+                )
+                / 255
+            )
+            labels = generate_object_detection_labels(
+                batch_size=self.dataset_shapes["dataset_size"],
+                num_labels=model_config["num_labels"],
+                num_queries=model_config["num_queries"],
+            )
+            object_detection_dataset = Dataset.from_dict(
+                {
+                    "pixel_values": pixel_values,
+                    "labels": labels,
+                },
+            )
+            object_detection_dataset.set_format(
+                type="torch",
+                columns=["pixel_values", "labels"],
+            )
+
+            return object_detection_dataset
+
+        elif task == "semantic-segmentation":
+            pixel_values = (
+                generate_pixel_values(
+                    batch_size=self.dataset_shapes["dataset_size"],
+                    num_channels=model_config["num_channels"],
+                    height=model_config["height"],
+                    width=model_config["width"],
+                )
+                / 255
+            )
+            labels = generate_semantic_segmentation_labels(
+                batch_size=self.dataset_shapes["dataset_size"],
+                height=model_config["height"],
+                width=model_config["width"],
+                num_labels=model_config["num_labels"],
+            )
+
+            semantic_segmentation_dataset = Dataset.from_dict(
+                {
+                    "pixel_values": pixel_values,
+                    "labels": labels,
+                }
+            )
+
+            return semantic_segmentation_dataset
 
         else:
             raise NotImplementedError(

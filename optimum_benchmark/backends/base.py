@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 from dataclasses import dataclass, MISSING
 from abc import abstractmethod, ABC
 from omegaconf import DictConfig
@@ -13,7 +13,21 @@ import gc
 
 from datasets import Dataset
 from optimum.exporters import TasksManager
-from transformers import AutoConfig, PreTrainedModel, PretrainedConfig
+from transformers.tokenization_utils import PreTrainedTokenizer
+
+from transformers import (
+    # configs
+    AutoConfig,
+    PretrainedConfig,
+    # models
+    PreTrainedModel,
+    # preprocessors
+    AutoProcessor,
+    PreTrainedTokenizer,
+    ImageProcessingMixin,
+    FeatureExtractionMixin,
+    ProcessorMixin,
+)
 
 
 from optimum_benchmark.utils import (
@@ -45,6 +59,14 @@ class BackendConfig(ABC):
 class Backend(ABC):
     pretrained_model: PreTrainedModel
     pretrained_config: Optional[PretrainedConfig]
+    pretrained_preprocessor: Optional[
+        Union[
+            PreTrainedTokenizer,
+            ImageProcessingMixin,
+            FeatureExtractionMixin,
+            ProcessorMixin,
+        ]
+    ]
 
     def __init__(self, model: str, task: str, device: str, hub_kwargs: DictConfig):
         self.model = model
@@ -55,10 +77,15 @@ class Backend(ABC):
         if self.task in ["stable-diffusion", "stable-diffusion-xl"]:
             # diffusers
             self.pretrained_config = None
+            self.pretrained_preprocessor = None
             self.model_type = self.task
         else:
             # transformers autoconfig and automodel
             self.pretrained_config = AutoConfig.from_pretrained(
+                pretrained_model_name_or_path=self.model,
+                **self.hub_kwargs,
+            )
+            self.pretrained_preprocessor = AutoProcessor.from_pretrained(
                 pretrained_model_name_or_path=self.model,
                 **self.hub_kwargs,
             )
@@ -144,6 +171,7 @@ class Backend(ABC):
     def prepare_for_training(
         self,
         training_dataset: Dataset,
+        training_data_collator: Callable,
         training_arguments: Dict[str, Any],
     ) -> None:
         pass

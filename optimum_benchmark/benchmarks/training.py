@@ -3,10 +3,10 @@ from dataclasses import dataclass
 from logging import getLogger
 from pandas import DataFrame
 
-
 from optimum_benchmark.backends.base import Backend
 from optimum_benchmark.benchmarks.base import Benchmark, BenchmarkConfig
 from optimum_benchmark.generators.dummy_dataset import DummyDatasetGenerator
+from optimum_benchmark.benchmarks.training_utils import get_data_collator
 
 
 LOGGER = getLogger("training")
@@ -165,15 +165,19 @@ class TrainingBenchmark(Benchmark):
         training_dataset = self.dummy_dataset_generator.generate(
             task=backend.task,
             pretrained_config=backend.pretrained_config,
+            pretrained_preprocessor=backend.pretrained_preprocessor,
+        )
+        training_data_collator = get_data_collator(
+            task=backend.task,
         )
 
         backend.prepare_for_training(
             training_dataset=training_dataset,
+            training_data_collator=training_data_collator,
             training_arguments=self.training_arguments,
         )
         training_output = backend.train()
 
-        print(training_output.metrics)
         self.training_throughput = training_output.metrics["train_samples_per_second"]
         self.training_runtime = training_output.metrics["train_runtime"]
 
