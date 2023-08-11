@@ -62,7 +62,7 @@ You can now run a benchmark using the command line by specifying the configurati
 Both arguments are mandatory. The `config-dir` is the directory where the configuration files are stored and the `config-name` is the name of the configuration file without the `.yaml` extension.
 
 ```bash
-optimum-benchmark --config-dir examples --config-name pytorch
+optimum-benchmark --config-dir examples --config-name 
 ```
 
 This will run the benchmark on the `pytorch` backend and `cpu` device. Resultq will be stored in `runs/bert_baseline`.

@@ -1,2 +1,0 @@
-,forward.latency(s),forward.throughput(samples/s),generate.latency(s),generate.throughput(tokens/s)
-0,2.97,0.337,6.57,15.2

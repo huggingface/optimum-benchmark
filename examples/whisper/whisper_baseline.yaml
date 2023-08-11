@@ -1,6 +1,10 @@
 defaults:
-  - hydra_base
-  - _self_
+  - backend: pytorch # default backend
+  - benchmark: inference # default benchmark
+  - experiment # inheriting from experiment config
+  - _self_ # for hydra 1.1 compatibility
+  - override hydra/job_logging: colorlog # colorful logging
+  - override hydra/hydra_logging: colorlog # colorful logging
 
 # for whisper experiments I would like to separate them based
 # on backend & device + batch_size & the new_tokens

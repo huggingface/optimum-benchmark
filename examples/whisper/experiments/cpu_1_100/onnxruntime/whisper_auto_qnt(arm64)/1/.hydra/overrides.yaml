@@ -1,4 +1,0 @@
-- backend.auto_quantization=arm64
-- +backend.auto_quantization_config.per_channel=False
-- device=cpu
-- benchmark.new_tokens=100

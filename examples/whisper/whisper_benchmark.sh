@@ -1,23 +1,14 @@
 if [ $# -eq 1 ]; then
-  # if argument is cpu
-  if [ $1 = "cpu" ]; then
-    python main.py --config-name whisper_baseline \
-      -m device=cpu benchmark.new_tokens=10,100
-    python main.py --config-name whisper_auto_qnt -m \
-      -m device=cpu benchmark.new_tokens=10,100
-    python main.py --config-name whisper_auto_opt+qnt -m \
-      -m device=cpu benchmark.new_tokens=10,100
-  # if argument is cuda
-  elif [ $1 = "cuda" ]; then
-    python main.py --config-name whisper_baseline \
-      -m device=cuda benchmark.input_shapes.batch_size=1,8 benchmark.new_tokens=10,100
-    python main.py --config-name whisper_baseline \
-      -m device=cuda benchmark.input_shapes.batch_size=1,8 benchmark.new_tokens=10,100 \
-      experiment_name=whisper_baseline_with_fp16 backend.autocast=true
-    python main.py --config-name whisper_auto_opt -m \
-      -m device=cuda benchmark.input_shapes.batch_size=1,8 benchmark.new_tokens=10,100
-  # if argument is not cpu or cuda
-  else
-    echo "Invalid argument"
-  fi
+    if [ $1 = "cpu" ]; then
+        optimum-benchmark --config-dir ./ --config-name whisper_baseline -m benchmark.new_tokens=10,100 device=cpu
+        optimum-benchmark --config-dir ./ --config-name whisper_auto_qnt -m -m benchmark.new_tokens=10,100 device=cpu
+        optimum-benchmark --config-dir ./ --config-name whisper_auto_opt+qnt -m -m benchmark.new_tokens=10,100 device=cpu
+        elif [ $1 = "cuda" ]; then
+        # find a cuda device that is not being used by reading nvidia-smi output and parsing it
+        CUDA_DEVICE=$(nvidia-smi --query-gpu=index,utilization.gpu --format=csv,noheader | sort -n -k 2 | tail -n 1 | cut -d ',' -f 1)
+        optimum-benchmark --config-dir ./ --config-name whisper_baseline -m benchmark.input_shapes.batch_size=1,8 benchmark.new_tokens=10,100 device=cuda:$CUDA_DEVICE
+        optimum-benchmark --config-dir ./ --config-name whisper_auto_opt -m benchmark.input_shapes.batch_size=1,8 benchmark.new_tokens=10,100 device=cuda:$CUDA_DEVICE
+    else
+        echo "Invalid argument"
+    fi
 fi

@@ -1,0 +1,66 @@
+backend:
+  name: pytorch
+  version: 2.0.1+cu117
+  _target_: optimum_benchmark.backends.pytorch.PyTorchBackend
+  inter_op_num_threads: null
+  intra_op_num_threads: null
+  initial_isolation_check: true
+  continous_isolation_check: true
+  delete_cache: false
+  no_weights: false
+  torch_dtype: null
+  load_in_8bit: false
+  load_in_4bit: false
+  bettertransformer: false
+  torch_compile: false
+  torch_compile_config:
+    fullgraph: false
+    dynamic: false
+    backend: inductor
+    mode: null
+    options: null
+    disable: false
+  amp_autocast: false
+  amp_dtype: null
+  disable_grad: true
+  eval_mode: true
+benchmark:
+  name: inference
+  _target_: optimum_benchmark.benchmarks.inference.InferenceBenchmark
+  seed: 42
+  memory: false
+  warmup_runs: 10
+  benchmark_duration: 10
+  input_shapes:
+    batch_size: 1
+    sequence_length: 16
+    num_choices: 1
+    width: 64
+    height: 64
+    num_channels: 3
+    point_batch_size: 3
+    nb_points_per_image: 2
+    feature_size: 80
+    nb_max_frames: 3000
+    audio_sequence_length: 16000
+  new_tokens: 10
+experiment_name: whisper_baseline
+model: openai/whisper-base
+device: cuda:4
+task: automatic-speech-recognition
+hub_kwargs:
+  revision: main
+  cache_dir: null
+  force_download: false
+  local_files_only: false
+  use_auth_token: false
+environment:
+  optimum_version: 1.11.1.dev0
+  transformers_version: 4.32.0.dev0
+  accelerate_version: 0.22.0.dev0
+  diffusers_version: 0.20.0.dev0
+  python_version: 3.9.17
+  system: Linux
+  cpu: ' AMD EPYC 7742 64-Core Processor'
+  cpu_count: 128
+  cpu_ram_mb: 515637
