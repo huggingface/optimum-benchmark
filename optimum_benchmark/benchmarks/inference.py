@@ -34,7 +34,7 @@ class InferenceConfig(BenchmarkConfig):
             "batch_size": 1,
             # text
             "sequence_length": 16,
-            "num_choices": 4,
+            "num_choices": 1,
             # image
             "width": 64,
             "height": 64,

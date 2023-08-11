@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 from omegaconf import DictConfig, OmegaConf
 from dataclasses import dataclass
 from logging import getLogger
@@ -7,7 +7,9 @@ from torch import Tensor
 import torch
 import os
 
+from transformers.utils import ModelOutput
 from transformers.utils.fx import symbolic_trace
+from transformers.trainer_utils import TrainOutput
 from optimum.bettertransformer import BetterTransformer
 
 from optimum_benchmark.backends.base import Backend, BackendConfig
@@ -77,7 +79,8 @@ class PyTorchBackend(Backend):
         )
 
     def configure(self, config: PyTorchConfig) -> None:
-    
+        super().configure(config)
+
         # environment options
         if config.inter_op_num_threads is not None:
             LOGGER.info(
@@ -109,9 +112,6 @@ class PyTorchBackend(Backend):
             self.load_model_from_config(config)
         else:
             self.load_model_from_pretrained(config)
-        
-        # The isolation checks for PyTorch require the model to be already loaded.
-        super().configure(config)
 
         # Turn on eval mode
         if config.eval_mode and self.task not in [
@@ -260,6 +260,7 @@ class PyTorchBackend(Backend):
     def prepare_for_training(
         self,
         training_dataset: Dataset,
+        training_data_collator: Callable,
         training_arguments: Dict[str, Any],
     ) -> None:
         if self.device.type in ["cpu", "cuda"]:
@@ -270,6 +271,7 @@ class PyTorchBackend(Backend):
             self.trainer = Trainer(
                 model=self.pretrained_model,
                 train_dataset=training_dataset,
+                data_collator=training_data_collator,
                 args=training_arguments,
             )
         elif self.device.type == "hpu":
@@ -283,54 +285,29 @@ class PyTorchBackend(Backend):
             # )
             pass
 
-    def forward(self, input: Dict[str, Tensor], **kwargs) -> Tensor:
+    def forward(self, input: Dict[str, Tensor], **kwargs) -> ModelOutput:
         with torch.autocast(
             device_type=self.device.type,
             dtype=self.amp_dtype,
             enabled=self.amp_autocast,
         ):
-            output = self.pretrained_model(**input, **kwargs)[0]
+            output = self.pretrained_model(**input, **kwargs)
 
         return output
 
-    def generate(self, input: Dict[str, Tensor], **kwargs) -> Tensor:
+    def generate(self, input: Dict[str, Tensor], **kwargs) -> ModelOutput:
         with torch.autocast(
             device_type=self.device.type,
             dtype=self.amp_dtype,
             enabled=self.amp_autocast,
         ):
-            output = self.pretrained_model.generate(**input, **kwargs)[0]
+            output = self.pretrained_model.generate(**input, **kwargs)
 
         return output
 
-    def train(self) -> None:
+    def train(self) -> TrainOutput:
         LOGGER.info("Training model")
-        results = self.trainer.train()
-        return results
 
-    def check_initial_isolation(self) -> None:
-        if self.device.type == "cuda":
-            if self.config.device_map:
-                hf_device_map = self.pretrained_model.hf_device_map
-                device_ids = set(hf_device_map.values())
-            else:
-                device_ids = {self.device.index if self.device.index is not None else 0}
+        output = self.trainer.train()
 
-            check_no_process_is_running_on_cuda_device(device_ids)
-
-    def check_continous_isolation(self) -> None:
-        if self.device.type == "cuda":
-            from multiprocessing import Process
-
-            if self.config.device_map:
-                hf_device_map = self.pretrained_model.hf_device_map
-                device_ids = set(hf_device_map.values())
-            else:
-                device_ids = {self.device.index if self.device.index is not None else 0}
-
-            self.isolation_thread = Process(
-                target=check_only_this_process_is_running_on_cuda_device,
-                args=(device_ids, os.getpid()),
-                daemon=True,
-            )
-            self.isolation_thread.start()
+        return output

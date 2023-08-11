@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from hydra.utils import get_class
 from tempfile import TemporaryDirectory
 from omegaconf.dictconfig import DictConfig
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 
 try:
@@ -454,6 +454,7 @@ class ORTBackend(Backend):
     def prepare_for_training(
         self,
         training_dataset: Dataset,
+        training_data_collator: Callable,
         training_arguments: Dict[str, Any],
     ) -> None:
         LOGGER.info("Preparing model for training")
@@ -466,6 +467,7 @@ class ORTBackend(Backend):
             model=self.pretrained_model,
             args=training_arguments,
             train_dataset=training_dataset,
+            data_collator=training_data_collator,
             feature=self.task,
         )
 
