@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 from omegaconf import DictConfig, OmegaConf
 from dataclasses import dataclass
 from logging import getLogger
@@ -6,7 +6,9 @@ from datasets import Dataset
 from torch import Tensor
 import torch
 
+from transformers.utils import ModelOutput
 from transformers.utils.fx import symbolic_trace
+from transformers.trainer_utils import TrainOutput
 from optimum.bettertransformer import BetterTransformer
 
 from optimum_benchmark.backends.base import Backend, BackendConfig
@@ -252,6 +254,7 @@ class PyTorchBackend(Backend):
     def prepare_for_training(
         self,
         training_dataset: Dataset,
+        training_data_collator: Callable,
         training_arguments: Dict[str, Any],
     ) -> None:
         if self.device.type in ["cpu", "cuda"]:
@@ -262,6 +265,7 @@ class PyTorchBackend(Backend):
             self.trainer = Trainer(
                 model=self.pretrained_model,
                 train_dataset=training_dataset,
+                data_collator=training_data_collator,
                 args=training_arguments,
             )
         elif self.device.type == "hpu":
@@ -275,27 +279,29 @@ class PyTorchBackend(Backend):
             # )
             pass
 
-    def forward(self, input: Dict[str, Tensor], **kwargs) -> Tensor:
+    def forward(self, input: Dict[str, Tensor], **kwargs) -> ModelOutput:
         with torch.autocast(
             device_type=self.device.type,
             dtype=self.amp_dtype,
             enabled=self.amp_autocast,
         ):
-            output = self.pretrained_model(**input, **kwargs)[0]
+            output = self.pretrained_model(**input, **kwargs)
 
         return output
 
-    def generate(self, input: Dict[str, Tensor], **kwargs) -> Tensor:
+    def generate(self, input: Dict[str, Tensor], **kwargs) -> ModelOutput:
         with torch.autocast(
             device_type=self.device.type,
             dtype=self.amp_dtype,
             enabled=self.amp_autocast,
         ):
-            output = self.pretrained_model.generate(**input, **kwargs)[0]
+            output = self.pretrained_model.generate(**input, **kwargs)
 
         return output
 
-    def train(self) -> None:
+    def train(self) -> TrainOutput:
         LOGGER.info("Training model")
-        results = self.trainer.train()
-        return results
+
+        output = self.trainer.train()
+
+        return output
