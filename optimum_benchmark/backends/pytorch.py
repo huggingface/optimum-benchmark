@@ -6,6 +6,13 @@ from datasets import Dataset
 from torch import Tensor
 import torch
 
+from torch.distributed.launcher.api import elastic_launch, LaunchConfig
+from torch.distributed.elastic.multiprocessing import Std
+import logging.config
+
+from transformers import Trainer, TrainingArguments
+import os
+
 from transformers.utils.fx import symbolic_trace
 from optimum.bettertransformer import BetterTransformer
 
@@ -245,32 +252,6 @@ class PyTorchBackend(Backend):
         LOGGER.info("\t+ Wrapping model with FXProfilingWrapper")
         self.pretrained_model = FXProfilingWrapper(self.pretrained_model)
 
-    def prepare_for_training(
-        self,
-        training_dataset: Dataset,
-        training_arguments: Dict[str, Any],
-    ) -> None:
-        if self.device.type in ["cpu", "cuda"]:
-            from transformers import Trainer, TrainingArguments
-
-            LOGGER.info("\t+ Wrapping model with transformers.Trainer")
-            training_arguments = TrainingArguments(**training_arguments)
-            self.trainer = Trainer(
-                model=self.pretrained_model,
-                train_dataset=training_dataset,
-                args=training_arguments,
-            )
-        elif self.device.type == "hpu":
-            # habana example
-            # from optimum.habana import GaudiConfig, GaudiTrainer, GaudiTrainingArguments
-            # training_arguments = GaudiTrainingArguments(**training_arguments)
-            # self.trainer = GaudiTrainer(
-            #     model=self.pretrained_model,
-            #     train_dataset=training_dataset,
-            #     args=training_arguments,
-            # )
-            pass
-
     def forward(self, input: Dict[str, Tensor], **kwargs) -> Tensor:
         with torch.autocast(
             device_type=self.device.type,
@@ -292,6 +273,85 @@ class PyTorchBackend(Backend):
         return output
 
     def train(self) -> None:
-        LOGGER.info("Training model")
-        results = self.trainer.train()
-        return results
+        raise Exception("For PyTorch backend training, please call backend.run_pytorch_training.")
+
+    def run_pytorch_training(self, training_config, training_arguments, training_dataset):
+        LOGGER.info("Running training benchmark")
+
+        # Converting from DictConfig to Dict is required to avoid a warning with DDP:
+        # `[W CudaIPCTypes.cpp:15] Producer process has been terminated before all shared CUDA tensors released. See Note [Sharing CUDA tensors]`
+        training_arguments_dict = OmegaConf.to_container(training_arguments, resolve=True)
+        
+        if training_config.use_ddp:
+            # TODO: support multi-node training. Hydra is probably not the good infra for that though.
+            if training_config.ddp_config.max_nodes != 1:
+                raise ValueError("PyTorch DDP training benchmark currently supports only training on a single node.")
+                
+            launch_config = LaunchConfig(**training_config.ddp_config)
+            LOGGER.info(f"PyTorch DDP launch config: {launch_config}")
+            
+            # TODO: The backend instance can not be passed here (cannot pickle 'weakref' object) so the nn.Module is passed directly.
+            # It is not clear who is using weakref though.
+            results = elastic_launch(
+                config=launch_config,
+                entrypoint=ddp_callable,
+            )((self.pretrained_model, training_dataset, training_arguments_dict, True))
+            
+            # For DDP, we log only the stats from the first rank as transformers does. It could make sense to log for all ranks.
+            train_samples_per_second = results[0]["train_samples_per_second"]
+            train_runtime = results[0]["train_runtime"]
+        else:
+            # For simple Data Parallel, we can still use ddp_callable, simply not wrapped by the elastic_launch class.
+            results = ddp_callable((self.pretrained_model, training_dataset, training_arguments_dict, False))
+        
+            train_samples_per_second = results["train_samples_per_second"]
+            train_runtime = results["train_runtime"]
+        
+        return {"train_samples_per_second": train_samples_per_second, "train_runtime": train_runtime}
+
+
+def get_logger(name: Optional[str] = None, log_all: bool = False):
+    """
+    PyTorch DDP subprocesses do not inherit from Hydra logger. Thus, we need to reconfigure the logger for the workers.
+    """
+    if os.environ["RANK"] == "0" or log_all:
+        # TODO: also configure logging for other ranks
+        hydra_conf = OmegaConf.load('.hydra/hydra.yaml')
+        logging.config.dictConfig(OmegaConf.to_container(hydra_conf.hydra.job_logging, resolve=True))
+    return getLogger(name)
+
+def ddp_callable(args):
+    pretrained_model = args[0]
+    training_dataset = args[1]
+    training_arguments = args[2]
+    use_ddp = args[3]
+
+    if use_ddp:
+        LOGGER_WORKER = get_logger("training-ddp-worker", log_all=False)
+
+        env_variables = [
+            "RANK",
+            "WORLD_SIZE",
+            "MASTER_ADDR",
+            "MASTER_PORT",
+            "TORCHELASTIC_MAX_RESTARTS",
+        ]
+        for env_var in env_variables:
+            LOGGER_WORKER.info(f"{env_var}: {os.environ.get(env_var)}")
+    else:
+        LOGGER_WORKER = LOGGER
+
+    LOGGER_WORKER.info("\t+ Wrapping model with transformers.Trainer")
+    training_arguments = TrainingArguments(**training_arguments)
+
+    trainer = Trainer(
+        model=pretrained_model,
+        train_dataset=training_dataset,
+        args=training_arguments,
+    )
+    
+    LOGGER_WORKER.info("Training model")
+    results = trainer.train().metrics
+
+    result = {"train_samples_per_second": results["train_samples_per_second"], "train_runtime": results["train_runtime"]}
+    return result

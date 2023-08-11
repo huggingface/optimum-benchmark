@@ -18,12 +18,13 @@ LOGGER = getLogger("training")
 
 # resolvers
 OmegaConf.register_new_resolver("is_cpu", lambda device: device == "cpu")
+OmegaConf.register_new_resolver("device_count", lambda: torch.cuda.device_count())
 
 
 @dataclass
 class TrainingConfig(BenchmarkConfig):
     name: str = "training"
-    _target_: str = "optimum_benchmark.benchmarks.training.base.TrainingBenchmark"
+    _target_: str = "optimum_benchmark.benchmarks.training.TrainingBenchmark"
 
     # dataset options
     dataset_shapes: DictConfig = DictConfig(
@@ -144,6 +145,31 @@ class TrainingConfig(BenchmarkConfig):
         }
     )
 
+    # These configurations are specific to PyTorch DDP.
+    # Copied from https://github.com/pytorch/pytorch/blob/v2.0.0/torch/distributed/launcher/api.py#L29, adjusting to the defaults of torch.distributed.run
+    use_ddp: bool = False
+    ddp_config: DictConfig = DictConfig(
+        {
+            "min_nodes": 1,
+            "max_nodes": 1,
+            "nproc_per_node": "${device_count:}",
+            "run_id": "none",
+            "role": "default",
+            "rdzv_endpoint": "127.0.0.1:29500",
+            "rdzv_backend": "static",
+            "rdzv_configs": {"timeout": 900, "rank": 0},
+            "max_restarts": 0,
+            "monitor_interval": 5,
+            # For the arguments below, the CLI torch.distributed.run matches with LaunchConfig defaults.
+            # start_method: str = "spawn"
+            # log_dir: Optional[str] = None
+            # redirects: Std = Std.NONE
+            # tee: Std = Std.NONE
+            # metrics_cfg: Dict[str, str] = field(default_factory=dict)
+            # local_addr: Optional[str] = None
+        }
+    )
+
 
 class TrainingBenchmark(Benchmark):
     def __init__(self):
@@ -159,7 +185,7 @@ class TrainingBenchmark(Benchmark):
 
     def generate_dataset(self, backend):
         if backend.task == "text-classification":
-            self.training_dataset = Dataset.from_dict(
+            training_dataset = Dataset.from_dict(
                 {
                     "input_ids": torch.randint(
                         0,
@@ -172,7 +198,7 @@ class TrainingBenchmark(Benchmark):
                     "labels": torch.randint(0, 1, (self.dataset_shapes.dataset_size,)),
                 }
             )
-            self.training_dataset.set_format(
+            training_dataset.set_format(
                 type="torch",
                 columns=["input_ids", "labels"],
             )
@@ -181,17 +207,21 @@ class TrainingBenchmark(Benchmark):
                 f"Training benchmark not implemented for task {backend.task}."
                 "Please submit a PR to add support for this task."
             )
+        return training_dataset
 
     def run(self, backend: "Backend") -> None:
         LOGGER.info("Running training benchmark")
 
-        self.generate_dataset(backend)
+        self.training_dataset = self.generate_dataset(backend)
 
-        backend.prepare_for_training(
-            training_dataset=self.training_dataset,
-            training_arguments=self.training_arguments,
-        )
-        results = backend.train().metrics
+        if backend.config.name == "pytorch":
+            results = backend.run_pytorch_training(training_config=self.config, training_arguments=self.training_arguments, training_dataset=self.training_dataset)
+        else:
+            backend.prepare_for_training(
+                training_dataset=self.training_dataset,
+                training_arguments=self.training_arguments,
+            )
+            results = backend.train().metrics
 
         self.training_throughput = results["train_samples_per_second"]
         self.training_runtime = results["train_runtime"]
