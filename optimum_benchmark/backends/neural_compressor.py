@@ -2,7 +2,7 @@ from typing import Dict
 from torch import Tensor
 from logging import getLogger
 from hydra.utils import get_class
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from tempfile import TemporaryDirectory
 from omegaconf import DictConfig, OmegaConf
 
@@ -34,8 +34,7 @@ class INCConfig(BackendConfig):
 
     # quantization options
     quantization: bool = False
-    quantization_config: DictConfig = DictConfig(
-        {
+    quantization_config: Dict = field(default_factory=lambda: {
             "device": "cpu",
             "backend": "default",
             "domain": "auto",
@@ -73,8 +72,7 @@ class INCConfig(BackendConfig):
 
     # calibration options
     calibration: bool = "${ptq_is_static:${backend.quantization_config.approach}}"  # type: ignore
-    calibration_config: DictConfig = DictConfig(
-        {
+    calibration_config: Dict = field(default_factory=lambda: {
             "dataset_name": "glue",
             "num_samples": 300,
             "dataset_config_name": "sst2",
