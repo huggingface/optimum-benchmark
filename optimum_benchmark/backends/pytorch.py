@@ -1,19 +1,20 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 from omegaconf import DictConfig, OmegaConf
 from dataclasses import dataclass, field
 from logging import getLogger
 from datasets import Dataset
 from torch import Tensor
 import torch
+import os
 
 from torch.distributed.launcher.api import elastic_launch, LaunchConfig
 from torch.distributed.elastic.multiprocessing import Std
 import logging.config
 
+from transformers.utils import ModelOutput
 from transformers import Trainer, TrainingArguments
-import os
-
 from transformers.utils.fx import symbolic_trace
+from transformers.trainer_utils import TrainOutput
 from optimum.bettertransformer import BetterTransformer
 
 from optimum_benchmark.backends.base import Backend, BackendConfig
@@ -38,6 +39,7 @@ class PyTorchConfig(BackendConfig):
     # load options
     no_weights: bool = False
     torch_dtype: Optional[str] = None
+    device_map: Optional[str] = None
 
     # quantization options
     load_in_8bit: bool = False
@@ -208,32 +210,35 @@ class PyTorchBackend(Backend):
         LOGGER.info(
             f"\t+ Loading pretrained model weights in dtype: {config.torch_dtype} on device: {self.device}"
         )
-        if self.task not in ["stable-diffusion", "stable-diffusion-xl"] and (
-            config.load_in_8bit or config.load_in_4bit
-        ):
-            self.pretrained_model = self.automodel_class.from_pretrained(
-                pretrained_model_name_or_path=self.model,
-                torch_dtype=self.torch_dtype,
-                device_map=self.device,
-                load_in_8bit=config.load_in_8bit,
-                load_in_4bit=config.load_in_4bit,
-                llm_int8_threshold=0,
-                **self.hub_kwargs,
-            )
-        elif self.task not in ["stable-diffusion", "stable-diffusion-xl"]:
-            with self.device:
+        if self.task not in ["stable-diffusion", "stable-diffusion-xl"]:
+            if config.load_in_8bit or config.load_in_4bit or config.device_map is not None:
                 self.pretrained_model = self.automodel_class.from_pretrained(
                     pretrained_model_name_or_path=self.model,
                     torch_dtype=self.torch_dtype,
+                    device_map=config.device_map if config.device_map is not None else self.device,
+                    load_in_8bit=config.load_in_8bit,
+                    load_in_4bit=config.load_in_4bit,
+                    llm_int8_threshold=0,
                     **self.hub_kwargs,
                 )
+            else:
+                # When a device_map is not specified, we do not rely on accelerate to load the load and rather try PyTorch-native context.
+                with self.device:
+                    self.pretrained_model = self.automodel_class.from_pretrained(
+                        pretrained_model_name_or_path=self.model,
+                        torch_dtype=self.torch_dtype,
+                        **self.hub_kwargs,
+                    )
         else:
             self.pretrained_model = self.automodel_class.from_pretrained(
                 pretrained_model_name_or_path=self.model,
                 torch_dtype=self.torch_dtype,
+                device_map=config.device_map,
                 **self.hub_kwargs,
             )
-            self.pretrained_model.to(self.device)
+            if config.device_map is None:
+                # Diffusers does not support device_map being a torch.device, thus if not provided, move to device here.
+                self.pretrained_model.to(self.device)
 
     def prepare_for_profiling(
         self,
@@ -251,23 +256,23 @@ class PyTorchBackend(Backend):
         LOGGER.info("\t+ Wrapping model with FXProfilingWrapper")
         self.pretrained_model = FXProfilingWrapper(self.pretrained_model)
 
-    def forward(self, input: Dict[str, Tensor], **kwargs) -> Tensor:
+    def forward(self, input: Dict[str, Tensor], **kwargs) -> ModelOutput:
         with torch.autocast(
             device_type=self.device.type,
             dtype=self.amp_dtype,
             enabled=self.amp_autocast,
         ):
-            output = self.pretrained_model(**input, **kwargs)[0]
+            output = self.pretrained_model(**input, **kwargs)
 
         return output
 
-    def generate(self, input: Dict[str, Tensor], **kwargs) -> Tensor:
+    def generate(self, input: Dict[str, Tensor], **kwargs) -> ModelOutput:
         with torch.autocast(
             device_type=self.device.type,
             dtype=self.amp_dtype,
             enabled=self.amp_autocast,
         ):
-            output = self.pretrained_model.generate(**input, **kwargs)[0]
+            output = self.pretrained_model.generate(**input, **kwargs)
 
         return output
 

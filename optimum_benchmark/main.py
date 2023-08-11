@@ -69,7 +69,6 @@ class ExperimentConfig:
             "cache_dir": None,
             "force_download": False,
             "local_files_only": False,
-            "use_auth_token": False,
         }
     )
 

@@ -3,10 +3,13 @@ from transformers import TrainingArguments
 from dataclasses import dataclass, field
 from logging import getLogger
 from pandas import DataFrame
-from datasets import Dataset
 import torch
 
+
+from optimum_benchmark.backends.base import Backend
 from optimum_benchmark.benchmarks.base import Benchmark, BenchmarkConfig
+from optimum_benchmark.generators.dummy_dataset import DummyDatasetGenerator
+from optimum_benchmark.benchmarks.training_utils import get_data_collator
 
 
 from typing import TYPE_CHECKING, Optional, Dict
@@ -30,12 +33,14 @@ class TrainingConfig(BenchmarkConfig):
     dataset_shapes: Dict = field(default_factory=lambda: {
             "dataset_size": 500,
             "sequence_length": 16,
+            "num_choices": 4,
         }
     )
 
     # training options
     training_arguments: Dict = field(default_factory=lambda: {
             "output_dir": "./trainer_output",
+            "skip_memory_metrics": False,
             "use_cpu": "${is_cpu:${device}}",
             "do_train": True,
             "do_eval": False,
@@ -116,7 +121,6 @@ class TrainingConfig(BenchmarkConfig):
             # ddp_bucket_cap_mb: int | None = None,
             # ddp_broadcast_buffers: bool | None = None,
             # dataloader_pin_memory: bool = True,
-            # skip_memory_metrics: bool = True,
             # use_legacy_prediction_loop: bool = False,
             # push_to_hub: bool = False,
             # resume_from_checkpoint: str | None = None,
@@ -185,51 +189,44 @@ class TrainingBenchmark(Benchmark):
 
     def configure(self, config: TrainingConfig):
         super().configure(config)
-        self.training_arguments = config.training_arguments
+
         self.dataset_shapes = config.dataset_shapes
 
+        self.training_arguments = config.training_arguments
+
+        self.dummy_dataset_generator = DummyDatasetGenerator(
+            dataset_shapes=self.dataset_shapes
+        )
+
     def generate_dataset(self, backend: "Backend"):
-        if backend.task == "text-classification":
-            training_dataset = Dataset.from_dict(
-                {
-                    "input_ids": torch.randint(
-                        0,
-                        backend.pretrained_config.vocab_size,
-                        (
-                            self.dataset_shapes.dataset_size,
-                            self.dataset_shapes.sequence_length,
-                        ),
-                    ),
-                    "labels": torch.randint(0, 1, (self.dataset_shapes.dataset_size,)),
-                }
-            )
-            training_dataset.set_format(
-                type="torch",
-                columns=["input_ids", "labels"],
-            )
-        else:
-            raise NotImplementedError(
-                f"Training benchmark not implemented for task {backend.task}."
-                "Please submit a PR to add support for this task."
-            )
+        training_dataset = self.dummy_dataset_generator.generate(
+            task=backend.task,
+            pretrained_config=backend.pretrained_config,
+            pretrained_preprocessor=backend.pretrained_preprocessor,
+        )
         return training_dataset
 
-    def run(self, backend: "Backend") -> None:
+    def run(self, backend: Backend) -> None:
         LOGGER.info("Running training benchmark")
 
-        self.training_dataset = self.generate_dataset(backend)
+        training_dataset = self.generate_dataset(backend)
+
+        training_data_collator = get_data_collator(
+            task=backend.task,
+        )
 
         if backend.config.name == "pytorch":
-            results = backend.run_pytorch_training(training_config=self.config, training_arguments=self.training_arguments, training_dataset=self.training_dataset)
+            training_output = backend.run_pytorch_training(training_config=self.config, training_arguments=self.training_arguments, training_dataset=training_dataset, training_data_collator=training_data_collator)
         else:
             backend.prepare_for_training(
-                training_dataset=self.training_dataset,
+                training_dataset=training_dataset,
+                training_data_collator=training_data_collator,
                 training_arguments=self.training_arguments,
             )
-            results = backend.train().metrics
+            training_output = backend.train()
 
-        self.training_throughput = results["train_samples_per_second"]
-        self.training_runtime = results["train_runtime"]
+        self.training_throughput = training_output.metrics["train_samples_per_second"]
+        self.training_runtime = training_output.metrics["train_runtime"]
 
     def get_results_df(self) -> DataFrame:
         results_dict = dict()
@@ -243,4 +240,3 @@ class TrainingBenchmark(Benchmark):
         LOGGER.info("Saving training results")
         results_df = self.get_results_df()
         results_df.to_csv("training_results.csv")
- 
