@@ -4,13 +4,15 @@ import time
 import torch
 import signal
 import random
+import importlib
 import psutil
 import platform
 import subprocess
 import numpy as np
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from logging import getLogger
-
+from omegaconf import DictConfig
+    
 
 LOGGER = getLogger("utils")
 
@@ -174,3 +176,35 @@ def infer_device_id(device: str) -> int:
         return -1
     else:
         raise ValueError(f"Unknown device '{device}'")
+
+
+_NAME_TO_IMPORTPATH = {
+    "pytorch": "optimum_benchmark.backends.pytorch",
+    "openvino": "optimum_benchmark.backends.openvino",
+    "neural_compressor": "optimum_benchmark.backends.neural_compressor",
+    "onnxruntime": "optimum_benchmark.backends.onnxruntime",
+    "inference": "optimum_benchmark.benchmarks.inference",
+    "training": "optimum_benchmark.benchmarks.training",
+}
+
+_NAME_TO_CLASS_NAME = {
+    "pytorch": "PyTorchConfig",
+    "openvino": "OVConfig",
+    "neural_compressor": "INCConfig",
+    "onnxruntime": "ORTConfig",
+    "inference": "InferenceConfig",
+    "training": "TrainingConfig",
+}
+
+def name_to_dataclass(name: str):
+    # We use a map name to import path to avoid importing everything here, especially every backend, to avoid to install all backends to run
+    # optimum-benchmark.
+    module = importlib.import_module(_NAME_TO_IMPORTPATH[name])
+    dataclass_class = getattr(module, _NAME_TO_CLASS_NAME[name])
+    return dataclass_class
+
+def remap_to_correct_metadata(experiment: DictConfig):
+    for key, value in experiment.items():
+        if isinstance(value, DictConfig) and hasattr(value, "name"):
+            experiment[key]._metadata.object_type = name_to_dataclass(experiment[key].name)
+    return experiment

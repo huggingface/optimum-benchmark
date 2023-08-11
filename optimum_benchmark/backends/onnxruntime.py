@@ -4,7 +4,7 @@ from torch import Tensor
 from datasets import Dataset
 from logging import getLogger
 from omegaconf import OmegaConf
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from hydra.utils import get_class
 from tempfile import TemporaryDirectory
 from omegaconf.dictconfig import DictConfig
@@ -78,8 +78,7 @@ class ORTConfig(BackendConfig):
 
     # optimization options
     optimization: bool = False
-    optimization_config: DictConfig = DictConfig(
-        {
+    optimization_config: Dict = field(default_factory=lambda: {
             "optimization_level": 1,  # 0, 1, 2, 99
             "optimize_for_gpu": "${is_gpu:${device}}",
             "fp16": False,
@@ -105,8 +104,7 @@ class ORTConfig(BackendConfig):
 
     # O1, O2, O3, O4
     auto_optimization: Optional[str] = None
-    auto_optimization_config: DictConfig = DictConfig(
-        {
+    auto_optimization_config: Dict = field(default_factory=lambda: {
             "for_gpu": "${is_gpu:${device}}",
             # add auto optimization specific options in config file or cli
             # using +backend.auto_optimization_config.option_name: value
@@ -115,8 +113,7 @@ class ORTConfig(BackendConfig):
 
     # quantization options
     quantization: bool = False
-    quantization_config: DictConfig = DictConfig(
-        {
+    quantization_config: Dict = field(default_factory=lambda: {
             "is_static": False,
             "format": "QOperator",  # QOperator, QDQ
             "mode": "IntegerOps",  # QLinearOps, IntegerOps
@@ -135,8 +132,7 @@ class ORTConfig(BackendConfig):
 
     # arm64,avx2,avx512,avx512_vnni,tensorrt
     auto_quantization: Optional[str] = None
-    auto_quantization_config: DictConfig = DictConfig(
-        {
+    auto_quantization_config: Dict = field(default_factory=lambda: {
             "is_static": False
             # add auto quantization specific options in config file or cli
             # using +backend.auto_quantization_config.option_name: value
@@ -145,8 +141,7 @@ class ORTConfig(BackendConfig):
 
     # calibration options
     calibration: bool = "${requires_calibration:${backend.auto_quantization_config.is_static}, ${backend.quantization_config.is_static}}"
-    calibration_config: DictConfig = DictConfig(
-        {
+    calibration_config: Dict = field(default_factory=lambda: {
             "dataset_name": "glue",
             "num_samples": 300,
             "dataset_config_name": "sst2",

@@ -26,6 +26,7 @@ class Benchmark(ABC):
     @abstractmethod
     def configure(self, config: BenchmarkConfig) -> None:
         LOGGER.info(f"Configuring {config.name} benchmark")
+        self.config = config
         LOGGER.info(f"\t+ Setting seed({config.seed})")
         set_seed(config.seed)
 
