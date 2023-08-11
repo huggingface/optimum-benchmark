@@ -154,27 +154,25 @@ class TrainingConfig(BenchmarkConfig):
     def __post_init__(self):
         if self.use_ddp:
             # Copied from https://github.com/pytorch/pytorch/blob/v2.0.0/torch/distributed/launcher/api.py#L29, adjusting to the defaults of torch.distributed.run
-            ddp_config = DictConfig(
-                {
-                    "min_nodes": 1,
-                    "max_nodes": 1,
-                    "nproc_per_node": "${device_count:}",
-                    "run_id": "none",
-                    "role": "default",
-                    "rdzv_endpoint": "127.0.0.1:29500",
-                    "rdzv_backend": "static",
-                    "rdzv_configs": {"timeout": 900, "rank": 0},
-                    "max_restarts": 0,
-                    "monitor_interval": 5,
-                    # For the arguments below, the CLI torch.distributed.run matches with LaunchConfig defaults.
-                    # start_method: str = "spawn"
-                    # log_dir: Optional[str] = None
-                    # redirects: Std = Std.NONE
-                    # tee: Std = Std.NONE
-                    # metrics_cfg: Dict[str, str] = field(default_factory=dict)
-                    # local_addr: Optional[str] = None
-                }
-            )
+            ddp_config = {
+                "min_nodes": 1,
+                "max_nodes": 1,
+                "nproc_per_node": "${device_count:}",
+                "run_id": "none",
+                "role": "default",
+                "rdzv_endpoint": "127.0.0.1:29500",
+                "rdzv_backend": "static",
+                "rdzv_configs": {"timeout": 900, "rank": 0},
+                "max_restarts": 0,
+                "monitor_interval": 5,
+                # For the arguments below, the CLI torch.distributed.run matches with LaunchConfig defaults.
+                # start_method: str = "spawn"
+                # log_dir: Optional[str] = None
+                # redirects: Std = Std.NONE
+                # tee: Std = Std.NONE
+                # metrics_cfg: Dict[str, str] = field(default_factory=dict)
+                # local_addr: Optional[str] = None
+            }
             if self.ddp_config is not None:
                 ddp_config.update(self.ddp_config)
             self.ddp_config = ddp_config
@@ -217,6 +215,9 @@ class TrainingBenchmark(Benchmark):
 
         if backend.config.name == "pytorch":
             training_output = backend.run_pytorch_training(training_config=self.config, training_arguments=self.training_arguments, training_dataset=training_dataset, training_data_collator=training_data_collator)
+            
+            self.training_throughput = training_output["train_samples_per_second"]
+            self.training_runtime = training_output["train_runtime"]
         else:
             backend.prepare_for_training(
                 training_dataset=training_dataset,
@@ -225,8 +226,8 @@ class TrainingBenchmark(Benchmark):
             )
             training_output = backend.train()
 
-        self.training_throughput = training_output.metrics["train_samples_per_second"]
-        self.training_runtime = training_output.metrics["train_runtime"]
+            self.training_throughput = training_output.metrics["train_samples_per_second"]
+            self.training_runtime = training_output.metrics["train_runtime"]
 
     def get_results_df(self) -> DataFrame:
         results_dict = dict()

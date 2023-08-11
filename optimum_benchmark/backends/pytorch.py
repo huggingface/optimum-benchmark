@@ -279,7 +279,7 @@ class PyTorchBackend(Backend):
     def train(self) -> None:
         raise Exception("For PyTorch backend training, please call backend.run_pytorch_training.")
 
-    def run_pytorch_training(self, training_config, training_arguments, training_dataset):
+    def run_pytorch_training(self, training_config, training_arguments, training_dataset, training_data_collator):
         LOGGER.info("Running training benchmark")
 
         # Converting from DictConfig to Dict is required to avoid a warning with DDP:
@@ -299,14 +299,14 @@ class PyTorchBackend(Backend):
             results = elastic_launch(
                 config=launch_config,
                 entrypoint=ddp_callable,
-            )((self.pretrained_model, training_dataset, training_arguments_dict, True))
+            )((self.pretrained_model, training_dataset, training_arguments_dict, training_data_collator, True))
             
             # For DDP, we log only the stats from the first rank as transformers does. It could make sense to log for all ranks.
             train_samples_per_second = results[0]["train_samples_per_second"]
             train_runtime = results[0]["train_runtime"]
         else:
             # For simple Data Parallel, we can still use ddp_callable, simply not wrapped by the elastic_launch class.
-            results = ddp_callable((self.pretrained_model, training_dataset, training_arguments_dict, False))
+            results = ddp_callable((self.pretrained_model, training_dataset, training_arguments_dict, training_data_collator, False))
         
             train_samples_per_second = results["train_samples_per_second"]
             train_runtime = results["train_runtime"]
@@ -328,7 +328,8 @@ def ddp_callable(args):
     pretrained_model = args[0]
     training_dataset = args[1]
     training_arguments = args[2]
-    use_ddp = args[3]
+    training_data_collator = args[3]
+    use_ddp = args[4]
 
     if use_ddp:
         LOGGER_WORKER = get_logger("training-ddp-worker", log_all=False)
@@ -351,6 +352,7 @@ def ddp_callable(args):
     trainer = Trainer(
         model=pretrained_model,
         train_dataset=training_dataset,
+        data_collator=training_data_collator,
         args=training_arguments,
     )
     
