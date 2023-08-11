@@ -4,6 +4,8 @@ from logging import getLogger
 from pandas import DataFrame
 from typing import List, Dict
 import statistics
+import csv
+from collections import defaultdict
 
 
 from optimum_benchmark.backends.base import Backend
@@ -23,6 +25,7 @@ class InferenceConfig(BenchmarkConfig):
 
     # run options
     memory: bool = False
+    profile: bool = False
 
     # loop options
     warmup_runs: int = 10
@@ -64,6 +67,7 @@ class InferenceBenchmark(Benchmark):
         super().configure(config)
 
         self.memory = config.memory
+        self.profile = config.profile
 
         self.warmup_runs = config.warmup_runs
         self.benchmark_duration = config.benchmark_duration
@@ -89,6 +93,49 @@ class InferenceBenchmark(Benchmark):
         if self.can_generate:
             # if possible, run generation pass
             self.run_generate_tracking(backend)
+            
+        if self.profile:
+            self.run_forward_profiling(backend)
+        
+        
+
+    def run_forward_profiling(self, backend: Backend) -> None:
+        forward_input, forward_input_shapes = self.dummy_input_generator.generate(
+            mode="forward",
+            backend=backend,
+        )
+
+        backend.prepare_for_profiling(
+            input_names=forward_input.keys(),
+            input_shapes=forward_input_shapes,
+        )
+
+        LOGGER.info("\t+ Warming up the forward pass")
+        for _ in range(self.warmup_runs):
+            _ = backend.forward(forward_input)
+            
+        LOGGER.info("\t+ Profiling records")
+        node_runtimes = defaultdict(list)
+        profiling_records = backend.pretrained_model.get_profiling_records()
+
+        for node_name, node_op, node_runtime in profiling_records:
+            node_runtimes[node_name].append((node_op, node_runtime))
+
+        # Calculate the average runtime and variance for each node.name
+        result_records = []
+        for node_name, records in node_runtimes.items():
+            runtimes = [record[1] for record in records]
+            node_op = records[0][0]  # Take the first operation type as a representative
+            mean_runtime = statistics.mean(runtimes)
+            std_runtime = statistics.stdev(runtimes) if len(runtimes) > 1 else 0
+            result_records.append((node_name, node_op, mean_runtime, std_runtime))
+
+        # Write the results to a CSV file
+        with open('profiling_results.csv', 'w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(['Node Name', 'Node Operation', 'Mean Runtime (seconds)', 'Standard Deviation (seconds)'])  # Write the header
+            writer.writerows(result_records)  # Write the records
+
 
     def run_memory_tracking(self, backend: Backend) -> None:
         memory_input, memory_input_shapes = self.dummy_input_generator.generate(

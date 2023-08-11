@@ -14,3 +14,6 @@ hydra:
     dir: sweeps/${experiment_name} # where to save a sweep's output
   job:
     chdir: true # to change the working directory during the run/sweep directory
+
+benchmark:
+  profile: false # whether to profile the benchmark
