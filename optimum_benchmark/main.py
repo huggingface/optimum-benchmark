@@ -1,15 +1,15 @@
 import os
 import hydra
 import platform
-from typing import Type
+from typing import Type, Dict
 from logging import getLogger
 from hydra.utils import get_class
-from dataclasses import dataclass, MISSING
+from dataclasses import dataclass, MISSING, field
 from omegaconf import DictConfig, OmegaConf
 from hydra.core.config_store import ConfigStore
 
 from .import_utils import is_torch_available, is_onnxruntime_available, is_openvino_available, is_neural_compressor_available
-
+from .utils import remap_to_correct_metadata
 from optimum.exporters import TasksManager
 from optimum.version import __version__ as optimum_version
 from transformers import __version__ as transformers_version
@@ -64,8 +64,7 @@ class ExperimentConfig:
     task: str = "${infer_task:${model}, ${hub_kwargs.revision}}"
 
     # ADDITIONAL MODEL CONFIGURATION: Model revision, use_auth_token, trust_remote_code
-    hub_kwargs: DictConfig = DictConfig(
-        {
+    hub_kwargs: Dict = field(default_factory=lambda: {
             "revision": "main",
             "cache_dir": None,
             "force_download": False,
@@ -75,8 +74,7 @@ class ExperimentConfig:
     )
 
     # ENVIRONMENT CONFIGURATION
-    environment: DictConfig = DictConfig(
-        {
+    environment: Dict = field(default_factory=lambda: {
             "optimum_version": optimum_version,
             "transformers_version": transformers_version,
             "accelerate_version": accelerate_version,
@@ -115,7 +113,15 @@ cs.store(group="benchmark", name="training", node=TrainingConfig)
 
 
 @hydra.main(version_base=None)
-def run_experiment(experiment: ExperimentConfig) -> None:
+def run_experiment(experiment: DictConfig) -> None:
+    # By default, Hydra populates the metadata object_type with the ones from ExperimentConfig but the object_type should really be
+    # one of the subclass (e.g. PyTorchBackendConfig instead of BackendConfig). This is required to call `to_object`.
+    experiment = remap_to_correct_metadata(experiment)
+
+    # This is required to trigger __post_init__. Reference: https://github.com/omry/omegaconf/issues/377
+    experiment = OmegaConf.to_object(experiment)
+    experiment = OmegaConf.create(experiment)
+
     # Save the config
     OmegaConf.save(experiment, "hydra_config.yaml", resolve=True)
 

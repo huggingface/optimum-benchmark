@@ -1,8 +1,8 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from omegaconf import DictConfig
 from logging import getLogger
 from pandas import DataFrame
-from typing import List
+from typing import List, Dict
 import statistics
 
 
@@ -29,8 +29,7 @@ class InferenceConfig(BenchmarkConfig):
     benchmark_duration: int = 10
 
     # input options
-    input_shapes: DictConfig = DictConfig(
-        {
+    input_shapes: Dict = field(default_factory=lambda: {
             "batch_size": 1,
             # text
             "sequence_length": 16,

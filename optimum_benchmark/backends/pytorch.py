@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional
 from omegaconf import DictConfig, OmegaConf
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from logging import getLogger
 from datasets import Dataset
 from torch import Tensor
@@ -48,8 +48,7 @@ class PyTorchConfig(BackendConfig):
 
     # compilation options
     torch_compile: bool = False
-    torch_compile_config: DictConfig = DictConfig(
-        {
+    torch_compile_config: Dict = field(default_factory=lambda: {
             "fullgraph": False,
             "dynamic": False,
             "backend": "inductor",

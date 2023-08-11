@@ -1,6 +1,6 @@
 from omegaconf import DictConfig, OmegaConf
 from transformers import TrainingArguments
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from logging import getLogger
 from pandas import DataFrame
 from datasets import Dataset
@@ -9,7 +9,7 @@ import torch
 from optimum_benchmark.benchmarks.base import Benchmark, BenchmarkConfig
 
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, Dict
 
 if TYPE_CHECKING:
     from optimum_benchmark.backends.base import Backend
@@ -27,16 +27,14 @@ class TrainingConfig(BenchmarkConfig):
     _target_: str = "optimum_benchmark.benchmarks.training.TrainingBenchmark"
 
     # dataset options
-    dataset_shapes: DictConfig = DictConfig(
-        {
+    dataset_shapes: Dict = field(default_factory=lambda: {
             "dataset_size": 500,
             "sequence_length": 16,
         }
     )
 
     # training options
-    training_arguments: DictConfig = DictConfig(
-        {
+    training_arguments: Dict = field(default_factory=lambda: {
             "output_dir": "./trainer_output",
             "use_cpu": "${is_cpu:${device}}",
             "do_train": True,
@@ -145,30 +143,37 @@ class TrainingConfig(BenchmarkConfig):
         }
     )
 
-    # These configurations are specific to PyTorch DDP.
-    # Copied from https://github.com/pytorch/pytorch/blob/v2.0.0/torch/distributed/launcher/api.py#L29, adjusting to the defaults of torch.distributed.run
+    # PyTorch-specific configuration.
     use_ddp: bool = False
-    ddp_config: DictConfig = DictConfig(
-        {
-            "min_nodes": 1,
-            "max_nodes": 1,
-            "nproc_per_node": "${device_count:}",
-            "run_id": "none",
-            "role": "default",
-            "rdzv_endpoint": "127.0.0.1:29500",
-            "rdzv_backend": "static",
-            "rdzv_configs": {"timeout": 900, "rank": 0},
-            "max_restarts": 0,
-            "monitor_interval": 5,
-            # For the arguments below, the CLI torch.distributed.run matches with LaunchConfig defaults.
-            # start_method: str = "spawn"
-            # log_dir: Optional[str] = None
-            # redirects: Std = Std.NONE
-            # tee: Std = Std.NONE
-            # metrics_cfg: Dict[str, str] = field(default_factory=dict)
-            # local_addr: Optional[str] = None
-        }
-    )
+    ddp_config: Optional[Dict] = None
+
+    def __post_init__(self):
+        if self.use_ddp:
+            # Copied from https://github.com/pytorch/pytorch/blob/v2.0.0/torch/distributed/launcher/api.py#L29, adjusting to the defaults of torch.distributed.run
+            ddp_config = DictConfig(
+                {
+                    "min_nodes": 1,
+                    "max_nodes": 1,
+                    "nproc_per_node": "${device_count:}",
+                    "run_id": "none",
+                    "role": "default",
+                    "rdzv_endpoint": "127.0.0.1:29500",
+                    "rdzv_backend": "static",
+                    "rdzv_configs": {"timeout": 900, "rank": 0},
+                    "max_restarts": 0,
+                    "monitor_interval": 5,
+                    # For the arguments below, the CLI torch.distributed.run matches with LaunchConfig defaults.
+                    # start_method: str = "spawn"
+                    # log_dir: Optional[str] = None
+                    # redirects: Std = Std.NONE
+                    # tee: Std = Std.NONE
+                    # metrics_cfg: Dict[str, str] = field(default_factory=dict)
+                    # local_addr: Optional[str] = None
+                }
+            )
+            if self.ddp_config is not None:
+                ddp_config.update(self.ddp_config)
+            self.ddp_config = ddp_config
 
 
 class TrainingBenchmark(Benchmark):
@@ -183,7 +188,7 @@ class TrainingBenchmark(Benchmark):
         self.training_arguments = config.training_arguments
         self.dataset_shapes = config.dataset_shapes
 
-    def generate_dataset(self, backend):
+    def generate_dataset(self, backend: "Backend"):
         if backend.task == "text-classification":
             training_dataset = Dataset.from_dict(
                 {

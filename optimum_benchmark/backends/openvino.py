@@ -3,7 +3,7 @@ import inspect
 from torch import Tensor
 from logging import getLogger
 from omegaconf import DictConfig
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from hydra.utils import get_class
 from typing import Dict, Optional
 from tempfile import TemporaryDirectory
@@ -37,8 +37,7 @@ class OVConfig(BackendConfig):
 
     # quantization options
     quantization: bool = False
-    quantization_config: DictConfig = DictConfig(
-        {
+    quantization_config: Dict = field(default_factory=lambda: {
             "compression": None,
             "input_info": None,
             "save_onnx_model": False,
@@ -46,8 +45,7 @@ class OVConfig(BackendConfig):
     )
 
     # calibration options
-    calibration_config: DictConfig = DictConfig(
-        {
+    calibration_config: Dict = field(default_factory=lambda: {
             "dataset_name": "glue",
             "num_samples": 300,
             "dataset_config_name": "sst2",
