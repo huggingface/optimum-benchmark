@@ -1,0 +1,16 @@
+defaults:
+  - backend: pytorch # default backend
+  - benchmark: inference # default benchmark
+  - experiment # inheriting from experiment config
+  - _self_ # for hydra 1.1 compatibility
+  - override hydra/job_logging: colorlog # colorful logging
+  - override hydra/hydra_logging: colorlog # colorful logging
+
+# hydra behavior configuration
+hydra:
+  run:
+    dir: runs/${experiment_name} # where to save a run's output
+  sweep:
+    dir: sweeps/${experiment_name} # where to save a sweep's output
+  job:
+    chdir: true # to change the working directory during the run/sweep directory
