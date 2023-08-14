@@ -5,7 +5,7 @@ on:
   schedule:
     - cron: 0 1 */3 * * # at 1am every 3 days
   pull_request:
-    types: [labeled]
+    types: [opened, synchronize, reopened, labeled]
 
 jobs:
   build-and-test:
@@ -17,4 +17,8 @@ jobs:
         if: github.event_name == 'push' && (github.event_path | contains('docker/gpu.Dockerfile') || github.event_path | contains('gpu_requirements.txt'))
         run: docker build -f docker/gpu.Dockerfile -t optimum-benchmark-gpu .
       - name: Run GPU tests
-        run: sh tests/scripts/gpu.sh
+        run:
+          docker run --rm --gpus all -v $(pwd):/workspace/optimum-benchmark --workdir=/workspace/optimum-benchmark optimum-benchmark-gpu \
+          bash -c "pip install -r gpu_requirements.txt \
+          && pip install -e .[test] \
+          && pytest -k '(cuda or tensorrt) and not onnxruntime_training'"
