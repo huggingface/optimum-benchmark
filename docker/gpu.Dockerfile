@@ -27,12 +27,6 @@ RUN apt-get install -y software-properties-common wget apt-utils patchelf git li
     apt-get clean
 RUN unattended-upgrade
 RUN apt-get autoremove -y
-
-# Install Optimum
-COPY . /workspace/optimum-benchmark
-WORKDIR /workspace/optimum-benchmark
 RUN pip install -U pip
-RUN pip install -r gpu_requirements.txt
-RUN pip install -e .[test]
 
 CMD /bin/bash

@@ -10,12 +10,12 @@ YAML_CONFIGS = [
 
 
 @pytest.mark.parametrize("yaml_config", YAML_CONFIGS)
-def test_configs(yaml_config):
+def test_config(yaml_config):
     result = subprocess.run(
         [
             "optimum-benchmark",
             "--config-dir",
-            "examples",
+            "tests/configs",
             "--config-name",
             yaml_config,
         ],
