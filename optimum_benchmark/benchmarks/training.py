@@ -182,9 +182,6 @@ class TrainingBenchmark(Benchmark):
     def __init__(self):
         super().__init__()
 
-        self.training_throughput: float = 0
-        self.training_runtime: float = 0
-
     def configure(self, config: TrainingConfig):
         super().configure(config)
 
@@ -214,10 +211,7 @@ class TrainingBenchmark(Benchmark):
         )
 
         if backend.config.name == "pytorch":
-            training_output = backend.run_pytorch_training(training_config=self.config, training_arguments=self.training_arguments, training_dataset=training_dataset, training_data_collator=training_data_collator)
-            
-            self.training_throughput = training_output["train_samples_per_second"]
-            self.training_runtime = training_output["train_runtime"]
+            self.training_metrics = backend.run_pytorch_training(training_config=self.config, training_arguments=self.training_arguments, training_dataset=training_dataset, training_data_collator=training_data_collator)
         else:
             backend.prepare_for_training(
                 training_dataset=training_dataset,
@@ -226,16 +220,13 @@ class TrainingBenchmark(Benchmark):
             )
             training_output = backend.train()
 
-            self.training_throughput = training_output.metrics["train_samples_per_second"]
-            self.training_runtime = training_output.metrics["train_runtime"]
+            self.training_metrics = {
+                "training_throughput": training_output.metrics["train_samples_per_second"],
+                "train_runtime": training_output.metrics["train_runtime"],
+            }
 
     def get_results_df(self) -> DataFrame:
-        results_dict = dict()
-
-        results_dict["training_throughput"] = self.training_throughput
-        results_dict["training_runtime"] = self.training_runtime
-
-        return DataFrame(results_dict, index=[0])
+        return DataFrame(self.training_metrics, index=[0])
 
     def save(self) -> None:
         LOGGER.info("Saving training results")

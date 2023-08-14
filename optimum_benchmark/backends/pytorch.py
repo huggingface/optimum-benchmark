@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING
 from omegaconf import DictConfig, OmegaConf
 from dataclasses import dataclass, field
 from logging import getLogger
@@ -6,13 +6,14 @@ from datasets import Dataset
 from torch import Tensor
 import torch
 import os
+import time
 
 from torch.distributed.launcher.api import elastic_launch, LaunchConfig
 from torch.distributed.elastic.multiprocessing import Std
 import logging.config
 
 from transformers.utils import ModelOutput
-from transformers import Trainer, TrainingArguments
+from transformers import Trainer, TrainingArguments, TrainerCallback
 from transformers.utils.fx import symbolic_trace
 from transformers.trainer_utils import TrainOutput
 from optimum.bettertransformer import BetterTransformer
@@ -20,6 +21,10 @@ from optimum.bettertransformer import BetterTransformer
 from optimum_benchmark.backends.base import Backend, BackendConfig
 from optimum_benchmark.profilers.fx_profiler import FXProfilingWrapper
 
+if TYPE_CHECKING:
+    from transformers import TrainerState, TrainerControl
+
+WARMUP_STEPS = 40
 
 # bachend logger
 LOGGER = getLogger("pytorch")
@@ -302,16 +307,12 @@ class PyTorchBackend(Backend):
             )((self.pretrained_model, training_dataset, training_arguments_dict, training_data_collator, True))
             
             # For DDP, we log only the stats from the first rank as transformers does. It could make sense to log for all ranks.
-            train_samples_per_second = results[0]["train_samples_per_second"]
-            train_runtime = results[0]["train_runtime"]
+            results = results[0]
         else:
             # For simple Data Parallel, we can still use ddp_callable, simply not wrapped by the elastic_launch class.
             results = ddp_callable((self.pretrained_model, training_dataset, training_arguments_dict, training_data_collator, False))
         
-            train_samples_per_second = results["train_samples_per_second"]
-            train_runtime = results["train_runtime"]
-        
-        return {"train_samples_per_second": train_samples_per_second, "train_runtime": train_runtime}
+        return results
 
 
 def get_logger(name: Optional[str] = None, log_all: bool = False):
@@ -323,6 +324,55 @@ def get_logger(name: Optional[str] = None, log_all: bool = False):
         hydra_conf = OmegaConf.load('.hydra/hydra.yaml')
         logging.config.dictConfig(OmegaConf.to_container(hydra_conf.hydra.job_logging, resolve=True))
     return getLogger(name)
+
+# Adapted from transformers.trainer_utils.speed_metrics
+def speed_metrics(trainer):
+    """
+    Measure and return speed performance metrics.
+    """
+    # Reference: https://github.com/huggingface/transformers/blob/v4.31.0/src/transformers/trainer.py#L1559
+    total_train_batch_size = trainer._train_batch_size * trainer.args.gradient_accumulation_steps * trainer.args.world_size
+    result = {}
+
+    # Warmup metrics.
+    num_warmup_steps = WARMUP_STEPS
+    num_warmup_samples = num_warmup_steps * total_train_batch_size
+    warmup_runtime = trainer.state.warmup_end - trainer.state.warmup_start
+
+    warmup_samples_per_second = num_warmup_samples / warmup_runtime
+    result["warmup_runtime"] = warmup_runtime
+    result["warmup_samples_per_second"] = round(warmup_samples_per_second, 3)
+    warmup_steps_per_second = num_warmup_steps / warmup_runtime
+    result["warmup_steps_per_second"] = round(warmup_steps_per_second, 3)
+
+    # Training metrics.
+    num_train_steps = trainer.state.max_steps - WARMUP_STEPS
+    num_train_samples = num_train_steps * total_train_batch_size
+    train_runtime = trainer.state.training_end - trainer.state.training_start
+
+    train_samples_per_second = num_train_samples / train_runtime
+    result["train_runtime"] = train_runtime
+    result["train_samples_per_second"] = round(train_samples_per_second, 3)
+    train_steps_per_second = num_train_steps / train_runtime
+    result["train_steps_per_second"] = round(train_steps_per_second, 3)
+
+    return result
+
+class MeasurementCallback(TrainerCallback):
+    def on_step_begin(self, args: TrainingArguments, state: "TrainerState", control: "TrainerControl", **kwargs):
+        if state.global_step == 0:
+            # This check is here because max_steps is set only once the training is launched, thus we can not check before calling trainer.train().
+            if state.max_steps <= WARMUP_STEPS:
+                raise ValueError(f"Total training steps {state.max_steps} is smaller than the number of warmup steps {WARMUP_STEPS}. Please increase the total number of steps (for example by increasing the dataset size).")
+
+            state.warmup_start = time.time_ns() * 1e-9
+        elif state.global_step == WARMUP_STEPS:
+            state.warmup_end = time.time_ns() * 1e-9
+            state.training_start = time.time_ns() * 1e-9
+        elif state.global_step == state.max_steps - 1:
+            state.training_end = time.time_ns() * 1e-9
+        elif state.global_step > state.max_steps - 1:
+            raise ValueError("global_step > state.max_steps - 1")
 
 def ddp_callable(args):
     pretrained_model = args[0]
@@ -354,10 +404,11 @@ def ddp_callable(args):
         train_dataset=training_dataset,
         data_collator=training_data_collator,
         args=training_arguments,
+        callbacks=[MeasurementCallback]
     )
     
     LOGGER_WORKER.info("Training model")
-    results = trainer.train().metrics
+    trainer.train()
+    results = speed_metrics(trainer)
 
-    result = {"train_samples_per_second": results["train_samples_per_second"], "train_runtime": results["train_runtime"]}
-    return result
+    return results
