@@ -14,8 +14,4 @@ jobs:
         if: github.event_name == 'push' && (contains(github.event_path, 'docker/gpu_onnxruntime_training.Dockerfile') || contains(github.event_path, 'gpu_onnxruntime_training_requirements.txt'))
         run: docker build -f docker/gpu_onnxruntime_training.Dockerfile -t gpu-onnxruntime-training .
       - name: Run GPU OnnxRuntime Training tests
-        run:
-          docker run --rm --gpus all -v $(pwd):/workspace/optimum-benchmark --workdir=/workspace/optimum-benchmark gpu-onnxruntime-training \
-          /bin/bash -c "pip install -r gpu_onnxruntime_training_requirements.txt \
-          && pip install -e .[test] \
-          && pytest -k '(cuda or tensorrt) and onnxruntime_training'"
+        run: sh tests/scripts/gpu_onnxruntime_training.sh
