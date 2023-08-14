@@ -216,14 +216,20 @@ class PyTorchBackend(Backend):
             f"\t+ Loading pretrained model weights in dtype: {config.torch_dtype} on device: {self.device}"
         )
         if self.task not in ["stable-diffusion", "stable-diffusion-xl"]:
-            if config.load_in_8bit or config.load_in_4bit or config.device_map is not None:
+            kwargs = {}
+            if config.load_in_8bit:
+                kwargs["load_in_8bit"] = config.load_in_8bit
+                kwargs["llm_int8_threshold"] = 0
+            elif config.load_in_4bit:
+                kwargs["load_in_4bit"] = config.load_in_4bit
+            
+            if config.device_map:
+                kwargs["device_map"] = config.device_map if config.device_map is not None else self.device
+
                 self.pretrained_model = self.automodel_class.from_pretrained(
                     pretrained_model_name_or_path=self.model,
                     torch_dtype=self.torch_dtype,
-                    device_map=config.device_map if config.device_map is not None else self.device,
-                    load_in_8bit=config.load_in_8bit,
-                    load_in_4bit=config.load_in_4bit,
-                    llm_int8_threshold=0,
+                    **kwargs,
                     **self.hub_kwargs,
                 )
             else:
@@ -232,6 +238,7 @@ class PyTorchBackend(Backend):
                     self.pretrained_model = self.automodel_class.from_pretrained(
                         pretrained_model_name_or_path=self.model,
                         torch_dtype=self.torch_dtype,
+                        **kwargs,
                         **self.hub_kwargs,
                     )
         else:
