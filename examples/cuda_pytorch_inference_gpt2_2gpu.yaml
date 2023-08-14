@@ -1,0 +1,21 @@
+defaults:
+  - base_config # inherits from base config
+  - _self_ # for hydra 1.1 compatibility
+
+experiment_name: cuda_pytorch_inference_gpt2_2gpu
+
+model: gpt2
+device: cuda
+
+backend:
+  device_map: auto
+  initial_isolation_check: false
+  continous_isolation_check: false
+
+hydra:
+  job:
+    env_set:
+      CUDA_VISIBLE_DEVICES: 0,1
+  sweeper:
+    params:
+      benchmark.input_shapes.batch_size: 1,2,4
