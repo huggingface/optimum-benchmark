@@ -1,6 +1,7 @@
 name: GPU Unit Tests
 
 on:
+  workflow_dispatch:
   pull_request:
     types: [opened, reopened, labeled]
 
