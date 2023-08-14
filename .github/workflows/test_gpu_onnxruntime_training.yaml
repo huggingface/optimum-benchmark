@@ -1,10 +1,8 @@
 name: GPU OnnxRuntime Training Unit Tests
 
 on:
-  workflow_dispatch:
   pull_request:
     types: [opened, synchronize, reopened, labeled]
-    branches: [main]
 
 jobs:
   build-and-test:
@@ -13,7 +11,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Build GPU OnnxRuntime Training Docker image
-        if: github.event_name == 'push' && (github.event_path | contains('docker/gpu_onnxruntime_training.Dockerfile'))
+        if: github.event_name == 'push' && (github.event_path | contains('docker/gpu_onnxruntime_training.Dockerfile') || (github.event_path | contains('gpu_onnxruntime_training_requirements.txt'))
         run: docker build -f docker/gpu_onnxruntime_training.Dockerfile -t gpu-onnxruntime-training .
       - name: Run GPU OnnxRuntime Training tests
         run:
