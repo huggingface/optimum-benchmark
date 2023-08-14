@@ -2,4 +2,4 @@ docker run --rm --gpus all -v $(pwd):/workspace/optimum-benchmark --workdir=/wor
 pip install -r gpu_onnxruntime_training_requirements.txt \
 && pip install -e .[test] \
 && pytest -k '(cuda or tensorrt) and onnxruntime_training' \
-&& rm -rf .pytest_cache"
+&& rm -rf ./*"
