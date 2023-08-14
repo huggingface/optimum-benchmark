@@ -12,3 +12,7 @@ device: cuda
 backend:
   initial_isolation_check: false
   continous_isolation_check: false
+
+benchmark:
+  dataset_shapes:
+    dataset_size: 1200
