@@ -109,14 +109,25 @@ class Backend(ABC):
 
     def check_initial_isolation(self) -> None:
         if self.device.type == "cuda":
-            device_ids = {self.device.index if self.device.index is not None else 0}
+            cuda_devices = os.environ.get("CUDA_VISIBLE_DEVICES")
+            if cuda_devices is None:
+                LOGGER.warning("Asked to check the initial device isolation, but the variable CUDA_VISIBLE_DEVICES was not set. Defaulting to checking on the first device.")
+                device_ids = {self.device.index if self.device.index is not None else 0}
+            else:
+                device_ids = {int(device_index) for device_index in cuda_devices.split(",")}
             check_no_process_is_running_on_cuda_device(device_ids)
 
-    def check_continous_isolation(self) -> None:
+    def check_continuous_isolation(self) -> None:
         if self.device.type == "cuda":
+            cuda_devices = os.environ.get("CUDA_VISIBLE_DEVICES")
+            if cuda_devices is None:
+                LOGGER.warning("Asked to check the continuous device isolation, but the variable CUDA_VISIBLE_DEVICES was not set. Defaulting to checking on the first device.")
+                device_ids = {self.device.index if self.device.index is not None else 0}
+            else:
+                device_ids = {int(device_index) for device_index in cuda_devices.split(",")}
+
             from multiprocessing import Process
 
-            device_ids = {self.device.index if self.device.index is not None else 0}
             self.isolation_thread = Process(
                 target=check_only_this_process_is_running_on_cuda_device,
                 args=(device_ids, os.getpid()),
@@ -158,7 +169,7 @@ class Backend(ABC):
             self.check_initial_isolation()
         if config.continous_isolation_check:
             LOGGER.info("\t+ Checking contineous device isolation")
-            self.check_continous_isolation()
+            self.check_continuous_isolation()
 
     def prepare_for_inference(
         self,
