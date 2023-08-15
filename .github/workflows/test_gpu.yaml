@@ -2,7 +2,11 @@ name: GPU Unit Tests
 
 on:
   pull_request:
-    types: [opened, reopened, labeled]
+    types: [opened, reopened, ready_for_review, review_requested]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-and-test:
@@ -10,8 +14,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+
       - name: Build GPU Docker image
-        if: github.event_name == 'push' && (contains(github.event_path, 'docker/gpu.Dockerfile') || contains(github.event_path, 'gpu_requirements.txt'))
-        run: docker build -f docker/gpu.Dockerfile -t optimum-benchmark-gpu .
+        if: github.event_name == 'push' && (contains(github.event_path, 'docker/gpu.dockerfile') || contains(github.event_path, 'gpu_requirements.txt'))
+        run: sh docker/scripts/build_gpu.sh
+
       - name: Run GPU tests
-        run: sh tests/scripts/gpu.sh
+        run: sh tests/scripts/test_gpu.sh

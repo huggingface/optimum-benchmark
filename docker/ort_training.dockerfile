@@ -64,4 +64,6 @@ ENV TORCH_CUDA_ARCH_LIST="5.2 6.0 6.1 7.0 7.5 8.0 8.6+PTX"
 RUN $PYTHON_EXE -m pip install --upgrade protobuf==3.20.2
 RUN $PYTHON_EXE -m torch_ort.configure
 
-CMD /bin/bash
+# Install optimum-benchmark dependencies
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install -r /tmp/requirements.txt

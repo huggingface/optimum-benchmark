@@ -1,0 +1,19 @@
+name: OnnxRuntime Training Unit Tests
+
+on:
+  pull_request:
+    types: [opened, reopened, labeled]
+
+jobs:
+  build-and-test:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Build OnnxRuntime Training Docker image
+        if: github.event_name == 'push' && (contains(github.event_path, 'docker/ort_training.Dockerfile') || contains(github.event_path, 'requirements.txt'))
+        run: sh docker/scripts/build_ort_training.sh
+
+      - name: Run OnnxRuntime Training tests
+        run: sh tests/scripts/test_ort_training.sh
