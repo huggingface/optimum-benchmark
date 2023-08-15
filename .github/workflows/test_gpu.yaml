@@ -1,10 +1,12 @@
 name: GPU Unit Tests
 
 on:
-  push:
-    branches: [main]
   pull_request:
-    branches: [main]
+    types: [opened, reopened, synchronize]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-and-test:
@@ -12,7 +14,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      - name: Build Docker image
-        run: docker build -f docker/gpu.Dockerfile -t optimum-benchmark-gpu .
-      - name: Run Docker container
-        run: docker run --rm --gpus all --workdir=/workspace/optimum-benchmark optimum-benchmark-gpu pytest -k "(cuda or tensorrt) and not onnxruntime_training"
+
+      - name: Build GPU Docker image
+        if: github.event_name == 'push' && (contains(github.event_path, 'docker/gpu.dockerfile') || contains(github.event_path, 'gpu_requirements.txt'))
+        run: sh docker/scripts/build_gpu.sh
+
+      - name: Run GPU tests
+        run: sh tests/scripts/test_gpu.sh

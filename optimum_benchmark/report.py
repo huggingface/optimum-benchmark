@@ -5,6 +5,7 @@ from pandas import DataFrame
 import matplotlib.pyplot as plt
 from omegaconf import OmegaConf
 from flatten_dict import flatten
+from argparse import ArgumentParser
 
 from rich.table import Table
 from rich.console import Console
@@ -235,8 +236,6 @@ def compute_speedup(report, with_generate=False):
 
 
 def generate_report():
-    from argparse import ArgumentParser
-
     parser = ArgumentParser()
     parser.add_argument(
         "--experiments",
@@ -311,15 +310,15 @@ def generate_report():
     console.save_svg(f"{reporting_directory}/rich_table.svg", theme=MONOKAI)
 
     # plots
-    # forward_fig, generate_fig = get_inference_plots(
-    #     inference_report, with_baseline, with_generate, report_name
-    # )
-    # forward_fig.tight_layout()
-    # forward_fig.savefig(f"{reporting_directory}/forward_throughput.png")
+    forward_fig, generate_fig = get_inference_plots(
+        inference_report, with_baseline, with_generate, report_name
+    )
+    forward_fig.tight_layout()
+    forward_fig.savefig(f"{reporting_directory}/forward_throughput.png")
 
-    # if generate_fig is not None:
-    #     generate_fig.tight_layout()
-    #     generate_fig.savefig(f"{reporting_directory}/generate_throughput.png")
+    if generate_fig is not None:
+        generate_fig.tight_layout()
+        generate_fig.savefig(f"{reporting_directory}/generate_throughput.png")
 
     # csv
     inference_report.to_csv(f"{reporting_directory}/inference_report.csv", index=True)

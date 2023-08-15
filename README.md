@@ -62,21 +62,21 @@ You can now run a benchmark using the command line by specifying the configurati
 Both arguments are mandatory. The `config-dir` is the directory where the configuration files are stored and the `config-name` is the name of the configuration file without the `.yaml` extension.
 
 ```bash
-optimum-benchmark --config-dir examples --config-name pytorch
+optimum-benchmark --config-dir examples/ --config-name pytorch
 ```
 
-This will run the benchmark on the `pytorch` backend and `cpu` device. Resultq will be stored in `runs/bert_baseline`.
+This will run the benchmark using the configuration in [`examples/pytorch.yaml`](examples/pytorch.yaml) and store the results in `runs/pytorch`.
 
-The result files are `inference_results.csv` and `profiling_results.csv` in case profiling is enabled (`benchmark.profile=true`), in addition to the program's logs `main.log` and the configuration that's been used `hydra_config.yaml`
+The result files are `inference_results.csv`, the program's logs `main.log` and the configuration that's been used `hydra_config.yaml`
 
-The directory for storing these results can be changed using the `hydra.run.dir` (and/or `hydra.sweep.dir`) in the command line or in the config file (see [`base_config.yaml`](examples/base_config.yaml)).
+The directory for storing these results can be changed using the `hydra.run.dir` (and/or `hydra.sweep.dir` in case of a multirun) in the command line or in the config file (see [`base_config.yaml`](examples/base_config.yaml)).
 
 ## Command-line configuration overrides
 
 It's easy to override the default behavior of a benchmark from the command line.
 
 ```bash
-optimum-benchmark --config-dir examples --config-name pytorch model=gpt2 device=cuda:1
+optimum-benchmark --config-dir examples/ --config-name pytorch model=gpt2 device=cuda:1
 ```
 
 ## Multirun configuration sweeps
@@ -101,7 +101,7 @@ To aggregate the results of a benchmark (run(s) or sweep(s)), you can use the `o
 optimum-report --experiments {experiments_folder_1} {experiments_folder_2} --baseline {baseline_folder} --report-name {report_name}
 ```
 
-This will create a report in the `reports` folder with the name `{report_name}`. The report will contain the results of the experiments in `{experiments_folder_1}` and `{experiments_folder_2}` compared to the results of the baseline in `{baseline_folder}`. The baseline is optional.
+This will create a report in the `reports` folder with the name `{report_name}`. The report will contain the results of the experiments in `{experiments_folder_1}` and `{experiments_folder_2}` compared to the results of the baseline in `{baseline_folder}` in the form of a `.csv` file, an `.svg` rich table and (a) `.png` plot(s).
 
 ## Configurations structure
 
@@ -122,7 +122,7 @@ model: bookbot/distil-wav2vec2-adult-child-cls-37m
 device: cpu
 ```
 
-Some examples are provided in the [`examples`](examples) folder for different backends and models.
+Some examples are provided in the [`tests/configs`](tests/configs/) folder for different backends and models.
 
 ## TODO
 
