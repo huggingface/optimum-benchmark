@@ -6,7 +6,7 @@ docker run \
 --volume $(pwd):/workspace/optimum-benchmark \
 --workdir /workspace/optimum-benchmark \
 optimum-benchmark-ort-training \
--c "pip install -e .[test] && pytest -k 'cuda_onnxruntime_training'"
+-c "pip install -e .[test] && pytest -k 'cuda_onnxruntime_training' -x"
 
 # restore ownership
 docker run \
