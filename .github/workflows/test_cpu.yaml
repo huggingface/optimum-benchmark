@@ -6,22 +6,27 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   run_cpu_tests:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v2
+
       - name: Set up Python 3.8
         uses: actions/setup-python@v2
         with:
-          python-version: 3.9
-      - name: Install dependencies
+          python-version: 3.8
+
+      - name: Install CPU requirements
         run: |
           pip install --upgrade pip
           pip install -r cpu_requirements.txt
-      - name: Install optimum-benchmark
-        run: |
           pip install -e .[test]
-      - name: Run tests
+
+      - name: Run CPU tests
         run: pytest -k "cpu"
