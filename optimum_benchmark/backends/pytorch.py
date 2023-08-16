@@ -13,7 +13,7 @@ from torch.distributed.elastic.multiprocessing import Std
 import logging.config
 
 from transformers.utils import ModelOutput
-from transformers import Trainer, TrainingArguments
+from transformers import Trainer, TrainingArguments, TrainerCallback
 from transformers.utils.fx import symbolic_trace
 from transformers.trainer_utils import TrainOutput
 from optimum.bettertransformer import BetterTransformer
