@@ -28,6 +28,11 @@ class TextClassificationGenerator(TaskGenerator):
             input_ids_or_values=dummy["input_ids"],
         )
 
+        dummy["token_type_ids"] = generate_token_type_ids(
+            batch_size=self.dummy_shapes["batch_size"],
+            sequence_length=self.dummy_shapes["sequence_length"],
+        )
+
         if with_labels:
             dummy["labels"] = generate_sequence_labels(
                 num_labels=self.model_shapes["num_labels"],
@@ -79,8 +84,8 @@ class TextGenerationGenerator(TaskGenerator):
             sequence_length=self.dummy_shapes["sequence_length"],
         )
 
-        if mode == "generate":
-            return dummy
+        # if mode == "generate":
+        #     return dummy
 
         dummy["attention_mask"] = generate_attention_mask(
             input_ids_or_values=dummy["input_ids"],
@@ -88,7 +93,6 @@ class TextGenerationGenerator(TaskGenerator):
 
         if with_labels:
             dummy["labels"] = dummy["input_ids"]
-            return dummy
 
         return dummy
 
@@ -110,6 +114,7 @@ class QuestionAnsweringGenerator(TaskGenerator):
         dummy["attention_mask"] = generate_attention_mask(
             input_ids_or_values=dummy["input_ids"],
         )
+
         if with_labels:
             dummy["start_positions"] = generate_start_positions(
                 batch_size=self.dummy_shapes["batch_size"],
@@ -228,6 +233,7 @@ class ObjectDetectionGenerator(TaskGenerator):
             )
             / 255
         )
+        
         if with_labels:
             dummy["labels"] = generate_object_detection_labels(
                 batch_size=self.dummy_shapes["batch_size"],

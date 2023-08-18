@@ -1,5 +1,5 @@
 from logging import getLogger
-from typing import Dict, List, Optional, TYPE_CHECKING, Tuple, Union
+from typing import Dict, List, Tuple, Union, TYPE_CHECKING
 
 if TYPE_CHECKING:
     import torch
@@ -16,8 +16,8 @@ class DummyInputGenerator:
     def __init__(
         self,
         task: str,
+        model_shapes: Dict[str, int],
         input_shapes: Dict[str, int],
-        model_shapes: Dict[str, Optional[int]],
     ):
         if task in TASKS_TO_GENERATORS:
             LOGGER.info(f"Using {TASKS_TO_GENERATORS[task]} generator")

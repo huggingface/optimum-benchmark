@@ -5,7 +5,6 @@ from logging import getLogger
 
 from pandas import DataFrame
 import statistics
-import torch
 
 from optimum_benchmark.backends.base import Backend
 from optimum_benchmark.backends.utils import get_model_shapes
@@ -78,15 +77,10 @@ class InferenceBenchmark(Benchmark):
         LOGGER.info("Running inference benchmark")
         self.can_generate = backend.can_generate()
 
-        self.model_shapes = get_model_shapes(
-            config=backend.pretrained_config,
-            preprocessor=backend.pretrained_preprocessor,
-        )
-
         self.dummy_input_generator = DummyInputGenerator(
             task=backend.task,
+            model_shapes=backend.model_shapes,
             input_shapes=self.input_shapes,
-            model_shapes=self.model_shapes,
         )
 
         if self.memory:
@@ -106,15 +100,11 @@ class InferenceBenchmark(Benchmark):
         )
 
         # some backends require static shapes to be compiled
-        backend.prepare_for_inference(
-            input_names=memory_input.keys(),
-            static_shapes=static_shapes,
-        )
+        backend.prepare_for_inference(static_shapes=static_shapes)
 
         for key, value in memory_input.items():
-            if isinstance(value, torch.Tensor):
-                memory_input[key] = value.to(backend.device)
-
+            if key == "prompt":
+                continue
             memory_input[key] = value.to(backend.device)
 
         LOGGER.info("\t+ Tracking forward pass peak memory")
@@ -131,15 +121,11 @@ class InferenceBenchmark(Benchmark):
         )
 
         # some backends require static shapes to be compiled
-        backend.prepare_for_inference(
-            input_names=forward_input.keys(),
-            static_shapes=static_shapes,
-        )
+        backend.prepare_for_inference(static_shapes=static_shapes)
 
         for key, value in forward_input.items():
-            if isinstance(value, torch.Tensor):
-                forward_input[key] = value.to(backend.device)
-
+            if key == "prompt":
+                continue
             forward_input[key] = value.to(backend.device)
 
         LOGGER.info("\t+ Warming up the forward pass")
@@ -167,14 +153,12 @@ class InferenceBenchmark(Benchmark):
 
         # some backends require static shapes to be compiled
         # backend.prepare_for_inference(
-        #     input_names=generate_input.keys(),
         #     static_shapes=static_shapes,
         # )
 
         for key, value in generate_input.items():
-            if isinstance(value, torch.Tensor):
-                generate_input[key] = value.to(backend.device)
-
+            if key == "prompt":
+                continue
             generate_input[key] = value.to(backend.device)
 
         LOGGER.info("\t+ Warming up the generation pass")

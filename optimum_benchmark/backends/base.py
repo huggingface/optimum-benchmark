@@ -17,10 +17,15 @@ from transformers import (
     AutoConfig,
     AutoProcessor,
     PreTrainedModel,
+    PreTrainedTokenizer,
+    PretrainedConfig,
+    ImageProcessingMixin,
+    FeatureExtractionMixin,
+    ProcessorMixin,
     Pipeline,
 )
 
-
+from optimum_benchmark.backends.utils import get_model_shapes
 from optimum_benchmark.utils import (
     check_no_process_is_running_on_cuda_device,
     check_only_this_process_is_running_on_cuda_device,
@@ -48,7 +53,9 @@ class BackendConfig(ABC):
 
 
 class Backend(ABC):
+    # model and pipeline benchmarks
     pretrained_model: Union[PreTrainedModel, Pipeline]
+    # only for model benchmarks
     pretrained_config: Optional[PretrainedConfig]
     pretrained_preprocessor: Optional[
         Union[
@@ -79,8 +86,8 @@ class Backend(ABC):
             self.model_type = self.pretrained_config.model_type
 
             try:
-                # the processor someyimes contain information about the model's
-                # input and output shapes that are not available in the config
+                # the processor sometimes contains information about the model's
+                # input shapes that's not available in the config
                 self.pretrained_preprocessor = AutoProcessor.from_pretrained(
                     pretrained_model_name_or_path=self.model,
                     **self.hub_kwargs,
@@ -88,6 +95,12 @@ class Backend(ABC):
             except ValueError:
                 LOGGER.warning(f"Could not find the model's preprocessor")
                 self.pretrained_preprocessor = None
+
+            # will do its best to infer the model's input shapes
+            self.model_shapes = get_model_shapes(
+                config=self.pretrained_config,
+                preprocessor=self.pretrained_preprocessor,
+            )
 
         # we're using this one as the default model_class which is used
         # for exporting the model to onnx for example. Although does suppose that

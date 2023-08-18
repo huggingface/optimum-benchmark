@@ -15,13 +15,16 @@ class DummyDatasetGenerator:
     def __init__(
         self,
         task: str,
+        model_shapes: Dict[str, int],
         dataset_shapes: Dict[str, int],
-        model_shapes: Dict[str, Optional[int]],
     ):
         if task in TASKS_TO_GENERATORS:
             LOGGER.info(f"Using {TASKS_TO_GENERATORS[task]} generator")
             dataset_shapes["batch_size"] = dataset_shapes["dataset_size"]
-            self.task_generator = TASKS_TO_GENERATORS[task](dataset_shapes, model_shapes)
+            self.task_generator = TASKS_TO_GENERATORS[task](
+                dummy_shapes=dataset_shapes,
+                model_shapes=model_shapes,
+            )
         else:
             raise NotImplementedError(
                 f"This task {task} is not implemented. "
