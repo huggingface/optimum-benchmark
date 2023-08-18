@@ -9,7 +9,3 @@ experiment_name: cuda_onnxruntime_training_gpt2
 model: hf-internal-testing/tiny-random-gpt2
 task: text-generation
 device: cuda
-
-backend:
-  initial_isolation_check: false
-  continous_isolation_check: false

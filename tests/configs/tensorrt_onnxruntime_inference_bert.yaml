@@ -11,5 +11,3 @@ device: cuda
 
 backend:
   provider: TensorrtExecutionProvider
-  initial_isolation_check: false
-  continous_isolation_check: false

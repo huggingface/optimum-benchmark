@@ -3,8 +3,12 @@ defaults:
   - _self_ # for hydra 1.1 compatibility
   - override benchmark: training
 
-experiment_name: cpu_pytorch_training_gpt2.yaml
+experiment_name: cuda_pytorch_training_gpt2
 
 model: hf-internal-testing/tiny-random-gpt2
 task: text-generation
-device: cpu
+device: cuda
+
+benchmark:
+  dataset_shapes:
+    dataset_size: 1200

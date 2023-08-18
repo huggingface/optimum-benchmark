@@ -9,7 +9,3 @@ experiment_name: cuda_onnxruntime_training_bert
 model: hf-internal-testing/tiny-random-bert
 task: text-classification
 device: cuda
-
-backend:
-  initial_isolation_check: false
-  continous_isolation_check: false

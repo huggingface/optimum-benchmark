@@ -1,10 +1,12 @@
+# This is a base config file that can potentially be used for all experiments
 defaults:
   - backend: pytorch # default backend
   - benchmark: inference # default benchmark
-  - experiment # inheriting from experiment config
+  - experiment # inheriting experiment schema
   - _self_ # for hydra 1.1 compatibility
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
+  - override hydra/launcher: joblib
 
 # hydra behavior configuration
 hydra:
@@ -14,3 +16,9 @@ hydra:
     dir: sweeps/${experiment_name} # where to save a sweep's output
   job:
     chdir: true # to change the working directory during the run/sweep directory
+  launcher:
+    n_jobs: 2
+    prefer: processes # use processes instead of threads
+    backend: multiprocessing # use multiprocessing backend instead of loky
+  sweeper:
+    max_batch_size: 1
