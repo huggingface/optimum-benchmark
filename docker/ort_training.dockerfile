@@ -65,5 +65,5 @@ RUN $PYTHON_EXE -m pip install --upgrade protobuf==3.20.2
 RUN $PYTHON_EXE -m torch_ort.configure
 
 # Install optimum-benchmark dependencies
-COPY requirements.txt /tmp/requirements.txt
-RUN pip install -r /tmp/requirements.txt
+COPY gpu_requirements.txt /tmp/gpu_requirements.txt
+RUN pip install -r /tmp/gpu_requirements.txt
