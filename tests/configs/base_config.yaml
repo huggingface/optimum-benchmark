@@ -26,3 +26,7 @@ hydra:
   sweeper:
     # now we force the sweeper to run one job at a time, achieving almost perfect isolation
     max_batch_size: 1
+
+backend:
+  initial_isolation_check: false
+  continous_isolation_check: false
