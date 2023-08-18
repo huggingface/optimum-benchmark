@@ -7,7 +7,7 @@ git+https://github.com/huggingface/transformers.git
 # diffusers
 git+https://github.com/huggingface/diffusers.git
 
-# cpu
+# cpu backends
 onnxruntime
 neural-compressor
 openvino

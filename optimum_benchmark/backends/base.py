@@ -49,8 +49,8 @@ class BackendConfig(ABC):
     intra_op_num_threads: Optional[int] = None
 
     # isolation options
-    initial_isolation_check: bool = True
-    continous_isolation_check: bool = True
+    initial_isolation_check: bool = False
+    continous_isolation_check: bool = False
 
     # clean up options
     delete_cache: bool = False
