@@ -1,32 +1,23 @@
 from typing import Any, Callable, Dict, List, Optional, Union
 from dataclasses import dataclass, MISSING
+from multiprocessing import Process
 from abc import abstractmethod, ABC
-from omegaconf import DictConfig
 from logging import getLogger
-from psutil import cpu_count
-from torch import Tensor
 import shutil
-import torch
 import os
 import gc
 
-
+import torch
+from torch import Tensor
 from datasets import Dataset
+from psutil import cpu_count
+from omegaconf import DictConfig
 from optimum.exporters import TasksManager
-from transformers.tokenization_utils import PreTrainedTokenizer
-
 from transformers import (
-    # configs
     AutoConfig,
-    PretrainedConfig,
-    # models
-    PreTrainedModel,
-    # preprocessors
     AutoProcessor,
-    PreTrainedTokenizer,
-    ImageProcessingMixin,
-    FeatureExtractionMixin,
-    ProcessorMixin,
+    PreTrainedModel,
+    Pipeline,
 )
 
 
@@ -57,7 +48,7 @@ class BackendConfig(ABC):
 
 
 class Backend(ABC):
-    pretrained_model: PreTrainedModel
+    pretrained_model: Union[PreTrainedModel, Pipeline]
     pretrained_config: Optional[PretrainedConfig]
     pretrained_preprocessor: Optional[
         Union[
@@ -75,58 +66,71 @@ class Backend(ABC):
         self.hub_kwargs = hub_kwargs
 
         if self.task in ["stable-diffusion", "stable-diffusion-xl"]:
-            # diffusers
+            # for pipelines
             self.pretrained_config = None
             self.pretrained_preprocessor = None
             self.model_type = self.task
         else:
-            # transformers autoconfig and automodel
+            # for models
             self.pretrained_config = AutoConfig.from_pretrained(
-                pretrained_model_name_or_path=self.model,
-                **self.hub_kwargs,
-            )
-            self.pretrained_preprocessor = AutoProcessor.from_pretrained(
                 pretrained_model_name_or_path=self.model,
                 **self.hub_kwargs,
             )
             self.model_type = self.pretrained_config.model_type
 
+            try:
+                # the processor someyimes contain information about the model's
+                # input and output shapes that are not available in the config
+                self.pretrained_preprocessor = AutoProcessor.from_pretrained(
+                    pretrained_model_name_or_path=self.model,
+                    **self.hub_kwargs,
+                )
+            except ValueError:
+                LOGGER.warning(f"Could not find the model's preprocessor")
+                self.pretrained_preprocessor = None
+
+        # we're using this one as the default model_class which is used
+        # for exporting the model to onnx for example. Although does suppose that
+        # the model weights are pytorch weights
         self.automodel_class = TasksManager.get_model_class_for_task(
             model_type=self.model_type,
             task=self.task,
         )
 
     def can_generate(self) -> bool:
-        from accelerate import init_empty_weights
-
-        with init_empty_weights():
-            dummy_model = self.automodel_class.from_pretrained(
-                pretrained_model_name_or_path=self.model,
-                **self.hub_kwargs,
-            )
-
-        return hasattr(dummy_model, "can_generate") and dummy_model.can_generate()
+        return self.task in [
+            "text-generation",
+            "text2text-generation",
+            "image-to-text",
+            "automatic-speech-recognition",
+        ]
 
     def check_initial_isolation(self) -> None:
         if self.device.type == "cuda":
             cuda_devices = os.environ.get("CUDA_VISIBLE_DEVICES")
             if cuda_devices is None:
-                LOGGER.warning("Asked to check the initial device isolation, but the variable CUDA_VISIBLE_DEVICES was not set. Defaulting to checking on the first device.")
+                LOGGER.warning(
+                    "Asked to check the initial device isolation, but the variable CUDA_VISIBLE_DEVICES was not set. Defaulting to checking on the first device."
+                )
                 device_ids = {self.device.index if self.device.index is not None else 0}
             else:
-                device_ids = {int(device_index) for device_index in cuda_devices.split(",")}
+                device_ids = {
+                    int(device_index) for device_index in cuda_devices.split(",")
+                }
             check_no_process_is_running_on_cuda_device(device_ids)
 
     def check_continuous_isolation(self) -> None:
         if self.device.type == "cuda":
             cuda_devices = os.environ.get("CUDA_VISIBLE_DEVICES")
             if cuda_devices is None:
-                LOGGER.warning("Asked to check the continuous device isolation, but the variable CUDA_VISIBLE_DEVICES was not set. Defaulting to checking on the first device.")
+                LOGGER.warning(
+                    "Asked to check the continuous device isolation, but the variable CUDA_VISIBLE_DEVICES was not set. Defaulting to checking on the first device."
+                )
                 device_ids = {self.device.index if self.device.index is not None else 0}
             else:
-                device_ids = {int(device_index) for device_index in cuda_devices.split(",")}
-
-            from multiprocessing import Process
+                device_ids = {
+                    int(device_index) for device_index in cuda_devices.split(",")
+                }
 
             self.isolation_thread = Process(
                 target=check_only_this_process_is_running_on_cuda_device,
@@ -140,7 +144,7 @@ class Backend(ABC):
         self.config = config
 
         LOGGER.info(f"Configuring {config.name} backend")
-        
+
         self.config = config
         if config.inter_op_num_threads is not None:
             if config.inter_op_num_threads == -1:
@@ -158,10 +162,8 @@ class Backend(ABC):
 
         # clean up options
         if config.delete_cache:
-            LOGGER.info("\t+ Will delete cache after benchmarking")
-            self.delete_cache = True
-        else:
-            self.delete_cache = False
+            LOGGER.info("\t+ Will delete model cache after benchmarking")
+        self.delete_cache = config.delete_cache
 
         # isolation options
         if config.initial_isolation_check:
@@ -171,20 +173,16 @@ class Backend(ABC):
             LOGGER.info("\t+ Checking contineous device isolation")
             self.check_continuous_isolation()
 
-    def prepare_for_inference(
-        self,
-        input_names: List[str],
-        input_shapes: Dict[str, int],
-    ) -> None:
+    # compiling in openvino requires static shapes
+    def prepare_for_inference(self, static_shapes: Dict[str, int]) -> None:
         pass
 
-    def prepare_for_profiling(
-        self,
-        input_names: List[str],
-        input_shapes: Dict[str, int],
-    ) -> None:
+    # symbolic tracing intransformers requires input names
+    def prepare_for_profiling(self, input_names: List[str]) -> None:
         pass
 
+    # depending on the backend, we might need to prepare the model for training
+    # although I prefer to pass these in the train method
     def prepare_for_training(
         self,
         training_dataset: Dataset,
@@ -193,15 +191,12 @@ class Backend(ABC):
     ) -> None:
         pass
 
-    @abstractmethod
     def forward(self, input: Dict[str, Tensor], **kwargs):
         raise NotImplementedError("Backend must implement forward method")
 
-    @abstractmethod
     def generate(self, input: Dict[str, Tensor], **kwargs) -> str:
         raise NotImplementedError("Backend must implement generate method")
 
-    @abstractmethod
     def train(self):
         raise NotImplementedError("Backend must implement train method")
 
