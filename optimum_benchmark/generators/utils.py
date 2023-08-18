@@ -1,102 +1,6 @@
 import torch
-from typing import Dict, List, Optional, Union
 from torch import Tensor
-
-from transformers import (
-    PretrainedConfig,
-    PreTrainedTokenizer,
-    ImageProcessingMixin,
-    FeatureExtractionMixin,
-    ProcessorMixin,
-)
-
-
-def get_model_config(
-    pretrained_config: PretrainedConfig,
-    pretrained_preprocessor: Optional[
-        Union[
-            PreTrainedTokenizer,
-            ImageProcessingMixin,
-            FeatureExtractionMixin,
-            ProcessorMixin,
-        ]
-    ],
-) -> Dict[str, int]:
-    pretrained_config_dict = parse_config(pretrained_config)
-    pretrained_preprocessor_dict = parse_config(pretrained_preprocessor)
-
-    model_config = {k: v for k, v in pretrained_config_dict.items() if v is not None}
-    model_config.update(
-        {k: v for k, v in pretrained_preprocessor_dict.items() if v is not None}
-    )
-
-    return model_config
-
-
-def parse_config(
-    pretrained_config: Optional[
-        Union[
-            PretrainedConfig,
-            PreTrainedTokenizer,
-            ImageProcessingMixin,
-            FeatureExtractionMixin,
-            ProcessorMixin,
-        ]
-    ],
-) -> Dict[str, int]:
-    if hasattr(pretrained_config, "vocab_size"):
-        vocab_size = pretrained_config.vocab_size
-    else:
-        vocab_size = None
-
-    if hasattr(pretrained_config, "num_labels"):
-        num_labels = pretrained_config.num_labels
-    else:
-        num_labels = None
-
-    if hasattr(pretrained_config, "num_queries"):
-        num_queries = pretrained_config.num_queries
-    else:
-        num_queries = None
-
-    if hasattr(pretrained_config, "image_size"):
-        if type(pretrained_config.image_size) in [int, float]:
-            height = pretrained_config.image_size
-            width = pretrained_config.image_size
-        elif type(pretrained_config.image_size) in [list, tuple]:
-            height = pretrained_config.image_size[0]
-            width = pretrained_config.image_size[1]
-        elif type(pretrained_config.image_size) == dict:
-            height = list(pretrained_config.image_size.values())[0]
-            width = list(pretrained_config.image_size.values())[1]
-
-    elif hasattr(pretrained_config, "size"):
-        if type(pretrained_config.size) in [int, float]:
-            height = pretrained_config.size
-            width = pretrained_config.size
-        elif type(pretrained_config.size) in [list, tuple]:
-            height = pretrained_config.size[0]
-            width = pretrained_config.size[1]
-        elif type(pretrained_config.size) == dict:
-            height = list(pretrained_config.size.values())[0]
-            width = list(pretrained_config.size.values())[1]
-    else:
-        height = None
-        width = None
-
-    if hasattr(pretrained_config, "num_channels"):
-        num_channels = pretrained_config.num_channels
-    else:
-        num_channels = None
-
-    return {
-        "vocab_size": vocab_size,
-        "num_labels": num_labels,
-        "num_queries": num_queries,
-        "height": height,
-        "width": width,
-        "num_channels": num_channels,
-    }
+from typing import List
 
 
 def generate_input_ids(
@@ -231,3 +135,7 @@ def generate_semantic_segmentation_labels(
             width,
         ),
     )
+
+
+def generate_prompt(batch_size: int) -> Tensor:
+    return ["Surrealist painting of a floating island."] * batch_size
