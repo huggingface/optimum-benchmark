@@ -29,7 +29,7 @@ def generate_token_labels(
     )
 
 
-def generate_sequence_labels(num_labels: int, batch_size: int) -> Tensor:
+def generate_sequence_labels(batch_size: int, num_labels: int = 2) -> Tensor:
     return torch.randint(
         0,
         num_labels,

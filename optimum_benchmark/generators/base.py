@@ -35,8 +35,11 @@ class TextClassificationGenerator(TaskGenerator):
 
         if with_labels:
             dummy["labels"] = generate_sequence_labels(
-                num_labels=self.model_shapes["num_labels"],
                 batch_size=self.dummy_shapes["batch_size"],
+                # num_labels in this case is not available in the config
+                # but ratherthe moment you instantiate the text classification model
+                # we can't access it here, so we just use the default value
+                # which is 2 which works for binary and multi-class classification
             )
 
         return dummy
@@ -83,10 +86,6 @@ class TextGenerationGenerator(TaskGenerator):
             batch_size=self.dummy_shapes["batch_size"],
             sequence_length=self.dummy_shapes["sequence_length"],
         )
-
-        # if mode == "generate":
-        #     return dummy
-
         dummy["attention_mask"] = generate_attention_mask(
             input_ids_or_values=dummy["input_ids"],
         )
@@ -233,7 +232,7 @@ class ObjectDetectionGenerator(TaskGenerator):
             )
             / 255
         )
-        
+
         if with_labels:
             dummy["labels"] = generate_object_detection_labels(
                 batch_size=self.dummy_shapes["batch_size"],
