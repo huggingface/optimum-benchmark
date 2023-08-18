@@ -37,7 +37,8 @@ class OVConfig(BackendConfig):
 
     # quantization options
     quantization: bool = False
-    quantization_config: Dict = field(default_factory=lambda: {
+    quantization_config: Dict = field(
+        default_factory=lambda: {
             "compression": None,
             "input_info": None,
             "save_onnx_model": False,
@@ -45,7 +46,8 @@ class OVConfig(BackendConfig):
     )
 
     # calibration options
-    calibration_config: Dict = field(default_factory=lambda: {
+    calibration_config: Dict = field(
+        default_factory=lambda: {
             "dataset_name": "glue",
             "num_samples": 300,
             "dataset_config_name": "sst2",
@@ -151,18 +153,10 @@ class OVBackend(Backend):
             model_id=f"{tmpdirname}/quantized",
         )
 
-    def prepare_for_forward(self, input_shapes: Dict[str, Tensor]) -> None:
+    def prepare_for_inference(self, static_shapes: Dict[str, int]) -> None:
         if self.reshape:
-            relevant_shapes = {
-                k: v
-                for k, v in input_shapes.items()
-                if k
-                in inspect.signature(self.pretrained_model.reshape).parameters.keys()
-            }
-            LOGGER.info(
-                f"\t+ Reshaping model with relevant input shapes: {relevant_shapes}"
-            )
-            self.pretrained_model.reshape(**relevant_shapes)
+            LOGGER.info(f"\t+ Reshaping model with static shapes: {static_shapes}")
+            self.pretrained_model.reshape(**static_shapes)
 
         if self.half:
             LOGGER.info(f"\t+ Converting model to half precision")
