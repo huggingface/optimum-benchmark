@@ -1,23 +1,25 @@
+from typing import Optional, List
+from logging import getLogger
+import subprocess
+import importlib
+import platform
+import random
+import signal
+import time
 import re
 import os
-import time
-import torch
-import signal
-import random
-import importlib
-import psutil
-import platform
-import subprocess
-import numpy as np
-from typing import Optional, List, TYPE_CHECKING
-from logging import getLogger
+
 from omegaconf import DictConfig
-    
+import numpy as np
+import psutil
+import torch
 
 LOGGER = getLogger("utils")
 
 
 def set_seed(seed: int) -> None:
+    # TODO: Should be devided into multiple functions
+    # each setting seeds for a backend
     random.seed(seed)
     np.random.seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)
@@ -28,9 +30,9 @@ def set_seed(seed: int) -> None:
     torch.backends.cudnn.benchmark = False
 
 
-def bytes_to_mega_bytes(bytes: int) -> float:
+def bytes_to_mega_bytes(bytes: int) -> int:
     # Reference: https://en.wikipedia.org/wiki/Byte#Multiple-byte_units
-    return bytes * 1e-6
+    return int(bytes * 1e-6)
 
 
 def get_cpu() -> Optional[str]:
@@ -96,7 +98,9 @@ def check_no_process_is_running_on_cuda_device(device_ids: List[int]) -> None:
 
         # TODO: It would be safer to run each run of a sweep in a subprocess. Although we can trust PyTorch to clear GPU memory when asked,
         # it is not a safe assumption to make for all backends.
-        if len(pids_on_device_id) > 1 or (len(pids_on_device_id) == 1 and os.getpid() not in pids_on_device_id):
+        if len(pids_on_device_id) > 1 or (
+            len(pids_on_device_id) == 1 and os.getpid() not in pids_on_device_id
+        ):
             raise RuntimeError(
                 f"Expected no processes on device {device_id}, "
                 f"found {len(pids_on_device_id)} processes "
@@ -157,6 +161,7 @@ def check_only_this_process_is_running_on_cuda_device(
         time.sleep(1)
 
 
+# TODO: move this to onnxruntime backend, the only place using it
 def infer_device_id(device: str) -> int:
     """
     Infer the device id from the given device string.
@@ -190,6 +195,7 @@ _NAME_TO_CLASS_NAME = {
     "training": "TrainingConfig",
 }
 
+
 def name_to_dataclass(name: str):
     # We use a map name to import path to avoid importing everything here, especially every backend, to avoid to install all backends to run
     # optimum-benchmark.
@@ -197,14 +203,31 @@ def name_to_dataclass(name: str):
     dataclass_class = getattr(module, _NAME_TO_CLASS_NAME[name])
     return dataclass_class
 
+
 def remap_to_correct_metadata(experiment: DictConfig):
     for key, value in experiment.items():
         if isinstance(value, DictConfig) and hasattr(value, "name"):
-            experiment[key]._metadata.object_type = name_to_dataclass(experiment[key].name)
+            experiment[key]._metadata.object_type = name_to_dataclass(
+                experiment[key].name
+            )
     return experiment
 
+
+DIFFUSION_TASKS = [
+    "stable-diffusion",
+    "stable-diffusion-xl",
+]
+
+
+TEXT_GENERATION_TASKS = [
+    "text-generation",
+    "text2text-generation",
+    "image-to-text",
+    "automatic-speech-recognition",
+]
+
 # let's leave this here for now, it's a good list of tasks supported by transformers
-TASKS = [
+ALL_TASKS = [
     "conversational",
     "feature-extraction",
     "fill-mask",
