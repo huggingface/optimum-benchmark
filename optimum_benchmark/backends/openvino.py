@@ -153,8 +153,13 @@ class OVBackend(Backend):
             model_id=f"{tmpdirname}/quantized",
         )
 
-    def prepare_for_inference(self, static_shapes: Dict[str, int]) -> None:
+    def prepare_for_inference(self, input_shapes: Dict[str, int]) -> None:
         if self.reshape:
+            static_shapes = {
+                key: value
+                for key, value in input_shapes.items()
+                if key in inspect.getfullargspec(self.pretrained_model.reshape).args
+            }
             LOGGER.info(f"\t+ Reshaping model with static shapes: {static_shapes}")
             self.pretrained_model.reshape(**static_shapes)
 

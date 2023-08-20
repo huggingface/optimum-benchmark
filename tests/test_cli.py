@@ -32,7 +32,7 @@ def test_single_device_runs(config_file):
             "tests/configs",
             "--config-name",
             config_name,
-            "--multirun",
+            # "--multirun", # usefull for isolation but makes debugging harder
         ],
         capture_output=True,
     )
@@ -55,7 +55,7 @@ def test_distributed_runs(config_file):
             "tests/configs",
             "--config-name",
             config_name,
-            "--multirun",
+            # "--multirun", # usefull for isolation but makes debugging harder
         ],
         capture_output=True,
         env=my_env,

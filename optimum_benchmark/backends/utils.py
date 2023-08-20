@@ -12,86 +12,17 @@ from optimum.utils.save_utils import maybe_save_preprocessors
 from optimum.exporters.onnx.constants import UNPICKABLE_ARCHS
 from optimum.utils import DEFAULT_DUMMY_SHAPES, ONNX_WEIGHTS_NAME
 from optimum.onnxruntime.configuration import AutoOptimizationConfig
+from transformers import AutoTokenizer, PreTrainedModel, PretrainedConfig
 from requests.exceptions import ConnectionError as RequestsConnectionError
 from optimum.exporters.error_utils import AtolError, OutputMatchError, ShapeError
 from optimum.exporters.onnx.convert import export_models, validate_models_outputs
 from optimum.exporters.onnx.__main__ import logger, _get_submodels_and_onnx_configs
-from transformers import (
-    AutoTokenizer,
-    PreTrainedModel,
-    PretrainedConfig,
-    PreTrainedTokenizer,
-    ImageProcessingMixin,
-    FeatureExtractionMixin,
-    ProcessorMixin,
-)
 from optimum.exporters.onnx import (
     get_encoder_decoder_models_for_export,
     get_decoder_models_for_export,
     OnnxConfigWithPast,
     export_models,
 )
-
-
-def normalize_model_shapes(shapes: Dict[str, Any]) -> Dict[str, int]:
-    vocab_size = shapes.get("vocab_size", None)  # text input
-    num_labels = shapes.get("num_labels", None)  # classification labels
-    num_queries = shapes.get("num_queries", None)  # object detection labels
-    num_channels = shapes.get("num_channels", None)  # image input
-    image_size = shapes.get("image_size", None)  # image input
-
-    if image_size is None:
-        image_size = shapes.get("size", None)  # image input
-
-    if type(image_size) in [int, float]:
-        height = image_size
-        width = image_size
-    elif type(image_size) in [list, tuple]:
-        height = image_size[0]
-        width = image_size[1]
-    elif type(image_size) == dict:
-        height = list(image_size.values())[0]
-        width = list(image_size.values())[1]
-    else:
-        height = None
-        width = None
-
-    return {
-        "vocab_size": vocab_size,
-        "num_labels": num_labels,
-        "num_queries": num_queries,
-        "num_channels": num_channels,
-        "height": height,
-        "width": width,
-    }
-
-
-def get_model_shapes(
-    config: Optional[PretrainedConfig] = None,
-    preprocessor: Optional[
-        Union[
-            PreTrainedTokenizer,
-            ImageProcessingMixin,
-            FeatureExtractionMixin,
-            ProcessorMixin,
-        ]
-    ] = None,
-) -> Dict[str, int]:
-    model_shapes = {}
-
-    if config is not None:
-        config_dict = {k: v for k, v in config.to_dict().items() if v is not None}
-        model_shapes.update(config_dict)
-
-    if preprocessor is not None and hasattr(preprocessor, "to_dict"):
-        preprocessor_dict = {
-            k: v for k, v in preprocessor.to_dict().items() if v is not None
-        }
-        model_shapes.update(preprocessor_dict)
-
-    model_shapes = normalize_model_shapes(model_shapes)
-
-    return model_shapes
 
 
 def randomize_weights(model):

@@ -1,7 +1,6 @@
 from dataclasses import dataclass, MISSING
-from abc import ABC, abstractmethod
 from logging import getLogger
-
+from abc import ABC
 
 from optimum_benchmark.backends.base import Backend
 from optimum_benchmark.utils import set_seed
@@ -20,7 +19,7 @@ class BenchmarkConfig(ABC):
 
 
 class Benchmark(ABC):
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     def configure(self, config: BenchmarkConfig) -> None:
