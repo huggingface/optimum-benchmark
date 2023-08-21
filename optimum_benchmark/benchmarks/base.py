@@ -1,7 +1,6 @@
 from dataclasses import dataclass, MISSING
-from abc import ABC, abstractmethod
 from logging import getLogger
-
+from abc import ABC
 
 from optimum_benchmark.backends.base import Backend
 from optimum_benchmark.utils import set_seed
@@ -20,20 +19,17 @@ class BenchmarkConfig(ABC):
 
 
 class Benchmark(ABC):
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
-    @abstractmethod
     def configure(self, config: BenchmarkConfig) -> None:
         LOGGER.info(f"Configuring {config.name} benchmark")
         self.config = config
-        LOGGER.info(f"\t+ Setting seed({config.seed})")
-        set_seed(config.seed)
+        LOGGER.info(f"\t+ Setting seed({self.config.seed})")
+        set_seed(self.config.seed)
 
-    @abstractmethod
     def run(self, backend: Backend) -> None:
         raise NotImplementedError("Benchmark must implement run method")
 
-    @abstractmethod
     def save(self, path: str = "") -> None:
         raise NotImplementedError("Benchmark must implement save method")

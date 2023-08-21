@@ -1,21 +1,18 @@
-from omegaconf import DictConfig, OmegaConf
-from transformers import TrainingArguments
+from typing import Any, Optional, Dict, TYPE_CHECKING
 from dataclasses import dataclass, field
 from logging import getLogger
+
+from transformers import default_data_collator
+from omegaconf import OmegaConf
 from pandas import DataFrame
 import torch
 
-
-from optimum_benchmark.backends.base import Backend
 from optimum_benchmark.benchmarks.base import Benchmark, BenchmarkConfig
-from optimum_benchmark.generators.dummy_dataset import DummyDatasetGenerator
-from optimum_benchmark.benchmarks.training_utils import get_data_collator
-
-
-from typing import TYPE_CHECKING, Optional, Dict
+from optimum_benchmark.generators.dataset_generator import DatasetGenerator
 
 if TYPE_CHECKING:
     from optimum_benchmark.backends.base import Backend
+
 
 LOGGER = getLogger("training")
 
@@ -30,22 +27,32 @@ class TrainingConfig(BenchmarkConfig):
     _target_: str = "optimum_benchmark.benchmarks.training.TrainingBenchmark"
 
     # dataset options
-    dataset_shapes: Dict = field(default_factory=lambda: {
+    dataset_shapes: Dict = field(
+        default_factory=lambda: {
+            # used with all tasks
             "dataset_size": 500,
+            # used with text input tasks
             "sequence_length": 16,
-            "num_choices": 4,
+            # used with multiple choice tasks where input
+            # is of shape (batch_size, num_choices, sequence_length)
+            "num_choices": 1,
+            # used with audio input tasks
+            "feature_size": 80,
+            "nb_max_frames": 3000,
+            "audio_sequence_length": 16000,
         }
     )
 
     # training options
-    training_arguments: Dict = field(default_factory=lambda: {
+    training_arguments: Dict = field(
+        default_factory=lambda: {
             "output_dir": "./trainer_output",
             "skip_memory_metrics": False,
             "use_cpu": "${is_cpu:${device}}",
             "do_train": True,
             "do_eval": False,
             "do_predict": False,
-            # add any other training arguments here
+            # add any other training arguments in your config
             ###### TrainingArguments ########
             # prediction_loss_only: bool = False,
             # per_device_train_batch_size: int = 8,
@@ -180,38 +187,38 @@ class TrainingConfig(BenchmarkConfig):
 
 class TrainingBenchmark(Benchmark):
     def __init__(self):
-        super().__init__()
+        # initialize training results
+        self.training_metrics: Dict[str, Any] = {}
 
     def configure(self, config: TrainingConfig):
         super().configure(config)
 
         self.dataset_shapes = config.dataset_shapes
-
         self.training_arguments = config.training_arguments
 
-        self.dummy_dataset_generator = DummyDatasetGenerator(
-            dataset_shapes=self.dataset_shapes
-        )
-
-    def generate_dataset(self, backend: "Backend"):
-        training_dataset = self.dummy_dataset_generator.generate(
-            task=backend.task,
-            pretrained_config=backend.pretrained_config,
-            pretrained_preprocessor=backend.pretrained_preprocessor,
-        )
-        return training_dataset
-
-    def run(self, backend: Backend) -> None:
+    def run(self, backend: "Backend") -> None:
         LOGGER.info("Running training benchmark")
+        model_shapes = backend.model_shapes
+        self.dataset_shapes = {**self.dataset_shapes, **model_shapes}
 
-        training_dataset = self.generate_dataset(backend)
+        self.dataset_generator = DatasetGenerator(
+            task=backend.task,
+            dataset_shapes=self.dataset_shapes,
+        )
+
+        training_dataset = self.dataset_generator.generate()
 
         training_data_collator = get_data_collator(
             task=backend.task,
         )
 
         if backend.config.name == "pytorch":
-            self.training_metrics = backend.run_pytorch_training(training_config=self.config, training_arguments=self.training_arguments, training_dataset=training_dataset, training_data_collator=training_data_collator)
+            self.training_metrics = backend.run_pytorch_training(
+                training_config=self.config,
+                training_arguments=self.training_arguments,
+                training_dataset=training_dataset,
+                training_data_collator=training_data_collator,
+            )
         else:
             backend.prepare_for_training(
                 training_dataset=training_dataset,
@@ -221,7 +228,9 @@ class TrainingBenchmark(Benchmark):
             training_output = backend.train()
 
             self.training_metrics = {
-                "training_throughput": training_output.metrics["train_samples_per_second"],
+                "training_throughput": training_output.metrics[
+                    "train_samples_per_second"
+                ],
                 "train_runtime": training_output.metrics["train_runtime"],
             }
 
@@ -232,3 +241,19 @@ class TrainingBenchmark(Benchmark):
         LOGGER.info("Saving training results")
         results_df = self.get_results_df()
         results_df.to_csv("training_results.csv")
+
+
+def get_data_collator(task: str) -> callable:
+    if task == "object-detection":
+        return object_detection_data_collator
+    else:
+        return default_data_collator
+
+
+def object_detection_data_collator(batch) -> Dict[str, torch.Tensor]:
+    pixel_values = torch.stack([example["pixel_values"] for example in batch])
+    labels = [example["labels"] for example in batch]
+    return {
+        "pixel_values": pixel_values,
+        "labels": labels,
+    }

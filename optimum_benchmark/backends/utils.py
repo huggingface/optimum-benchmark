@@ -1,29 +1,27 @@
 from typing import Any, Callable, Dict, Optional, Union
 from pathlib import Path
-import torch
 import os
 
+import torch
 from optimum.exporters import TasksManager
 from optimum.onnxruntime import ORTOptimizer
 from optimum.utils import DEFAULT_DUMMY_SHAPES
-from optimum.utils.save_utils import maybe_save_preprocessors
-from optimum.onnxruntime.configuration import AutoOptimizationConfig
-from optimum.exporters.onnx.convert import export_models, validate_models_outputs
-from optimum.exporters.error_utils import AtolError, OutputMatchError, ShapeError
-from optimum.exporters.onnx.__main__ import logger, _get_submodels_and_onnx_configs
-from requests.exceptions import ConnectionError as RequestsConnectionError
-from transformers import AutoTokenizer, PretrainedConfig, PreTrainedModel
-from optimum.utils import DEFAULT_DUMMY_SHAPES, ONNX_WEIGHTS_NAME
-from optimum.exporters.onnx.constants import UNPICKABLE_ARCHS
-from optimum.exporters.onnx.base import OnnxConfig
 from transformers.utils import is_torch_available
-
-
+from optimum.exporters.onnx.base import OnnxConfig
+from optimum.utils.save_utils import maybe_save_preprocessors
+from optimum.exporters.onnx.constants import UNPICKABLE_ARCHS
+from optimum.utils import DEFAULT_DUMMY_SHAPES, ONNX_WEIGHTS_NAME
+from optimum.onnxruntime.configuration import AutoOptimizationConfig
+from transformers import AutoTokenizer, PreTrainedModel, PretrainedConfig
+from requests.exceptions import ConnectionError as RequestsConnectionError
+from optimum.exporters.error_utils import AtolError, OutputMatchError, ShapeError
+from optimum.exporters.onnx.convert import export_models, validate_models_outputs
+from optimum.exporters.onnx.__main__ import logger, _get_submodels_and_onnx_configs
 from optimum.exporters.onnx import (
-    export_models,
-    OnnxConfigWithPast,
-    get_decoder_models_for_export,
     get_encoder_decoder_models_for_export,
+    get_decoder_models_for_export,
+    OnnxConfigWithPast,
+    export_models,
 )
 
 
