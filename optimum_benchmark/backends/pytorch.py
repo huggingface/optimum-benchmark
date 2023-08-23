@@ -143,7 +143,7 @@ class PyTorchBackend(Backend):
         # pytorch autocast
         if config.amp_autocast:
             LOGGER.info(
-                f"\t+ Enabling Automatic Mixed Precision with dtype: {self.amp_dtype}"
+                f"\t+ Enabling Automatic Mixed Precision with dtype: {config.amp_dtype}"
             )
         self.amp_autocast = config.amp_autocast
         self.amp_dtype = (
