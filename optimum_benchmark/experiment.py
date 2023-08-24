@@ -1,6 +1,6 @@
 import os
 import platform
-from typing import Type, Dict
+from typing import Any, Type, Dict
 from logging import getLogger
 from dataclasses import dataclass, MISSING, field
 
@@ -20,19 +20,18 @@ from .import_utils import (
     is_openvino_available,
     is_neural_compressor_available,
 )
-from optimum_benchmark.backends.base import Backend
-from optimum_benchmark.benchmarks.base import Benchmark
-from optimum_benchmark.backends.base import Backend, BackendConfig
-from optimum_benchmark.benchmarks.training import TrainingConfig
-from optimum_benchmark.benchmarks.inference import InferenceConfig
-from optimum_benchmark.benchmarks.base import Benchmark, BenchmarkConfig
-from .utils import remap_to_correct_metadata, get_cpu, get_cpu_ram_mb
+from .backends.base import Backend
+from .benchmarks.base import Benchmark
+from .utils import get_cpu, get_cpu_ram_mb
+from .benchmarks.training import TrainingConfig
+from .benchmarks.inference import InferenceConfig
 
-LOGGER = getLogger("main")
+
+LOGGER = getLogger("experiment")
 
 OmegaConf.register_new_resolver(
     "infer_task",
-    # TODO: find a better way for this; it doesn't 
+    # TODO: find a better way for this; it doesn't
     # always work because it relies on hub metadata
     lambda model, revision: TasksManager.infer_task_from_model(
         model=model,
@@ -44,10 +43,10 @@ OmegaConf.register_new_resolver(
 @dataclass
 class ExperimentConfig:
     # BACKEND CONFIGURATION
-    backend: BackendConfig = MISSING
+    backend: Any  # https://github.com/facebookresearch/hydra/issues/1722#issuecomment-883568386
 
     # BENCHMARK CONFIGURATION
-    benchmark: BenchmarkConfig = MISSING
+    benchmark: Any  # https://github.com/facebookresearch/hydra/issues/1722#issuecomment-883568386
 
     # EXPERIMENT CONFIGURATION
     experiment_name: str = MISSING
@@ -114,13 +113,11 @@ cs.store(group="benchmark", name="training", node=TrainingConfig)
 
 @hydra.main(version_base=None)
 def run_experiment(experiment: DictConfig) -> None:
-    # By default, Hydra populates the metadata object_type with the ones from ExperimentConfig but the object_type should really be
-    # one of the subclass (e.g. PyTorchBackendConfig instead of BackendConfig). This is required to call `to_object`.
-    experiment = remap_to_correct_metadata(experiment)
+    from omegaconf import SCMode
 
-    # This is required to trigger __post_init__. Reference: https://github.com/omry/omegaconf/issues/377
-    experiment = OmegaConf.to_object(experiment)
-    experiment = OmegaConf.create(experiment)
+    experiment = OmegaConf.to_container(
+        experiment, structured_config_mode=SCMode.INSTANTIATE
+    )
 
     # Save the config
     OmegaConf.save(experiment, "hydra_config.yaml", resolve=True)
