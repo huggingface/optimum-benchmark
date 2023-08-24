@@ -16,7 +16,7 @@ def gather_inference_report(root_folder: Path) -> DataFrame:
     # key is path to inference file as string, value is dataframe
     inference_dfs = {
         f.parent.absolute().as_posix(): pd.read_csv(f)
-        for f in root_folder.glob(f"**/inference_results.csv")
+        for f in root_folder.glob("**/inference_results.csv")
     }
 
     # key is path to config file as string, value is flattened dict
@@ -26,7 +26,7 @@ def gather_inference_report(root_folder: Path) -> DataFrame:
             flatten(OmegaConf.load(f), reducer="dot"), orient="index"
         )
         .T
-        for f in root_folder.glob(f"**/hydra_config.yaml")
+        for f in root_folder.glob("**/hydra_config.yaml")
         if f.parent.absolute().as_posix() in inference_dfs.keys()
     }
 
@@ -53,7 +53,7 @@ def style_element(element, style=""):
 
 
 def format_element(element, style=""):
-    if type(element) == float:
+    if isinstance(element, float):
         if element != element:  # nan
             formated_element = ""
         elif abs(element) >= 1:
@@ -64,7 +64,7 @@ def format_element(element, style=""):
             formated_element = f"{element}"
     elif element is None:
         formated_element = ""
-    elif type(element) == bool:
+    elif isinstance(element, bool):
         if element:
             formated_element = style_element("✔", style="green")
         else:
@@ -295,7 +295,7 @@ def generate_report():
     # create reporting directory and title using the filters
     if report_name is None:
         report_name = "Inference Report"
-        reporting_directory = f"reports/inferece_report"
+        reporting_directory = "reports/inferece_report"
     else:
         reporting_directory = f"reports/{report_name}"
 

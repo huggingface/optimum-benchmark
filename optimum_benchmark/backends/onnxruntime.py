@@ -1,22 +1,19 @@
+from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING
+from tempfile import TemporaryDirectory
+from dataclasses import dataclass
+from logging import getLogger
+from datasets import Dataset
 import os
+
+
 import torch
 from torch import Tensor
-from datasets import Dataset
-from logging import getLogger
 from omegaconf import OmegaConf
-from dataclasses import dataclass, field
 from hydra.utils import get_class
-from tempfile import TemporaryDirectory
-from omegaconf.dictconfig import DictConfig
-from typing import Any, Callable, Dict, List, Optional
-
-
-try:
-    from onnxruntime import __version__ as onnxruntime_version
-except ImportError:
-    onnxruntime_version = "Not installed"
-
-from optimum.onnxruntime import ORTOptimizer, ORTQuantizer
+from onnxruntime import SessionOptions
+from accelerate import init_empty_weights
+from optimum.pipelines import ORT_SUPPORTED_TASKS
+from onnxruntime import __version__ as onnxruntime_version
 from optimum.onnxruntime.configuration import (
     OptimizationConfig,
     QuantizationConfig,
@@ -24,16 +21,34 @@ from optimum.onnxruntime.configuration import (
     AutoOptimizationConfig,
     AutoQuantizationConfig,
 )
+from optimum.onnxruntime import (
+    ORTOptimizer,
+    ORTQuantizer,
+    ORTTrainer,
+    ORTTrainingArguments,
+)
+
+if TYPE_CHECKING:
+    from transformers import TrainerCallback, TrainerState
+    from transformers.modeling_outputs import ModelOutput
 
 
-from optimum_benchmark.backends.base import Backend, BackendConfig
-from optimum_benchmark.backends.utils import main_export, randomize_weights
-from optimum_benchmark.profilers.ort_profiler import ORTProfilingWrapper
-from optimum_benchmark.utils import infer_device_id
+from .base import Backend, BackendConfig
+from .utils.optimum_utils import main_export
+from .utils.pytorch_utils import randomize_weights
+from ..profilers.ort_profiler import ORTProfilingWrapper
+from .utils.onnxruntime_utils import (
+    format_ort_quantization_dict,
+    infer_device_id,
+    DEFAULT_OPTIMIZATION_CONFIG,
+    DEFAULT_QUANTIZATION_CONFIG,
+    DEFAULT_CALIBRATION_CONFIG,
+)
+
 
 OmegaConf.register_new_resolver(
     "is_gpu",
-    lambda device: torch.device(device).type == "cuda",
+    lambda device: "cuda" in device.lower() or "tensorrt" in device.lower(),
 )
 OmegaConf.register_new_resolver(
     "is_profiling",
@@ -46,10 +61,6 @@ OmegaConf.register_new_resolver(
 OmegaConf.register_new_resolver(
     "infer_device_id",
     lambda device: infer_device_id(device),
-)
-OmegaConf.register_new_resolver(
-    "requires_calibration",
-    lambda *static_quants: any(static_quants),
 )
 
 LOGGER = getLogger("onnxruntime")
@@ -70,103 +81,109 @@ class ORTConfig(BackendConfig):
 
     # provider options
     provider: str = "${infer_provider:${device}}"
+    provider_options: Optional[Dict] = None
+    # TODO: deprecate device_id in favor of provider_options
     device_id: Optional[int] = "${infer_device_id:${device}}"
 
     # inference options
     use_io_binding: bool = "${is_gpu:${device}}"
+    session_options: Optional[Dict] = None
+    # TODO: deprecate enable_profiling in favor of session_options
     enable_profiling: bool = "${is_profiling:${benchmark.name}}"
 
     # optimization options
     optimization: bool = False
-    optimization_config: Dict = field(
-        default_factory=lambda: {
-            "optimization_level": 1,  # 0, 1, 2, 99
-            "optimize_for_gpu": "${is_gpu:${device}}",
-            "fp16": False,
-            "enable_transformers_specific_optimizations": True,
-            "enable_gelu_approximation": False,
-            "disable_gelu_fusion": False,
-            "disable_layer_norm_fusion": False,
-            "disable_attention_fusion": False,
-            "disable_skip_layer_norm_fusion": True,
-            "disable_bias_skip_layer_norm_fusion": False,
-            "disable_bias_gelu_fusion": False,
-            "use_mask_index": False,
-            "no_attention_mask": False,
-            "disable_embed_layer_norm_fusion": True,
-            "disable_shape_inference": False,
-            "use_multi_head_attention": False,
-            "enable_gemm_fast_gelu_fusion": False,
-            "use_raw_attention_mask": False,
-            "disable_group_norm_fusion": True,
-            "disable_packed_kv": True,
-        }
-    )
+    optimization_config: Optional[Dict] = None
 
     # O1, O2, O3, O4
     auto_optimization: Optional[str] = None
-    auto_optimization_config: Dict = field(
-        default_factory=lambda: {
-            "for_gpu": "${is_gpu:${device}}",
-            # add auto optimization specific options in config file or cli
-            # using +backend.auto_optimization_config.option_name: value
-        }
-    )
+    auto_optimization_config: Optional[Dict] = None
 
     # quantization options
     quantization: bool = False
-    quantization_config: Dict = field(
-        default_factory=lambda: {
-            "is_static": False,
-            "format": "QOperator",  # QOperator, QDQ
-            "mode": "IntegerOps",  # QLinearOps, IntegerOps
-            "activations_dtype": "QUInt8",  # QInt8, QUInt8
-            "activations_symmetric": False,
-            "weights_dtype": "QInt8",  # QInt8, QUInt8
-            "weights_symmetric": True,
-            "per_channel": False,
-            "reduce_range": False,
-            "operators_to_quantize": [
-                "MatMul",
-                "Add",
-            ],
-        }
-    )
+    quantization_config: Optional[Dict] = None
 
     # arm64,avx2,avx512,avx512_vnni,tensorrt
     auto_quantization: Optional[str] = None
-    auto_quantization_config: Dict = field(
-        default_factory=lambda: {
-            "is_static": False
-            # add auto quantization specific options in config file or cli
-            # using +backend.auto_quantization_config.option_name: value
-        }
-    )
+    auto_quantization_config: Optional[Dict] = None
 
     # calibration options
-    calibration: bool = "${requires_calibration:${backend.auto_quantization_config.is_static}, ${backend.quantization_config.is_static}}"
-    calibration_config: Dict = field(
-        default_factory=lambda: {
-            "dataset_name": "glue",
-            "num_samples": 300,
-            "dataset_config_name": "sst2",
-            "dataset_split": "train",
-            "preprocess_batch": True,
-            "preprocess_class": "optimum_benchmark.preprocessors.glue.GluePreprocessor",
-        }
-    )
+    calibration: bool = False
+    calibration_config: Optional[Dict] = None
 
-    # this will skip exporting the model and will use automodel instead
+    # this will skip exporting the model and will use automodel with trainer
     use_ortmodel: bool = "${is_inference:${benchmark.name}}"
+
+    def __post_init__(self):
+        if self.optimization:
+            self.optimization_config = OmegaConf.merge(
+                self.optimization_config or {},
+                DEFAULT_OPTIMIZATION_CONFIG,
+            )
+
+        if self.auto_optimization is not None:
+            self.auto_optimization_config = OmegaConf.merge(
+                self.auto_optimization_config or {},
+                DEFAULT_OPTIMIZATION_CONFIG,
+            )
+            self.auto_optimization_config.pop("optimization_level", None)
+            self.auto_optimization_config[
+                "for_gpu"
+            ] = self.auto_optimization_config.pop("optimize_for_gpu")
+
+        if self.quantization:
+            self.quantization_config = OmegaConf.merge(
+                self.quantization_config or {},
+                DEFAULT_QUANTIZATION_CONFIG,
+            )
+
+        # auto quantization is needs specific config for each type
+        # if self.auto_quantization is not None:
+        #     self.auto_quantization_config = OmegaConf.merge(
+        #         self.auto_quantization_config or {},
+        #         DEFAULT_QUANTIZATION_CONFIG,
+        #     )
+
+        if self.quantization_config is not None:
+            self.calibration = self.quantization_config["is_static"]
+
+        if self.auto_quantization_config is not None:
+            self.calibration = self.auto_quantization_config["is_static"]
+
+        if self.calibration:
+            self.calibration_config = OmegaConf.merge(
+                self.calibration_config or {},
+                DEFAULT_CALIBRATION_CONFIG,
+            )
+
+        if self.device_id is not None:
+            LOGGER.warning(
+                "device_id is deprecated, please use provider_options instead"
+            )
+            self.provider_options = OmegaConf.merge(
+                self.provider_options or {},
+                {"device_id": self.device_id},
+            )
+
+        if self.enable_profiling is not None:
+            LOGGER.warning(
+                "enable_profiling is deprecated, please use session_options instead"
+            )
+            self.session_options = OmegaConf.merge(
+                self.session_options or {},
+                {"enable_profiling": self.enable_profiling},
+            )
 
 
 class ORTBackend(Backend):
+    name: str = "onnxruntime"
+    config: ORTConfig
+
     def __init__(
-        self, model: str, task: str, device: str, hub_kwargs: DictConfig
+        self, model: str, task: str, device: str, hub_kwargs: Dict[str, Any]
     ) -> None:
         super().__init__(model, task, device, hub_kwargs)
-
-        from optimum.pipelines import ORT_SUPPORTED_TASKS
+        self.device = torch.device(device)
 
         if self.task == "stable-diffusion":
             self.ortmodel_class = get_class(
@@ -189,60 +206,51 @@ class ORTBackend(Backend):
     def configure(self, config: ORTConfig) -> None:
         super().configure(config)
 
-        import onnxruntime
-
         # session options
-        self.session_options = onnxruntime.SessionOptions()
-        if config.intra_op_num_threads is not None:
+        session_options = SessionOptions()
+        if self.config.intra_op_num_threads is not None:
             LOGGER.info(
-                f"\t+ Setting onnxruntime session intra_op_num_threads({config.intra_op_num_threads})"
+                f"\t+ Setting intra_op_num_threads({config.intra_op_num_threads})"
             )
-            self.session_options.intra_op_num_threads = config.intra_op_num_threads
-        if config.inter_op_num_threads is not None:
+            self.config.session_options.intra_op_num_threads = (
+                self.config.intra_op_num_threads
+            )
+        if self.config.inter_op_num_threads is not None:
             LOGGER.info(
-                f"\t+ Setting onnxruntime session inter_op_num_threads({config.inter_op_num_threads})"
+                f"\t+ Setting inter_op_num_threads({config.inter_op_num_threads})"
             )
-            self.session_options.inter_op_num_threads = config.inter_op_num_threads
-        if config.enable_profiling:
-            LOGGER.info("\t+ Enabling onnxruntime profiling")
-            self.session_options.enable_profiling = True
-
-        # provider options
-        self.provider_options = {}
-        if config.device_id is not None:
-            LOGGER.info(
-                f"\t+ Setting onnxruntime provider device_id({config.device_id})"
+            self.config.session_options.inter_op_num_threads = (
+                self.config.inter_op_num_threads
             )
-            self.provider_options["device_id"] = config.device_id
+        for key, value in self.config.session_options.items():
+            setattr(session_options, key, value)
+        self.config.session_options = session_options
 
         # Set torch dtype
-        self.torch_dtype = (
-            getattr(torch, config.torch_dtype)  # in case of torch.dtype
-            if config.torch_dtype is not None and hasattr(torch, config.torch_dtype)
-            else config.torch_dtype
-        )
-        LOGGER.info(
-            f"\t+ Using torch dtype({self.torch_dtype}) for weights loading and export"
+        self.config.torch_dtype = (
+            getattr(torch, self.config.torch_dtype)  # in case of torch.dtype
+            if self.config.torch_dtype is not None
+            and hasattr(torch, self.config.torch_dtype)
+            else self.config.torch_dtype
         )
 
         with TemporaryDirectory() as tmpdirname:
-            if config.use_ortmodel:
-                if config.no_weights:
-                    self.load_ortmodel_from_config(config, tmpdirname)
+            if self.config.use_ortmodel:
+                if self.config.no_weights:
+                    self.load_ortmodel_from_config(tmpdirname)
                 else:
-                    self.load_ortmodel_from_pretrained(config, tmpdirname)
+                    self.load_ortmodel_from_pretrained(tmpdirname)
             else:
-                if config.no_weights:
-                    self.load_automodel_from_config(config)
+                if self.config.no_weights:
+                    self.load_automodel_from_config()
                 else:
-                    self.load_automodel_from_pretrained(config)
+                    self.load_automodel_from_pretrained()
 
-    def load_ortmodel_from_config(self, config: ORTConfig, tmpdirname: str) -> None:
-        LOGGER.info(
-            f"\t+ Loading model from config in {config.torch_dtype} on {self.device}"
-        )
+    def load_ortmodel_from_config(self, tmpdirname: str) -> None:
+        LOGGER.info("\t+ Creating random weights model")
+        self.load_automodel_from_config()
 
-        self.load_automodel_from_config(config)
+        LOGGER.info("\t+ Exporting model to onnx")
         main_export(
             model_name_or_path=self.model,
             output=f"{tmpdirname}/exported_model",
@@ -250,10 +258,9 @@ class ORTBackend(Backend):
             # we're using but will add "-with-past" when possible
             task="auto",
             device=self.device.type,
-            fp16=self.torch_dtype == torch.float16,
-            optimize=config.auto_optimization,
-            no_post_process=not config.use_merged,
-            for_ort=True,
+            fp16=self.config.torch_dtype == torch.float16,
+            optimize=self.config.auto_optimization,
+            no_post_process=not self.config.use_merged,
             do_validation=False,
             **self.hub_kwargs,
             # we hijack the model instantiation and use our random weights model
@@ -261,17 +268,17 @@ class ORTBackend(Backend):
         )
         self.delete_pretrained_model()
 
-        LOGGER.info("\t+ Loading exported model in onnxruntime")
+        LOGGER.info("\t+ Loading exported model with ORTModel")
         self.pretrained_model = self.ortmodel_class.from_pretrained(
             model_id=f"{tmpdirname}/exported_model",
-            session_options=self.session_options,
-            use_io_binding=config.use_io_binding,
-            provider=config.provider,
-            provider_options=self.provider_options,
+            session_options=self.config.session_options,
+            use_io_binding=self.config.use_io_binding,
+            provider=self.config.provider,
+            provider_options=self.config.provider_options,
             **(
                 {
-                    "use_merged": config.use_merged,
-                    "use_cache": config.use_cache,
+                    "use_merged": self.config.use_merged,
+                    "use_cache": self.config.use_cache,
                 }
                 if self.is_text_generation_model()
                 else {}
@@ -280,31 +287,36 @@ class ORTBackend(Backend):
             **self.hub_kwargs,
         )
 
-        if config.optimization:
+        if self.config.optimization:
             raise NotImplementedError(
-                "Only AutoOptimization is supported when loading a model with random weights"
+                "Only AutoOptimization is supported when "
+                "loading a model with random weights"
             )
 
-        if config.quantization or config.auto_quantization is not None:
-            self.quantize(config, tmpdirname)
+        if self.config.quantization or self.config.auto_quantization is not None:
+            self.quantize(tmpdirname)
 
-    def load_ortmodel_from_pretrained(self, config: ORTConfig, tmpdirname: str) -> None:
-        if self.torch_dtype is not None and self.torch_dtype != torch.float32:
+    def load_ortmodel_from_pretrained(self, tmpdirname: str) -> None:
+        if (
+            self.config.torch_dtype is not None
+            and self.config.torch_dtype != torch.float32
+        ):
             raise NotImplementedError(
-                "Loading from pretrained is only supported with torch_dtype float32 for now"
+                "Loading with ORTModel is only supported "
+                "with torch_dtype float32 for now"
             )
 
         self.pretrained_model = self.ortmodel_class.from_pretrained(
             model_id=self.model,
-            session_options=self.session_options,
-            use_io_binding=config.use_io_binding,
-            provider=config.provider,
-            provider_options=self.provider_options,
-            export=config.export,
+            session_options=self.config.session_options,
+            use_io_binding=self.config.use_io_binding,
+            provider=self.config.provider,
+            provider_options=self.config.provider_options,
+            export=self.config.export,
             **(
                 {
-                    "use_merged": config.use_merged,
-                    "use_cache": config.use_cache,
+                    "use_merged": self.config.use_merged,
+                    "use_cache": self.config.use_cache,
                 }
                 if self.is_text_generation_model()
                 else {}
@@ -312,28 +324,28 @@ class ORTBackend(Backend):
             **self.hub_kwargs,
         )
 
-        if config.optimization or config.auto_optimization is not None:
-            self.optimize(config, tmpdirname)
+        if self.config.optimization or self.config.auto_optimization is not None:
+            self.optimize(tmpdirname)
 
-        if config.quantization or config.auto_quantization is not None:
-            self.quantize(config, tmpdirname)
+        if self.config.quantization or self.config.auto_quantization is not None:
+            self.quantize(tmpdirname)
 
-    def optimize(self, config: ORTConfig, tmpdirname: str) -> None:
-        if config.auto_optimization is not None:
-            LOGGER.info(f"\t+ Using auto optimization {config.auto_optimization}")
+    def optimize(self, tmpdirname: str) -> None:
+        if self.config.auto_optimization is not None:
+            LOGGER.info(f"\t+ Using auto optimization {self.config.auto_optimization}")
             optimization_dict = OmegaConf.to_container(
-                config.auto_optimization_config, resolve=True
+                self.config.auto_optimization_config, resolve=True
             )
             LOGGER.info("\t+ Setting auto optimization parameters:")
             for key, value in optimization_dict.items():  # type: ignore
                 LOGGER.info(f"\t\t+ {key}: {value}")
 
             optimization_config = AutoOptimizationConfig.with_optimization_level(
-                optimization_level=config.auto_optimization, **optimization_dict
+                optimization_level=self.config.auto_optimization, **optimization_dict
             )
         else:
             optimization_dict = OmegaConf.to_container(
-                config.optimization_config, resolve=True
+                self.config.optimization_config, resolve=True
             )
             LOGGER.info("\t+ Setting optimization parameters:")
             for key, value in optimization_dict.items():  # type: ignore
@@ -351,32 +363,28 @@ class ORTBackend(Backend):
         LOGGER.info("\t+ Loading optimized model")
         self.pretrained_model = self.ortmodel_class.from_pretrained(
             model_id=f"{tmpdirname}/optimized",
-            session_options=self.session_options,
-            use_io_binding=config.use_io_binding,
-            provider=config.provider,
-            provider_options=self.provider_options,
+            session_options=self.config.session_options,
+            use_io_binding=self.config.use_io_binding,
+            provider=self.config.provider,
+            provider_options=self.config.provider_options,
         )
 
-    def quantize(self, config: ORTConfig, tmpdirname: str) -> None:
-        if config.auto_quantization is not None:
-            LOGGER.info(
-                f"\t+ Using auto quantization {config.auto_quantization} and its config"
-            )
+    def quantize(self, tmpdirname: str) -> None:
+        if self.config.auto_quantization is not None:
+            LOGGER.info(f"\t+ Using auto quantization {self.config.auto_quantization}")
             auto_quantization_config_class = getattr(
-                AutoQuantizationConfig, config.auto_quantization
+                AutoQuantizationConfig, self.config.auto_quantization
             )
             quantization_dict = OmegaConf.to_container(
-                config.auto_quantization_config, resolve=True
+                self.config.auto_quantization_config, resolve=True
             )
             quantization_dict = format_ort_quantization_dict(quantization_dict)
             quantization_config = auto_quantization_config_class(**quantization_dict)
 
         else:
-            LOGGER.info("\t+ Using manual quantization and its config")
-            from optimum_benchmark.backends.utils import format_ort_quantization_dict
-
+            LOGGER.info("\t+ Using manual quantization")
             quantization_dict = OmegaConf.to_container(
-                config.quantization_config, resolve=True
+                self.config.quantization_config, resolve=True
             )
             quantization_dict = format_ort_quantization_dict(quantization_dict)
             quantization_config = QuantizationConfig(**quantization_dict)
@@ -388,22 +396,26 @@ class ORTBackend(Backend):
             LOGGER.info(f"\t+ Quantizing {component}")
             quantizer = ORTQuantizer.from_pretrained(model_dir, file_name=component)
 
-            if config.calibration:
-                preprocess_class = get_class(config.calibration_config.preprocess_class)
+            if self.config.calibration:
+                preprocess_class = get_class(
+                    self.config.calibration_config.preprocess_class
+                )
                 preprocess_function = preprocess_class(model_name_or_path=self.model)
 
                 calibration_dataset = quantizer.get_calibration_dataset(
-                    dataset_name=config.calibration_config.dataset_name,
-                    num_samples=config.calibration_config.num_samples,
-                    dataset_config_name=config.calibration_config.dataset_config_name,
-                    dataset_split=config.calibration_config.dataset_split,
+                    dataset_name=self.config.calibration_config.dataset_name,
+                    num_samples=self.config.calibration_config.num_samples,
+                    dataset_config_name=self.config.calibration_config.dataset_config_name,
+                    dataset_split=self.config.calibration_config.dataset_split,
                     preprocess_function=preprocess_function,
                 )
 
-                # Create the calibration configuration containing the parameters related to calibration.
+                # Create the calibration configuration
+                # containing the parameters related to calibration.
                 calibration_config = AutoCalibrationConfig.minmax(calibration_dataset)
 
-                # Perform the calibration step: computes the activations quantization ranges
+                # Perform the calibration step:
+                # computes the activations quantization ranges
                 calibration_tensors_range = quantizer.fit(
                     dataset=calibration_dataset,
                     calibration_config=calibration_config,
@@ -420,29 +432,27 @@ class ORTBackend(Backend):
         LOGGER.info("\t+ Loading quantized model")
         self.pretrained_model = self.ortmodel_class.from_pretrained(
             model_id=f"{tmpdirname}/quantized",
-            session_options=self.session_options,
-            use_io_binding=config.use_io_binding,
-            provider=config.provider,
-            provider_options=self.provider_options,
+            session_options=self.config.session_options,
+            use_io_binding=self.config.use_io_binding,
+            provider=self.config.provider,
+            provider_options=self.config.provider_options,
         )
 
-    def load_automodel_from_config(self, config: ORTConfig) -> None:
-        from accelerate import init_empty_weights
-
+    def load_automodel_from_config(self) -> None:
         with init_empty_weights():
             self.pretrained_model = self.automodel_class.from_config(
                 config=self.pretrained_config,
-                torch_dtype=self.torch_dtype,
+                torch_dtype=self.config.torch_dtype,
                 trust_remote_code=self.hub_kwargs.get("trust_remote_code", False),
             )
         self.pretrained_model.to_empty(device=self.device)
         randomize_weights(self.pretrained_model)
 
-    def load_automodel_from_pretrained(self, config: ORTConfig) -> None:
+    def load_automodel_from_pretrained(self) -> None:
         with self.device:
             self.pretrained_model = self.automodel_class.from_pretrained(
                 pretrained_model_name_or_path=self.model,
-                torch_dtype=self.torch_dtype,
+                torch_dtype=self.config.torch_dtype,
                 **self.hub_kwargs,
             )
 
@@ -451,37 +461,45 @@ class ORTBackend(Backend):
         LOGGER.info("\t+ Wrapping model inside profiler")
         self.pretrained_model = ORTProfilingWrapper(self.pretrained_model)
 
-    def prepare_for_training(
+    def forward(self, input: Dict[str, Tensor], **kwargs) -> "ModelOutput":
+        output = self.pretrained_model(**input, **kwargs)
+
+        return output
+
+    def generate(self, input: Dict[str, Tensor], **kwargs) -> "ModelOutput":
+        output = self.pretrained_model.generate(**input, **kwargs)
+        return output
+
+    def train(
         self,
-        training_dataset: Dataset,
-        training_data_collator: Callable,
+        training_dataset: "Dataset",
         training_arguments: Dict[str, Any],
-    ) -> None:
-        LOGGER.info("Preparing model for training")
-        LOGGER.info("\t+ Wrapping model inside trainer")
-
-        from optimum.onnxruntime import ORTTrainer, ORTTrainingArguments
-
-        training_arguments = ORTTrainingArguments(**training_arguments)
-        self.trainer = ORTTrainer(
-            model=self.pretrained_model,
-            args=training_arguments,
-            train_dataset=training_dataset,
-            data_collator=training_data_collator,
-            feature=self.task,
+        training_callbacks: List["TrainerCallback"],
+        training_data_collator: Callable,
+    ) -> "TrainerState":
+        LOGGER.info("\t+ Setting dataset format to `torch`.")
+        training_dataset.set_format(
+            type="torch", columns=list(training_dataset.features.keys())
         )
 
-    def forward(self, input: Dict[str, Tensor], **kwargs) -> Tensor:
-        output = self.pretrained_model(**input, **kwargs)[0]
+        LOGGER.info(
+            "\t+ Wrapping training arguments with "
+            "optimum.onnxruntime.ORTTrainingArguments"
+        )
+        training_arguments = ORTTrainingArguments(**training_arguments)
 
-        return output
+        LOGGER.info("\t+ Wrapping model with optimum.onnxruntime.ORTTrainer")
+        trainer = ORTTrainer(
+            model=self.pretrained_model,
+            args=training_arguments,
+            callbacks=training_callbacks,
+            train_dataset=training_dataset,
+            data_collator=training_data_collator,
+        )
 
-    def generate(self, input: Dict[str, Tensor], **kwargs) -> Tensor:
-        output = self.pretrained_model.generate(**input, **kwargs)[0]
-        return output
+        LOGGER.info("\t+ Starting training")
+        trainer.train()
+        LOGGER.info("\t+ Training finished successfully")
+        trainer_state = trainer.state
 
-    def train(self) -> None:
-        LOGGER.info("Training model")
-        results = self.trainer.train()
-
-        return results
+        return trainer_state

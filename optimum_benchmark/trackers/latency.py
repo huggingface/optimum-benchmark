@@ -47,6 +47,7 @@ class LatencyTracker:
         LOGGER.debug(f"Tracked CPU latency: {latency:.2e}s")
         self.latencies.append(latency)
 
+
 class PyTorchLatencyTracker(LatencyTracker):
     def __init__(self, backend):
         super().__init__(backend)
@@ -58,7 +59,9 @@ class PyTorchLatencyTracker(LatencyTracker):
             self.hf_device_map = None
             self.end_device = self.device
             if self.device.type == "cuda":
-                self.device_indexes = {self.device.index if self.device.index is not None else 0}
+                self.device_indexes = {
+                    self.device.index if self.device.index is not None else 0
+                }
 
     def _cuda_latency(self):
         start_event = torch.cuda.Event(enable_timing=True)

@@ -1,26 +1,34 @@
-from typing import Dict
-from torch import Tensor
-from logging import getLogger
-from hydra.utils import get_class
-from dataclasses import dataclass, field
+from typing import Dict, Optional, Any, TYPE_CHECKING
 from tempfile import TemporaryDirectory
+from dataclasses import dataclass
+from logging import getLogger
+
+import torch
+from torch import Tensor
+from hydra.utils import get_class
 from omegaconf import DictConfig, OmegaConf
+from optimum.intel.neural_compressor.quantization import INCQuantizer
+from optimum.intel.neural_compressor.utils import _HEAD_TO_AUTOMODELS
+from neural_compressor import __version__ as neural_compressor_version
+from neural_compressor.config import (
+    AccuracyCriterion,
+    TuningCriterion,
+    PostTrainingQuantConfig,
+)
 
-try:
-    from neural_compressor import __version__ as neural_compressor_version
-except ImportError:
-    neural_compressor_version = "Not installed"
+if TYPE_CHECKING:
+    from transformers.utils import ModelOutput
 
-from optimum_benchmark.backends.base import Backend, BackendConfig
-
-
-OmegaConf.register_new_resolver(
-    "ptq_is_static",
-    lambda approach: approach == "static",
+from .base import Backend, BackendConfig
+from .utils.neural_compressor_utils import (
+    DEFAULT_QUANTIZATION_CONFIG,
+    DEFAULT_CALIBRATION_CONFIG,
 )
 
 
 LOGGER = getLogger("neural_compressor")
+
+OmegaConf.register_new_resolver("ptq_is_static", lambda approach: approach == "static")
 
 
 @dataclass
@@ -34,67 +42,52 @@ class INCConfig(BackendConfig):
 
     # quantization options
     quantization: bool = False
-    quantization_config: Dict = field(default_factory=lambda: {
-            "device": "cpu",
-            "backend": "default",
-            "domain": "auto",
-            "recipes": {},
-            "quant_format": "default",
-            "inputs": [],
-            "outputs": [],
-            "approach": "static",
-            "calibration_sampling_size": [100],
-            "op_type_dict": None,
-            "op_name_dict": None,
-            "reduce_range": None,
-            "example_inputs": None,
-            "excluded_precisions": [],
-            "quant_level": "auto",
-            "accuracy_criterion": DictConfig(
-                {
-                    "higher_is_better": True,
-                    "criterion": "relative",
-                    "tolerable_loss": 0.01,
-                }
-            ),
-            "tuning_criterion": DictConfig(
-                {
-                    "strategy": "basic",
-                    "strategy_kwargs": None,
-                    "timeout": 0,
-                    "max_trials": 100,
-                    "objective": "performance",
-                }
-            ),
-            "diagnosis": False,
-        }
-    )
+    quantization_config: Optional[Dict[str, Any]] = None
 
     # calibration options
-    calibration: bool = "${ptq_is_static:${backend.quantization_config.approach}}"  # type: ignore
-    calibration_config: Dict = field(default_factory=lambda: {
-            "dataset_name": "glue",
-            "num_samples": 300,
-            "dataset_config_name": "sst2",
-            "dataset_split": "train",
-            "preprocess_batch": True,
-            "preprocess_class": "optimum_benchmark.preprocessors.glue.GluePreprocessor",
-        }
-    )
+    calibration: bool = False
+    calibration_config: Optional[Dict[str, Any]] = None
+
+    def __post_init__(self):
+        if self.no_weights:
+            # TODO: implement no_weights for neural_compressor backend if possible
+            raise NotImplementedError(
+                "no_weights is not supported for neural_compressor backend"
+            )
+
+        if self.quantization:
+            self.quantization_config = OmegaConf.merge(
+                self.quantization_config if self.quantization_config else {},
+                DEFAULT_QUANTIZATION_CONFIG,
+            )
+            if self.calibration_config["approach"] == "static":
+                self.calibration = True
+
+        if self.calibration:
+            self.calibration_config = OmegaConf.merge(
+                self.calibration_config if self.calibration_config else {},
+                DEFAULT_CALIBRATION_CONFIG,
+            )
 
 
 class INCBackend(Backend):
+    name: str = "neural_compressor"
+    config: INCConfig
+
     def __init__(
         self, model: str, task: str, device: str, hub_kwargs: DictConfig
     ) -> None:
         super().__init__(model, task, device, hub_kwargs)
+        self.device = torch.device(device)
 
-        from optimum.intel.neural_compressor.utils import _HEAD_TO_AUTOMODELS
+        assert self.task in _HEAD_TO_AUTOMODELS, (
+            f"INCBackend does not support task {self.task} yet. "
+            f"Supported tasks are: {list(_HEAD_TO_AUTOMODELS.keys())}"
+        )
 
         self.incmodel_class = get_class(
             f"optimum.intel.neural_compressor.{_HEAD_TO_AUTOMODELS[self.task]}"
         )
-
         LOGGER.info(
             f"\t+ Infered INCModel class {self.incmodel_class.__name__} "
             f"for task {self.task} and model_type {self.model_type}"
@@ -103,84 +96,100 @@ class INCBackend(Backend):
     def configure(self, config: INCConfig) -> None:
         super().configure(config)
 
-        with TemporaryDirectory() as tmpdirname:
-            if config.no_weights:
-                raise NotImplementedError(
-                    "no_weights is not supported for neural_compressor backend"
-                )
-            else:
-                self.load_model_from_pretrained(config)
-
-            if config.quantization:
-                self.quantize_model(config, tmpdirname)
-
-    def load_model_from_pretrained(self, config: INCConfig) -> None:
-        self.pretrained_model = self.incmodel_class.from_pretrained(
-            # something is wrong here, modeling is not consistent
-            model_name_or_path=self.model,
-            # for some reason only causalLM expects model_id instead of model_name_or_path
-            **({"model_id": self.model} if self.task == "text-generation" else {}),
-            device_map=self.device,
-            **self.hub_kwargs,
-        )
-
-    def quantize_model(self, config: INCConfig, tmpdirname: str) -> None:
-        from optimum.intel.neural_compressor.quantization import INCQuantizer
-        from neural_compressor.config import (
-            AccuracyCriterion,
-            TuningCriterion,
-            PostTrainingQuantConfig,
-        )
-
-        LOGGER.info("\t+ Attempting quantization")
-
-        quantization_config = OmegaConf.to_container(config.quantization_config)
-        quantization_config["accuracy_criterion"] = AccuracyCriterion(
-            **config.quantization_config.accuracy_criterion
-        )
-        quantization_config["tuning_criterion"] = TuningCriterion(
-            **config.quantization_config.tuning_criterion
-        )
-        quantization_config = PostTrainingQuantConfig(**quantization_config)
-
-        model = self.automodel_class.from_pretrained(self.model, **self.hub_kwargs)
-        quantizer = INCQuantizer.from_pretrained(model, task=self.task)
-
-        if config.calibration:
-            preprocess_class = get_class(config.calibration_config.preprocess_class)
-            preprocess_function = preprocess_class(model_name_or_path=self.model)
-
-            calibration_dataset = quantizer.get_calibration_dataset(
-                dataset_name=config.calibration_config.dataset_name,
-                num_samples=config.calibration_config.num_samples,
-                dataset_config_name=config.calibration_config.dataset_config_name,
-                dataset_split=config.calibration_config.dataset_split,
-                preprocess_function=preprocess_function,
+        if self.config.quantization:
+            self.config.quantization_config["accuracy_criterion"] = AccuracyCriterion(
+                **self.config.quantization_config["accuracy_criterion"]
+            )
+            self.config.quantization_config["tuning_criterion"] = TuningCriterion(
+                **self.config.quantization_config["tuning_criterion"]
+            )
+            self.quantization_config = PostTrainingQuantConfig(
+                **self.config.quantization_config
             )
 
-        quantizer.quantize(
-            save_onnx_model=False,
-            quantization_config=quantization_config,
-            calibration_dataset=calibration_dataset,
-            save_directory=f"{tmpdirname}/quantized",
+        if self.config.calibration:
+            self.config.calibration_config["preprocess_class"] = get_class(
+                self.config.calibration_config["preprocess_class"]
+            )
+            self.config.calibration_config[
+                "preprocess_function"
+            ] = self.config.calibration_config["preprocess_class"](
+                model_name_or_path=self.model
+            )
+            self.config.calibration_config.pop("preprocess_class")
+
+        with TemporaryDirectory() as tmpdirname:
+            if self.config.quantization:
+                self.load_and_quantize_automodel(tmpdirname)
+            else:
+                self.load_incmodel()
+
+    def load_and_quantize_automodel(self, tmpdirname: str) -> None:
+        LOGGER.info("\t+ Loading pretrained AutoModel")
+        model = self.automodel_class.from_pretrained(self.model, **self.hub_kwargs)
+        LOGGER.info("\t+ Creating quantizer")
+        quantizer = INCQuantizer.from_pretrained(
+            model,
+            eval_fn=None,
+            calibration_fn=None,
+            task=self.task,
         )
 
-        self.delete_pretrained_model()
+        if self.config.calibration:
+            LOGGER.info("\t+ Loading calibration dataset")
+            calibration_dataset = quantizer.get_calibration_dataset(
+                **self.config.calibration_config
+            )
+        else:
+            calibration_dataset = None
 
-        LOGGER.info("\t+ Loading quantized model")
+        LOGGER.info("\t+ Attempting quantization")
+        quantizer.quantize(
+            quantization_config=self.config.quantization_config,
+            save_directory=f"{tmpdirname}/quantized",
+            calibration_dataset=calibration_dataset,
+            # default values
+            batch_size=8,
+            data_collator=None,
+            remove_unused_columns=True,
+            file_name=None,
+        )
+
+        LOGGER.info("\t+ Loading quantized INCModel")
         self.pretrained_model = self.incmodel_class.from_pretrained(
             model_name_or_path=f"{tmpdirname}/quantized",
         )
 
-    def forward(self, input: Dict[str, Tensor], **kwargs) -> Tensor:
-        output = self.pretrained_model(**input, **kwargs)[0]
+    def load_incmodel(self) -> None:
+        if self.is_diffusion_pipeline():
+            self.pretrained_model = self.incmodel_class.from_pretrained(
+                model_name_or_path=self.model,
+                **self.hub_kwargs,
+            )
+            self.pretrained_model.to(self.device)
+        elif self.is_text_generation_model():
+            self.pretrained_model = self.incmodel_class.from_pretrained(
+                # for some reason only causalLM expects 
+                # model_id instead of model_name_or_path
+                model_id=self.model,
+                device_map=self.device,
+                **self.hub_kwargs,
+            )
+        else:
+            self.pretrained_model = self.incmodel_class.from_pretrained(
+                # for some reason only causalLM expects 
+                # model_id instead of model_name_or_path
+                model_name_or_path=self.model,
+                device_map=self.device,
+                **self.hub_kwargs,
+            )
+
+    def forward(self, input: Dict[str, Tensor], **kwargs) -> "ModelOutput":
+        output = self.pretrained_model(**input, **kwargs)
 
         return output
 
-    def generate(self, input: Dict[str, Tensor], **kwargs) -> Tensor:
-        output = self.pretrained_model.generate(**input, **kwargs)[0]
+    def generate(self, input: Dict[str, Tensor], **kwargs) -> "ModelOutput":
+        output = self.pretrained_model.generate(**input, **kwargs)
 
         return output
-
-    def train(self) -> None:
-        pass

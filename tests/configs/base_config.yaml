@@ -6,7 +6,6 @@ defaults:
   - _self_ # for hydra 1.1 compatibility
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
-  - override hydra/launcher: joblib
 
 # hydra behavior configuration
 hydra:
@@ -18,14 +17,6 @@ hydra:
     # we change the working directory during the run/sweep directory
     # this is useful for saving outputs in a separate directory
     chdir: true
-  launcher:
-    # we set the number of jobs to 2 since when using 1, joblib reuses the same process
-    n_jobs: 2
-    prefer: processes
-    backend: multiprocessing
-  sweeper:
-    # now we force the sweeper to run one job at a time, achieving almost perfect isolation
-    max_batch_size: 1
 
 backend:
   initial_isolation_check: false

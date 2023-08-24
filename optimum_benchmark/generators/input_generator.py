@@ -15,7 +15,7 @@ from optimum_benchmark.generators.task_generator import (
 )
 
 
-LOGGER = getLogger("dummy_dataset")
+LOGGER = getLogger("input_generator")
 
 
 class InputGenerator:
@@ -49,9 +49,11 @@ class InputGenerator:
             raise NotImplementedError(
                 f"Neither task {task} nor model type {model_type} is supported. \n"
                 f"Available tasks: {list(TASKS_TO_GENERATORS.keys())}. \n"
-                "If you want to add support for this task, please submit a PR or a feature request to optimum-benchmark. \n"
+                "If you want to add support for this task, "
+                "please submit a PR or a feature request to optimum-benchmark. \n"
                 f"Available model types: {SUPPURTED_MODEL_TYPES}. \n"
-                "If you want to add support for this model type, please submit a PR or a feature request to optimum."
+                "If you want to add support for this model type, "
+                "please submit a PR or a feature request to optimum."
             )
 
     # TODO: we can drop the torch dependency here by returning a dict of numpy arrays

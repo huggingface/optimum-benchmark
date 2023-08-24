@@ -9,7 +9,7 @@ from optimum_benchmark.generators.task_generator import (
 )
 
 
-LOGGER = getLogger("dummy_dataset")
+LOGGER = getLogger("dataset_generator")
 
 
 class DatasetGenerator:
@@ -23,7 +23,7 @@ class DatasetGenerator:
         dataset_shapes["batch_size"] = dataset_shapes.pop("dataset_size")
 
         if task in TASKS_TO_GENERATORS:
-            LOGGER.info(f"Using {TASKS_TO_GENERATORS[task]} generator")
+            LOGGER.info(f"Using {task} task generator")
             self.task_generator = TASKS_TO_GENERATORS[task](
                 shapes=dataset_shapes,
                 with_labels=True,
@@ -32,16 +32,15 @@ class DatasetGenerator:
             raise NotImplementedError(
                 f"Task {task} is supported. \n"
                 f"Available tasks: {list(TASKS_TO_GENERATORS.keys())}. \n"
-                "If you want to add support for this task, please submit a PR or a feature request to optimum-benchmark. \n"
+                "If you want to add support for this task, "
+                "please submit a PR or a feature request to optimum-benchmark. \n"
             )
 
     def generate(self) -> Dataset:
         task_dataset = self.task_generator.generate()
-
-        # TODO: we can move this to backend.prepare_for_training to avoid the torch dependency
         task_dataset = Dataset.from_dict(task_dataset)
         task_dataset.set_format(
-            type="torch",
+            type="numpy",
             columns=list(task_dataset.features.keys()),
         )
 

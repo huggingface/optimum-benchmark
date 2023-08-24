@@ -40,7 +40,8 @@ class MemoryTracker:
         meminfo = nvml.nvmlDeviceGetMemoryInfo(handle)
         nvml.nvmlShutdown()
 
-        # At least for PyTorch, relying on meminfo.used is fine here as PyTorch does not deallocate its cache after running forward.
+        # At least for PyTorch, relying on meminfo.used is fine 
+        # here as PyTorch does not deallocate its cache after running forward.
         self.peak_memory = max(self.peak_memory, meminfo.used)
         LOGGER.debug(f"Peak memory usage: {self.get_peak_memory()} MB")
 
@@ -89,6 +90,7 @@ class PeakMemoryMeasureProcess(Process):
         self.connection.send(self.mem_usage)
         self.connection.close()
 
+
 class PyTorchMemoryTracker(MemoryTracker):
     def __init__(self, backend):
         super().__init__(backend)
@@ -97,7 +99,9 @@ class PyTorchMemoryTracker(MemoryTracker):
             self.hf_device_map = backend.pretrained_model.hf_device_map
             self.device_indexes = set(self.hf_device_map.values())
         else:
-            self.device_indexes = {self.device.index if self.device.index is not None else 0}
+            self.device_indexes = {
+                self.device.index if self.device.index is not None else 0
+            }
 
         # This variable is used only when CUDA device is used.
         self.peak_per_device = [0 for _ in range(len(self.device_indexes))]
@@ -116,7 +120,7 @@ class PyTorchMemoryTracker(MemoryTracker):
             meminfo = nvml.nvmlDeviceGetMemoryInfo(handle)
 
             self.peak_per_device[i] = max(self.peak_per_device[i], meminfo.used)
-        
+
         for i, peak_device in enumerate(self.peak_per_device):
             LOGGER.debug(f"Peak memory {i} usage: {peak_device * 1e-6} MB")
 
