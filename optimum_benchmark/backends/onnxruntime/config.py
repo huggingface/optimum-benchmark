@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
@@ -5,6 +6,7 @@ from omegaconf import OmegaConf
 
 from ...import_utils import onnxruntime_version
 from ..config import BackendConfig
+from ..ddp_utils import DDP_CONFIG
 from ..peft_utils import PEFT_CONFIGS, PEFT_TASKS_TYPES
 
 
@@ -137,11 +139,17 @@ class ORTConfig(BackendConfig):
     # ort-training is basically a different package so we might need to seperate these two backends in the future
     use_inference_session: bool = "${is_inference:${benchmark.name}}"
 
+    # training options
+    use_ddp: bool = False
+    ddp_config: Dict[str, Any] = field(default_factory=dict)
+
     # peft options
     peft_strategy: Optional[str] = None
     peft_config: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
+        CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", None)
+
         if not self.no_weights and not self.export and self.torch_dtype is not None:
             raise NotImplementedError("Can't convert an exported model's weights to a different dtype.")
 
@@ -174,6 +182,15 @@ class ORTConfig(BackendConfig):
 
         if self.calibration:
             self.calibration_config = OmegaConf.to_object(OmegaConf.merge(CALIBRATION_CONFIG, self.calibration_config))
+
+        if self.use_ddp:
+            if CUDA_VISIBLE_DEVICES is None:
+                raise ValueError("`use_ddp` can only be used when CUDA_VISIBLE_DEVICES is set.")
+
+            self.ddp_config = OmegaConf.to_object(OmegaConf.merge(DDP_CONFIG, self.ddp_config))
+            # TODO: check if it's not possible to use DDP with multiple nodes
+            if self.ddp_config["max_nodes"] > 1 or self.ddp_config["min_nodes"] > 1:
+                raise NotImplementedError("Currently, PyTorch DDP benchmark only supports training on a single node.")
 
         if self.peft_strategy is not None:
             if self.peft_strategy not in PEFT_CONFIGS:
