@@ -198,10 +198,14 @@ class ORTBackend(Backend[ORTConfig]):
         LOGGER.info("\t+ Processing optimization config")
         if self.config.auto_optimization is not None:
             optimization_config = AutoOptimizationConfig.with_optimization_level(
-                optimization_level=self.config.auto_optimization, **self.config.auto_optimization_config
+                optimization_level=self.config.auto_optimization,
+                for_gpu=self.device.type == "cuda",
+                **self.config.auto_optimization_config,
             )
         elif self.config.optimization:
-            optimization_config = OptimizationConfig(**self.config.optimization_config)
+            optimization_config = OptimizationConfig(
+                optimize_for_gpu=self.device.type == "cuda", **self.config.optimization_config
+            )
         LOGGER.info("\t+ Creating optimizer")
         optimizer = ORTOptimizer.from_pretrained(self.model, file_names=self.onnx_files_names)
         LOGGER.info("\t+ Optimizing ORTModel")

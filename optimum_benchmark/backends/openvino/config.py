@@ -53,12 +53,12 @@ class OVConfig(BackendConfig):
 
     def __post_init__(self):
         if self.quantization:
-            self.quantization_config = OmegaConf.to_container(
+            self.quantization_config = OmegaConf.to_object(
                 OmegaConf.merge(QUANTIZATION_CONFIG, self.quantization_config)
             )
             if not self.calibration:
                 raise ValueError("OpenVINO quantization requires enabling calibration.")
             else:
-                self.calibration_config = OmegaConf.to_container(
+                self.calibration_config = OmegaConf.to_object(
                     OmegaConf.merge(CALIBRATION_CONFIG, self.calibration_config)
                 )

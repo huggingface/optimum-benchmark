@@ -80,10 +80,10 @@ class InferenceConfig(BenchmarkConfig):
 
     def __post_init__(self):
         if self.can_diffuse:
-            self.forward_kwargs = OmegaConf.to_container(OmegaConf.merge(self.forward_kwargs, DIFUSION_CONFIG))
+            self.forward_kwargs = OmegaConf.to_object(OmegaConf.merge(self.forward_kwargs, DIFUSION_CONFIG))
 
         if self.can_generate:
-            self.generate_kwargs = OmegaConf.to_container(OmegaConf.merge(self.generate_kwargs, GENERATE_CONFIG))
+            self.generate_kwargs = OmegaConf.to_object(OmegaConf.merge(self.generate_kwargs, GENERATE_CONFIG))
 
             if self.generate_kwargs["max_new_tokens"] != self.generate_kwargs["min_new_tokens"]:
                 raise ValueError("`max_new_tokens` and `min_new_tokens` must be equal for fixed length output.")

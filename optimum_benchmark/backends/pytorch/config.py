@@ -105,9 +105,7 @@ class PyTorchConfig(BackendConfig):
         CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", None)
 
         if self.torch_compile:
-            self.torch_compile_config = OmegaConf.to_container(
-                OmegaConf.merge(COMPILE_CONFIG, self.torch_compile_config)
-            )
+            self.torch_compile_config = OmegaConf.to_object(OmegaConf.merge(COMPILE_CONFIG, self.torch_compile_config))
 
         if self.device_map is not None:
             assert CUDA_VISIBLE_DEVICES is not None, "`device_map` can only be used when CUDA_VISIBLE_DEVICES is set."
@@ -129,7 +127,7 @@ class PyTorchConfig(BackendConfig):
                     f"`quantization_strategy` must be one of {list(QUANTIZATION_CONFIGS.keys())}. Got {self.quantization_strategy} instead."
                 )
             QUANTIZATION_CONFIG = QUANTIZATION_CONFIGS[self.quantization_strategy]
-            self.quantization_config = OmegaConf.to_container(
+            self.quantization_config = OmegaConf.to_object(
                 OmegaConf.merge(QUANTIZATION_CONFIG, self.quantization_config)
             )
 
@@ -137,7 +135,7 @@ class PyTorchConfig(BackendConfig):
             if CUDA_VISIBLE_DEVICES is None:
                 raise ValueError("`use_ddp` can only be used when CUDA_VISIBLE_DEVICES is set.")
 
-            self.ddp_config = OmegaConf.to_container(OmegaConf.merge(DDP_CONFIG, self.ddp_config), resolve=True)
+            self.ddp_config = OmegaConf.to_object(OmegaConf.merge(DDP_CONFIG, self.ddp_config))
             # TODO: check if it's not possible to use DDP with multiple nodes
             if self.ddp_config["max_nodes"] > 1 or self.ddp_config["min_nodes"] > 1:
                 raise NotImplementedError("Currently, PyTorch DDP benchmark only supports training on a single node.")

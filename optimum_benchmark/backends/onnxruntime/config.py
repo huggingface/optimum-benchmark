@@ -42,7 +42,6 @@ OmegaConf.register_new_resolver(
 
 OPTIMIZATION_CONFIG = {
     "optimization_level": 1,  # 0, 1, 2, 99
-    "optimize_for_gpu": "${is_gpu:${device}}",
     "fp16": False,
     "enable_transformers_specific_optimizations": True,
     "enable_gelu_approximation": False,
@@ -64,8 +63,7 @@ OPTIMIZATION_CONFIG = {
 }
 
 AUTO_OPTIMIZATION_CONFIG = {
-    "for_gpu": "${is_gpu:${device}}",
-    # full auto optimization config depends on the level so we keep it minimal
+    # auto optimization config depends on the level so we keep it minimal
 }
 
 QUANTIZATION_CONFIG = {
@@ -153,11 +151,11 @@ class ORTConfig(BackendConfig):
             raise NotImplementedError("Can't convert an exported model's weights to a different dtype.")
 
         if self.optimization:
-            self.optimization_config = OmegaConf.to_container(
+            self.optimization_config = OmegaConf.to_object(
                 OmegaConf.merge(OPTIMIZATION_CONFIG, self.optimization_config)
             )
         if self.quantization:
-            self.quantization_config = OmegaConf.to_container(
+            self.quantization_config = OmegaConf.to_object(
                 OmegaConf.merge(QUANTIZATION_CONFIG, self.quantization_config)
             )
             # raise ValueError if the quantization is static but calibration is not enabled
@@ -167,11 +165,11 @@ class ORTConfig(BackendConfig):
                 )
 
         if self.auto_optimization is not None:
-            self.auto_optimization_config = OmegaConf.to_container(
+            self.auto_optimization_config = OmegaConf.to_object(
                 OmegaConf.merge(AUTO_OPTIMIZATION_CONFIG, self.auto_optimization_config)
             )
         if self.auto_quantization is not None:
-            self.auto_quantization_config = OmegaConf.to_container(
+            self.auto_quantization_config = OmegaConf.to_object(
                 OmegaConf.merge(AUTO_QUANTIZATION_CONFIG, self.auto_quantization_config)
             )
             if self.auto_quantization_config["is_static"] and not self.calibration:
@@ -180,6 +178,4 @@ class ORTConfig(BackendConfig):
                 )
 
         if self.calibration:
-            self.calibration_config = OmegaConf.to_container(
-                OmegaConf.merge(CALIBRATION_CONFIG, self.calibration_config)
-            )
+            self.calibration_config = OmegaConf.to_object(OmegaConf.merge(CALIBRATION_CONFIG, self.calibration_config))

@@ -18,6 +18,7 @@ from optimum.exporters.onnx.__main__ import (
     export_models,
     is_torch_available,
     logger,
+    maybe_load_preprocessors,
     maybe_save_preprocessors,
 )
 
@@ -37,7 +38,7 @@ def main_export(
     fp16: Optional[bool] = False,
     optimize: Optional[str] = None,
     monolith: bool = False,
-    # no_post_process: bool = False,
+    no_post_process: bool = False,
     framework: Optional[str] = None,
     atol: Optional[float] = None,
     cache_dir: Optional[str] = None,
@@ -49,16 +50,101 @@ def main_export(
     local_files_only: bool = False,
     use_auth_token: Optional[Union[bool, str]] = None,
     for_ort: bool = False,
-    # do_validation: bool = True,
+    do_validation: bool = True,
     model_kwargs: Optional[Dict[str, Any]] = None,
     custom_onnx_configs: Optional[Dict[str, "OnnxConfig"]] = None,
     fn_get_submodels: Optional[Callable] = None,
-    # use_subprocess: bool = False,
+    use_subprocess: bool = False,
+    _variant: str = "default",
     ########################################
     model: Optional["PreTrainedModel"] = None,
     ########################################
     **kwargs_shapes,
 ):
+    """
+    Full-suite ONNX export.
+
+    Args:
+        > Required parameters
+
+        model_name_or_path (`str`):
+            Model ID on huggingface.co or path on disk to the model repository to export.
+        output (`Union[str, Path]`):
+            Path indicating the directory where to store the generated ONNX model.
+
+        > Optional parameters
+
+        task (`Optional[str]`, defaults to `None`):
+            The task to export the model for. If not specified, the task will be auto-inferred based on the model. For decoder models,
+            use `xxx-with-past` to export the model using past key values in the decoder.
+        opset (`Optional[int]`, defaults to `None`):
+            If specified, ONNX opset version to export the model with. Otherwise, the default opset for the given model architecture
+            will be used.
+        device (`str`, defaults to `"cpu"`):
+            The device to use to do the export. Defaults to "cpu".
+        fp16 (`Optional[bool]`, defaults to `"False"`):
+            Use half precision during the export. PyTorch-only, requires `device="cuda"`.
+        optimize (`Optional[str]`, defaults to `None`):
+            Allows to run ONNX Runtime optimizations directly during the export. Some of these optimizations are specific to
+            ONNX Runtime, and the resulting ONNX will not be usable with other runtime as OpenVINO or TensorRT.
+            Available options: `"O1", "O2", "O3", "O4"`. Reference: [`~optimum.onnxruntime.AutoOptimizationConfig`]
+        monolith (`bool`, defaults to `False`):
+            Forces to export the model as a single ONNX file.
+        no_post_process (`bool`, defaults to `False`):
+            Allows to disable any post-processing done by default on the exported ONNX models.
+        framework (`Optional[str]`, defaults to `None`):
+            The framework to use for the ONNX export (`"pt"` or `"tf"`). If not provided, will attempt to automatically detect
+            the framework for the checkpoint.
+        atol (`Optional[float]`, defaults to `None`):
+            If specified, the absolute difference tolerance when validating the model. Otherwise, the default atol for the model will be used.
+        cache_dir (`Optional[str]`, defaults to `None`):
+            Path indicating where to store cache. The default Hugging Face cache path will be used by default.
+        trust_remote_code (`bool`, defaults to `False`):
+            Allows to use custom code for the modeling hosted in the model repository. This option should only be set for repositories
+            you trust and in which you have read the code, as it will execute on your local machine arbitrary code present in the
+            model repository.
+        pad_token_id (`Optional[int]`, defaults to `None`):
+            This is needed by some models, for some tasks. If not provided, will attempt to use the tokenizer to guess it.
+        subfolder (`str`, defaults to `""`):
+            In case the relevant files are located inside a subfolder of the model repo either locally or on huggingface.co, you can
+            specify the folder name here.
+        revision (`str`, defaults to `"main"`):
+            Revision is the specific model version to use. It can be a branch name, a tag name, or a commit id.
+        force_download (`bool`, defaults to `False`):
+            Whether or not to force the (re-)download of the model weights and configuration files, overriding the
+            cached versions if they exist.
+        local_files_only (`Optional[bool]`, defaults to `False`):
+            Whether or not to only look at local files (i.e., do not try to download the model).
+        use_auth_token (`Optional[str]`, defaults to `None`):
+            The token to use as HTTP bearer authorization for remote files. If `True`, will use the token generated
+            when running `transformers-cli login` (stored in `~/.huggingface`).
+        model_kwargs (`Optional[Dict[str, Any]]`, defaults to `None`):
+            Experimental usage: keyword arguments to pass to the model during
+            the export. This argument should be used along the `custom_onnx_configs` argument
+            in case, for example, the model inputs/outputs are changed (for example, if
+            `model_kwargs={"output_attentions": True}` is passed).
+        custom_onnx_configs (`Optional[Dict[str, OnnxConfig]]`, defaults to `None`):
+            Experimental usage: override the default ONNX config used for the given model. This argument may be useful for advanced users that desire a finer-grained control on the export. An example is available [here](https://huggingface.co/docs/optimum/main/en/exporters/onnx/usage_guides/export_a_model).
+        fn_get_submodels (`Optional[Callable]`, defaults to `None`):
+            Experimental usage: Override the default submodels that are used at the export. This is
+            especially useful when exporting a custom architecture that needs to split the ONNX (e.g. encoder-decoder). If unspecified with custom models, optimum will try to use the default submodels used for the given task, with no guarantee of success.
+        use_subprocess (`bool`):
+            Do the ONNX exported model validation in subprocesses. This is especially useful when
+            exporting on CUDA device, where ORT does not release memory at inference session
+            destruction. When set to `True`, the `main_export` call should be guarded in
+            `if __name__ == "__main__":` block.
+        _variant (`str`, defaults to `default`):
+            Specify the variant of the ONNX export to use.
+        **kwargs_shapes (`Dict`):
+            Shapes to use during inference. This argument allows to override the default shapes used during the ONNX export.
+
+    Example usage:
+    ```python
+    >>> from optimum.exporters.onnx import main_export
+
+    >>> main_export("gpt2", output="gpt2_onnx/")
+    ```
+    """
     if optimize == "O4" and device != "cuda":
         raise ValueError(
             "Requested O4 optimization, but this optimization requires to do the export on GPU."
@@ -180,6 +266,11 @@ def main_export(
             possible_synonyms = ""
         logger.info(f"Automatic task detection to {task}{possible_synonyms}.")
 
+    # The preprocessors are loaded as they may be useful to export the model. Notably, some of the static input shapes may be stored in the
+    # preprocessors config.
+    preprocessors = maybe_load_preprocessors(
+        model_name_or_path, subfolder=subfolder, trust_remote_code=trust_remote_code
+    )
     onnx_config, models_and_onnx_configs = _get_submodels_and_onnx_configs(
         model=model,
         task=task,
@@ -187,6 +278,8 @@ def main_export(
         custom_onnx_configs=custom_onnx_configs if custom_onnx_configs is not None else {},
         custom_architecture=custom_architecture,
         fn_get_submodels=fn_get_submodels,
+        preprocessors=preprocessors,
+        _variant=_variant,
     )
 
     if not is_stable_diffusion:
@@ -274,6 +367,7 @@ def main_export(
         dtype="fp16" if fp16 is True else None,
         model_kwargs=model_kwargs,
     )
+
     # for the post processing later we don't wanna keep models
     if len(models_and_onnx_configs) == 2:
         models_and_onnx_configs = {
@@ -291,8 +385,7 @@ def main_export(
     return onnx_config, models_and_onnx_configs
 
     # if optimize is not None:
-    #     from optimum.onnxruntime import ORTOptimizer
-    #     from optimum.onnxruntime.configuration import AutoOptimizationConfig
+    #     from ...onnxruntime import AutoOptimizationConfig, ORTOptimizer
 
     #     if onnx_files_subpaths is None:
     #         onnx_files_subpaths = [key + ".onnx" for key in models_and_onnx_configs.keys()]
@@ -308,7 +401,7 @@ def main_export(
     # if not no_post_process and not is_stable_diffusion:
     #     try:
     #         logger.info("Post-processing the exported models...")
-    #         (models_and_onnx_configs, onnx_files_subpaths) = onnx_config.post_process_exported_models(
+    #         models_and_onnx_configs, onnx_files_subpaths = onnx_config.post_process_exported_models(
     #             output, models_and_onnx_configs, onnx_files_subpaths
     #         )
     #     except Exception as e:

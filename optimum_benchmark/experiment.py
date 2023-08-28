@@ -9,7 +9,7 @@ from accelerate import __version__ as accelerate_version
 from diffusers import __version__ as diffusers_version
 from hydra.core.config_store import ConfigStore
 from hydra.utils import get_class
-from omegaconf import DictConfig, OmegaConf, SCMode
+from omegaconf import DictConfig, OmegaConf
 from optimum.exporters import TasksManager
 from optimum.version import __version__ as optimum_version
 from transformers import __version__ as transformers_version
@@ -94,15 +94,11 @@ cs.store(group="benchmark", name="training", node=TrainingConfig)
 
 @hydra.main(version_base=None)
 def run_experiment(experiment: DictConfig) -> None:
-    experiment = OmegaConf.to_container(experiment, structured_config_mode=SCMode.INSTANTIATE, resolve=True)
+    # This is required to trigger __post_init__. Reference: https://github.com/omry/omegaconf/issues/377
+    experiment: ExperimentConfig = OmegaConf.to_object(experiment)
 
     # Save the config
     OmegaConf.save(experiment, "hydra_config.yaml", resolve=True)
-
-    # Allocate requested benchmark
-    benchmark_factory: Type[Benchmark] = get_class(experiment.benchmark._target_)
-    benchmark: Benchmark = benchmark_factory()
-    benchmark.configure(experiment.benchmark)
 
     # Allocate requested backend
     backend_factory: Type[Backend] = get_class(experiment.backend._target_)
@@ -112,18 +108,30 @@ def run_experiment(experiment: DictConfig) -> None:
         device=experiment.device,
         hub_kwargs=experiment.hub_kwargs,
     )
-
     try:
         # Configure the backend
         backend.configure(experiment.backend)
+    except Exception as e:
+        LOGGER.error("Error during backend configuration: %s", e)
+        raise e
+
+    # Allocate requested benchmark
+    benchmark_factory: Type[Benchmark] = get_class(experiment.benchmark._target_)
+    benchmark: Benchmark = benchmark_factory()
+    try:
+        benchmark.configure(experiment.benchmark)
+    except Exception as e:
+        LOGGER.error("Error during benchmark configuration: %s", e)
+        raise e
+
+    try:
         # Run the benchmark
         benchmark.run(backend)
         # Save the benchmark results
         benchmark.save()
         # Clean up the backend
         backend.clean()
-
     except Exception as e:
-        LOGGER.error("Error during experiment: %s", e)
+        LOGGER.error("Error during benchmark execution: %s", e)
         backend.clean()
         raise e
