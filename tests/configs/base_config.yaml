@@ -20,7 +20,7 @@ hydra:
     # this is useful for saving outputs in a separate directory
     chdir: true
     env_set:
-      CUDA_VISIBLE_DEVICES: ""
+      CUDA_VISIBLE_DEVICES: 0
   launcher:
     # we set the number of jobs to 2 since when using 1, joblib reuses the same process
     n_jobs: 2
