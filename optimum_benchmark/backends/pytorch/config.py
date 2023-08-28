@@ -15,7 +15,10 @@ OmegaConf.register_new_resolver(
     "is_inference",
     lambda benchmark_name: benchmark_name == "inference",
 )
-OmegaConf.register_new_resolver("pytorch_version", lambda: torch_version())
+OmegaConf.register_new_resolver(
+    "pytorch_version",
+    lambda: torch_version(),
+)
 
 DEVICE_MAPS = ["auto", "sequential"]
 AMP_DTYPES = ["bfloat16", "float16"]

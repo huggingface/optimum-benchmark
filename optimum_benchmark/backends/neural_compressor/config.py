@@ -1,14 +1,14 @@
-import importlib.metadata
 from dataclasses import dataclass, field
 from typing import Any, Dict
 
 from omegaconf import OmegaConf
 
+from ...import_utils import neural_compressor_version
 from ..config import BackendConfig
 
 OmegaConf.register_new_resolver(
     "neural_compressor_version",
-    lambda: importlib.metadata.version("neural_compressor"),
+    lambda: neural_compressor_version(),
 )
 
 # https://github.com/intel/neural-compressor/blob/master/neural_compressor/config.py#L490

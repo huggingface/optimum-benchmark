@@ -1,10 +1,9 @@
-import importlib.metadata
-import importlib.util
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
 from omegaconf import OmegaConf
 
+from ...import_utils import onnxruntime_version
 from ..config import BackendConfig
 
 
@@ -22,33 +21,15 @@ def infer_device_id(device: str) -> int:
         raise ValueError(f"Unknown device: {device}")
 
 
-def onnxruntime_version():
-    try:
-        return "ort:" + importlib.metadata.version("onnxruntime")
-    except importlib.metadata.PackageNotFoundError:
-        try:
-            return "ort-gpu:" + importlib.metadata.version("onnxruntime-gpu")
-        except importlib.metadata.PackageNotFoundError:
-            return "ort:unknown"
-
+OmegaConf.register_new_resolver("onnxruntime_version", onnxruntime_version())
 
 OmegaConf.register_new_resolver("is_gpu", lambda device: "cuda" in device)
+OmegaConf.register_new_resolver("infer_device_id", lambda device: infer_device_id(device))
+OmegaConf.register_new_resolver("is_profiling", lambda benchmark_name: benchmark_name == "profiling")
 OmegaConf.register_new_resolver(
-    "is_profiling",
-    lambda benchmark_name: benchmark_name == "profiling",
+    "infer_provider", lambda device: "CPUExecutionProvider" if device == "cpu" else "CUDAExecutionProvider"
 )
-OmegaConf.register_new_resolver(
-    "infer_provider",
-    lambda device: "CPUExecutionProvider" if device == "cpu" else "CUDAExecutionProvider",
-)
-OmegaConf.register_new_resolver(
-    "infer_device_id",
-    lambda device: infer_device_id(device),
-)
-OmegaConf.register_new_resolver(
-    "onnxruntime_version",
-    lambda: onnxruntime_version(),
-)
+
 
 OPTIMIZATION_CONFIG = {
     "optimization_level": 1,  # 0, 1, 2, 99

@@ -17,8 +17,16 @@ def torch_version():
 
 
 def onnxruntime_version():
-    if _onnxruntime_available:
-        return importlib.metadata.version("onnxruntime")
+    try:
+        return "ort:" + importlib.metadata.version("onnxruntime")
+    except importlib.metadata.PackageNotFoundError:
+        try:
+            return "ort-gpu:" + importlib.metadata.version("onnxruntime-gpu")
+        except importlib.metadata.PackageNotFoundError:
+            try:
+                return "ort-training:" + importlib.metadata.version("onnxruntime-training")
+            except importlib.metadata.PackageNotFoundError:
+                return None
 
 
 def openvino_version():
