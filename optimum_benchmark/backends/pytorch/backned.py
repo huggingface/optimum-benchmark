@@ -9,7 +9,7 @@ from accelerate.utils import BnbQuantizationConfig, load_and_quantize_model
 from optimum.bettertransformer import BetterTransformer
 from torch.distributed.elastic.multiprocessing.errors import record
 from torch.distributed.launcher.api import LaunchConfig, elastic_launch
-from transformers import BitsAndBytesConfig, GPTQConfig, Trainer, TrainingArguments
+from transformers import BitsAndBytesConfig, Trainer, TrainingArguments  # GPTQConfig
 from transformers.utils.fx import symbolic_trace
 
 if TYPE_CHECKING:
@@ -96,7 +96,12 @@ class PyTorchBackend(Backend[PyTorchConfig]):
     def load_model_from_pretrained(self) -> None:
         if self.config.quantization_strategy == "gptq":
             LOGGER.info("\t+ Processing GPTQ config")
-            quantization_config = GPTQConfig(**self.config.quantization_config)
+            raise NotImplementedError(
+                "Applying GPTQ quantization on pretrained models is not supported yet. "
+                "If the model is already quantized, you don't need to specify the quantization strategy."
+            )
+            # need to process dataset, tokenizer, etc.
+            # quantization_config = GPTQConfig(**self.config.quantization_config)
         elif self.config.quantization_strategy == "bnb":
             LOGGER.info("\t+ Processing BnB config")
             quantization_config = BitsAndBytesConfig(**self.config.quantization_config)
