@@ -13,4 +13,3 @@ device: cuda
 benchmark:
   dataset_shapes:
     dataset_size: 1600
-    sequence_length: 256
