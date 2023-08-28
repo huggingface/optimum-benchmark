@@ -76,6 +76,17 @@ class ORTBackend(Backend[ORTConfig]):
                 self.load_automodel_from_config()
             else:
                 self.load_automodel_from_pretrained()
+
+            if self.config.peft_strategy is not None:
+                LOGGER.info("\t+ Applying PEFT")
+                from peft import get_peft_model
+
+                from ..peft_utils import get_peft_config_class
+
+                peft_config_class = get_peft_config_class(self.config.peft_strategy)
+                peft_config = peft_config_class(**self.config.peft_config)
+                self.pretrained_model = get_peft_model(self.pretrained_model, peft_config=peft_config)
+            # early exit because nothing of the following can be applied to training
             return
 
         ###### Inference with ORTModelForxxx ######

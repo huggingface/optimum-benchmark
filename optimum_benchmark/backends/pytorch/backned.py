@@ -94,14 +94,13 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         if self.config.peft_strategy is not None:
             LOGGER.info("\t+ Applying PEFT")
-            from peft import LoraConfig, get_peft_model
+            from peft import get_peft_model
 
-            if self.config.peft_strategy == "lora":
-                LOGGER.info("\t+ Processing LoRA config")
-                peft_config = LoraConfig(**self.config.peft_config)
-                self.pretrained_model = get_peft_model(self.pretrained_model, peft_config=peft_config)
-            elif self.config.peft_strategy == "prefix_tuning":
-                raise NotImplementedError("Prefix tuning is not supported yet.")
+            from ..peft_utils import get_peft_config_class
+
+            peft_config_class = get_peft_config_class(self.config.peft_strategy)
+            peft_config = peft_config_class(**self.config.peft_config)
+            self.pretrained_model = get_peft_model(self.pretrained_model, peft_config=peft_config)
 
     def load_model_from_pretrained(self) -> None:
         if self.config.quantization_strategy == "gptq":
@@ -197,7 +196,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         LOGGER.info("\t+ Wrapping model with FXProfilingWrapper")
         self.pretrained_model = FXProfilingWrapper(self.pretrained_model)
 
-    def forward(self, input: Dict[str, torch.Tensor], **kwargs) -> "ModelOutput":
+    def forward(self, input: Dict[str, Any], **kwargs) -> "ModelOutput":
         if self.is_diffusion_pipeline():
             return super().forward(input, **kwargs)
         else:

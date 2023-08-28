@@ -5,13 +5,13 @@ from omegaconf import OmegaConf
 
 from ...import_utils import onnxruntime_version
 from ..config import BackendConfig
+from ..peft_utils import PEFT_CONFIGS, PEFT_TASKS_TYPES
 
 
 def infer_device_id(device: str) -> int:
     """Infer the device id from the given device string."""
     if device == "cuda":
-        # torch.cuda.current_device() will always return 0
-        # unless torch.cuda.set_device() is called somewhere
+        # torch.cuda.current_device() will always return 0 unless torch.cuda.set_device() is called
         return 0
     elif "cuda" in device:
         return int(device.split(":")[1])
@@ -137,6 +137,10 @@ class ORTConfig(BackendConfig):
     # ort-training is basically a different package so we might need to seperate these two backends in the future
     use_inference_session: bool = "${is_inference:${benchmark.name}}"
 
+    # peft options
+    peft_strategy: Optional[str] = None
+    peft_config: Dict[str, Any] = field(default_factory=dict)
+
     def __post_init__(self):
         if not self.no_weights and not self.export and self.torch_dtype is not None:
             raise NotImplementedError("Can't convert an exported model's weights to a different dtype.")
@@ -170,3 +174,14 @@ class ORTConfig(BackendConfig):
 
         if self.calibration:
             self.calibration_config = OmegaConf.to_object(OmegaConf.merge(CALIBRATION_CONFIG, self.calibration_config))
+
+        if self.peft_strategy is not None:
+            if self.peft_strategy not in PEFT_CONFIGS:
+                raise ValueError(
+                    f"`peft_strategy` must be one of {list(PEFT_CONFIGS.keys())}. Got {self.peft_strategy} instead."
+                )
+            PEFT_CONFIG = PEFT_CONFIGS[self.peft_strategy]
+            self.peft_config = OmegaConf.to_object(OmegaConf.merge(PEFT_CONFIG, self.peft_config))
+
+            if self.peft_config["task_type"] is None:
+                raise ValueError(f"`peft_config.task_type` must be set to one of the following {PEFT_TASKS_TYPES}")

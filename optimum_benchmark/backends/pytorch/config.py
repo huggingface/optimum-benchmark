@@ -6,6 +6,7 @@ from omegaconf import OmegaConf
 
 from ...import_utils import torch_version
 from ..config import BackendConfig
+from ..peft_utils import PEFT_CONFIGS, PEFT_TASKS_TYPES
 
 OmegaConf.register_new_resolver("device_count", lambda: len(os.environ.get("CUDA_VISIBLE_DEVICES", "").split(",")))
 OmegaConf.register_new_resolver("is_inference", lambda benchmark_name: benchmark_name == "inference")
@@ -14,7 +15,6 @@ OmegaConf.register_new_resolver("pytorch_version", torch_version)
 DEVICE_MAPS = ["auto", "sequential"]
 AMP_DTYPES = ["bfloat16", "float16"]
 TORCH_DTYPES = ["bfloat16", "float16", "float32", "auto"]
-PEFT_TASKS_TYPES = ["SEQ_CLS", "SEQ_2_SEQ_LM", "CAUSAL_LM", "TOKEN_CLS", "QUESTION_ANS", "FEATURE_EXTRACTION"]
 
 GPTQ_CONFIG = {
     "bits": 4,
@@ -57,27 +57,6 @@ DDP_CONFIG = {
     "metrics_cfg": {},
     "local_addr": None,
 }
-LORA_CONFIG = {
-    "peft_type": None,  # PeftType: can't be changed anyway
-    "auto_mapping": None,  # dict
-    "base_model_name_or_path": None,
-    "revision": None,  # str
-    "task_type": None,  # TaskType: SEQ_CLS, SEQ_2_SEQ_LM, CAUSAL_LM, TOKEN_CLS, QUESTION_ANS, FEATURE_EXTRACTION
-    "inference_mode": False,
-    "r": 8,  # int
-    "target_modules": None,  # List[str] | str
-    "lora_alpha": 8,  # int
-    "lora_dropout": 0,  # float
-    "fan_in_fan_out": False,  # bool
-    "bias": "none",  # str
-    "modules_to_save": None,  # List[str]
-    "init_lora_weights": True,  # bool
-    "layers_to_transform": None,  # List[int] | int
-    "layers_pattern": None,  # str
-}
-PEFT_CONFIGS = {
-    "lora": LORA_CONFIG,
-}
 
 
 @dataclass
@@ -114,6 +93,7 @@ class PyTorchConfig(BackendConfig):
     use_ddp: bool = False
     ddp_config: Dict[str, Any] = field(default_factory=dict)
 
+    # peft options
     peft_strategy: Optional[str] = None
     peft_config: Dict[str, Any] = field(default_factory=dict)
 
