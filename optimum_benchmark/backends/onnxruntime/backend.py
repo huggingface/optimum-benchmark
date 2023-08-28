@@ -1,3 +1,4 @@
+import gc
 import os
 from logging import getLogger
 from tempfile import TemporaryDirectory
@@ -22,6 +23,8 @@ from optimum.onnxruntime.configuration import (
     OptimizationConfig,
     QuantizationConfig,
 )
+from torch.distributed.elastic.multiprocessing.errors import record
+from torch.distributed.launcher.api import LaunchConfig, elastic_launch
 
 if TYPE_CHECKING:
     from datasets import Dataset
@@ -29,6 +32,7 @@ if TYPE_CHECKING:
 
 from ...profilers.ort_profiler import ORTProfilingWrapper
 from ..base import Backend
+from ..ddp_utils import training_worker
 from ..optimum_utils import main_export
 from ..pytorch.utils import randomize_weights
 from .config import ORTConfig
@@ -312,36 +316,44 @@ class ORTBackend(Backend[ORTConfig]):
         LOGGER.info("\t+ Wrapping model inside profiler")
         self.pretrained_model = ORTProfilingWrapper(self.pretrained_model)
 
+    @record
     def train(
         self,
         training_dataset: "Dataset",
-        training_data_collator: Callable,
         training_arguments: Dict[str, Any],
         training_callbacks: List["TrainerCallback"],
+        training_data_collator: Callable,
     ) -> "TrainerState":
-        LOGGER.info("\t+ Setting dataset format to `torch`")
-        training_dataset.set_format(type="torch", columns=list(training_dataset.features.keys()))
-        LOGGER.info("\t+ Wrapping training arguments with optimum.onnxruntime.ORTTrainingArguments")
-        training_arguments = ORTTrainingArguments(**training_arguments)
-        LOGGER.info("\t+ Wrapping model with optimum.onnxruntime.ORTTrainer")
-        trainer = ORTTrainer(
-            model=self.pretrained_model,
-            feature=self.task,
-            args=training_arguments,
-            data_collator=training_data_collator,
-            train_dataset=training_dataset,
-            callbacks=training_callbacks,
-            # TODO: add support for optimizers
-            optimizers=(None, None),
+        worker_args = (
+            "torch",
+            LOGGER,
+            ORTTrainer,
+            ORTTrainingArguments,
+            self.config.use_ddp,
+            training_dataset,
+            training_arguments,
+            training_data_collator,
+            training_callbacks,
+            self.pretrained_model,
         )
-        LOGGER.info("\t+ Launching training")
-        trainer.train()
-        LOGGER.info("\t+ Training finished successfully")
-        trainer_state = trainer.state
 
-        return trainer_state
+        if self.config.use_ddp:
+            # For DDP, we log only the state of the first rank as transformers does.
+            # since the batch size used in measuring the throughput is the one of world size.
+            ddp_config = LaunchConfig(**self.config.ddp_config)
+            results = elastic_launch(config=ddp_config, entrypoint=training_worker)(worker_args)[0]
+        else:
+            # For DP, we can still use training_worker, simply not wrapped by the elastic_launch class.
+            results = training_worker(worker_args)
+
+        return results
 
     def clean(self) -> None:
         super().clean()
+
         if hasattr(self, "tmpdir"):
             self.tmpdir.cleanup()
+
+        if self.device.type == "cuda":
+            torch.cuda.empty_cache()
+            gc.collect()

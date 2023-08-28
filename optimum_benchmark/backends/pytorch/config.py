@@ -6,6 +6,7 @@ from omegaconf import OmegaConf
 
 from ...import_utils import torch_version
 from ..config import BackendConfig
+from ..ddp_utils import DDP_CONFIG
 from ..peft_utils import PEFT_CONFIGS, PEFT_TASKS_TYPES
 
 OmegaConf.register_new_resolver("device_count", lambda: len(os.environ.get("CUDA_VISIBLE_DEVICES", "").split(",")))
@@ -35,27 +36,6 @@ COMPILE_CONFIG = {
     "mode": None,
     "options": None,
     "disable": False,
-}
-# from launchConfig in https://github.com/pytorch/pytorch/blob/v2.0.0/torch/distributed/launcher/api.py#L29 adjusted
-# to defaults of torch.distributed.run in https://github.com/pytorch/pytorch/blob/v2.0.0/torch/distributed/run.py#L770
-DDP_CONFIG = {
-    "min_nodes": 1,
-    "max_nodes": 1,
-    "run_id": "none",
-    "nproc_per_node": "${device_count:}",
-    "role": "default",
-    "rdzv_endpoint": "127.0.0.1:29500",
-    "rdzv_backend": "static",
-    "rdzv_configs": {
-        "timeout": 900,
-        "rank": 0,
-    },
-    "max_restarts": 0,
-    "monitor_interval": 5,
-    "start_method": "spawn",
-    "log_dir": None,
-    "metrics_cfg": {},
-    "local_addr": None,
 }
 
 
