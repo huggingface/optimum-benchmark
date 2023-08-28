@@ -63,7 +63,7 @@ DDP_CONFIG = {
 class PyTorchConfig(BackendConfig):
     name: str = "pytorch"
     version: str = "${pytorch_version:}"
-    _target_: str = "optimum_benchmark.backends.pytorch.backned.PyTorchBackend"
+    _target_: str = "optimum_benchmark.backends.pytorch.backend.PyTorchBackend"
 
     # load options
     no_weights: bool = False
