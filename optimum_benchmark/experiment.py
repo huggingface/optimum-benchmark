@@ -2,7 +2,7 @@ import os
 import platform
 from dataclasses import dataclass, field
 from logging import getLogger
-from typing import TYPE_CHECKING, Any, Dict, Type
+from typing import TYPE_CHECKING, Any, Dict, Optional, Type
 
 import hydra
 from hydra.core.config_store import ConfigStore
@@ -30,12 +30,6 @@ if TYPE_CHECKING:
 
 LOGGER = getLogger("experiment")
 
-OmegaConf.register_new_resolver(
-    "infer_task",
-    # TODO: find a better way for this; it doesn't always work because it relies on hub metadata
-    lambda model, revision: infer_task(model, revision),
-)
-
 
 @dataclass
 class ExperimentConfig:
@@ -52,7 +46,7 @@ class ExperimentConfig:
     # Device name or path (cpu, cuda, cuda:0, ...)
     device: str
     # Task name (text-classification, image-classification, ...)
-    task: str = "${infer_task:${model},${hub_kwargs.revision}}"
+    task: Optional[str] = None
 
     # ADDITIONAL MODEL CONFIGURATION: Model revision, use_auth_token, trust_remote_code
     hub_kwargs: Dict = field(
@@ -80,6 +74,12 @@ class ExperimentConfig:
         }
     )
 
+    def __post_init__(self) -> None:
+        # Infer task if not provided
+        if self.task is None:
+            LOGGER.warning("Task not provided, will try to infer it from the model's metadata")
+            self.task = infer_task(self.model, self.hub_kwargs.get("revision", "main"))
+
 
 # Register configurations
 cs = ConfigStore.instance()
@@ -97,6 +97,10 @@ def run_experiment(experiment: DictConfig) -> None:
     # This is required to trigger __post_init__. Reference: https://github.com/omry/omegaconf/issues/377
     experiment: ExperimentConfig = OmegaConf.to_object(experiment)
 
+    print(os.environ.get("CUDA_VISIBLE_DEVICES", None))
+    import torch
+
+    print(torch.cuda.device_count())
     # Save the config
     OmegaConf.save(experiment, "hydra_config.yaml", resolve=True)
 
