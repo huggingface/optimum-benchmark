@@ -34,7 +34,7 @@ jobs:
         run: docker run
           --rm
           --entrypoint /bin/bash
-          --gpus all \
+          --gpus all
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
           optimum-benchmark-ort-training
