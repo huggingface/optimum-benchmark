@@ -1,30 +1,27 @@
+from argparse import ArgumentParser
+from pathlib import Path
+
+import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-from pathlib import Path
-from pandas import DataFrame
-import matplotlib.pyplot as plt
-from omegaconf import OmegaConf
 from flatten_dict import flatten
-from argparse import ArgumentParser
-
-from rich.table import Table
+from omegaconf import OmegaConf
+from pandas import DataFrame
 from rich.console import Console
+from rich.table import Table
 from rich.terminal_theme import MONOKAI
 
 
 def gather_inference_report(root_folder: Path) -> DataFrame:
     # key is path to inference file as string, value is dataframe
     inference_dfs = {
-        f.parent.absolute().as_posix(): pd.read_csv(f)
-        for f in root_folder.glob("**/inference_results.csv")
+        f.parent.absolute().as_posix(): pd.read_csv(f) for f in root_folder.glob("**/inference_results.csv")
     }
 
     # key is path to config file as string, value is flattened dict
     config_dfs = {
         f.parent.absolute()
-        .as_posix(): pd.DataFrame.from_dict(
-            flatten(OmegaConf.load(f), reducer="dot"), orient="index"
-        )
+        .as_posix(): pd.DataFrame.from_dict(flatten(OmegaConf.load(f), reducer="dot"), orient="index")
         .T
         for f in root_folder.glob("**/hydra_config.yaml")
         if f.parent.absolute().as_posix() in inference_dfs.keys()
@@ -35,8 +32,7 @@ def gather_inference_report(root_folder: Path) -> DataFrame:
 
     # Merge inference and config dataframes
     inference_reports = [
-        config_dfs[name].merge(inference_dfs[name], left_index=True, right_index=True)
-        for name in inference_dfs.keys()
+        config_dfs[name].merge(inference_dfs[name], left_index=True, right_index=True) for name in inference_dfs.keys()
     ]
 
     # Concatenate all reports
@@ -82,9 +78,7 @@ def format_row(row, style=""):
     return formated_row
 
 
-def get_inference_rich_table(
-    inference_report, with_baseline=False, with_generate=False, title=""
-):
+def get_inference_rich_table(inference_report, with_baseline=False, with_generate=False, title=""):
     perf_columns = [
         "forward.latency(s)",
         "forward.throughput(samples/s)",
@@ -107,17 +101,12 @@ def get_inference_rich_table(
     additional_columns = [
         col
         for col in inference_report.columns
-        if inference_report[col].nunique() > 1
-        and "backend" in col
-        and "_target_" not in col
-        and "version" not in col
+        if inference_report[col].nunique() > 1 and "backend" in col and "_target_" not in col and "version" not in col
     ]
 
     # display interesting columns in multilevel hierarchy
     display_report = inference_report[additional_columns + perf_columns]
-    display_report.columns = pd.MultiIndex.from_tuples(
-        [tuple(col.split(".")) for col in display_report.columns]
-    )
+    display_report.columns = pd.MultiIndex.from_tuples([tuple(col.split(".")) for col in display_report.columns])
 
     # create rich table
     rich_table = Table(show_header=True, title=title, show_lines=True)
@@ -177,9 +166,7 @@ def get_inference_plots(report, with_baseline=False, with_generate=False, subtit
             ax=ax2,
             width=0.5,
         )
-        ax2.set_xticklabels(
-            ax2.get_xticklabels(), rotation=45, horizontalalignment="right"
-        )
+        ax2.set_xticklabels(ax2.get_xticklabels(), rotation=45, horizontalalignment="right")
         ax2.set_xlabel("Experiment")
         ax2.set_ylabel("Generate Throughput (tokens/s)")
         ax2.set_title("Generate Throughput by Experiment" + "\n" + subtitle)
@@ -199,9 +186,7 @@ def get_inference_plots(report, with_baseline=False, with_generate=False, subtit
 
         if with_generate:
             # add speedup text on top of each bar
-            baseline_generate_throughput = report["generate.throughput(tokens/s)"].iloc[
-                -1
-            ]
+            baseline_generate_throughput = report["generate.throughput(tokens/s)"].iloc[-1]
             for p in ax2.patches:
                 speedup = (p.get_height() / baseline_generate_throughput - 1) * 100
                 ax2.annotate(
@@ -210,9 +195,7 @@ def get_inference_plots(report, with_baseline=False, with_generate=False, subtit
                     ha="center",
                     va="center",
                 )
-            ax2.set_title(
-                "Generate Throughput and Speedup by Experiment" + "\n" + subtitle
-            )
+            ax2.set_title("Generate Throughput and Speedup by Experiment" + "\n" + subtitle)
 
     return fig1, fig2
 
@@ -220,16 +203,12 @@ def get_inference_plots(report, with_baseline=False, with_generate=False, subtit
 def compute_speedup(report, with_generate=False):
     # compute speedup for each experiment compared to baseline
     report["forward.speedup(%)"] = (
-        report["forward.throughput(samples/s)"]
-        / report["forward.throughput(samples/s)"].iloc[-1]
-        - 1
+        report["forward.throughput(samples/s)"] / report["forward.throughput(samples/s)"].iloc[-1] - 1
     ) * 100
 
     if with_generate:
         report["generate.speedup(%)"] = (
-            report["generate.throughput(tokens/s)"]
-            / report["generate.throughput(tokens/s)"].iloc[-1]
-            - 1
+            report["generate.throughput(tokens/s)"] / report["generate.throughput(tokens/s)"].iloc[-1] - 1
         ) * 100
 
     return report
@@ -267,15 +246,11 @@ def generate_report():
     report_name = args.report_name
 
     # gather experiments reports
-    inference_experiments = [
-        gather_inference_report(experiment) for experiment in experiments_folders
-    ]
+    inference_experiments = [gather_inference_report(experiment) for experiment in experiments_folders]
     inference_report = pd.concat(inference_experiments, axis=0)
 
     # sort by forward throughput
-    inference_report.sort_values(
-        by="forward.throughput(samples/s)", ascending=False, inplace=True
-    )
+    inference_report.sort_values(by="forward.throughput(samples/s)", ascending=False, inplace=True)
 
     # some flags
     with_baseline = baseline_folder is not None
@@ -284,9 +259,7 @@ def generate_report():
     if with_baseline:
         # gather baseline report
         inference_baseline = gather_inference_report(baseline_folder)
-        assert (
-            inference_baseline.shape[0] == 1
-        ), "baseline folder should contain only one experiment"
+        assert inference_baseline.shape[0] == 1, "baseline folder should contain only one experiment"
         # add baseline to experiment
         inference_report = pd.concat([inference_report, inference_baseline], axis=0)
         # compute speedup compared to baseline
@@ -302,17 +275,13 @@ def generate_report():
     Path(reporting_directory).mkdir(exist_ok=True, parents=True)
 
     # rich table
-    rich_table = get_inference_rich_table(
-        inference_report, with_baseline, with_generate, report_name
-    )
+    rich_table = get_inference_rich_table(inference_report, with_baseline, with_generate, report_name)
     console = Console(record=True)
     console.print(rich_table, justify="left", no_wrap=True)
     console.save_svg(f"{reporting_directory}/rich_table.svg", theme=MONOKAI)
 
     # plots
-    forward_fig, generate_fig = get_inference_plots(
-        inference_report, with_baseline, with_generate, report_name
-    )
+    forward_fig, generate_fig = get_inference_plots(inference_report, with_baseline, with_generate, report_name)
     forward_fig.tight_layout()
     forward_fig.savefig(f"{reporting_directory}/forward_throughput.png")
 

@@ -1,11 +1,9 @@
-from setuptools import setup, find_packages
-
+from setuptools import find_packages, setup
 
 setup(
     name="optimum-benchmark",
     version="0.0.1",
     packages=find_packages(),
-    # add pytest as for optimum-benchmark[test]
     extras_require={
         "test": ["pytest"],
     },

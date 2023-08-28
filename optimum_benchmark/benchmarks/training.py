@@ -1,15 +1,14 @@
-from typing import Any, Dict
 from dataclasses import dataclass, field
 from logging import getLogger
+from typing import Any, Dict
 
 from omegaconf import OmegaConf
 from pandas import DataFrame
 
 from ..backends.base import Backend
-from .base import Benchmark, BenchmarkConfig
 from ..generators.dataset_generator import DatasetGenerator
-from .training_utils import MeasurementCallback, get_data_collator
-
+from .base import Benchmark, BenchmarkConfig
+from .utils import MeasurementCallback, get_data_collator
 
 LOGGER = getLogger("training")
 
@@ -23,7 +22,7 @@ class TrainingConfig(BenchmarkConfig):
     _target_: str = "optimum_benchmark.benchmarks.training.TrainingBenchmark"
 
     # training options
-    warmup_steps: int = 2
+    warmup_steps: int = 10
 
     # dataset options
     dataset_shapes: Dict = field(
@@ -47,7 +46,8 @@ class TrainingConfig(BenchmarkConfig):
         default_factory=lambda: {
             # these are arguments that we set by default
             # but can be overwritten by the user
-            "skip_memory_metrics": False,
+            "skip_memory_metrics": True,
+            # memory metrics are wrong when using multiple processes
             "output_dir": "./trainer_output",
             "use_cpu": "${is_cpu:${device}}",
             "ddp_find_unused_parameters": False,
@@ -58,9 +58,8 @@ class TrainingConfig(BenchmarkConfig):
     )
 
 
-class TrainingBenchmark(Benchmark):
-    name: str = "training"
-    config: TrainingConfig
+class TrainingBenchmark(Benchmark[TrainingConfig]):
+    NAME = "training"
 
     def __init__(self):
         # initialize training results
@@ -88,14 +87,14 @@ class TrainingBenchmark(Benchmark):
 
         self.training_metrics = {
             # warmup metrics
-            "warmup_runtime": trainer_state.warmup_runtime,
-            "warmup_throughput()": trainer_state.warmup_samples_per_second,
+            "warmup.runtime(s)": trainer_state.warmup_runtime,
+            "warmup.throughput(samples/s)": trainer_state.warmup_samples_per_second,
             # training metrics
-            "train_runtime": trainer_state.train_runtime,
-            "training_throughput": trainer_state.train_samples_per_second,
+            "training.runtime(s)": trainer_state.training_runtime,
+            "training.throughput(samples/s)": trainer_state.training_samples_per_second,
             # overall training metrics
-            "overall_train_runtime": trainer_state.overall_train_runtime,
-            "overall_training_throughput": trainer_state.overall_train_samples_per_second,
+            "overall_training.runtime(s)": trainer_state.overall_training_runtime,
+            "overall_training.throughput(samles/s)": (trainer_state.overall_training_samples_per_second),
         }
 
     def get_results_df(self) -> DataFrame:

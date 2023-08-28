@@ -5,7 +5,7 @@ defaults:
 
 experiment_name: distributed_cuda_pytorch_training_bert_dp
 
-model: bert-base-uncased
+model: hf-internal-testing/tiny-random-bert
 task: text-classification
 device: cuda
 

@@ -1,4 +1,4 @@
-# This is a base config file that can potentially be used for all experiments
+# This is a base config file that can potentially be used for all tests
 defaults:
   - backend: pytorch # default backend
   - benchmark: inference # default benchmark
@@ -6,18 +6,29 @@ defaults:
   - _self_ # for hydra 1.1 compatibility
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
+  - override hydra/launcher: joblib # joblib launcher
 
 # hydra behavior configuration
 hydra:
   run:
-    dir: runs/${experiment_name} # where to save a run's output
+    # TODO: put the results somewhere after the workflow is done
+    dir: tests/runs/${experiment_name} # where to save a run's output
   sweep:
-    dir: sweeps/${experiment_name} # where to save a sweep's output
+    dir: tests/sweeps/${experiment_name} # where to save a sweep's output
   job:
     # we change the working directory during the run/sweep directory
     # this is useful for saving outputs in a separate directory
     chdir: true
+  launcher:
+    # we set the number of jobs to 2 since when using 1, joblib reuses the same process
+    n_jobs: 2
+    prefer: processes
+    backend: multiprocessing
+  sweeper:
+    # now we force the sweeper to run one job at a time, achieving sequential isolation
+    max_batch_size: 1
 
 backend:
+  # we turn off isolation checks because tests run on shared resources
   initial_isolation_check: false
   continous_isolation_check: false

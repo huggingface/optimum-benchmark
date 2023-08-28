@@ -1,9 +1,9 @@
+import time
 from contextlib import contextmanager
 from logging import getLogger
 from typing import List
-import torch
-import time
 
+import torch
 
 LOGGER = getLogger("latency_tracker")
 
@@ -59,9 +59,7 @@ class PyTorchLatencyTracker(LatencyTracker):
             self.hf_device_map = None
             self.end_device = self.device
             if self.device.type == "cuda":
-                self.device_indexes = {
-                    self.device.index if self.device.index is not None else 0
-                }
+                self.device_indexes = {self.device.index if self.device.index is not None else 0}
 
     def _cuda_latency(self):
         start_event = torch.cuda.Event(enable_timing=True)

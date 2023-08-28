@@ -1,31 +1,29 @@
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Union
-from pathlib import Path
 import os
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Union
 
 import torch
 from optimum.exporters.onnx.__main__ import (
-    logger,
-    TasksManager,
-    OnnxConfigWithPast,
-    _get_submodels_and_onnx_configs,
-    maybe_save_preprocessors,
-    validate_models_outputs,
-    is_torch_available,
-    export_models,
-    AutoTokenizer,
     DEFAULT_DUMMY_SHAPES,
     ONNX_WEIGHTS_NAME,
-    UNPICKABLE_ARCHS,
+    # UNPICKABLE_ARCHS,
+    # AtolError,
+    AutoTokenizer,
+    OnnxConfigWithPast,
+    # OutputMatchError,
     RequestsConnectionError,
-    OutputMatchError,
-    ShapeError,
-    AtolError,
+    # ShapeError,
+    TasksManager,
+    _get_submodels_and_onnx_configs,
+    export_models,
+    is_torch_available,
+    logger,
+    maybe_save_preprocessors,
 )
 
-
 if TYPE_CHECKING:
-    from transformers import PreTrainedModel
     from optimum.exporters.onnx import OnnxConfig
+    from transformers import PreTrainedModel
 
 
 # rewrite of the main_export function from optimum.exporters.onnx.__main__
@@ -39,7 +37,7 @@ def main_export(
     fp16: Optional[bool] = False,
     optimize: Optional[str] = None,
     monolith: bool = False,
-    no_post_process: bool = False,
+    # no_post_process: bool = False,
     framework: Optional[str] = None,
     atol: Optional[float] = None,
     cache_dir: Optional[str] = None,
@@ -51,11 +49,11 @@ def main_export(
     local_files_only: bool = False,
     use_auth_token: Optional[Union[bool, str]] = None,
     for_ort: bool = False,
-    do_validation: bool = True,
+    # do_validation: bool = True,
     model_kwargs: Optional[Dict[str, Any]] = None,
     custom_onnx_configs: Optional[Dict[str, "OnnxConfig"]] = None,
     fn_get_submodels: Optional[Callable] = None,
-    use_subprocess: bool = False,
+    # use_subprocess: bool = False,
     ########################################
     model: Optional["PreTrainedModel"] = None,
     ########################################
@@ -88,17 +86,13 @@ def main_export(
     original_task = task
     task = TasksManager.map_from_synonym(task)
 
-    framework = TasksManager.determine_framework(
-        model_name_or_path, subfolder=subfolder, framework=framework
-    )
+    framework = TasksManager.determine_framework(model_name_or_path, subfolder=subfolder, framework=framework)
 
     # get the shapes to be used to generate dummy inputs
     input_shapes = {}
     for input_name in DEFAULT_DUMMY_SHAPES.keys():
         input_shapes[input_name] = (
-            kwargs_shapes[input_name]
-            if input_name in kwargs_shapes
-            else DEFAULT_DUMMY_SHAPES[input_name]
+            kwargs_shapes[input_name] if input_name in kwargs_shapes else DEFAULT_DUMMY_SHAPES[input_name]
         )
 
     torch_dtype = None if fp16 is False else torch.float16
@@ -133,11 +127,7 @@ def main_export(
 
     custom_architecture = False
     is_stable_diffusion = "stable-diffusion" in task
-    model_type = (
-        "stable-diffusion"
-        if is_stable_diffusion
-        else model.config.model_type.replace("_", "-")
-    )
+    model_type = "stable-diffusion" if is_stable_diffusion else model.config.model_type.replace("_", "-")
 
     if not is_stable_diffusion:
         if model_type in TasksManager._UNSUPPORTED_CLI_MODEL_TYPE:
@@ -145,9 +135,9 @@ def main_export(
                 f"{model_type} is not supported yet. Only {TasksManager._SUPPORTED_CLI_MODEL_TYPE} are supported. "
                 f"If you want to support {model_type} please propose a PR or open up an issue."
             )
-        if model.config.model_type.replace(
-            "-", "_"
-        ) not in TasksManager.get_supported_model_type_for_task(task, exporter="onnx"):
+        if model.config.model_type.replace("-", "_") not in TasksManager.get_supported_model_type_for_task(
+            task, exporter="onnx"
+        ):
             custom_architecture = True
 
     # TODO: support onnx_config.py in the model repo
@@ -164,12 +154,9 @@ def main_export(
     if (
         not custom_architecture
         and not is_stable_diffusion
-        and task + "-with-past"
-        in TasksManager.get_supported_tasks_for_model_type(model_type, "onnx")
+        and task + "-with-past" in TasksManager.get_supported_tasks_for_model_type(model_type, "onnx")
     ):
-        if (
-            original_task == "auto"
-        ):  # Make -with-past the default if --task was not explicitely specified
+        if original_task == "auto":  # Make -with-past the default if --task was not explicitely specified
             task = task + "-with-past"
         else:
             logger.info(
@@ -197,9 +184,7 @@ def main_export(
         model=model,
         task=task,
         monolith=monolith,
-        custom_onnx_configs=custom_onnx_configs
-        if custom_onnx_configs is not None
-        else {},
+        custom_onnx_configs=custom_onnx_configs if custom_onnx_configs is not None else {},
         custom_architecture=custom_architecture,
         fn_get_submodels=fn_get_submodels,
     )
@@ -257,15 +242,10 @@ def main_export(
             subcomponent = models_and_onnx_configs[model_name][0]
             if hasattr(subcomponent, "save_config"):
                 subcomponent.save_config(output / model_name)
-            elif hasattr(subcomponent, "config") and hasattr(
-                subcomponent.config, "save_pretrained"
-            ):
+            elif hasattr(subcomponent, "config") and hasattr(subcomponent.config, "save_pretrained"):
                 subcomponent.config.save_pretrained(output / model_name)
 
-        onnx_files_subpaths = [
-            os.path.join(name_dir, ONNX_WEIGHTS_NAME)
-            for name_dir in models_and_onnx_configs
-        ]
+        onnx_files_subpaths = [os.path.join(name_dir, ONNX_WEIGHTS_NAME) for name_dir in models_and_onnx_configs]
 
         # Saving the additional components needed to perform inference.
         model.scheduler.save_pretrained(output.joinpath("scheduler"))
@@ -294,77 +274,83 @@ def main_export(
         dtype="fp16" if fp16 is True else None,
         model_kwargs=model_kwargs,
     )
+    # for the post processing later we don't wanna keep models
+    if len(models_and_onnx_configs) == 2:
+        models_and_onnx_configs = {
+            "decoder_model": ("dummy_decoder_model_object", models_and_onnx_configs["decoder_model"][1]),
+            "decoder_with_past_model": (
+                "dummy_decoder_with_past_model_object",
+                models_and_onnx_configs["decoder_with_past_model"][1],
+            ),
+        }
+    else:
+        models_and_onnx_configs = {
+            "model": ("dummy_model", models_and_onnx_configs["model"][1]),
+        }
 
-    if optimize is not None:
-        from optimum.onnxruntime.configuration import AutoOptimizationConfig
-        from optimum.onnxruntime import ORTOptimizer
+    return onnx_config, models_and_onnx_configs
 
-        if onnx_files_subpaths is None:
-            onnx_files_subpaths = [
-                key + ".onnx" for key in models_and_onnx_configs.keys()
-            ]
-        optimizer = ORTOptimizer.from_pretrained(output, file_names=onnx_files_subpaths)
+    # if optimize is not None:
+    #     from optimum.onnxruntime import ORTOptimizer
+    #     from optimum.onnxruntime.configuration import AutoOptimizationConfig
 
-        optimization_config = AutoOptimizationConfig.with_optimization_level(
-            optimization_level=optimize
-        )
+    #     if onnx_files_subpaths is None:
+    #         onnx_files_subpaths = [key + ".onnx" for key in models_and_onnx_configs.keys()]
+    #     optimizer = ORTOptimizer.from_pretrained(output, file_names=onnx_files_subpaths)
 
-        optimization_config.disable_shape_inference = True
-        optimizer.optimize(
-            save_dir=output, optimization_config=optimization_config, file_suffix=""
-        )
+    #     optimization_config = AutoOptimizationConfig.with_optimization_level(optimization_level=optimize)
 
-    # Optionally post process the obtained ONNX file(s), for example to merge the decoder / decoder with past if any
-    # TODO: treating stable diffusion separately is quite ugly
-    if not no_post_process and not is_stable_diffusion:
-        try:
-            logger.info("Post-processing the exported models...")
-            (
-                models_and_onnx_configs,
-                onnx_files_subpaths,
-            ) = onnx_config.post_process_exported_models(
-                output, models_and_onnx_configs, onnx_files_subpaths
-            )
-        except Exception as e:
-            raise Exception(
-                f"The post-processing of the ONNX export failed. The export can still be performed by passing the option --no-post-process. Detailed error: {e}"
-            )
+    #     optimization_config.disable_shape_inference = True
+    #     optimizer.optimize(save_dir=output, optimization_config=optimization_config, file_suffix="")
 
-    if is_stable_diffusion:
-        use_subprocess = False  # TODO: fix Can't pickle local object 'get_stable_diffusion_models_for_export.<locals>.<lambda>'
-    elif model.config.model_type in UNPICKABLE_ARCHS:
-        # Pickling is bugged for nn.utils.weight_norm: https://github.com/pytorch/pytorch/issues/102983
-        # TODO: fix "Cowardly refusing to serialize non-leaf tensor" error for wav2vec2-conformer
-        use_subprocess = False
+    # # Optionally post process the obtained ONNX file(s), for example to merge the decoder / decoder with past if any
+    # # TODO: treating stable diffusion separately is quite ugly
+    # if not no_post_process and not is_stable_diffusion:
+    #     try:
+    #         logger.info("Post-processing the exported models...")
+    #         (models_and_onnx_configs, onnx_files_subpaths) = onnx_config.post_process_exported_models(
+    #             output, models_and_onnx_configs, onnx_files_subpaths
+    #         )
+    #     except Exception as e:
+    #         raise Exception(
+    #             f"The post-processing of the ONNX export failed. The export can still be performed by passing the option --no-post-process. Detailed error: {e}"
+    #         )
 
-    if do_validation is True:
-        try:
-            validate_models_outputs(
-                models_and_onnx_configs=models_and_onnx_configs,
-                onnx_named_outputs=onnx_outputs,
-                atol=atol,
-                output_dir=output,
-                onnx_files_subpaths=onnx_files_subpaths,
-                input_shapes=input_shapes,
-                device=device,
-                dtype=torch_dtype,
-                use_subprocess=use_subprocess,
-                model_kwargs=model_kwargs,
-            )
-            logger.info(
-                f"The ONNX export succeeded and the exported model was saved at: {output.as_posix()}"
-            )
-        except ShapeError as e:
-            raise e
-        except AtolError as e:
-            logger.warning(
-                f"The ONNX export succeeded with the warning: {e}.\n The exported model was saved at: {output.as_posix()}"
-            )
-        except OutputMatchError as e:
-            logger.warning(
-                f"The ONNX export succeeded with the warning: {e}.\n The exported model was saved at: {output.as_posix()}"
-            )
-        except Exception as e:
-            raise Exception(
-                f"An error occured during validation, but the model was saved nonetheless at {output.as_posix()}. Detailed error: {e}."
-            )
+    # if is_stable_diffusion:
+    #     use_subprocess = (
+    #         False  # TODO: fix Can't pickle local object 'get_stable_diffusion_models_for_export.<locals>.<lambda>'
+    #     )
+    # elif model.config.model_type in UNPICKABLE_ARCHS:
+    #     # Pickling is bugged for nn.utils.weight_norm: https://github.com/pytorch/pytorch/issues/102983
+    #     # TODO: fix "Cowardly refusing to serialize non-leaf tensor" error for wav2vec2-conformer
+    #     use_subprocess = False
+
+    # if do_validation is True:
+    #     try:
+    #         validate_models_outputs(
+    #             models_and_onnx_configs=models_and_onnx_configs,
+    #             onnx_named_outputs=onnx_outputs,
+    #             atol=atol,
+    #             output_dir=output,
+    #             onnx_files_subpaths=onnx_files_subpaths,
+    #             input_shapes=input_shapes,
+    #             device=device,
+    #             dtype=torch_dtype,
+    #             use_subprocess=use_subprocess,
+    #             model_kwargs=model_kwargs,
+    #         )
+    #         logger.info(f"The ONNX export succeeded and the exported model was saved at: {output.as_posix()}")
+    #     except ShapeError as e:
+    #         raise e
+    #     except AtolError as e:
+    #         logger.warning(
+    #             f"The ONNX export succeeded with the warning: {e}.\n The exported model was saved at: {output.as_posix()}"
+    #         )
+    #     except OutputMatchError as e:
+    #         logger.warning(
+    #             f"The ONNX export succeeded with the warning: {e}.\n The exported model was saved at: {output.as_posix()}"
+    #         )
+    #     except Exception as e:
+    #         raise Exception(
+    #             f"An error occured during validation, but the model was saved nonetheless at {output.as_posix()}. Detailed error: {e}."
+    #         )
