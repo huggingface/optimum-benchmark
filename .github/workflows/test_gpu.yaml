@@ -20,11 +20,11 @@ jobs:
         run: docker build -f docker/gpu.dockerfile -t optimum-benchmark-gpu .
 
       - name: Run GPU tests
-        run: docker run \
-          --rm \
-          --entrypoint /bin/bash \
-          --gpus all \
-          --volume $(pwd):/workspace/optimum-benchmark \
-          --workdir /workspace/optimum-benchmark \
-          optimum-benchmark-gpu \
+        run: docker run
+          --rm
+          --entrypoint /bin/bash
+          --gpus all
+          --volume $(pwd):/workspace/optimum-benchmark
+          --workdir /workspace/optimum-benchmark
+          optimum-benchmark-gpu
           -c "pip install -e .[test] && pytest -k '(cuda or tensorrt) and not onnxruntime_training' -x"
