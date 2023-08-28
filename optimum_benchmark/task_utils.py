@@ -37,3 +37,12 @@ ALL_TASKS = [
     "zero-shot-image-classification",
     "zero-shot-object-detection",
 ]
+
+
+def infer_task(model: str, revision: str) -> str:
+    from optimum.exporters import TasksManager
+
+    return TasksManager.infer_task_from_model(
+        model=model,
+        revision=revision,
+    )

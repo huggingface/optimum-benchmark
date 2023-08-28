@@ -4,8 +4,6 @@ from logging import getLogger
 from typing import TYPE_CHECKING, Any, Callable, Dict, List
 
 import torch
-from accelerate import init_empty_weights
-from accelerate.utils import BnbQuantizationConfig, load_and_quantize_model
 from optimum.bettertransformer import BetterTransformer
 from torch.distributed.elastic.multiprocessing.errors import record
 from torch.distributed.launcher.api import LaunchConfig, elastic_launch
@@ -143,6 +141,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
     def load_model_from_config(self) -> None:
         # TODO: create no_weights tests
         LOGGER.info("\t+ Initializing empty weights model on device: meta")
+        from accelerate import init_empty_weights
+
         with init_empty_weights():
             self.pretrained_model = self.automodel_class.from_config(
                 config=self.pretrained_config,
@@ -156,6 +156,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             LOGGER.info("\t+ Randomizing model weights")
             randomize_weights(self.pretrained_model)
             LOGGER.info("\t+ Processing BnB config")
+            from accelerate.utils import BnbQuantizationConfig, load_and_quantize_model
+
             bnb_quantization_config = BnbQuantizationConfig(
                 **self.config.quantization_config,
                 torch_dtype=self.config.torch_dtype,

@@ -1,15 +1,12 @@
-import importlib.metadata
 from dataclasses import dataclass, field
 from typing import Any, Dict
 
 from omegaconf import OmegaConf
 
-from ..base import BackendConfig
+from ...import_utils import openvino_version
+from ..config import BackendConfig
 
-OmegaConf.register_new_resolver(
-    "openvino_version",
-    lambda: importlib.metadata.version("openvino"),
-)
+OmegaConf.register_new_resolver("openvino_version", openvino_version)
 
 # https://github.com/huggingface/optimum-intel/blob/main/optimum/intel/openvino/configuration.py#L81
 QUANTIZATION_CONFIG = {

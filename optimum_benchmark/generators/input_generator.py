@@ -1,8 +1,7 @@
 from logging import getLogger
-from typing import TYPE_CHECKING, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 if TYPE_CHECKING:
-    import torch
     from transformers import PretrainedConfig
 
 from optimum_benchmark.generators.model_type_generator import (
@@ -54,7 +53,7 @@ class InputGenerator:
 
     # TODO: we can drop the torch dependency here by returning a dict of numpy arrays
     # and then converting them to torch tensors in backend.prepare_for_inference
-    def generate(self, mode: str) -> Dict[str, Union["torch.Tensor", List[str]]]:
+    def generate(self, mode: str) -> Dict[str, Any]:
         if self.used_generator == "model_type":
             dummy_input = self.model_type_generator.generate()
         elif self.used_generator == "task":

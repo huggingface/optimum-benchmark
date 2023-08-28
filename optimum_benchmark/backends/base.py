@@ -3,7 +3,6 @@ import os
 import random
 import shutil
 from abc import ABC
-from dataclasses import dataclass
 from logging import getLogger
 from multiprocessing import Process
 from typing import (
@@ -15,14 +14,12 @@ from typing import (
     Generic,
     List,
     Optional,
-    TypeVar,
     Union,
 )
 
 import numpy as np
 import torch
 from optimum.exporters import TasksManager
-from psutil import cpu_count
 from transformers import AutoConfig, AutoProcessor
 
 if TYPE_CHECKING:
@@ -39,6 +36,7 @@ if TYPE_CHECKING:
     from .utils import PreTrainedProcessor
 
 from ..task_utils import DIFFUSION_TASKS, TEXT_GENERATION_TASKS
+from .config import BackendConfigT
 from .utils import (
     check_no_process_is_running_on_cuda_device,
     check_only_this_process_is_running_on_cuda_device,
@@ -46,38 +44,7 @@ from .utils import (
     extract_shapes_from_model_artifacts,
 )
 
-
-@dataclass
-class BackendConfig(ABC):
-    name: str
-    version: str
-    _target_: str
-
-    # backend options
-    seed: int = 42
-    inter_op_num_threads: Optional[int] = None
-    intra_op_num_threads: Optional[int] = None
-
-    # isolation options
-    initial_isolation_check: bool = True
-    continous_isolation_check: bool = True
-
-    # clean up options
-    delete_cache: bool = False
-
-    def __post_init__(self):
-        if self.inter_op_num_threads is not None:
-            if self.inter_op_num_threads == -1:
-                self.inter_op_num_threads = cpu_count()
-
-        if self.intra_op_num_threads is not None:
-            if self.intra_op_num_threads == -1:
-                self.intra_op_num_threads = cpu_count()
-
-
 LOGGER = getLogger("backend")
-
-BackendConfigT = TypeVar("BackendConfigT", bound=BackendConfig)
 
 
 class Backend(Generic[BackendConfigT], ABC):

@@ -11,4 +11,4 @@ device: cuda
 
 benchmark:
   dataset_shapes:
-    dataset_size: 1200
+    dataset_size: 1600
