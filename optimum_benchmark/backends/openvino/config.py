@@ -4,7 +4,7 @@ from typing import Any, Dict
 
 from omegaconf import OmegaConf
 
-from ..base import BackendConfig
+from ..config import BackendConfig
 
 OmegaConf.register_new_resolver(
     "openvino_version",

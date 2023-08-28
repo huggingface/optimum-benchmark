@@ -5,8 +5,21 @@ from typing import Any, Dict, Optional
 
 from omegaconf import OmegaConf
 
-from ..base import BackendConfig
-from .utils import infer_device_id
+from ..config import BackendConfig
+
+
+def infer_device_id(device: str) -> int:
+    """Infer the device id from the given device string."""
+    if device == "cuda":
+        # torch.cuda.current_device() will always return 0
+        # unless torch.cuda.set_device() is called somewhere
+        return 0
+    elif "cuda" in device:
+        return int(device.split(":")[1])
+    elif device == "cpu":
+        return -1
+    else:
+        raise ValueError(f"Unknown device: {device}")
 
 
 def onnxruntime_version():

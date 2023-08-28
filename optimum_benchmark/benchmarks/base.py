@@ -1,9 +1,10 @@
 from abc import ABC
 from dataclasses import dataclass
 from logging import getLogger
-from typing import ClassVar, Generic, TypeVar
+from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar
 
-from optimum_benchmark.backends.base import Backend
+if TYPE_CHECKING:
+    from ..backends.base import Backend
 
 LOGGER = getLogger("benchmark")
 
@@ -29,7 +30,7 @@ class Benchmark(Generic[BenchmarkConfigT], ABC):
         LOGGER.info(f"Configuring {self.NAME} benchmark")
         self.config = config
 
-    def run(self, backend: Backend) -> None:
+    def run(self, backend: "Backend") -> None:
         raise NotImplementedError("Benchmark must implement run method")
 
     def save(self) -> None:

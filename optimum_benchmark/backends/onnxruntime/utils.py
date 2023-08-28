@@ -11,20 +11,6 @@ TASKS_TO_ORTSD = {
 TASKS_TO_ORTMODELS = {task: task_dict["class"][0] for task, task_dict in ORT_SUPPORTED_TASKS.items()}
 
 
-def infer_device_id(device: str) -> int:
-    """Infer the device id from the given device string."""
-    if device == "cuda":
-        # torch.cuda.current_device() will always return 0
-        # unless torch.cuda.set_device() is called somewhere
-        return 0
-    elif "cuda" in device:
-        return int(device.split(":")[1])
-    elif device == "cpu":
-        return -1
-    else:
-        raise ValueError(f"Unknown device: {device}")
-
-
 def format_quantization_config(quantization_config: Dict[str, Any]) -> None:
     """Format the quantization dictionary for onnxruntime."""
     # the conditionals are here because some quantization strategies don't have all the options
