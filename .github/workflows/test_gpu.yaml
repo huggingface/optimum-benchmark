@@ -12,12 +12,30 @@ jobs:
   build-and-test:
     runs-on: self-hosted
     steps:
+      - name: Restore docker ownership
+        run: docker run
+          --rm
+          --entrypoint /bin/bash
+          --env HOST_UID=`id -u`
+          --env HOST_GID=`id -g`
+          --volume $(pwd):/workspace/optimum-benchmark
+          --workdir /workspace/optimum-benchmark
+          ubuntu
+          -c 'chown -R ${HOST_UID}:${HOST_GID} /workspace/optimum-benchmark'
+
       - name: Checkout code
         uses: actions/checkout@v2
 
       - name: Build GPU Docker image
         if: github.event_name == 'push' && (contains(github.event_path, 'docker/gpu.dockerfile') || contains(github.event_path, 'gpu_requirements.txt'))
-        run: sh docker/scripts/build_gpu.sh
+        run: docker build -f docker/gpu.dockerfile -t optimum-benchmark-gpu .
 
       - name: Run GPU tests
-        run: sh tests/scripts/test_gpu.sh
+        run: docker run
+          --rm
+          --entrypoint /bin/bash
+          --gpus all
+          --volume $(pwd):/workspace/optimum-benchmark
+          --workdir /workspace/optimum-benchmark
+          optimum-benchmark-gpu
+          -c "pip install -e .[test] && pytest -k '(cuda or tensorrt) and not onnxruntime_training' -x"
