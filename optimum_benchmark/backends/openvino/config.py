@@ -6,7 +6,7 @@ from omegaconf import OmegaConf
 from ...import_utils import openvino_version
 from ..config import BackendConfig
 
-OmegaConf.register_new_resolver("openvino_version", openvino_version())
+OmegaConf.register_new_resolver("openvino_version", openvino_version)
 
 # https://github.com/huggingface/optimum-intel/blob/main/optimum/intel/openvino/configuration.py#L81
 QUANTIZATION_CONFIG = {

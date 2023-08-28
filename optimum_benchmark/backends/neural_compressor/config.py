@@ -6,10 +6,7 @@ from omegaconf import OmegaConf
 from ...import_utils import neural_compressor_version
 from ..config import BackendConfig
 
-OmegaConf.register_new_resolver(
-    "neural_compressor_version",
-    lambda: neural_compressor_version(),
-)
+OmegaConf.register_new_resolver("neural_compressor_version", neural_compressor_version)
 
 # https://github.com/intel/neural-compressor/blob/master/neural_compressor/config.py#L490
 ACCURACY_CRITERION_CONFIG = {

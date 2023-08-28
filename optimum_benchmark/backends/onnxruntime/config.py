@@ -21,7 +21,7 @@ def infer_device_id(device: str) -> int:
         raise ValueError(f"Unknown device: {device}")
 
 
-OmegaConf.register_new_resolver("onnxruntime_version", onnxruntime_version())
+OmegaConf.register_new_resolver("onnxruntime_version", onnxruntime_version)
 
 OmegaConf.register_new_resolver("is_gpu", lambda device: "cuda" in device)
 OmegaConf.register_new_resolver("infer_device_id", lambda device: infer_device_id(device))

@@ -7,18 +7,9 @@ from omegaconf import OmegaConf
 from ...import_utils import torch_version
 from ..config import BackendConfig
 
-OmegaConf.register_new_resolver(
-    "device_count",
-    lambda: len(os.environ.get("CUDA_VISIBLE_DEVICES", "").split(",")),
-)
-OmegaConf.register_new_resolver(
-    "is_inference",
-    lambda benchmark_name: benchmark_name == "inference",
-)
-OmegaConf.register_new_resolver(
-    "pytorch_version",
-    lambda: torch_version(),
-)
+OmegaConf.register_new_resolver("device_count", lambda: len(os.environ.get("CUDA_VISIBLE_DEVICES", "").split(",")))
+OmegaConf.register_new_resolver("is_inference", lambda benchmark_name: benchmark_name == "inference")
+OmegaConf.register_new_resolver("pytorch_version", torch_version)
 
 DEVICE_MAPS = ["auto", "sequential"]
 AMP_DTYPES = ["bfloat16", "float16"]
