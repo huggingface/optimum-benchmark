@@ -1,5 +1,4 @@
 import gc
-import os
 from logging import getLogger
 from typing import TYPE_CHECKING, Any, Callable, Dict, List
 
@@ -16,8 +15,9 @@ if TYPE_CHECKING:
 
 from ...profilers.fx_profiler import FXProfilingWrapper
 from ..base import Backend
+from ..ddp_utils import training_worker
 from .config import PyTorchConfig
-from .utils import get_worker_logger, randomize_weights
+from .utils import randomize_weights
 
 # bachend logger
 LOGGER = getLogger("pytorch")
@@ -220,23 +220,27 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         training_callbacks: List["TrainerCallback"],
         training_data_collator: Callable,
     ) -> "TrainerState":
-        args = (
+        worker_args = (
+            "torch",
+            LOGGER,
+            Trainer,
+            TrainingArguments,
             self.config.use_ddp,
-            self.pretrained_model,
             training_dataset,
             training_arguments,
-            training_callbacks,
             training_data_collator,
+            training_callbacks,
+            self.pretrained_model,
         )
 
         if self.config.use_ddp:
             # For DDP, we log only the state of the first rank as transformers does.
             # since the batch size used in measuring the throughput is the one of world size.
             ddp_config = LaunchConfig(**self.config.ddp_config)
-            results = elastic_launch(config=ddp_config, entrypoint=training_worker)(args)[0]
+            results = elastic_launch(config=ddp_config, entrypoint=training_worker)(worker_args)[0]
         else:
             # For DP, we can still use training_worker, simply not wrapped by the elastic_launch class.
-            results = training_worker(args)
+            results = training_worker(worker_args)
 
         return results
 
@@ -246,38 +250,3 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         if self.device.type == "cuda":
             torch.cuda.empty_cache()
             gc.collect()
-
-
-def training_worker(args) -> "TrainerState":
-    use_ddp = args[0]
-    pretrained_model = args[1]
-    training_dataset = args[2]
-    training_arguments = args[3]
-    training_callbacks = args[4]
-    training_data_collator = args[5]
-
-    if use_ddp:
-        LOGGER_WORKER = get_worker_logger("pytorch-ddp-worker", log_all=False)
-        env_variables = ["RANK", "WORLD_SIZE", "MASTER_ADDR", "MASTER_PORT", "TORCHELASTIC_MAX_RESTARTS"]
-        LOGGER_WORKER.info("Initializing DDP worker")
-        for env_var in env_variables:
-            LOGGER_WORKER.info(f"{env_var}: {os.environ.get(env_var)}")
-    else:
-        LOGGER_WORKER = LOGGER
-
-    LOGGER_WORKER.info("\t+ Setting dataset format to `torch`.")
-    training_dataset.set_format(type="torch", columns=list(training_dataset.features.keys()))
-    LOGGER_WORKER.info("\t+ Wrapping training arguments with transformers.TrainingArguments")
-    training_arguments = TrainingArguments(**training_arguments)
-    LOGGER_WORKER.info("\t+ Wrapping model with transformers.Trainer")
-    trainer = Trainer(
-        model=pretrained_model,
-        args=training_arguments,
-        callbacks=training_callbacks,
-        train_dataset=training_dataset,
-        data_collator=training_data_collator,
-    )
-    LOGGER_WORKER.info("\t+ Starting training")
-    trainer.train()
-    LOGGER_WORKER.info("\t+ Training finished successfully")
-    return trainer.state
