@@ -1,9 +1,9 @@
+import time
 from contextlib import contextmanager
 from logging import getLogger
 from typing import List
-import torch
-import time
 
+import torch
 
 LOGGER = getLogger("latency_tracker")
 
@@ -46,6 +46,7 @@ class LatencyTracker:
 
         LOGGER.debug(f"Tracked CPU latency: {latency:.2e}s")
         self.latencies.append(latency)
+
 
 class PyTorchLatencyTracker(LatencyTracker):
     def __init__(self, backend):

@@ -1,13 +1,11 @@
-from typing import Any, List, Tuple
-from logging import getLogger
-import torch
 import time
+from logging import getLogger
+from typing import Any, List, Tuple
 
-
-from torch.fx.graph_module import GraphModule
+import torch
 from torch.fx import Interpreter
+from torch.fx.graph_module import GraphModule
 from torch.fx.node import Node
-
 
 LOGGER = getLogger("fx_profiler")
 
@@ -18,8 +16,7 @@ class FXProfilingWrapper(Interpreter):
         self.profiling_records: List[Tuple[str, str, float]] = []
 
     def run(self, *args) -> Any:
-        return_val = super().run(*args)
-        return return_val
+        return super().run(*args)
 
     def run_node(self, node: Node) -> Any:
         if self.module.device.type == "cuda":

@@ -1,57 +1,60 @@
-from typing import Any, Callable, Dict, List, Optional, Union
-from dataclasses import dataclass, MISSING
-from multiprocessing import Process
-from abc import abstractmethod, ABC
-from logging import getLogger
-import shutil
-import os
 import gc
-
-
-import torch
-from torch import Tensor
-from datasets import Dataset
-from psutil import cpu_count
-from omegaconf import DictConfig
-from optimum.exporters import TasksManager
-from transformers import (
-    AutoConfig,
-    AutoProcessor,
-    PreTrainedModel,
-    PreTrainedTokenizer,
-    PretrainedConfig,
-    ImageProcessingMixin,
-    FeatureExtractionMixin,
-    ProcessorMixin,
-    Pipeline,
+import os
+import random
+import shutil
+from abc import ABC
+from dataclasses import dataclass
+from logging import getLogger
+from multiprocessing import Process
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Dict,
+    Generic,
+    List,
+    Optional,
+    TypeVar,
+    Union,
 )
 
+import numpy as np
+import torch
+from optimum.exporters import TasksManager
+from psutil import cpu_count
+from transformers import AutoConfig, AutoProcessor
 
-from optimum_benchmark.utils import (
-    DIFFUSION_TASKS,
-    TEXT_GENERATION_TASKS,
+if TYPE_CHECKING:
+    from datasets import Dataset
+    from transformers import (
+        Pipeline,
+        PretrainedConfig,
+        PreTrainedModel,
+        TrainerCallback,
+        TrainerState,
+    )
+    from transformers.utils import ModelOutput
+
+    from .utils import PreTrainedProcessor
+
+from ..task_utils import DIFFUSION_TASKS, TEXT_GENERATION_TASKS
+from .utils import (
     check_no_process_is_running_on_cuda_device,
     check_only_this_process_is_running_on_cuda_device,
+    extract_shapes_from_diffusion_pipeline,
+    extract_shapes_from_model_artifacts,
 )
-
-
-PreTrainedProcessor = Union[
-    PreTrainedTokenizer,
-    ImageProcessingMixin,
-    FeatureExtractionMixin,
-    ProcessorMixin,
-]
-
-LOGGER = getLogger("backend")
 
 
 @dataclass
 class BackendConfig(ABC):
-    name: str = MISSING
-    version: str = MISSING
-    _target_: str = MISSING
+    name: str
+    version: str
+    _target_: str
 
     # backend options
+    seed: int = 42
     inter_op_num_threads: Optional[int] = None
     intra_op_num_threads: Optional[int] = None
 
@@ -62,19 +65,35 @@ class BackendConfig(ABC):
     # clean up options
     delete_cache: bool = False
 
+    def __post_init__(self):
+        if self.inter_op_num_threads is not None:
+            if self.inter_op_num_threads == -1:
+                self.inter_op_num_threads = cpu_count()
 
-class Backend(ABC):
-    # model and pipeline benchmarks
-    pretrained_model: Union[PreTrainedModel, Pipeline]
-    # only for model benchmarks
-    pretrained_config: Optional[PretrainedConfig]
-    pretrained_processor: Optional[PreTrainedProcessor]
+        if self.intra_op_num_threads is not None:
+            if self.intra_op_num_threads == -1:
+                self.intra_op_num_threads = cpu_count()
 
-    def __init__(self, model: str, task: str, device: str, hub_kwargs: DictConfig):
-        self.model = model
+
+LOGGER = getLogger("backend")
+
+BackendConfigT = TypeVar("BackendConfigT", bound=BackendConfig)
+
+
+class Backend(Generic[BackendConfigT], ABC):
+    NAME: ClassVar[str]
+
+    # instance variables withouth default values https://stackoverflow.com/a/44962662
+    config: BackendConfigT
+    pretrained_model: Union["PreTrainedModel", "Pipeline"]
+    pretrained_processor: Optional["PreTrainedProcessor"]
+    pretrained_config: Optional["PretrainedConfig"]
+
+    def __init__(self, model: str, task: str, device: str, hub_kwargs: Dict[str, Any]):
         self.task = task
-        self.device = torch.device(device)
+        self.model = model
         self.hub_kwargs = hub_kwargs
+        self.device = torch.device(device)
 
         if self.is_diffusion_pipeline():
             # for pipelines
@@ -84,8 +103,7 @@ class Backend(ABC):
         else:
             # for models
             self.pretrained_config = AutoConfig.from_pretrained(
-                pretrained_model_name_or_path=self.model,
-                **self.hub_kwargs,
+                pretrained_model_name_or_path=self.model, **self.hub_kwargs
             )
             self.model_type = self.pretrained_config.model_type
 
@@ -93,18 +111,15 @@ class Backend(ABC):
                 # the processor sometimes contains information about the model's
                 # input shapes that's not available in the config
                 self.pretrained_processor = AutoProcessor.from_pretrained(
-                    pretrained_model_name_or_path=self.model,
-                    **self.hub_kwargs,
+                    pretrained_model_name_or_path=self.model, **self.hub_kwargs
                 )
             except ValueError:
-                LOGGER.warning(f"Could not find the model's preprocessor")
+                LOGGER.warning("Could not find the model's preprocessor")
                 self.pretrained_processor = None
 
-        # we're using this one as the default model_class which is used
-        # for exporting the model to onnx for example. Although does suppose that
-        # the model weights are pytorch weights so we might need to change somehow.
         self.automodel_class = TasksManager.get_model_class_for_task(
             task=self.task,
+            framework="pt",
             model_type=self.model_type,
         )
 
@@ -116,16 +131,15 @@ class Backend(ABC):
 
     def check_initial_isolation(self) -> None:
         if self.device.type == "cuda":
-            cuda_devices = os.environ.get("CUDA_VISIBLE_DEVICES")
+            cuda_devices = os.environ.get("CUDA_VISIBLE_DEVICES", None)
             if cuda_devices is None:
                 LOGGER.warning(
-                    "Asked to check the initial device isolation, but the variable CUDA_VISIBLE_DEVICES was not set. Defaulting to checking on the first device."
+                    "Asked to check the initial device(s) isolation, but the variable CUDA_VISIBLE_DEVICES was not set. "
+                    "Defaulting to checking the main device only."
                 )
                 device_ids = {self.device.index if self.device.index is not None else 0}
             else:
-                device_ids = {
-                    int(device_index) for device_index in cuda_devices.split(",")
-                }
+                device_ids = {int(device_index) for device_index in cuda_devices.split(",")}
             check_no_process_is_running_on_cuda_device(device_ids)
 
     def check_continuous_isolation(self) -> None:
@@ -133,13 +147,12 @@ class Backend(ABC):
             cuda_devices = os.environ.get("CUDA_VISIBLE_DEVICES")
             if cuda_devices is None:
                 LOGGER.warning(
-                    "Asked to check the continuous device isolation, but the variable CUDA_VISIBLE_DEVICES was not set. Defaulting to checking on the first device."
+                    "Asked to check the continuous device(s) isolation, but the variable CUDA_VISIBLE_DEVICES was not set. "
+                    "Defaulting to checking the main device only."
                 )
                 device_ids = {self.device.index if self.device.index is not None else 0}
             else:
-                device_ids = {
-                    int(device_index) for device_index in cuda_devices.split(",")
-                }
+                device_ids = {int(device_index) for device_index in cuda_devices.split(",")}
 
             self.isolation_thread = Process(
                 target=check_only_this_process_is_running_on_cuda_device,
@@ -148,89 +161,58 @@ class Backend(ABC):
             )
             self.isolation_thread.start()
 
-    @abstractmethod
-    def configure(self, config: BackendConfig) -> None:
+    def configure(self, config: BackendConfigT) -> None:
+        LOGGER.info(f"Configuring {self.NAME} backend")
+        # storing config
         self.config = config
 
-        LOGGER.info(f"Configuring {config.name} backend")
-
-        self.config = config
-        if config.inter_op_num_threads is not None:
-            if config.inter_op_num_threads == -1:
-                config.inter_op_num_threads = cpu_count()
-                LOGGER.info(
-                    f"\t+ Setting backend.inter_op_num_threads to cpu_count({config.inter_op_num_threads})"
-                )
-
-        if config.intra_op_num_threads is not None:
-            if config.intra_op_num_threads == -1:
-                config.intra_op_num_threads = cpu_count()
-                LOGGER.info(
-                    f"\t+ Setting backend.intra_op_num_threads to cpu_count({config.intra_op_num_threads})"
-                )
-
-        # clean up options
-        if config.delete_cache:
-            LOGGER.info("\t+ Will delete model cache after benchmarking")
-        self.delete_cache = config.delete_cache
+        # seeding backend
+        self.seed()
 
         # isolation options
-        if config.initial_isolation_check:
-            LOGGER.info("\t+ Checking initial device isolation")
+        if self.config.initial_isolation_check:
+            LOGGER.info("\t+ Checking initial device(s) isolation")
             self.check_initial_isolation()
-        if config.continous_isolation_check:
-            LOGGER.info("\t+ Checking contineous device isolation")
+        if self.config.continous_isolation_check:
+            LOGGER.info("\t+ Checking contineous device(s) isolation")
             self.check_continuous_isolation()
 
+        # clean up options
+        if self.config.delete_cache:
+            LOGGER.info("\t+ Model cache will be deleted after benchmark")
+
+    def seed(self) -> None:
+        # https://pytorch.org/docs/stable/notes/randomness.html
+        random.seed(self.config.seed)
+        np.random.seed(self.config.seed)
+        torch.manual_seed(self.config.seed)
+        torch.cuda.manual_seed_all(self.config.seed)  # safe to call
+        # torch.use_deterministic_algorithms()  # might throw an error
+        # torch.backends.cudnn.deterministic = True # same as above
+        # torch.backends.cudnn.benchmark = False  # might reduce performance
+
     # compiling in openvino requires input shapes
-    def prepare_for_inference(self, input_shapes: Dict[str, int]) -> None:
+    def prepare_for_inference(self, input_shapes: Dict[str, int]) -> Dict[str, Any]:
         pass
 
     # symbolic tracing in transformers requires input names
-    def prepare_for_profiling(self, input_names: List[str]) -> None:
+    def prepare_for_profiling(self, input_names: List[str]) -> Dict[str, Any]:
         pass
 
-    # depending on the backend, we might need to prepare the model for training
-    # in different ways although I prefer to pass these in the train method
-    def prepare_for_training(
+    def forward(self, input: Dict[str, Any], **kwargs) -> "ModelOutput":
+        return self.pretrained_model(**input, **kwargs)
+
+    def generate(self, input: Dict[str, Any], **kwargs) -> "ModelOutput":
+        return self.pretrained_model.generate(**input, **kwargs)
+
+    def train(
         self,
-        training_dataset: Dataset,
-        training_data_collator: Callable,
+        training_dataset: "Dataset",
         training_arguments: Dict[str, Any],
-    ) -> None:
-        pass
-
-    def forward(self, input: Dict[str, Tensor], **kwargs):
-        raise NotImplementedError("Backend must implement forward method")
-
-    def generate(self, input: Dict[str, Tensor], **kwargs):
-        raise NotImplementedError("Backend must implement generate method")
-
-    def train(self):
+        training_callbacks: List["TrainerCallback"],
+        training_data_collator: Callable,
+    ) -> "TrainerState":
         raise NotImplementedError("Backend must implement train method")
-
-    def delete_pretrained_model(self) -> None:
-        if hasattr(self, "pretrained_model"):
-            del self.pretrained_model
-            gc.collect()
-
-        if self.device.type == "cuda":
-            torch.cuda.empty_cache()
-            gc.collect()
-
-    def delete_model_hub_cache(self) -> None:
-        model_cache_path = "models--" + self.model.replace("/", "--")
-        model_cache_path = os.path.join(
-            os.path.expanduser("~/.cache/huggingface/hub"), model_cache_path
-        )
-        shutil.rmtree(model_cache_path, ignore_errors=True)
-
-    def clean(self) -> None:
-        LOGGER.info(f"Cleaning backend")
-        self.delete_pretrained_model()
-
-        if self.delete_cache:
-            self.delete_model_hub_cache()
 
     @property
     def model_shapes(self) -> Dict[str, int]:
@@ -246,74 +228,21 @@ class Backend(ABC):
 
         return model_shapes
 
+    def delete_pretrained_model(self) -> None:
+        if hasattr(self, "pretrained_model"):
+            del self.pretrained_model
 
-def extract_shapes_from_diffusion_pipeline(
-    pipeline: Pipeline,
-) -> Dict[str, Any]:
-    # this is the only way I found to extract a
-    # diffusion pipeline's "output" shapes
-    shapes = {}
-    try:
-        shapes["num_channels"] = pipeline.vae_encoder.config.out_channels
-        shapes["height"] = pipeline.vae_encoder.config.sample_size
-        shapes["width"] = pipeline.vae_encoder.config.sample_size
-    except AttributeError:
-        LOGGER.warning("Could not find the diffusion pipeline's output shapes")
-        shapes["num_channels"] = -1
-        shapes["height"] = -1
-        shapes["width"] = -1
+        gc.collect()
 
-    return shapes
+    def delete_model_cache(self) -> None:
+        LOGGER.info("\t+ Deleting model cache")
+        model_cache_path = f"models/{self.model}".replace("/", "--")
+        model_cache_path = os.path.join(os.path.expanduser("~/.cache/huggingface/hub"), model_cache_path)
+        shutil.rmtree(model_cache_path, ignore_errors=True)
 
+    def clean(self) -> None:
+        LOGGER.info(f"Cleaning {self.NAME} backend")
+        self.delete_pretrained_model()
 
-def extract_shapes_from_model_artifacts(
-    config: PretrainedConfig,
-    processor: Optional[PreTrainedProcessor] = None,
-) -> Dict[str, Any]:
-    shapes = {}
-    artifacts_dict = {}
-
-    config_dict = {k: v for k, v in config.to_dict().items() if v is not None}
-    artifacts_dict.update(config_dict)
-
-    if processor is not None and hasattr(processor, "to_dict"):
-        processor_dict = {k: v for k, v in processor.to_dict().items() if v is not None}
-        artifacts_dict.update(processor_dict)
-
-    # text input
-    shapes["vocab_size"] = artifacts_dict.get("vocab_size", 2)
-    shapes["type_vocab_size"] = artifacts_dict.get("type_vocab_size", 2)
-
-    # image input
-    shapes["num_channels"] = artifacts_dict.get("num_channels", None)
-
-    image_size = artifacts_dict.get("image_size", None)
-    if image_size is None:
-        # processors have different names for the image size
-        image_size = artifacts_dict.get("size", None)
-
-    if isinstance(image_size, (int, float)):
-        shapes["height"] = image_size
-        shapes["width"] = image_size
-    elif isinstance(image_size, (list, tuple)):
-        shapes["height"] = image_size[0]
-        shapes["width"] = image_size[0]
-    elif type(image_size) == dict and len(image_size) == 2:
-        shapes["height"] = list(image_size.values())[0]
-        shapes["width"] = list(image_size.values())[1]
-    elif type(image_size) == dict and len(image_size) == 1:
-        shapes["height"] = list(image_size.values())[0]
-        shapes["width"] = list(image_size.values())[0]
-    else:
-        shapes["height"] = None
-        shapes["width"] = None
-
-    # classification labels (default to 2)
-    shapes["num_labels"] = len(
-        artifacts_dict.get("id2label", {"0": "LABEL_0", "1": "LABEL_1"})
-    )
-
-    # object detection labels (default to 2)
-    shapes["num_queries"] = artifacts_dict.get("num_queries", 2)
-
-    return shapes
+        if self.config.delete_cache:
+            self.delete_model_cache()

@@ -1,9 +1,8 @@
+from abc import ABC
 from logging import getLogger
 from typing import Tuple
-from abc import ABC
 
 import torch
-
 
 LOGGER = getLogger("task_generator")
 
@@ -377,27 +376,3 @@ TASKS_TO_GENERATORS = {
     "stable-diffusion": PromptGenerator,
     "stable-diffusion-xl": PromptGenerator,
 }
-
-
-if __name__ == "__main__":
-    all_shapes = {
-        "batch_size": 1,
-        "sequence_length": 16,
-        "num_choices": 2,
-        "feature_size": 80,
-        "nb_max_frames": 3000,
-        "audio_sequence_length": 16000,
-        "height": 224,
-        "width": 224,
-        "num_labels": 2,
-        "num_queries": 2,
-        "vocab_size": 100,
-        "type_vocab_size": 2,
-        "num_channels": 3,
-    }
-
-    for task in TASKS_TO_GENERATORS:
-        task_input_generator = TASKS_TO_GENERATORS[task](
-            shapes=all_shapes, with_labels=True
-        )
-        print(task_input_generator.generate())

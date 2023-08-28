@@ -1,18 +1,42 @@
-from dataclasses import dataclass, field
-from typing import List, Dict
-from logging import getLogger
-
-from pandas import DataFrame
 import statistics
+from dataclasses import dataclass, field
+from logging import getLogger
+from typing import Any, Dict, List, Optional
 
-from optimum_benchmark.backends.base import Backend
-from optimum_benchmark.generators.input_generator import InputGenerator
-from optimum_benchmark.benchmarks.base import Benchmark, BenchmarkConfig
-from optimum_benchmark.trackers.memory import memory_tracker_class_for_backend
-from optimum_benchmark.trackers.latency import latency_tracker_class_for_backend
+from omegaconf import OmegaConf
+from pandas import DataFrame
 
+from ..backends.base import Backend
+from ..generators.input_generator import InputGenerator
+from ..task_utils import DIFFUSION_TASKS, TEXT_GENERATION_TASKS
+from ..trackers.latency import latency_tracker_class_for_backend
+from ..trackers.memory import memory_tracker_class_for_backend
+from .base import Benchmark, BenchmarkConfig
+from .utils import three_significant_digits_wrapper
 
 LOGGER = getLogger("inference")
+
+OmegaConf.register_new_resolver(
+    "can_generate",
+    lambda task: task in TEXT_GENERATION_TASKS,
+)
+OmegaConf.register_new_resolver(
+    "can_diffuse",
+    lambda task: task in DIFFUSION_TASKS,
+)
+
+GENERATE_CONFIG = {
+    "max_new_tokens": 100,
+    "min_new_tokens": 100,
+    "do_sample": False,
+    "use_cache": True,
+    "pad_token_id": 0,
+    "num_beams": 1,
+}
+
+DIFUSION_CONFIG = {
+    "num_images_per_prompt": 1,
+}
 
 
 @dataclass
@@ -22,9 +46,9 @@ class InferenceConfig(BenchmarkConfig):
 
     # benchmark options
     memory: bool = False
+    duration: int = 10
     warmup_runs: int = 10
-
-    benchmark_duration: int = 10  # TODO: deprecate this and use `benchmark.duration`
+    benchmark_duration: Optional[int] = None
 
     # input options
     input_shapes: Dict = field(
@@ -40,17 +64,49 @@ class InferenceConfig(BenchmarkConfig):
             "feature_size": 80,
             "nb_max_frames": 3000,
             "audio_sequence_length": 16000,
-        }
+        },
     )
 
+    # TODO: deprecate this and use `benchamrk.generate_kwargs`
+    new_tokens: Optional[int] = None
+
+    # forward options
+    can_diffuse: bool = "${can_diffuse:${task}}"
+    forward_kwargs: Dict[str, Any] = field(default_factory=dict)
+
     # generation options
-    new_tokens: int = 100  # TODO: deprecate this and use `benchamrk.generation_options`
+    can_generate: bool = "${can_generate:${task}}"
+    generate_kwargs: Dict[str, Any] = field(default_factory=dict)
 
-    # diffusion options
-    # TODO: add `benchmark.diffusion_options` for multiple images per prompt
+    def __post_init__(self):
+        if self.can_diffuse:
+            self.forward_kwargs = OmegaConf.to_object(OmegaConf.merge(self.forward_kwargs, DIFUSION_CONFIG))
+
+        if self.can_generate:
+            self.generate_kwargs = OmegaConf.to_object(OmegaConf.merge(self.generate_kwargs, GENERATE_CONFIG))
+
+            if self.generate_kwargs["max_new_tokens"] != self.generate_kwargs["min_new_tokens"]:
+                raise ValueError("`max_new_tokens` and `min_new_tokens` must be equal for fixed length output.")
+
+        if self.new_tokens is not None:
+            LOGGER.warning(
+                "The `new_tokens` option is deprecated, please use `generate_kwargs` instead. "
+                "`generate_kwargs.max_new_tokens` and `generate_kwargs.min_new_tokens` will be set to the value of `new_tokens`."
+            )
+            self.generate_kwargs["max_new_tokens"] = self.new_tokens
+            self.generate_kwargs["min_new_tokens"] = self.new_tokens
+
+        if self.benchmark_duration:
+            LOGGER.warning(
+                "The `benchmark_duration` option is deprecated, please use `duration` instead. "
+                "`duration` will be set to the value of `benchmark_duration`."
+            )
+            self.duration = self.benchmark_duration
 
 
-class InferenceBenchmark(Benchmark):
+class InferenceBenchmark(Benchmark[InferenceConfig]):
+    NAME = "inference"
+
     def __init__(self):
         # initialize inference results
         self.forward_peak_memory: int = 0
@@ -60,97 +116,66 @@ class InferenceBenchmark(Benchmark):
     def configure(self, config: InferenceConfig):
         super().configure(config)
 
-        self.memory = config.memory
-
-        self.warmup_runs = config.warmup_runs
-        self.benchmark_duration = config.benchmark_duration
-
-        self.input_shapes = config.input_shapes
-        self.new_tokens = config.new_tokens
-
     def run(self, backend: Backend) -> None:
         LOGGER.info("Running inference benchmark")
-
-        self.can_generate = backend.is_text_generation_model()
-        self.input_shapes.update(backend.model_shapes)
+        self.config.input_shapes.update(backend.model_shapes)
 
         self.input_generator = InputGenerator(
             task=backend.task,
-            input_shapes=self.input_shapes,
+            input_shapes=self.config.input_shapes,
             pretrained_config=backend.pretrained_config,
         )
-
-        if self.memory:
-            # if requested, run memory tracking
-            self.run_memory_tracking(backend)
 
         # run forward pass tracking
         self.run_forward_tracking(backend)
 
-        if self.can_generate:
+        if self.config.can_generate:
             # if possible, run generation pass tracking
             self.run_generate_tracking(backend)
-
-    def run_memory_tracking(self, backend: Backend) -> None:
-        memory_input = self.input_generator.generate(
-            mode="forward",
-        )
-
-        # TODO: handle this in backend using prepare_for_inference
-        for key, value in memory_input.items():
-            if key == "prompt":
-                continue
-            memory_input[key] = value.to(backend.device)
-
-        # for backends that require compilation with static shapes
-        backend.prepare_for_inference(input_shapes=self.input_shapes)
-
-        LOGGER.info("\t+ Tracking forward pass peak memory")
-        memory_tracker = memory_tracker_class_for_backend[backend.config.name](backend)
-        with memory_tracker.track(interval=self.benchmark_duration // 100):
-            _ = backend.forward(memory_input)
-
-        self.forward_peak_memory = memory_tracker.get_peak_memory()
-        LOGGER.info(f"\t+ Forward pass peak memory: {self.forward_peak_memory} (MB)")
 
     def run_forward_tracking(self, backend: Backend) -> None:
         forward_input = self.input_generator.generate(
             mode="forward",
         )
 
-        # TODO: handle this in backend using prepare_for_inference
+        # TODO: can be handled by the backend later
         for key, value in forward_input.items():
             if key == "prompt":
                 continue
             forward_input[key] = value.to(backend.device)
 
         # for backends that require compilation with static shapes
-        backend.prepare_for_inference(input_shapes=self.input_shapes)
+        backend.prepare_for_inference(input_shapes=self.config.input_shapes)
 
         LOGGER.info("\t+ Warming up the forward pass")
-        for _ in range(self.warmup_runs):
-            _ = backend.forward(forward_input)
+        for _ in range(self.config.warmup_runs):
+            _ = backend.forward(forward_input, **self.config.forward_kwargs)
 
         LOGGER.info("\t+ Tracking forward pass latency and throughput")
-        latency_tracker = latency_tracker_class_for_backend[backend.config.name](
-            backend
-        )
-        while sum(self.forward_latencies) < self.benchmark_duration:
+        latency_tracker = latency_tracker_class_for_backend[backend.config.name](backend)
+        while sum(self.forward_latencies) < self.config.duration:
             with latency_tracker.track():
-                _ = backend.forward(forward_input)
+                _ = backend.forward(forward_input, **self.config.forward_kwargs)
             self.forward_latencies = latency_tracker.get_latencies()
 
         LOGGER.info(f"\t+ Forward pass latency: {self.forward_latency:.2e} (s)")
-        LOGGER.info(
-            f"\t+ Forward pass throughput: {self.forward_throughput:.2f} (samples/s)"
-        )
+        LOGGER.info(f"\t+ Forward pass throughput: {self.forward_throughput:.2f} (samples/s)")
+
+        if self.config.memory:
+            LOGGER.info("\t+ Tracking forward pass peak memory")
+            memory_tracker = memory_tracker_class_for_backend[backend.config.name](backend)
+            with memory_tracker.track(interval=self.config.duration // 100):
+                _ = backend.forward(forward_input)
+
+            self.forward_peak_memory = memory_tracker.get_peak_memory()
+            LOGGER.info(f"\t+ Forward pass peak memory: {self.forward_peak_memory} (MB)")
 
     def run_generate_tracking(self, backend: Backend) -> None:
         generate_input = self.input_generator.generate(
-            mode="forward",
+            mode="generate",
         )
 
-        # TODO: handle this in backend using prepare_for_inference
+        # TODO: can be handled by the backend later
         for key, value in generate_input.items():
             if key == "prompt":
                 continue
@@ -159,66 +184,68 @@ class InferenceBenchmark(Benchmark):
         LOGGER.info("\t+ Warming up the generation pass")
         _ = backend.generate(
             input=generate_input,
-            max_new_tokens=self.new_tokens,
-            min_new_tokens=self.new_tokens,
-            do_sample=False,
-            use_cache=True,
-            pad_token_id=0,
-            num_beams=1,
+            **self.config.generate_kwargs,
         )
 
         LOGGER.info("\t+ Tracking generation latency and throughput")
-        latency_tracker = latency_tracker_class_for_backend[backend.config.name](
-            backend
-        )
-        while sum(self.generate_latencies) < self.benchmark_duration:
+        latency_tracker = latency_tracker_class_for_backend[backend.config.name](backend)
+        while sum(self.generate_latencies) < self.config.duration:
             with latency_tracker.track():
                 _ = backend.generate(
                     generate_input,
-                    max_new_tokens=self.new_tokens,
-                    min_new_tokens=self.new_tokens,
-                    do_sample=False,
-                    use_cache=True,
-                    pad_token_id=0,
-                    num_beams=1,
+                    **self.config.generate_kwargs,
                 )
             self.generate_latencies = latency_tracker.get_latencies()
 
         LOGGER.info(f"\t+ Generation pass latency: {self.generate_latency:.2e} (s)")
-
-        LOGGER.info(
-            f"\t+ Generation pass throughput: {self.generate_throughput:.2f} (tokens/s)"
-        )
+        LOGGER.info(f"\t+ Generation pass throughput: {self.generate_throughput:.2f} (tokens/s)")
 
     # Metrics
     @property
+    @three_significant_digits_wrapper
     def forward_latency(self) -> float:
-        return significant_figures(statistics.mean(self.forward_latencies))
+        return statistics.mean(self.forward_latencies)
 
     @property
+    @three_significant_digits_wrapper
     def forward_throughput(self) -> float:
-        return significant_figures(self.input_shapes.batch_size / self.forward_latency)
+        if self.config.can_diffuse:
+            return (
+                self.config.input_shapes["batch_size"]
+                * self.config.forward_kwargs["num_images_per_prompt"]
+                / self.forward_latency
+            )
+        else:
+            return self.config.input_shapes["batch_size"] / self.forward_latency
 
     @property
+    @three_significant_digits_wrapper
     def generate_latency(self) -> float:
-        return significant_figures(statistics.mean(self.generate_latencies))
+        return statistics.mean(self.generate_latencies)
 
     @property
+    @three_significant_digits_wrapper
     def generate_throughput(self) -> float:
-        return significant_figures(
-            self.new_tokens * self.input_shapes.batch_size / self.generate_latency
+        return (
+            self.config.generate_kwargs["min_new_tokens"]
+            * self.config.input_shapes["batch_size"]
+            / self.generate_latency
         )
 
     def get_results_df(self) -> DataFrame:
-        results_dict = dict()
-
-        if self.memory:
-            results_dict["forward.peak_memory(MB)"] = self.forward_peak_memory
+        results_dict = {}
 
         results_dict["forward.latency(s)"] = self.forward_latency
-        results_dict["forward.throughput(samples/s)"] = self.forward_throughput
 
-        if self.can_generate:
+        if self.config.can_diffuse:
+            results_dict["forward.throughput(images/s)"] = self.forward_throughput
+        else:
+            results_dict["forward.throughput(samples/s)"] = self.forward_throughput
+
+        if self.config.memory:
+            results_dict["forward.peak_memory(MB)"] = self.forward_peak_memory
+
+        if self.config.can_generate:
             results_dict["generate.latency(s)"] = self.generate_latency
             results_dict["generate.throughput(tokens/s)"] = self.generate_throughput
 
@@ -228,7 +255,3 @@ class InferenceBenchmark(Benchmark):
         LOGGER.info("Saving inference results")
         results_df = self.get_results_df()
         results_df.to_csv("inference_results.csv")
-
-
-def significant_figures(x):
-    return float(f"{x:.3g}")

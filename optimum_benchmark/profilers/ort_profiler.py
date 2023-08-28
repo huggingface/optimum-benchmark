@@ -1,11 +1,9 @@
-from typing import List, Tuple
-from logging import getLogger
-import pandas as pd
 import json
+from logging import getLogger
+from typing import List, Tuple
 
-
+import pandas as pd
 from optimum.onnxruntime import ORTModel
-
 
 LOGGER = getLogger("ort_profiler")
 
@@ -26,9 +24,7 @@ class ORTProfilingWrapper:
                 profiling_data = profiling_data["traceEvents"]
 
         profiling_records = extract_last_run_records(profiling_data)
-        profiling_records = normalize_records(profiling_records)
-
-        return profiling_records
+        return normalize_records(profiling_records)
 
 
 def normalize_records(data) -> List[Tuple[str, str, float]]:

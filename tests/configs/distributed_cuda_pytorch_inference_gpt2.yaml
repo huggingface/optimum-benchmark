@@ -4,7 +4,9 @@ defaults:
 
 experiment_name: distributed_cuda_pytorch_inference_gpt2
 
+# tiny-gpt2 fails probably because it's just too small to distribute
 model: gpt2
+task: text-generation
 device: cuda
 
 backend:
@@ -14,6 +16,3 @@ hydra:
   job:
     env_set:
       CUDA_VISIBLE_DEVICES: 0,1
-  sweeper:
-    params:
-      benchmark.input_shapes.batch_size: 1,2,4

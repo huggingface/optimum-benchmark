@@ -9,6 +9,5 @@ class GluePreprocessor:
         return self.tokenizer(
             examples["sentence"],
             padding="max_length",
-            max_length=128,
             truncation=True,
         )

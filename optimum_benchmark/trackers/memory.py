@@ -1,13 +1,13 @@
-from multiprocessing.connection import Connection
-from multiprocessing import Pipe, Process
+import os
 from contextlib import contextmanager
 from logging import getLogger
+from multiprocessing import Pipe, Process
+from multiprocessing.connection import Connection
+
 import psutil
 import torch
-import os
 
-from optimum_benchmark.utils import bytes_to_mega_bytes
-
+from ..env_utils import bytes_to_mega_bytes
 
 LOGGER = getLogger("memory_tracker")
 
@@ -32,24 +32,21 @@ class MemoryTracker:
 
         nvml.nvmlInit()
         handle = nvml.nvmlDeviceGetHandleByIndex(
-            self.device.index
-            if self.device.index is not None
-            else torch.cuda.current_device()
+            self.device.index if self.device.index is not None else torch.cuda.current_device()
         )
         yield
         meminfo = nvml.nvmlDeviceGetMemoryInfo(handle)
         nvml.nvmlShutdown()
 
-        # At least for PyTorch, relying on meminfo.used is fine here as PyTorch does not deallocate its cache after running forward.
+        # At least for PyTorch, relying on meminfo.used is fine
+        # here as PyTorch does not deallocate its cache after running forward.
         self.peak_memory = max(self.peak_memory, meminfo.used)
         LOGGER.debug(f"Peak memory usage: {self.get_peak_memory()} MB")
 
     def _track_cpu_peak_memory(self, interval: float):
         child_connection, parent_connection = Pipe()
         # instantiate process
-        mem_process: Process = PeakMemoryMeasureProcess(
-            os.getpid(), child_connection, interval
-        )
+        mem_process: Process = PeakMemoryMeasureProcess(os.getpid(), child_connection, interval)
         mem_process.start()
         # wait until we get memory
         parent_connection.recv()
@@ -75,9 +72,7 @@ class PeakMemoryMeasureProcess(Process):
 
         while True:
             process = psutil.Process(self.process_id)
-            meminfo_attr = (
-                "memory_info" if hasattr(process, "memory_info") else "get_memory_info"
-            )
+            meminfo_attr = "memory_info" if hasattr(process, "memory_info") else "get_memory_info"
             memory = getattr(process, meminfo_attr)()[0]
             self.mem_usage = max(self.mem_usage, memory)
 
@@ -88,6 +83,7 @@ class PeakMemoryMeasureProcess(Process):
         # send results to parent pipe
         self.connection.send(self.mem_usage)
         self.connection.close()
+
 
 class PyTorchMemoryTracker(MemoryTracker):
     def __init__(self, backend):
@@ -116,7 +112,7 @@ class PyTorchMemoryTracker(MemoryTracker):
             meminfo = nvml.nvmlDeviceGetMemoryInfo(handle)
 
             self.peak_per_device[i] = max(self.peak_per_device[i], meminfo.used)
-        
+
         for i, peak_device in enumerate(self.peak_per_device):
             LOGGER.debug(f"Peak memory {i} usage: {peak_device * 1e-6} MB")
 
