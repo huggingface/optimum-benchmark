@@ -6,6 +6,7 @@ from omegaconf import OmegaConf
 
 from ...import_utils import torch_version
 from ..config import BackendConfig
+from ..peft_utils import PEFT_CONFIGS, PEFT_TASKS_TYPES
 
 OmegaConf.register_new_resolver("device_count", lambda: len(os.environ.get("CUDA_VISIBLE_DEVICES", "").split(",")))
 OmegaConf.register_new_resolver("is_inference", lambda benchmark_name: benchmark_name == "inference")
@@ -92,6 +93,10 @@ class PyTorchConfig(BackendConfig):
     use_ddp: bool = False
     ddp_config: Dict[str, Any] = field(default_factory=dict)
 
+    # peft options
+    peft_strategy: Optional[str] = None
+    peft_config: Dict[str, Any] = field(default_factory=dict)
+
     def __post_init__(self):
         CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", None)
 
@@ -130,3 +135,14 @@ class PyTorchConfig(BackendConfig):
             # TODO: check if it's not possible to use DDP with multiple nodes
             if self.ddp_config["max_nodes"] > 1 or self.ddp_config["min_nodes"] > 1:
                 raise NotImplementedError("Currently, PyTorch DDP benchmark only supports training on a single node.")
+
+        if self.peft_strategy is not None:
+            if self.peft_strategy not in PEFT_CONFIGS:
+                raise ValueError(
+                    f"`peft_strategy` must be one of {list(PEFT_CONFIGS.keys())}. Got {self.peft_strategy} instead."
+                )
+            PEFT_CONFIG = PEFT_CONFIGS[self.peft_strategy]
+            self.peft_config = OmegaConf.to_object(OmegaConf.merge(PEFT_CONFIG, self.peft_config))
+
+            if self.peft_config["task_type"] is None:
+                raise ValueError(f"`peft_config.task_type` must be set to one of the following {PEFT_TASKS_TYPES}")

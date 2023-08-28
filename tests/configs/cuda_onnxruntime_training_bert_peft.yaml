@@ -1,0 +1,20 @@
+defaults:
+  - base_config # inherits from base config
+  - _self_ # for hydra 1.1 compatibility
+  - override backend: onnxruntime # override backend to onnxruntime
+  - override benchmark: training # override benchmark to training
+
+experiment_name: cuda_onnxruntime_training_bert
+
+model: hf-internal-testing/tiny-random-bert
+task: text-classification
+device: cuda
+
+benchmark:
+  dataset_shapes:
+    dataset_size: 1600
+
+backend:
+  peft_strategy: lora
+  peft_config:
+    task_type: SEQ_CLS

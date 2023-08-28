@@ -4,7 +4,6 @@ from logging import getLogger
 from typing import TYPE_CHECKING, Any, Callable, Dict, List
 
 import torch
-from optimum.bettertransformer import BetterTransformer
 from torch.distributed.elastic.multiprocessing.errors import record
 from torch.distributed.launcher.api import LaunchConfig, elastic_launch
 from transformers import BitsAndBytesConfig, Trainer, TrainingArguments  # GPTQConfig
@@ -70,6 +69,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         # BetterTransformer
         if self.config.bettertransformer:
             LOGGER.info("\t+ Using optimum.bettertransformer")
+            from optimum.bettertransformer import BetterTransformer
+
             self.pretrained_model = BetterTransformer.transform(
                 self.pretrained_model,
                 keep_original_model=False,
@@ -90,6 +91,16 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                     self.pretrained_model.forward,
                     **self.config.torch_compile_kwargs,
                 )
+
+        if self.config.peft_strategy is not None:
+            LOGGER.info("\t+ Applying PEFT")
+            from peft import get_peft_model
+
+            from ..peft_utils import get_peft_config_class
+
+            peft_config_class = get_peft_config_class(self.config.peft_strategy)
+            peft_config = peft_config_class(**self.config.peft_config)
+            self.pretrained_model = get_peft_model(self.pretrained_model, peft_config=peft_config)
 
     def load_model_from_pretrained(self) -> None:
         if self.config.quantization_strategy == "gptq":
@@ -185,7 +196,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         LOGGER.info("\t+ Wrapping model with FXProfilingWrapper")
         self.pretrained_model = FXProfilingWrapper(self.pretrained_model)
 
-    def forward(self, input: Dict[str, torch.Tensor], **kwargs) -> "ModelOutput":
+    def forward(self, input: Dict[str, Any], **kwargs) -> "ModelOutput":
         if self.is_diffusion_pipeline():
             return super().forward(input, **kwargs)
         else:
