@@ -14,6 +14,7 @@ OmegaConf.register_new_resolver("pytorch_version", torch_version)
 DEVICE_MAPS = ["auto", "sequential"]
 AMP_DTYPES = ["bfloat16", "float16"]
 TORCH_DTYPES = ["bfloat16", "float16", "float32", "auto"]
+PEFT_TASKS_TYPES = ["SEQ_CLS", "SEQ_2_SEQ_LM", "CAUSAL_LM", "TOKEN_CLS", "QUESTION_ANS", "FEATURE_EXTRACTION"]
 
 GPTQ_CONFIG = {
     "bits": 4,
@@ -56,6 +57,27 @@ DDP_CONFIG = {
     "metrics_cfg": {},
     "local_addr": None,
 }
+LORA_CONFIG = {
+    "peft_type": None,  # PeftType: can't be changed anyway
+    "auto_mapping": None,  # dict
+    "base_model_name_or_path": None,
+    "revision": None,  # str
+    "task_type": None,  # TaskType: SEQ_CLS, SEQ_2_SEQ_LM, CAUSAL_LM, TOKEN_CLS, QUESTION_ANS, FEATURE_EXTRACTION
+    "inference_mode": False,
+    "r": 8,  # int
+    "target_modules": None,  # List[str] | str
+    "lora_alpha": 8,  # int
+    "lora_dropout": 0,  # float
+    "fan_in_fan_out": False,  # bool
+    "bias": "none",  # str
+    "modules_to_save": None,  # List[str]
+    "init_lora_weights": True,  # bool
+    "layers_to_transform": None,  # List[int] | int
+    "layers_pattern": None,  # str
+}
+PEFT_CONFIGS = {
+    "lora": LORA_CONFIG,
+}
 
 
 @dataclass
@@ -91,6 +113,9 @@ class PyTorchConfig(BackendConfig):
     # training options
     use_ddp: bool = False
     ddp_config: Dict[str, Any] = field(default_factory=dict)
+
+    peft_strategy: Optional[str] = None
+    peft_config: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", None)
@@ -130,3 +155,14 @@ class PyTorchConfig(BackendConfig):
             # TODO: check if it's not possible to use DDP with multiple nodes
             if self.ddp_config["max_nodes"] > 1 or self.ddp_config["min_nodes"] > 1:
                 raise NotImplementedError("Currently, PyTorch DDP benchmark only supports training on a single node.")
+
+        if self.peft_strategy is not None:
+            if self.peft_strategy not in PEFT_CONFIGS:
+                raise ValueError(
+                    f"`peft_strategy` must be one of {list(PEFT_CONFIGS.keys())}. Got {self.peft_strategy} instead."
+                )
+            PEFT_CONFIG = PEFT_CONFIGS[self.peft_strategy]
+            self.peft_config = OmegaConf.to_object(OmegaConf.merge(PEFT_CONFIG, self.peft_config))
+
+            if self.peft_config["task_type"] is None:
+                raise ValueError(f"`peft_config.task_type` must be set to one of the following {PEFT_TASKS_TYPES}")

@@ -19,6 +19,9 @@ hydra:
     # we change the working directory during the run/sweep directory
     # this is useful for saving outputs in a separate directory
     chdir: true
+    env_set:
+      # by default, let's only use one GPU to avoid errors from NVIDIA DGX Display
+      CUDA_VISIBLE_DEVICES: 0
   launcher:
     # we set the number of jobs to 2 since when using 1, joblib reuses the same process
     n_jobs: 2
