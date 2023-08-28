@@ -19,6 +19,7 @@ def onnxruntime_version():
             return "ort:unknown"
 
 
+OmegaConf.register_new_resolver("is_gpu", lambda device: "cuda" in device)
 OmegaConf.register_new_resolver(
     "is_profiling",
     lambda benchmark_name: benchmark_name == "profiling",
