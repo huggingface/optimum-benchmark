@@ -22,7 +22,7 @@ class TrainingConfig(BenchmarkConfig):
     _target_: str = "optimum_benchmark.benchmarks.training.TrainingBenchmark"
 
     # training options
-    warmup_steps: int = 40 # still thinks this too high
+    warmup_steps: int = 40  # still thinks this too high
 
     # dataset options
     dataset_shapes: Dict = field(

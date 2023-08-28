@@ -20,10 +20,6 @@ def onnxruntime_version():
 
 
 OmegaConf.register_new_resolver(
-    "is_gpu",
-    lambda device: "cuda" in device.lower(),
-)
-OmegaConf.register_new_resolver(
     "is_profiling",
     lambda benchmark_name: benchmark_name == "profiling",
 )
@@ -95,8 +91,6 @@ CALIBRATION_CONFIG = {
     "preprocess_batch": True,
     "preprocess_class": "optimum_benchmark.preprocessors.glue.GluePreprocessor",
 }
-PROVIDER_OPTIONS = {"device_id": "${infer_device_id:${device}}"}
-SESSION_OPTIONS = {"enable_profiling": "${is_profiling:${benchmark.name}}"}
 
 
 @dataclass
@@ -116,12 +110,14 @@ class ORTConfig(BackendConfig):
     # provider options
     provider: str = "${infer_provider:${device}}"
     device_id: Optional[int] = "${oc.deprecated:backend.provider_options.device_id}"
-    provider_options: Dict[str, Any] = field(default_factory=lambda: PROVIDER_OPTIONS)
+    provider_options: Dict[str, Any] = field(default_factory=lambda: {"device_id": "${infer_device_id:${device}}"})
 
     # inference options
     use_io_binding: bool = "${is_gpu:${device}}"
     enable_profiling: bool = "${oc.deprecated:backend.session_options.enable_profiling}"
-    session_options: Dict[str, Any] = field(default_factory=lambda: SESSION_OPTIONS)
+    session_options: Dict[str, Any] = field(
+        default_factory=lambda: {"enable_profiling": "${is_profiling:${benchmark.name}}"}
+    )
 
     # optimization options
     optimization: bool = False
