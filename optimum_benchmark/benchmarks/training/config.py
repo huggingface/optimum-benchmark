@@ -50,5 +50,6 @@ class TrainingConfig(BenchmarkConfig):
             "do_train": True,
             "do_eval": False,
             "do_predict": False,
+            "report_to": "none",
         }
     )
