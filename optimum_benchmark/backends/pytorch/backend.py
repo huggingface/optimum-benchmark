@@ -232,7 +232,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             training_callbacks,
             self.pretrained_model,
         )
-
         if self.config.use_ddp:
             # For DDP, we log only the state of the first rank as transformers does.
             # since the batch size used in measuring the throughput is the one of world size.

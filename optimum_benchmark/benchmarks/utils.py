@@ -29,7 +29,7 @@ class MeasurementCallback(TrainerCallback):
             # is launched, thus we can not check before calling trainer.train().
             raise ValueError(
                 f"Total training steps {state.max_steps} is smaller "
-                "than the number of warmup steps {self.warmup_steps}. "
+                f"than the number of warmup steps {self.warmup_steps}. "
                 "Please increase the total number of steps (for example by "
                 "increasing the dataset size)."
             )

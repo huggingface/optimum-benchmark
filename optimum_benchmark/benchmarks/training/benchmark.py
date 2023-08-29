@@ -32,7 +32,7 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
 
         training_dataset = dataset_generator.generate()
         training_data_collator = get_data_collator(task=task)
-        training_callbacks = [MeasurementCallback(self.config.warmup_steps)]
+        training_callbacks = [MeasurementCallback(warmup_steps=self.config.warmup_steps)]
 
         trainer_state = backend.train(
             training_dataset=training_dataset,
