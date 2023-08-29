@@ -110,12 +110,12 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 "If the model is already quantized, you don't need to specify the quantization strategy."
             )
             # need to process dataset, tokenizer, etc.
-            # quantization_config = GPTQConfig(**self.config.quantization_config)
+            # self.quantization_config = GPTQConfig(**self.config.quantization_config)
         elif self.config.quantization_strategy == "bnb":
             LOGGER.info("\t+ Processing BnB config")
-            quantization_config = BitsAndBytesConfig(**self.config.quantization_config)
+            self.quantization_config = BitsAndBytesConfig(**self.config.quantization_config)
         else:
-            quantization_config = None
+            self.quantization_config = None
 
         if self.is_diffusion_pipeline():
             LOGGER.info("\t+ Loading diffusion pipeline")
@@ -136,7 +136,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                     self.model,
                     torch_dtype=self.torch_dtype,
                     device_map=self.config.device_map,
-                    quantization_config=quantization_config,
+                    **self.automodel_kwargs,
                     **self.hub_kwargs,
                 )
             else:
@@ -145,9 +145,16 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                     self.pretrained_model = self.automodel_class.from_pretrained(
                         self.model,
                         torch_dtype=self.torch_dtype,
-                        quantization_config=quantization_config,
+                        **self.automodel_kwargs,
                         **self.hub_kwargs,
                     )
+
+    @property
+    def automodel_kwargs(self) -> Dict[str, Any]:
+        if self.config.quantization_strategy is not None:
+            return {"quantization_config": self.quantization_config}
+        else:
+            return {}
 
     def load_model_from_config(self) -> None:
         # TODO: create no_weights tests
