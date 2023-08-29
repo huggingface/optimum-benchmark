@@ -11,8 +11,12 @@ _openvino_available = importlib.util.find_spec("openvino") is not None
 _neural_compressor_available = importlib.util.find_spec("neural_compressor") is not None
 
 
+def is_torch_available():
+    return _torch_available
+
+
 def torch_version():
-    if _torch_available:
+    if is_torch_available():
         return importlib.metadata.version("torch")
 
 

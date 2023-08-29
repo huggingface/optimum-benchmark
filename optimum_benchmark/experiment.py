@@ -2,7 +2,7 @@ import os
 import platform
 from dataclasses import dataclass, field
 from logging import getLogger
-from typing import TYPE_CHECKING, Any, Dict, Optional, Type
+from typing import TYPE_CHECKING, Any, Dict, Type
 
 import hydra
 from hydra.core.config_store import ConfigStore
@@ -22,13 +22,15 @@ from .import_utils import (
     optimum_version,
     transformers_version,
 )
-from .task_utils import infer_task
+from .task_utils import infer_task_from_model_name_or_path
 
 if TYPE_CHECKING:
     from .backends.base import Backend
     from .benchmarks.base import Benchmark
 
 LOGGER = getLogger("experiment")
+
+OmegaConf.register_new_resolver("infer_task", lambda model: infer_task_from_model_name_or_path(model))
 
 
 @dataclass
@@ -46,7 +48,7 @@ class ExperimentConfig:
     # Device name or path (cpu, cuda, cuda:0, ...)
     device: str
     # Task name (text-classification, image-classification, ...)
-    task: Optional[str] = None
+    task: str = "${infer_task:${model}}"
 
     # ADDITIONAL MODEL CONFIGURATION: Model revision, use_auth_token, trust_remote_code
     hub_kwargs: Dict = field(
@@ -73,12 +75,6 @@ class ExperimentConfig:
             "cpu_ram_mb": get_cpu_ram_mb(),
         }
     )
-
-    def __post_init__(self) -> None:
-        # Infer task if not provided
-        if self.task is None:
-            LOGGER.warning("Task not provided, will try to infer it from the model's metadata")
-            self.task = infer_task(self.model, self.hub_kwargs.get("revision", "main"))
 
 
 # Register configurations
