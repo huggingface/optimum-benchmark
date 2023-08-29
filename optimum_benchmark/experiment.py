@@ -15,7 +15,7 @@ from .backends.openvino.config import OVConfig
 from .backends.pytorch.config import PyTorchConfig
 from .benchmarks.inference.config import InferenceConfig
 from .benchmarks.training.config import TrainingConfig
-from .env_utils import get_cpu, get_cpu_ram_mb
+from .env_utils import get_cpu, get_cpu_ram_mb, get_gpu
 from .import_utils import (
     accelerate_version,
     diffusers_version,
@@ -75,6 +75,15 @@ class ExperimentConfig:
             "cpu_ram_mb": get_cpu_ram_mb(),
         }
     )
+
+    def __post_init__(self) -> None:
+        if "cuda" in self.device:
+            CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", None)
+            if CUDA_VISIBLE_DEVICES is None:
+                raise ValueError(
+                    "For CUDA benchmarks, please set the CUDA_VISIBLE_DEVICES environment variable to garantee isolation."
+                )
+            self.environment["gpu"] = get_gpu()
 
 
 # Register configurations

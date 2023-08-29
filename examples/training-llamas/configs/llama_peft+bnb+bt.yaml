@@ -1,8 +1,0 @@
-defaults:
-  - llama_peft+bnb
-  - _self_
-
-experiment_name: llama_peft+bnb+bt
-
-backend:
-  bettertransformer: true

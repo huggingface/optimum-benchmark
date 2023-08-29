@@ -34,5 +34,18 @@ def get_cpu() -> Optional[str]:
         raise ValueError(f"Unknown system '{platform.system()}'")
 
 
+def get_gpu() -> Optional[str]:
+    import torch
+
+    gpu = None
+    if torch.cuda.is_available():
+        gpus = []
+        for i in range(torch.cuda.device_count()):
+            gpus.append(torch.cuda.get_device_name(i))
+        gpu = ",".join(gpus)
+
+    return gpu
+
+
 def get_cpu_ram_mb():
     return bytes_to_mega_bytes(psutil.virtual_memory().total)

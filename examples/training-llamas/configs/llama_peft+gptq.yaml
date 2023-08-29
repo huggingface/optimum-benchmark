@@ -9,4 +9,4 @@ backend:
   quantization_strategy: gptq
   quantization_config:
     bits: 4
-    disable_exllama: True
+    disable_exllama: true
