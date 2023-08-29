@@ -1,0 +1,12 @@
+defaults:
+  - llama_peft
+  - _self_
+
+experiment_name: llama_peft+gptq
+model: TheBloke/Llama-2-7B-GPTQ
+
+backend:
+  quantization_strategy: gptq
+  quantization_config:
+    bits: 4
+    disable_exllama: True

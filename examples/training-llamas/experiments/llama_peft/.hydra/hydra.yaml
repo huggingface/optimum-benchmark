@@ -1,25 +1,14 @@
 hydra:
   run:
-    dir: examples/training-llamas/experiments
+    dir: examples/training-llamas/experiments/${experiment_name}
   sweep:
-    dir: examples/training-llamas/experiments
+    dir: examples/training-llamas/experiments/${experiment_name}
     subdir: ${hydra.job.num}
   launcher:
-    _target_: hydra_plugins.hydra_joblib_launcher.joblib_launcher.JoblibLauncher
-    n_jobs: 2
-    backend: multiprocessing
-    prefer: processes
-    require: null
-    verbose: 0
-    timeout: null
-    pre_dispatch: 2*n_jobs
-    batch_size: auto
-    temp_folder: null
-    max_nbytes: null
-    mmap_mode: r
+    _target_: hydra._internal.core_plugins.basic_launcher.BasicLauncher
   sweeper:
     _target_: hydra._internal.core_plugins.basic_sweeper.BasicSweeper
-    max_batch_size: 1
+    max_batch_size: null
     params: null
   help:
     app_name: ${hydra.job.name}
@@ -137,7 +126,7 @@ hydra:
     override_dirname: ''
     id: ???
     num: ???
-    config_name: peft_gptq
+    config_name: llama_peft
     env_set:
       CUDA_VISIBLE_DEVICES: '0'
     env_copy: []
@@ -160,13 +149,13 @@ hydra:
     - path: hydra_plugins.hydra_colorlog.conf
       schema: pkg
       provider: hydra-colorlog
-    - path: /home/ilyas/optimum-benchmark/examples/training-llamas
+    - path: /home/ilyas/optimum-benchmark/examples/training-llamas/configs
       schema: file
       provider: command-line
     - path: ''
       schema: structured
       provider: schema
-    output_dir: /home/ilyas/optimum-benchmark/examples/training-llamas/experiments
+    output_dir: /home/ilyas/optimum-benchmark/examples/training-llamas/experiments/llama_peft
     choices:
       benchmark: training
       backend: pytorch
@@ -177,6 +166,6 @@ hydra:
       hydra/hydra_help: default
       hydra/help: default
       hydra/sweeper: basic
-      hydra/launcher: joblib
+      hydra/launcher: basic
       hydra/output: default
   verbose: false

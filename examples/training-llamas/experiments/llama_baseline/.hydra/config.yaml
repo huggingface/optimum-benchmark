@@ -10,7 +10,7 @@ backend:
   delete_cache: false
   no_weights: false
   device_map: null
-  torch_dtype: null
+  torch_dtype: float16
   disable_grad: ${is_inference:${benchmark.name}}
   eval_mode: ${is_inference:${benchmark.name}}
   amp_autocast: false
@@ -22,15 +22,14 @@ backend:
   quantization_config: {}
   use_ddp: false
   ddp_config: {}
-  peft_strategy: lora
-  peft_config:
-    task_type: CAUSAL_LM
+  peft_strategy: null
+  peft_config: {}
 benchmark:
   name: training
   _target_: optimum_benchmark.benchmarks.training.benchmark.TrainingBenchmark
   warmup_steps: 10
   dataset_shapes:
-    dataset_size: 80
+    dataset_size: 40
     sequence_length: 256
     num_choices: 1
     feature_size: 80
@@ -45,9 +44,9 @@ benchmark:
     do_eval: false
     do_predict: false
     report_to: none
-    per_device_train_batch_size: 8
-experiment_name: peft_gptq
-model: TheBloke/Llama-2-7B-GPTQ
+    per_device_train_batch_size: 1
+experiment_name: llama_baseline
+model: meta-llama/Llama-2-7b-hf
 device: cuda:0
 task: ${infer_task:${model}}
 hub_kwargs:
@@ -62,6 +61,6 @@ environment:
   diffusers_version: 0.21.0.dev0
   python_version: 3.9.17
   system: Linux
-  cpu: ' AMD EPYC 7742 64-Core Processor'
-  cpu_count: 128
-  cpu_ram_mb: 540684
+  cpu: ' AMD Ryzen 9 7950X 16-Core Processor'
+  cpu_count: 32
+  cpu_ram_mb: 134796
