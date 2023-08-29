@@ -9,14 +9,8 @@ from ..base import BenchmarkConfig
 
 LOGGER = getLogger("inference")
 
-OmegaConf.register_new_resolver(
-    "can_generate",
-    lambda task: task in TEXT_GENERATION_TASKS,
-)
-OmegaConf.register_new_resolver(
-    "can_diffuse",
-    lambda task: task in DIFFUSION_TASKS,
-)
+OmegaConf.register_new_resolver("can_generate", lambda task: task in TEXT_GENERATION_TASKS)
+OmegaConf.register_new_resolver("can_diffuse", lambda task: task in DIFFUSION_TASKS)
 
 GENERATE_CONFIG = {
     "max_new_tokens": 100,
@@ -39,6 +33,7 @@ class InferenceConfig(BenchmarkConfig):
 
     # benchmark options
     memory: bool = False
+    emissions: bool = False
     duration: int = 10
     warmup_runs: int = 10
     benchmark_duration: Optional[int] = None
@@ -89,9 +84,14 @@ class InferenceConfig(BenchmarkConfig):
             self.generate_kwargs["max_new_tokens"] = self.new_tokens
             self.generate_kwargs["min_new_tokens"] = self.new_tokens
 
-        if self.benchmark_duration:
+        if self.benchmark_duration is not None:
             LOGGER.warning(
                 "The `benchmark_duration` option is deprecated, please use `duration` instead. "
                 "`duration` will be set to the value of `benchmark_duration`."
             )
             self.duration = self.benchmark_duration
+
+        if self.emissions:
+            LOGGER.warning(
+                "The emissions tracker will track energy of available devices so make sure you isolate the benchmarking environment."
+            )
