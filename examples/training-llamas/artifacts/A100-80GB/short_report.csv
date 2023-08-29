@@ -1,4 +1,4 @@
-experiment_name,Quantization Scheme,Batch Size,Throughput (samples/s),GPU
+experiment_name,Quantization Scheme,Batch Size,Training Throughput (samples/s),GPU
 llama_peft+bnb,bnb,16,16.878406406662933,NVIDIA A100-SXM4-80GB
 llama_peft+bnb,bnb,8,15.457537851627222,NVIDIA A100-SXM4-80GB
 llama_peft+gptq,gptq,16,15.409054936591064,NVIDIA A100-SXM4-80GB

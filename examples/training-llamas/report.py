@@ -76,15 +76,19 @@ def format_row(row, style=""):
         formated_row.append(format_element(element, style=style))
     return formated_row
 
-
-def get_training_viz(training_report):
+def get_short_report(training_report):
     short_columns = {
         "backend.quantization_strategy": "Quantization Scheme",
         "benchmark.training_arguments.per_device_train_batch_size": "Batch Size",
-        "training.throughput(samples/s)": "Throughput (samples/s)",
+        "training.throughput(samples/s)": "Training Throughput (samples/s)",
         "environment.gpu": "GPU",
     }
     short_report = training_report[list(short_columns.keys())].rename(columns=short_columns)
+
+    return short_report
+
+
+def get_rich_table(short_report):
     # create rich table
     rich_table = Table(show_header=True, show_lines=True)
     # we add a column for the index
@@ -96,26 +100,26 @@ def get_training_viz(training_report):
     for index, row in short_report.iterrows():
         rich_table.add_row(index, *format_row(row.values, style=""))
 
-    console = Console(record=True)
-    console.print(rich_table)
-    console.save_svg("artifacts/rich_table.svg", theme=MONOKAI, title="Training Report")
+    return rich_table
 
-    fig1, ax1 = plt.subplots(figsize=(20, 10))
-
+def get_throughput_plot(short_report):
     # for each quantization scheme we plot the throughput vs batch size
+    fig, ax = plt.subplots()
+
     for quantization_scheme in short_report["Quantization Scheme"].unique():
-        quantization_report = short_report[short_report["Quantization Scheme"] == quantization_scheme]
-        ax1.plot(
-            quantization_report["Batch Size"],
-            quantization_report["Throughput (samples/s)"],
+        mask = short_report["Quantization Scheme"] == quantization_scheme
+        ax.plot(
+            short_report[mask]["Batch Size"],
+            short_report[mask]["Training Throughput (samples/s)"],
             label=quantization_scheme,
             marker="o",
         )
 
-    ax1.set_xlabel("Batch Size")
-    ax1.set_ylabel("Throughput (samples/s)")
-    ax1.set_title("Training Throughput per Batch Size")
-    ax1.legend()
+    ax.set_xlabel("Batch Size")
+    ax.set_ylabel("Training Throughput (samples/s)")
+    ax.set_title("Training Throughput per Batch Size")
+
+    return fig
 
 
 def generate_report():
@@ -145,7 +149,16 @@ def generate_report():
     training_report.sort_values(by="training.throughput(samples/s)", ascending=False, inplace=True)
     training_report.to_csv("artifacts/full_report.csv")
 
-    get_training_viz(training_report)
+    short_report = get_short_report(training_report)
+    short_report.to_csv("artifacts/short_report.csv")
+
+    throughput_plot = get_throughput_plot(short_report)
+    throughput_plot.savefig("artifacts/throughput_plot.png")
+
+    rich_table = get_rich_table(short_report)
+    console = Console(record=True)
+    console.print(rich_table, justify="center")
+    console.save_svg("artifacts/rich_table.svg", theme=MONOKAI, title="Training Report")
 
 
 if __name__ == "__main__":
