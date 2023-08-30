@@ -1,3 +1,4 @@
+import os
 from contextlib import contextmanager
 from logging import getLogger
 
@@ -14,7 +15,9 @@ class EnergyTracker:
     @contextmanager
     def track(self, interval=1, file_prefix=""):
         self.emission_tracker = EmissionsTracker(
-            measure_power_secs=interval, output_file=f"{file_prefix}_codecarbon.csv"
+            measure_power_secs=interval,
+            output_file=f"{file_prefix}_codecarbon.csv",
+            gpu_ids=os.environ.get("CUDA_VISIBLE_DEVICES", None),
         )
         self.emission_tracker.start()
         yield

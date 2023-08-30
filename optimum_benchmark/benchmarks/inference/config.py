@@ -92,9 +92,3 @@ class InferenceConfig(BenchmarkConfig):
                 "`duration` will be set to the value of `benchmark_duration`."
             )
             self.duration = self.benchmark_duration
-
-        if self.energy:
-            LOGGER.warning(
-                "The CodeCarbon tracker will track energy of available devices. "
-                "Pleas Make sure you isolate your benchmarking environment."
-            )
