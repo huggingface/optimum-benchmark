@@ -9,7 +9,7 @@ optimum-benchmark --config-dir configs/ --config-name llama_bnb --multirun
 optimum-benchmark --config-dir configs/ --config-name llama_gpq --multirun
 ```
 
-This will create a folder called `experiments` with the results of the benchmarks with a training `batch_size` ranging from 1 to 16. Then run
+This will create a folder called `experiments` with the results of the benchmarks with an inference `batch_size` ranging from 1 to 16 and an input `sequence_length` (prompt size) of 512.
 
 ```bash
 python report.py -e experiments

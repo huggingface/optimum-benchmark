@@ -118,6 +118,7 @@ def get_throughput_plot(short_report):
     ax.set_xlabel("Batch Size")
     ax.set_ylabel("Training Throughput (samples/s)")
     ax.set_title("Training Throughput per Batch Size")
+    ax.legend()
 
     return fig
 
