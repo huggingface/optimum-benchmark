@@ -171,6 +171,7 @@ def get_throughput_plot(short_report):
     ax1.legend()
     ax2.legend()
     ax3.legend()
+    ax4.legend()
 
     return fig1, fig2, fig3, fig4
 
@@ -180,14 +181,13 @@ def generate_report():
     parser.add_argument(
         "--experiments",
         "-e",
-        nargs="*",
         type=Path,
         required=True,
         help="The folder containing the results of experiments.",
     )
     parser.add_argument(
         "--report-name",
-        "-n",
+        "-r",
         type=str,
         required=False,
         help="The name of the report.",
@@ -196,27 +196,32 @@ def generate_report():
     args = parser.parse_args()
     experiments_folders = args.experiments
 
+    if args.report_name:
+        report_folder = f"artifacts/{args.report_name}"
+    else:
+        report_folder = "artifacts"
+    Path(report_folder).mkdir(parents=True, exist_ok=True)
+
     # gather experiments results
-    inference_experiments = [gather_inference_report(experiment) for experiment in experiments_folders]
-    inference_report = pd.concat(inference_experiments, axis=0)
+    inference_report = gather_inference_report(experiments_folders)
     inference_report.sort_values(by="forward.throughput(samples/s)", ascending=False, inplace=True)
-    inference_report.to_csv("artifacts/full_report.csv")
+    inference_report.to_csv(f"{report_folder}/full_report.csv")
 
     short_report = get_short_report(inference_report)
-    short_report.to_csv("artifacts/short_report.csv")
+    short_report.to_csv(f"{report_folder}/short_report.csv")
 
     forward_throughput_plot, generate_throughput_plot, forward_memory_plot, generate_memory_plot = get_throughput_plot(
         short_report
     )
-    forward_throughput_plot.savefig("artifacts/forward_throughput_plot.png")
-    generate_throughput_plot.savefig("artifacts/generate_throughput_plot.png")
-    forward_memory_plot.savefig("artifacts/forward_memory_plot.png")
-    generate_memory_plot.savefig("artifacts/generate_memory_plot.png")
+    forward_throughput_plot.savefig(f"{report_folder}/forward_throughput_plot.png")
+    generate_throughput_plot.savefig(f"{report_folder}/generate_throughput_plot.png")
+    forward_memory_plot.savefig(f"{report_folder}/forward_memory_plot.png")
+    generate_memory_plot.savefig(f"{report_folder}/generate_memory_plot.png")
 
     rich_table = get_rich_table(short_report)
     console = Console(record=True)
     console.print(rich_table, justify="center")
-    console.save_svg("artifacts/rich_table.svg", theme=MONOKAI, title="Inference Report")
+    console.save_svg(f"{report_folder}/rich_table.svg", theme=MONOKAI, title="Inference Report")
 
 
 if __name__ == "__main__":
