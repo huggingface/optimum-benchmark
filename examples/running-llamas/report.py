@@ -84,7 +84,7 @@ def get_short_report(inference_report):
         "forward.throughput(samples/s)": "Forward Throughput (samples/s)",
         "forward.peak_memory(MB)": "Forward Peak Memory (MB)",
         "generate.throughput(tokens/s)": "Generate Throughput (tokens/s)",
-        # "generate.peak_memory(MB)": "Generate Peak Memory (MB)",
+        "generate.peak_memory(MB)": "Generate Peak Memory (MB)",
         "environment.gpu": "GPU",
     }
     short_report = inference_report[list(short_columns.keys())].rename(columns=short_columns)
@@ -112,36 +112,45 @@ def get_throughput_plot(short_report):
     fig1, ax1 = plt.subplots()
     fig2, ax2 = plt.subplots()
     fig3, ax3 = plt.subplots()
-    # fig4, ax4 = plt.subplots()
+    fig4, ax4 = plt.subplots()
 
     short_report["Quantization Scheme"].fillna("none", inplace=True)
 
     for quantization_scheme in short_report["Quantization Scheme"].unique():
         mask = short_report["Quantization Scheme"] == quantization_scheme
+
+        forward_throughput = short_report[mask][["Batch Size", "Forward Throughput (samples/s)"]].sort_values(
+            by="Batch Size"
+        )
+        generate_throughput = short_report[mask][["Batch Size", "Generate Throughput (tokens/s)"]].sort_values(
+            by="Batch Size"
+        )
+        forward_memory = short_report[mask][["Batch Size", "Forward Peak Memory (MB)"]].sort_values(by="Batch Size")
+        generate_memory = short_report[mask][["Batch Size", "Generate Peak Memory (MB)"]].sort_values(by="Batch Size")
         ax1.plot(
-            short_report[mask]["Batch Size"],
-            short_report[mask]["Forward Throughput (samples/s)"],
+            forward_throughput["Batch Size"],
+            forward_throughput["Forward Throughput (samples/s)"],
             label=quantization_scheme,
             marker="o",
         )
         ax2.plot(
-            short_report[mask]["Batch Size"],
-            short_report[mask]["Generate Throughput (tokens/s)"],
+            generate_throughput["Batch Size"],
+            generate_throughput["Generate Throughput (tokens/s)"],
             label=quantization_scheme,
             marker="o",
         )
         ax3.plot(
-            short_report[mask]["Batch Size"],
-            short_report[mask]["Forward Peak Memory (MB)"],
+            forward_memory["Batch Size"],
+            forward_memory["Forward Peak Memory (MB)"],
             label=quantization_scheme,
             marker="o",
         )
-        # ax4.plot(
-        #     short_report[mask]["Batch Size"],
-        #     short_report[mask]["Generate Peak Memory (MB)"],
-        #     label=quantization_scheme,
-        #     marker="o",
-        # )
+        ax4.plot(
+            generate_memory["Batch Size"],
+            generate_memory["Generate Peak Memory (MB)"],
+            label=quantization_scheme,
+            marker="o",
+        )
 
     ax1.set_xlabel("Batch Size")
     ax1.set_ylabel("Forward Throughput (samples/s)")
@@ -155,15 +164,15 @@ def get_throughput_plot(short_report):
     ax3.set_ylabel("Forward Peak Memory (MB)")
     ax3.set_title("Forward Peak Memory per Batch Size")
 
-    # ax4.set_xlabel("Batch Size")
-    # ax4.set_ylabel("Generate Peak Memory (MB)")
-    # ax4.set_title("Generate Peak Memory per Batch Size")
+    ax4.set_xlabel("Batch Size")
+    ax4.set_ylabel("Generate Peak Memory (MB)")
+    ax4.set_title("Generate Peak Memory per Batch Size")
 
     ax1.legend()
     ax2.legend()
     ax3.legend()
 
-    return fig1, fig2, fig3 #, fig4
+    return fig1, fig2, fig3, fig4
 
 
 def generate_report():
@@ -196,13 +205,13 @@ def generate_report():
     short_report = get_short_report(inference_report)
     short_report.to_csv("artifacts/short_report.csv")
 
-    forward_throughput_plot, generate_throughput_plot, forward_memory_plot = get_throughput_plot(
+    forward_throughput_plot, generate_throughput_plot, forward_memory_plot, generate_memory_plot = get_throughput_plot(
         short_report
     )
     forward_throughput_plot.savefig("artifacts/forward_throughput_plot.png")
     generate_throughput_plot.savefig("artifacts/generate_throughput_plot.png")
     forward_memory_plot.savefig("artifacts/forward_memory_plot.png")
-    # generate_memory_plot.savefig("artifacts/generate_memory_plot.png")
+    generate_memory_plot.savefig("artifacts/generate_memory_plot.png")
 
     rich_table = get_rich_table(short_report)
     console = Console(record=True)

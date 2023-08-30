@@ -15,7 +15,7 @@ from .backends.openvino.config import OVConfig
 from .backends.pytorch.config import PyTorchConfig
 from .benchmarks.inference.config import InferenceConfig
 from .benchmarks.training.config import TrainingConfig
-from .env_utils import get_cpu, get_cpu_ram_mb, get_gpu
+from .env_utils import get_cpu, get_cpu_ram_mb
 from .import_utils import (
     accelerate_version,
     diffusers_version,
@@ -78,12 +78,24 @@ class ExperimentConfig:
 
     def __post_init__(self) -> None:
         if "cuda" in self.device:
+            import torch
+
+            device_count = torch.cuda.device_count()
             CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", None)
-            if CUDA_VISIBLE_DEVICES is None:
+
+            if device_count > 1 and CUDA_VISIBLE_DEVICES is None:
                 raise ValueError(
-                    "For CUDA benchmarks, please set the CUDA_VISIBLE_DEVICES environment variable to garantee isolation."
+                    "Multiple GPUs detected but CUDA_VISIBLE_DEVICES is not set. "
+                    "This means that code might allocate resources from GPUs that are not intended to be used. "
+                    "Please set CUDA_VISIBLE_DEVICES to the desired GPU ids."
                 )
-            self.environment["gpu"] = get_gpu()
+
+            gpus = []
+            for i in range(torch.cuda.device_count()):
+                gpus.append(torch.cuda.get_device_name(i))
+
+            # we handle this in post_init instead of a resolver to avoid importing torch before the experiment starts
+            self.environment["gpu"] = ", ".join(gpus)
 
 
 # Register configurations

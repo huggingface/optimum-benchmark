@@ -8,18 +8,17 @@ defaults:
 
 hydra:
   run:
-    dir: experiments/${experiment_name}_batch_size(${benchmark.input_shapes.batch_size})_new_tokens(${benchmark.new_tokens})
+    dir: experiments/${experiment_name}_batch_size(${benchmark.input_shapes.batch_size})
   sweep:
-    dir: experiments/${experiment_name}_batch_size(${benchmark.input_shapes.batch_size})_new_tokens(${benchmark.new_tokens})
+    dir: experiments/${experiment_name}_batch_size(${benchmark.input_shapes.batch_size})
   job:
-    chdir: true # to change the working directory during the run/sweep directory
+    chdir: true
     env_set:
-      CUDA_VISIBLE_DEVICES: 3
+      CUDA_VISIBLE_DEVICES: 0
   sweeper:
     max_batch_size: 1
     params:
-      benchmark.input_shapes.batch_size: 1,16
-      benchmark.new_tokens: 100,1000
+      benchmark.input_shapes.batch_size: 1,4,16
 
 experiment_name: llama_baseline
 model: meta-llama/Llama-2-7b-hf
@@ -33,4 +32,8 @@ benchmark:
   warmup_runs: 10
   input_shapes:
     batch_size: null
-  new_tokens: null
+    sequence_length: 512
+
+  generate_kwargs:
+    max_new_tokens: 1000
+    min_new_tokens: 1000

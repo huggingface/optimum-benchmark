@@ -1,2 +1,0 @@
-,forward.latency(s),forward.throughput(samples/s),forward.peak_memory(MB),generate.latency(s),generate.throughput(tokens/s)
-0,0.0534,300.0,4424,61.9,258.0
