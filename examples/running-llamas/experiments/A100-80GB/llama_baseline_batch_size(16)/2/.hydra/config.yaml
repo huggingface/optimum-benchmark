@@ -1,0 +1,67 @@
+backend:
+  name: pytorch
+  version: ${pytorch_version:}
+  _target_: optimum_benchmark.backends.pytorch.backend.PyTorchBackend
+  seed: 42
+  inter_op_num_threads: null
+  intra_op_num_threads: null
+  initial_isolation_check: true
+  continous_isolation_check: true
+  delete_cache: false
+  no_weights: false
+  device_map: null
+  torch_dtype: float16
+  disable_grad: ${is_inference:${benchmark.name}}
+  eval_mode: ${is_inference:${benchmark.name}}
+  amp_autocast: false
+  amp_dtype: null
+  torch_compile: false
+  torch_compile_config: {}
+  bettertransformer: false
+  quantization_strategy: null
+  quantization_config: {}
+  use_ddp: false
+  ddp_config: {}
+  peft_strategy: null
+  peft_config: {}
+benchmark:
+  name: inference
+  _target_: optimum_benchmark.benchmarks.inference.benchmark.InferenceBenchmark
+  duration: 10
+  warmup_runs: 10
+  benchmark_duration: null
+  memory: true
+  energy: false
+  input_shapes:
+    batch_size: 16
+    sequence_length: 512
+    num_choices: 1
+    feature_size: 80
+    nb_max_frames: 3000
+    audio_sequence_length: 16000
+  new_tokens: null
+  can_diffuse: ${can_diffuse:${task}}
+  forward_kwargs: {}
+  can_generate: ${can_generate:${task}}
+  generate_kwargs:
+    max_new_tokens: 1000
+    min_new_tokens: 1000
+experiment_name: llama_baseline
+model: meta-llama/Llama-2-7b-hf
+device: cuda:0
+task: ${infer_task:${model}}
+hub_kwargs:
+  revision: main
+  cache_dir: null
+  force_download: false
+  local_files_only: false
+environment:
+  optimum_version: 1.12.1.dev0
+  transformers_version: 4.33.0.dev0
+  accelerate_version: 0.23.0.dev0
+  diffusers_version: 0.21.0.dev0
+  python_version: 3.8.10
+  system: Linux
+  cpu: ' AMD EPYC 7742 64-Core Processor'
+  cpu_count: 128
+  cpu_ram_mb: 540684
