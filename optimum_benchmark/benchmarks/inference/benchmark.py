@@ -1,3 +1,4 @@
+import os
 import statistics
 from logging import getLogger
 from typing import TYPE_CHECKING, Dict, List
@@ -95,6 +96,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
 
             self.forward_energies = energy_tracker.get_energies()
             LOGGER.info(f"\t+ Forward pass energy consumption: {self.forward_energy} (kWh)")
+            LOGGER.info(f"\t+ Full details in the CodeCarbon report: {os.getcwd()}/forward_codecarbon.csv")
 
     def run_generate_tracking(self, backend: "Backend") -> None:
         generate_input = self.input_generator.generate(mode="generate")
@@ -135,9 +137,9 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
 
             self.generate_energies = energy_tracker.get_energies()
             LOGGER.info(f"\t+ Forward pass energy consumption: {self.forward_energy} (kWh)")
+            LOGGER.info(f"\t+ Full details in the CodeCarbon report: {os.getcwd()}/generate_codecarbon.csv")
 
     # Metrics
-
     ## Forward pass metrics
     @property
     @three_significant_digits_wrapper
