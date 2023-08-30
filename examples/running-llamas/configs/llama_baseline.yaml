@@ -1,6 +1,6 @@
 defaults:
   - backend: pytorch # default backend
-  - benchmark: training # default benchmark
+  - benchmark: inference # default benchmark
   - experiment # inheriting from experiment config
   - _self_ # for hydra 1.1 compatibility
   - override hydra/job_logging: colorlog # colorful logging
@@ -8,17 +8,18 @@ defaults:
 
 hydra:
   run:
-    dir: experiments/${experiment_name}_batch_size(${benchmark.training_arguments.per_device_train_batch_size})
+    dir: experiments/${experiment_name}_batch_size(${benchmark.input_shapes.batch_size})_new_tokens(${benchmark.new_tokens})
   sweep:
-    dir: experiments/${experiment_name}_batch_size(${benchmark.training_arguments.per_device_train_batch_size})
+    dir: experiments/${experiment_name}_batch_size(${benchmark.input_shapes.batch_size})_new_tokens(${benchmark.new_tokens})
   job:
     chdir: true # to change the working directory during the run/sweep directory
     env_set:
-      CUDA_VISIBLE_DEVICES: 1
+      CUDA_VISIBLE_DEVICES: 3
   sweeper:
     max_batch_size: 1
     params:
-      benchmark.training_arguments.per_device_train_batch_size: 1,2,4,8,16
+      benchmark.input_shapes.batch_size: 1,16
+      benchmark.new_tokens: 100,1000
 
 experiment_name: llama_baseline
 model: meta-llama/Llama-2-7b-hf
@@ -28,10 +29,8 @@ backend:
   torch_dtype: float16
 
 benchmark:
-  warmup_steps: 40
-  dataset_shapes:
-    dataset_size: 620
-    sequence_length: 256
-  training_arguments:
-    max_steps: 100
-    per_device_train_batch_size: null
+  memory: true
+  warmup_runs: 10
+  input_shapes:
+    batch_size: null
+  new_tokens: null

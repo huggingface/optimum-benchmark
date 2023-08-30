@@ -1,0 +1,72 @@
+backend:
+  name: pytorch
+  version: 2.0.1
+  _target_: optimum_benchmark.backends.pytorch.backend.PyTorchBackend
+  seed: 42
+  inter_op_num_threads: null
+  intra_op_num_threads: null
+  initial_isolation_check: true
+  continous_isolation_check: true
+  delete_cache: false
+  no_weights: false
+  device_map: null
+  torch_dtype: float16
+  disable_grad: true
+  eval_mode: true
+  amp_autocast: false
+  amp_dtype: null
+  torch_compile: false
+  torch_compile_config: {}
+  bettertransformer: false
+  quantization_strategy: gptq
+  quantization_config:
+    bits: 4
+  use_ddp: false
+  ddp_config: {}
+  peft_strategy: null
+  peft_config: {}
+benchmark:
+  name: inference
+  _target_: optimum_benchmark.benchmarks.inference.benchmark.InferenceBenchmark
+  memory: true
+  duration: 10
+  warmup_runs: 10
+  benchmark_duration: null
+  input_shapes:
+    batch_size: 16
+    sequence_length: 16
+    num_choices: 1
+    feature_size: 80
+    nb_max_frames: 3000
+    audio_sequence_length: 16000
+  new_tokens: 1000
+  can_diffuse: false
+  forward_kwargs: {}
+  can_generate: true
+  generate_kwargs:
+    max_new_tokens: 1000
+    min_new_tokens: 1000
+    do_sample: false
+    use_cache: true
+    pad_token_id: 0
+    num_beams: 1
+experiment_name: llama_gptq
+model: TheBloke/Llama-2-7B-GPTQ
+device: cuda:0
+task: text-generation
+hub_kwargs:
+  revision: main
+  cache_dir: null
+  force_download: false
+  local_files_only: false
+environment:
+  optimum_version: 1.12.1.dev0
+  transformers_version: 4.33.0.dev0
+  accelerate_version: 0.23.0.dev0
+  diffusers_version: 0.21.0.dev0
+  python_version: 3.9.17
+  system: Linux
+  cpu: ' AMD EPYC 7742 64-Core Processor'
+  cpu_count: 128
+  cpu_ram_mb: 540684
+  gpu: NVIDIA A100-SXM4-80GB

@@ -119,7 +119,6 @@ class PyTorchMemoryTracker(MemoryTracker):
         self.peak_memory = sum(self.peak_per_device)
 
         nvml.nvmlShutdown()
-        LOGGER.info(f"Peak memory usage: {self.get_peak_memory()} MB")
 
 
 memory_tracker_class_for_backend = {
