@@ -10,7 +10,7 @@ from ...trackers.energy import EnergyTracker
 from ...trackers.latency import latency_tracker_class_for_backend
 from ...trackers.memory import memory_tracker_class_for_backend
 from ..base import Benchmark
-from ..utils import three_significant_digits_wrapper
+from ..utils import extract_three_significant_digits, three_significant_digits_wrapper
 from .config import InferenceConfig
 
 if TYPE_CHECKING:
@@ -98,8 +98,12 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
                     _ = backend.forward(forward_input, **self.config.forward_kwargs)
                     num_forward_passes += 1
 
-            self.forward_energy = energy_tracker.get_total_energy() / num_forward_passes
-            self.forward_emissions = energy_tracker.get_total_emissions() / num_forward_passes
+            self.forward_energy = extract_three_significant_digits(
+                energy_tracker.get_total_energy() / num_forward_passes
+            )
+            self.forward_emissions = extract_three_significant_digits(
+                energy_tracker.get_total_emissions() / num_forward_passes
+            )
             LOGGER.info(f"\t+ Forward pass energy consumption: {self.forward_energy} (kWh)")
             LOGGER.info(f"\t+ Forward pass carbon emissions: {self.forward_emissions} (kgCO2eq)")
             LOGGER.info(f"\t+ Full details in the CodeCarbon report: {os.getcwd()}/forward_codecarbon.csv")
@@ -143,10 +147,14 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
                     _ = backend.generate(generate_input, **self.config.generate_kwargs)
                     num_generate_passes += 1
 
-            self.generate_energy = energy_tracker.get_total_energy() / num_generate_passes
-            self.generate_emissions = energy_tracker.get_total_emissions() / num_generate_passes
-            LOGGER.info(f"\t+ Forward pass energy consumption: {self.generate_energy} (kWh)")
-            LOGGER.info(f"\t+ Forward pass carbon emissions: {self.generate_emissions} (kgCO2eq)")
+            self.generate_energy = extract_three_significant_digits(
+                energy_tracker.get_total_energy() / num_generate_passes
+            )
+            self.generate_emissions = extract_three_significant_digits(
+                energy_tracker.get_total_emissions() / num_generate_passes
+            )
+            LOGGER.info(f"\t+ Generation pass energy consumption: {self.generate_energy} (kWh)")
+            LOGGER.info(f"\t+ Generation pass carbon emissions: {self.generate_emissions} (kgCO2eq)")
             LOGGER.info(f"\t+ Full details in the CodeCarbon report: {os.getcwd()}/generate_codecarbon.csv")
 
     # Metrics
