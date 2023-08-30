@@ -32,11 +32,13 @@ class InferenceConfig(BenchmarkConfig):
     _target_: str = "optimum_benchmark.benchmarks.inference.benchmark.InferenceBenchmark"
 
     # benchmark options
-    memory: bool = False
-    emissions: bool = False
     duration: int = 10
     warmup_runs: int = 10
-    benchmark_duration: Optional[int] = None
+    benchmark_duration: Optional[int] = None  # deprecated
+
+    # additional/optional metrics
+    memory: bool = False
+    energy: bool = False
 
     # input options
     input_shapes: Dict = field(
@@ -91,7 +93,8 @@ class InferenceConfig(BenchmarkConfig):
             )
             self.duration = self.benchmark_duration
 
-        if self.emissions:
+        if self.energy:
             LOGGER.warning(
-                "The emissions tracker will track energy of available devices so make sure you isolate the benchmarking environment."
+                "The CodeCarbon tracker will track energy of available devices. "
+                "Pleas Make sure you isolate your benchmarking environment."
             )
