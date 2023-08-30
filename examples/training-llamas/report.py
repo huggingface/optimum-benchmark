@@ -76,6 +76,7 @@ def format_row(row, style=""):
         formated_row.append(format_element(element, style=style))
     return formated_row
 
+
 def get_short_report(training_report):
     short_columns = {
         "backend.quantization_strategy": "Quantization Scheme",
@@ -102,6 +103,7 @@ def get_rich_table(short_report):
 
     return rich_table
 
+
 def get_throughput_plot(short_report):
     # for each quantization scheme we plot the throughput vs batch size
     fig, ax = plt.subplots()
@@ -126,40 +128,43 @@ def get_throughput_plot(short_report):
 def generate_report():
     parser = ArgumentParser()
     parser.add_argument(
-        "--experiments",
+        "--experiments-folder",
         "-e",
-        nargs="*",
         type=Path,
         required=True,
         help="The folder containing the results of experiments.",
     )
     parser.add_argument(
         "--report-name",
-        "-n",
+        "-r",
         type=str,
         required=False,
         help="The name of the report.",
     )
 
     args = parser.parse_args()
-    experiments_folders = args.experiments
+    experiments_folders = args.experiments_folder
+    if args.report_name:
+        report_folder = f"artifacts/{args.report_name}"
+    else:
+        report_folder = "artifacts"
+    Path(report_folder).mkdir(parents=True, exist_ok=True)
 
     # gather experiments results
-    training_experiments = [gather_training_report(experiment) for experiment in experiments_folders]
-    training_report = pd.concat(training_experiments, axis=0)
+    training_report = gather_training_report(experiments_folders)
     training_report.sort_values(by="training.throughput(samples/s)", ascending=False, inplace=True)
-    training_report.to_csv("artifacts/full_report.csv")
+    training_report.to_csv(f"{report_folder}/full_report.csv")
 
     short_report = get_short_report(training_report)
-    short_report.to_csv("artifacts/short_report.csv")
+    short_report.to_csv(f"{report_folder}/short_report.csv")
 
     throughput_plot = get_throughput_plot(short_report)
-    throughput_plot.savefig("artifacts/throughput_plot.png")
+    throughput_plot.savefig(f"{report_folder}/throughput_plot.png")
 
     rich_table = get_rich_table(short_report)
     console = Console(record=True)
     console.print(rich_table, justify="center")
-    console.save_svg("artifacts/rich_table.svg", theme=MONOKAI, title="Training Report")
+    console.save_svg(f"{report_folder}/rich_table.svg", theme=MONOKAI, title="Training Report")
 
 
 if __name__ == "__main__":
