@@ -369,18 +369,8 @@ def main_export(
     )
 
     # for the post processing later we don't wanna keep models
-    if len(models_and_onnx_configs) == 2:
-        models_and_onnx_configs = {
-            "decoder_model": ("dummy_decoder_model_object", models_and_onnx_configs["decoder_model"][1]),
-            "decoder_with_past_model": (
-                "dummy_decoder_with_past_model_object",
-                models_and_onnx_configs["decoder_with_past_model"][1],
-            ),
-        }
-    else:
-        models_and_onnx_configs = {
-            "model": ("dummy_model", models_and_onnx_configs["model"][1]),
-        }
+    for key in models_and_onnx_configs.keys():
+        models_and_onnx_configs[key] = ("dummy_model", models_and_onnx_configs[key][1])
 
     return onnx_config, models_and_onnx_configs
 
