@@ -68,8 +68,7 @@ def map_from_synonym(task: str) -> str:
     return task
 
 
-# adapted from https://github.com/huggingface/optimum/blob/main/optimum/exporters/tasks.py
-# without torch dependency
+# adapted from https://github.com/huggingface/optimum/blob/main/optimum/exporters/tasks.py without torch dependency
 def infer_task_from_model_name_or_path(
     model_name_or_path: str, subfolder: str = "", revision: Optional[str] = None
 ) -> str:

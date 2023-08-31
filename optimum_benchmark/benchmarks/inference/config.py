@@ -9,14 +9,8 @@ from ..base import BenchmarkConfig
 
 LOGGER = getLogger("inference")
 
-OmegaConf.register_new_resolver(
-    "can_generate",
-    lambda task: task in TEXT_GENERATION_TASKS,
-)
-OmegaConf.register_new_resolver(
-    "can_diffuse",
-    lambda task: task in DIFFUSION_TASKS,
-)
+OmegaConf.register_new_resolver("can_generate", lambda task: task in TEXT_GENERATION_TASKS)
+OmegaConf.register_new_resolver("can_diffuse", lambda task: task in DIFFUSION_TASKS)
 
 GENERATE_CONFIG = {
     "max_new_tokens": 100,
@@ -38,10 +32,13 @@ class InferenceConfig(BenchmarkConfig):
     _target_: str = "optimum_benchmark.benchmarks.inference.benchmark.InferenceBenchmark"
 
     # benchmark options
-    memory: bool = False
     duration: int = 10
     warmup_runs: int = 10
-    benchmark_duration: Optional[int] = None
+    benchmark_duration: Optional[int] = None  # deprecated
+
+    # additional/optional metrics
+    memory: bool = False
+    energy: bool = False
 
     # input options
     input_shapes: Dict = field(
@@ -89,7 +86,7 @@ class InferenceConfig(BenchmarkConfig):
             self.generate_kwargs["max_new_tokens"] = self.new_tokens
             self.generate_kwargs["min_new_tokens"] = self.new_tokens
 
-        if self.benchmark_duration:
+        if self.benchmark_duration is not None:
             LOGGER.warning(
                 "The `benchmark_duration` option is deprecated, please use `duration` instead. "
                 "`duration` will be set to the value of `benchmark_duration`."

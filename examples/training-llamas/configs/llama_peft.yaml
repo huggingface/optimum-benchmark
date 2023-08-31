@@ -1,0 +1,40 @@
+defaults:
+  - backend: pytorch # default backend
+  - benchmark: training # default benchmark
+  - experiment # inheriting from experiment config
+  - _self_ # for hydra 1.1 compatibility
+  - override hydra/job_logging: colorlog # colorful logging
+  - override hydra/hydra_logging: colorlog # colorful logging
+
+hydra:
+  run:
+    dir: experiments/${experiment_name}_batch_size(${benchmark.training_arguments.per_device_train_batch_size})
+  sweep:
+    dir: experiments/${experiment_name}_batch_size(${benchmark.training_arguments.per_device_train_batch_size})
+  job:
+    chdir: true # to change the working directory during the run/sweep directory
+    env_set:
+      CUDA_VISIBLE_DEVICES: 1
+  sweeper:
+    max_batch_size: 1
+    params:
+      benchmark.training_arguments.per_device_train_batch_size: 1,2,4,8,16
+
+experiment_name: llama_peft
+model: meta-llama/Llama-2-7b-hf
+device: cuda:0
+
+backend:
+  torch_dtype: float16
+  peft_strategy: lora
+  peft_config:
+    task_type: CAUSAL_LM
+
+benchmark:
+  warmup_steps: 40
+  dataset_shapes:
+    dataset_size: 620
+    sequence_length: 256
+  training_arguments:
+    max_steps: 100
+    per_device_train_batch_size: null

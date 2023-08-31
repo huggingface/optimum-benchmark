@@ -34,7 +34,7 @@ jobs:
         run: docker run
           --rm
           --entrypoint /bin/bash
-          --gpus all
+          --gpus '"device=0,1"'
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
           optimum-benchmark-gpu

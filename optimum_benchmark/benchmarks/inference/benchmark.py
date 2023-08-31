@@ -1,3 +1,4 @@
+import os
 import statistics
 from logging import getLogger
 from typing import TYPE_CHECKING, List
@@ -5,10 +6,11 @@ from typing import TYPE_CHECKING, List
 from pandas import DataFrame
 
 from ...generators.input_generator import InputGenerator
+from ...trackers.energy import EnergyTracker
 from ...trackers.latency import latency_tracker_class_for_backend
 from ...trackers.memory import memory_tracker_class_for_backend
 from ..base import Benchmark
-from ..utils import three_significant_digits_wrapper
+from ..utils import extract_three_significant_digits, three_significant_digits_wrapper
 from .config import InferenceConfig
 
 if TYPE_CHECKING:
@@ -22,8 +24,14 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
 
     def __init__(self):
         # initialize inference results
+        self.forward_energy: float = 0
+        self.forward_emissions: float = 0
         self.forward_peak_memory: int = 0
         self.forward_latencies: List[float] = []
+
+        self.generate_energy: float = 0
+        self.generate_emissions: float = 0
+        self.generate_peak_memory: int = 0
         self.generate_latencies: List[float] = []
 
     def configure(self, config: "InferenceConfig"):
@@ -35,8 +43,8 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
 
         self.input_generator = InputGenerator(
             task=backend.task,
-            input_shapes=self.config.input_shapes,
             pretrained_config=backend.pretrained_config,
+            input_shapes=self.config.input_shapes,
         )
 
         # run forward pass tracking
@@ -47,9 +55,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             self.run_generate_tracking(backend)
 
     def run_forward_tracking(self, backend: "Backend") -> None:
-        forward_input = self.input_generator.generate(
-            mode="forward",
-        )
+        forward_input = self.input_generator.generate(mode="forward")
 
         # TODO: can be handled by the backend later
         for key, value in forward_input.items():
@@ -77,16 +83,33 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         if self.config.memory:
             LOGGER.info("\t+ Tracking forward pass peak memory")
             memory_tracker = memory_tracker_class_for_backend[backend.config.name](backend)
-            with memory_tracker.track(interval=self.config.duration // 100):
+            with memory_tracker.track(interval=self.forward_latency / 10):
                 _ = backend.forward(forward_input)
 
             self.forward_peak_memory = memory_tracker.get_peak_memory()
             LOGGER.info(f"\t+ Forward pass peak memory: {self.forward_peak_memory} (MB)")
 
+        if self.config.energy:
+            LOGGER.info("\t+ Tracking forward pass energy consumption")
+            num_forward_passes = 0
+            energy_tracker = EnergyTracker()
+            with energy_tracker.track(interval=1, file_prefix="forward"):
+                while energy_tracker.get_elapsed_time() < self.config.duration:
+                    _ = backend.forward(forward_input, **self.config.forward_kwargs)
+                    num_forward_passes += 1
+
+            self.forward_energy = extract_three_significant_digits(
+                energy_tracker.get_total_energy() / num_forward_passes
+            )
+            self.forward_emissions = extract_three_significant_digits(
+                energy_tracker.get_total_emissions() / num_forward_passes
+            )
+            LOGGER.info(f"\t+ Forward pass energy consumption: {self.forward_energy} (kWh)")
+            LOGGER.info(f"\t+ Forward pass carbon emissions: {self.forward_emissions} (kgCO2eq)")
+            LOGGER.info(f"\t+ Full details in the CodeCarbon report: {os.getcwd()}/forward_codecarbon.csv")
+
     def run_generate_tracking(self, backend: "Backend") -> None:
-        generate_input = self.input_generator.generate(
-            mode="generate",
-        )
+        generate_input = self.input_generator.generate(mode="generate")
 
         # TODO: can be handled by the backend later
         for key, value in generate_input.items():
@@ -95,25 +118,47 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             generate_input[key] = value.to(backend.device)
 
         LOGGER.info("\t+ Warming up the generation pass")
-        _ = backend.generate(
-            input=generate_input,
-            **self.config.generate_kwargs,
-        )
+        _ = backend.generate(input=generate_input, **self.config.generate_kwargs)
 
         LOGGER.info("\t+ Tracking generation latency and throughput")
         latency_tracker = latency_tracker_class_for_backend[backend.config.name](backend)
         while sum(self.generate_latencies) < self.config.duration:
             with latency_tracker.track():
-                _ = backend.generate(
-                    generate_input,
-                    **self.config.generate_kwargs,
-                )
+                _ = backend.generate(generate_input, **self.config.generate_kwargs)
             self.generate_latencies = latency_tracker.get_latencies()
 
         LOGGER.info(f"\t+ Generation pass latency: {self.generate_latency:.2e} (s)")
         LOGGER.info(f"\t+ Generation pass throughput: {self.generate_throughput:.2f} (tokens/s)")
 
+        if self.config.memory:
+            LOGGER.info("\t+ Tracking generation pass peak memory")
+            memory_tracker = memory_tracker_class_for_backend[backend.config.name](backend)
+            with memory_tracker.track(interval=self.generate_latency / 10):
+                _ = backend.generate(generate_input, **self.config.generate_kwargs)
+            self.generate_peak_memory = memory_tracker.get_peak_memory()
+            LOGGER.info(f"\t+ Generation pass peak memory: {self.generate_peak_memory} (MB)")
+
+        if self.config.energy:
+            LOGGER.info("\t+ Tracking forward pass energy consumption")
+            num_generate_passes = 0
+            energy_tracker = EnergyTracker()
+            with energy_tracker.track(interval=1, file_prefix="generate"):
+                while energy_tracker.get_elapsed_time() < self.config.duration:
+                    _ = backend.generate(generate_input, **self.config.generate_kwargs)
+                    num_generate_passes += 1
+
+            self.generate_energy = extract_three_significant_digits(
+                energy_tracker.get_total_energy() / num_generate_passes
+            )
+            self.generate_emissions = extract_three_significant_digits(
+                energy_tracker.get_total_emissions() / num_generate_passes
+            )
+            LOGGER.info(f"\t+ Generation pass energy consumption: {self.generate_energy} (kWh)")
+            LOGGER.info(f"\t+ Generation pass carbon emissions: {self.generate_emissions} (kgCO2eq)")
+            LOGGER.info(f"\t+ Full details in the CodeCarbon report: {os.getcwd()}/generate_codecarbon.csv")
+
     # Metrics
+    ## Forward pass metrics
     @property
     @three_significant_digits_wrapper
     def forward_latency(self) -> float:
@@ -122,15 +167,9 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
     @property
     @three_significant_digits_wrapper
     def forward_throughput(self) -> float:
-        if self.config.can_diffuse:
-            return (
-                self.config.input_shapes["batch_size"]
-                * self.config.forward_kwargs["num_images_per_prompt"]
-                / self.forward_latency
-            )
-        else:
-            return self.config.input_shapes["batch_size"] / self.forward_latency
+        return self.config.input_shapes["batch_size"] / self.forward_latency
 
+    ## Generation pass metrics
     @property
     @three_significant_digits_wrapper
     def generate_latency(self) -> float:
@@ -145,22 +184,42 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             / self.generate_latency
         )
 
+    ## Diffusion pass metrics
+    @property
+    @three_significant_digits_wrapper
+    def diffusion_throughput(self) -> float:
+        return (
+            self.config.input_shapes["batch_size"]
+            * self.config.forward_kwargs["num_images_per_prompt"]
+            / self.forward_latency
+        )
+
     def get_results_df(self) -> DataFrame:
         results_dict = {}
 
         results_dict["forward.latency(s)"] = self.forward_latency
+        results_dict["forward.throughput(samples/s)"] = self.forward_throughput
 
         if self.config.can_diffuse:
-            results_dict["forward.throughput(images/s)"] = self.forward_throughput
-        else:
-            results_dict["forward.throughput(samples/s)"] = self.forward_throughput
+            results_dict["diffusion.throughput(images/s)"] = self.diffusion_throughput
 
         if self.config.memory:
             results_dict["forward.peak_memory(MB)"] = self.forward_peak_memory
 
+        if self.config.energy:
+            results_dict["forward.energy_consumption(kWh)"] = self.forward_energy
+            results_dict["forward.carbon_emissions(kgCO2eq)"] = self.forward_emissions
+
         if self.config.can_generate:
             results_dict["generate.latency(s)"] = self.generate_latency
             results_dict["generate.throughput(tokens/s)"] = self.generate_throughput
+
+            if self.config.memory:
+                results_dict["generate.peak_memory(MB)"] = self.generate_peak_memory
+
+            if self.config.energy:
+                results_dict["generate.energy_consumption(kWh)"] = self.generate_energy
+                results_dict["generate.carbon_emissions(kgCO2eq)"] = self.generate_emissions
 
         return DataFrame(results_dict, index=[0])
 

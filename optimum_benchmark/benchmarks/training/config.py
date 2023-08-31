@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from logging import getLogger
-from typing import Dict
+from typing import Any, Dict
 
 from omegaconf import OmegaConf
 
@@ -21,7 +21,7 @@ class TrainingConfig(BenchmarkConfig):
     warmup_steps: int = 40  # still thinks this too high
 
     # dataset options
-    dataset_shapes: Dict = field(
+    dataset_shapes: Dict[str, Any] = field(
         default_factory=lambda: {
             # used with all tasks
             "dataset_size": 500,
@@ -38,7 +38,7 @@ class TrainingConfig(BenchmarkConfig):
     )
 
     # training options
-    training_arguments: Dict = field(
+    training_arguments: Dict[str, Any] = field(
         default_factory=lambda: {
             # these are arguments that we set by default
             # but can be overwritten by the user

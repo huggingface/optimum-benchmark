@@ -76,6 +76,27 @@ class ExperimentConfig:
         }
     )
 
+    def __post_init__(self) -> None:
+        if "cuda" in self.device:
+            import torch
+
+            device_count = torch.cuda.device_count()
+            CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", None)
+
+            if device_count > 1 and CUDA_VISIBLE_DEVICES is None:
+                raise ValueError(
+                    "Multiple GPUs detected but CUDA_VISIBLE_DEVICES is not set. "
+                    "This means that code might allocate resources from GPUs that are not intended to be used. "
+                    "Please set CUDA_VISIBLE_DEVICES to the desired GPU ids."
+                )
+
+            gpus = []
+            for i in range(torch.cuda.device_count()):
+                gpus.append(torch.cuda.get_device_name(i))
+
+            # we handle this in post_init instead of a resolver to avoid importing torch before the experiment starts
+            self.environment["gpu"] = ", ".join(gpus)
+
 
 # Register configurations
 cs = ConfigStore.instance()
