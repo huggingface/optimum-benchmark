@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List
 import torch
 from torch.distributed.elastic.multiprocessing.errors import record
 from torch.distributed.launcher.api import LaunchConfig, elastic_launch
-from transformers import BitsAndBytesConfig, Trainer, TrainingArguments, GPTQConfig
+from transformers import BitsAndBytesConfig, GPTQConfig, Trainer, TrainingArguments
 from transformers.utils.fx import symbolic_trace
 
 if TYPE_CHECKING:
@@ -170,24 +170,41 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             )
 
         if self.config.quantization_strategy is not None:
-            LOGGER.info("\t+ Materializing model on cpu for quantization to not OOM")
-            self.pretrained_model.to_empty(device="cpu")
-            LOGGER.info("\t+ Randomizing model weights")
-            randomize_weights(self.pretrained_model)
-            LOGGER.info("\t+ Processing BnB config")
-            from accelerate.utils import BnbQuantizationConfig, load_and_quantize_model
+            if self.config.quantization_strategy == "bnb":
+                from accelerate.utils import (
+                    BnbQuantizationConfig,
+                    load_and_quantize_model,
+                )
 
-            bnb_quantization_config = BnbQuantizationConfig(
-                **self.config.quantization_config,
-                torch_dtype=self.config.torch_dtype,
-                keep_in_fp32_modules=self.pretrained_model.keep_in_fp32_modules
-                if hasattr(self.pretrained_model, "keep_in_fp32_modules")
-                else None,
-            )
-            LOGGER.info("\t+ Quantizing model while on cpu and dispatching to device")
-            self.pretrained_model = load_and_quantize_model(
-                self.pretrained_model, bnb_quantization_config, device_map=self.config.device_map or self.device
-            )
+                LOGGER.info("\t+ Materializing model on cpu for quantization to not OOM")
+                self.pretrained_model.to_empty(device="cpu")
+                LOGGER.info("\t+ Randomizing model weights")
+                randomize_weights(self.pretrained_model)
+                LOGGER.info("\t+ Processing BnBQuantizationConfig")
+                bnb_quantization_config = BnbQuantizationConfig(
+                    **self.config.quantization_config,
+                    torch_dtype=self.config.torch_dtype,
+                    keep_in_fp32_modules=getattr(self.pretrained_model, "keep_in_fp32_modules", None),
+                )
+                LOGGER.info("\t+ Quantizing model while on cpu")
+                self.pretrained_model = load_and_quantize_model(self.pretrained_model, bnb_quantization_config)
+            elif self.config.quantization_strategy == "gptq":
+                LOGGER.info("\t+ Processing GPTQ config")
+                from optimum.gptq import GPTQQuantizer
+
+                LOGGER.info("\t+ Materializing model on cpu for quantization to not OOM")
+                self.pretrained_model.to_empty(device="cpu")
+                LOGGER.info("\t+ Randomizing model weights")
+                randomize_weights(self.pretrained_model)
+                LOGGER.info("\t+ Creating GPTQQuantizer")
+                gptq_quantizer = GPTQQuantizer(**self.config.quantization_config)
+                LOGGER.info("\t+ Quantizing model while on cpu")
+                gptq_quantizer.quantize_model(self.pretrained_model, self.model)
+                self.pretrained_model.config.quantization_config = GPTQConfig.from_dict(gptq_quantizer.to_dict())
+                self.pretrained_model._is_quantized_training_enabled = True
+
+            LOGGER.info(f"\t+ Moving model to target device: {self.device}")
+            self.pretrained_model.to_empty(device=self.device)
         else:
             LOGGER.info(f"\t+ Materializing model on device: {self.device}")
             self.pretrained_model.to_empty(device=self.device)
