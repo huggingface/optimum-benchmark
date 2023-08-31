@@ -23,11 +23,11 @@ hydra-joblib-launcher==1.2.0
 
 # system
 psutil==5.9.0
+codecarbon==2.3.1
 
 # reporting
 flatten_dict
 matplotlib
 seaborn
-psutil
 pandas
 rich

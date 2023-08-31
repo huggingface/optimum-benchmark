@@ -19,6 +19,7 @@ hydra-joblib-launcher==1.2.0
 # system
 psutil==5.9.0
 py3nvml==0.2.7
+codecarbon==2.3.1
 
 # reporting
 flatten_dict
