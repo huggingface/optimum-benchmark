@@ -16,6 +16,8 @@ hydra:
     dir: sweeps/${experiment_name} # where to save a sweep's output
   job:
     chdir: true # to change the working directory during the run/sweep directory
+    env_set:
+      - CUDA_VISIBLE_DEVICES=0 # avoids using multiple GPUs unless we want to
   launcher:
     n_jobs: 2
     prefer: processes # use processes instead of threads
