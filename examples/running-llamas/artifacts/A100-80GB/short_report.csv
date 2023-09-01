@@ -1,10 +1,16 @@
-experiment_name,Quantization Scheme,Batch Size,Forward Throughput (samples/s),Forward Peak Memory (MB),Generate Throughput (tokens/s),Generate Peak Memory (MB),GPU
-llama_baseline,,4,49.1,18791,107.0,18791,NVIDIA A100-SXM4-80GB
-llama_baseline,,16,44.9,28119,352.0,28119,NVIDIA A100-SXM4-80GB
-llama_gptq,gptq,16,38.6,18952,278.0,18952,NVIDIA A100-SXM4-80GB
-llama_bnb,bnb,16,37.8,18921,225.0,18921,NVIDIA A100-SXM4-80GB
-llama_bnb,bnb,4,37.4,9687,56.1,9687,NVIDIA A100-SXM4-80GB
-llama_gptq,gptq,4,35.4,9624,127.0,9624,NVIDIA A100-SXM4-80GB
-llama_baseline,,1,28.1,16463,30.8,16463,NVIDIA A100-SXM4-80GB
-llama_gptq,gptq,1,27.2,7053,34.4,7242,NVIDIA A100-SXM4-80GB
-llama_bnb,bnb,1,14.3,7416,18.8,7418,NVIDIA A100-SXM4-80GB
+experiment_name,Quantization Scheme,Batch Size,Forward Throughput (samples/s),Forward Peak Memory (MB),Generate Throughput (tokens/s),Generate Peak Memory (MB)
+llama_baseline,,16,19.1,28107,372.0,28107
+llama_baseline,,8,19.0,21891,251.0,21893
+llama_gptq,gptq,16,18.9,18938,282.0,18938
+llama_baseline,,4,18.8,18779,133.0,18779
+llama_bnb,bnb,16,18.7,18905,236.0,18905
+llama_gptq,gptq,8,18.3,12718,186.0,12718
+llama_bnb,bnb,8,18.0,12689,140.0,12779
+llama_baseline,,2,17.9,17238,68.3,17238
+llama_gptq,gptq,4,17.2,9608,127.0,9608
+llama_baseline,,1,16.9,16449,36.4,16451
+llama_bnb,bnb,4,16.7,9671,72.7,9671
+llama_gptq,gptq,2,15.9,8100,69.9,8100
+llama_bnb,bnb,2,14.6,8098,37.0,8098
+llama_gptq,gptq,1,13.9,7037,36.1,7226
+llama_bnb,bnb,1,11.9,7400,24.9,7402

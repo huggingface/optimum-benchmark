@@ -7,6 +7,8 @@ _diffusers_available = importlib.util.find_spec("diffusers") is not None
 _optimum_available = importlib.util.find_spec("optimum") is not None
 _torch_available = importlib.util.find_spec("torch") is not None
 _py3nvml_available = importlib.util.find_spec("py3nvml") is not None
+_torch_distributed_available = importlib.util.find_spec("torch.distributed")
+_onnxruntime_available = importlib.util.find_spec("onnxruntime") is not None
 _openvino_available = importlib.util.find_spec("openvino") is not None
 _neural_compressor_available = importlib.util.find_spec("neural_compressor") is not None
 
@@ -17,6 +19,10 @@ def is_py3nvml_available():
 
 def is_torch_available():
     return _torch_available
+
+
+def is_torch_distributed_available():
+    return _torch_distributed_available
 
 
 def torch_version():

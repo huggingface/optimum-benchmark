@@ -14,15 +14,14 @@ hydra:
   job:
     chdir: true
     env_set:
-      CUDA_VISIBLE_DEVICES: 0
+      CUDA_VISIBLE_DEVICES: 2
   sweeper:
-    max_batch_size: 1
     params:
-      benchmark.input_shapes.batch_size: 1,4,16
+      benchmark.input_shapes.batch_size: 1,2,4,8,16
 
 experiment_name: llama_baseline
 model: meta-llama/Llama-2-7b-hf
-device: cuda:0
+device: cuda
 
 backend:
   torch_dtype: float16
