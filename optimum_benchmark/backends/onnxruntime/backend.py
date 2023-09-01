@@ -337,13 +337,13 @@ class ORTBackend(Backend[ORTConfig]):
         )
 
         if self.config.use_ddp:
-            from torch.distributed.elastic.multiprocessing.errors import record
+            # from torch.distributed.elastic.multiprocessing.errors import record
             from torch.distributed.launcher.api import LaunchConfig, elastic_launch
 
             # For DDP, we log only the state of the first rank as transformers does.
             # since the batch size used in measuring the throughput is the one of world size.
             ddp_config = LaunchConfig(**self.config.ddp_config)
-            results = elastic_launch(config=ddp_config, entrypoint=record(training_worker))(worker_args)[0]
+            results = elastic_launch(config=ddp_config, entrypoint=training_worker)(worker_args)[0]
         else:
             # For DP, we can still use training_worker, simply not wrapped by the elastic_launch class.
             results = training_worker(worker_args)
