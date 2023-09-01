@@ -7,8 +7,8 @@ from pandas import DataFrame
 
 from ...generators.input_generator import InputGenerator
 from ...trackers.energy import EnergyTracker
-from ...trackers.latency import latency_tracker_class_for_backend
-from ...trackers.memory import memory_tracker_class_for_backend
+from ...trackers.latency import LatencyTracker
+from ...trackers.memory import MemoryTracker
 from ..base import Benchmark
 from ..utils import extract_three_significant_digits, three_significant_digits_wrapper
 from .config import InferenceConfig
@@ -71,21 +71,19 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             _ = backend.forward(forward_input, **self.config.forward_kwargs)
 
         LOGGER.info("\t+ Tracking forward pass latency and throughput")
-        latency_tracker = latency_tracker_class_for_backend[backend.config.name](backend)
+        latency_tracker = LatencyTracker(device=backend.device, backend=backend.NAME)
         while sum(self.forward_latencies) < self.config.duration:
             with latency_tracker.track():
                 _ = backend.forward(forward_input, **self.config.forward_kwargs)
             self.forward_latencies = latency_tracker.get_latencies()
-
         LOGGER.info(f"\t+ Forward pass latency: {self.forward_latency:.2e} (s)")
         LOGGER.info(f"\t+ Forward pass throughput: {self.forward_throughput:.2f} (samples/s)")
 
         if self.config.memory:
             LOGGER.info("\t+ Tracking forward pass peak memory")
-            memory_tracker = memory_tracker_class_for_backend[backend.config.name](backend)
+            memory_tracker = MemoryTracker(device=backend.device)
             with memory_tracker.track(interval=self.forward_latency / 10):
                 _ = backend.forward(forward_input)
-
             self.forward_peak_memory = memory_tracker.get_peak_memory()
             LOGGER.info(f"\t+ Forward pass peak memory: {self.forward_peak_memory} (MB)")
 
@@ -121,18 +119,17 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         _ = backend.generate(input=generate_input, **self.config.generate_kwargs)
 
         LOGGER.info("\t+ Tracking generation latency and throughput")
-        latency_tracker = latency_tracker_class_for_backend[backend.config.name](backend)
+        latency_tracker = LatencyTracker(device=backend.device, backend=backend.NAME)
         while sum(self.generate_latencies) < self.config.duration:
             with latency_tracker.track():
                 _ = backend.generate(generate_input, **self.config.generate_kwargs)
             self.generate_latencies = latency_tracker.get_latencies()
-
         LOGGER.info(f"\t+ Generation pass latency: {self.generate_latency:.2e} (s)")
         LOGGER.info(f"\t+ Generation pass throughput: {self.generate_throughput:.2f} (tokens/s)")
 
         if self.config.memory:
             LOGGER.info("\t+ Tracking generation pass peak memory")
-            memory_tracker = memory_tracker_class_for_backend[backend.config.name](backend)
+            memory_tracker = MemoryTracker(device=backend.device)
             with memory_tracker.track(interval=self.generate_latency / 10):
                 _ = backend.generate(generate_input, **self.config.generate_kwargs)
             self.generate_peak_memory = memory_tracker.get_peak_memory()

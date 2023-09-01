@@ -15,7 +15,7 @@ from .backends.openvino.config import OVConfig
 from .backends.pytorch.config import PyTorchConfig
 from .benchmarks.inference.config import InferenceConfig
 from .benchmarks.training.config import TrainingConfig
-from .env_utils import get_cpu, get_cpu_ram_mb
+from .env_utils import get_cpu, get_cpu_ram_mb, get_gpus
 from .import_utils import (
     accelerate_version,
     diffusers_version,
@@ -73,29 +73,30 @@ class ExperimentConfig:
             "cpu": get_cpu(),
             "cpu_count": os.cpu_count(),
             "cpu_ram_mb": get_cpu_ram_mb(),
+            "gpus": get_gpus(),
         }
     )
 
     def __post_init__(self) -> None:
-        if "cuda" in self.device:
-            import torch
-
-            device_count = torch.cuda.device_count()
+        # if the number of available GPUs is 1, then we have no problem
+        # torch and nvidia-smi will both index it as 0, otherwise:
+        if "cuda" in self.device and len(self.environment["gpus"]) > 1:
             CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", None)
-
-            if device_count > 1 and CUDA_VISIBLE_DEVICES is None:
+            if CUDA_VISIBLE_DEVICES is None:
                 raise ValueError(
                     "Multiple GPUs detected but CUDA_VISIBLE_DEVICES is not set. "
                     "This means that code might allocate resources from GPUs that are not intended to be used. "
-                    "Please set CUDA_VISIBLE_DEVICES to the desired GPU ids."
+                    "Please set `CUDA_VISIBLE_DEVICES` to the desired GPU ids."
                 )
-
-            gpus = []
-            for i in range(torch.cuda.device_count()):
-                gpus.append(torch.cuda.get_device_name(i))
-
-            # we handle this in post_init instead of a resolver to avoid importing torch before the experiment starts
-            self.environment["gpu"] = ", ".join(gpus)
+            CUDA_DEVICE_ORDER = os.environ.get("CUDA_DEVICE_ORDER", None)
+            if CUDA_DEVICE_ORDER is None or CUDA_DEVICE_ORDER != "PCI_BUS_ID":
+                LOGGER.warning(
+                    "Multiple GPUs detected but CUDA_DEVICE_ORDER is not set. "
+                    "This means that code might allocate resources from the wrong GPUs even if CUDA_VISIBLE_DEVICES is set. "
+                    "Pytorch uses the `FASTEST_FIRST` order by default, which is not guaranteed to be the same as nvidia-smi. "
+                    "`CUDA_DEVICE_ORDER` will be set to `PCI_BUS_ID` to ensure that the GPUs are allocated in the same order as nvidia-smi. "
+                )
+                os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 
 
 # Register configurations

@@ -6,6 +6,8 @@ from typing import Optional
 
 import psutil
 
+from .import_utils import is_py3nvml_available
+
 LOGGER = getLogger("utils")
 
 
@@ -36,3 +38,20 @@ def get_cpu() -> Optional[str]:
 
 def get_cpu_ram_mb():
     return bytes_to_mega_bytes(psutil.virtual_memory().total)
+
+
+def get_gpus():
+    if is_py3nvml_available():
+        import py3nvml.py3nvml as nvml
+
+        gpus = []
+        nvml.nvmlInit()
+        device_count = nvml.nvmlDeviceGetCount()
+        for i in range(device_count):
+            handle = nvml.nvmlDeviceGetHandleByIndex(i)
+            gpus.append(nvml.nvmlDeviceGetName(handle))
+        nvml.nvmlShutdown()
+    else:
+        gpus = ["py3nvml not available"]
+
+    return gpus

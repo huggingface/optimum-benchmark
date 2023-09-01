@@ -98,29 +98,26 @@ class Backend(Generic[BackendConfigT], ABC):
 
     def check_initial_isolation(self) -> None:
         if self.device.type == "cuda":
-            cuda_devices = os.environ.get("CUDA_VISIBLE_DEVICES", None)
-            if cuda_devices is None:
-                LOGGER.warning(
-                    "Asked to check the initial device(s) isolation, but the variable CUDA_VISIBLE_DEVICES was not set. "
-                    "Defaulting to checking the main device only."
-                )
-                device_ids = {self.device.index if self.device.index is not None else 0}
+            # at this point we are sure that CUDA_VISIBLE_DEVICES is set if there are multiple GPUs available on the machine
+            CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", None)
+            if CUDA_VISIBLE_DEVICES is None:
+                device_ids = [self.device.index if self.device.index is not None else 0]
             else:
-                device_ids = {int(device_index) for device_index in cuda_devices.split(",")}
+                device_ids = list(map(int, CUDA_VISIBLE_DEVICES.split(",")))
+
+            LOGGER.info(f"\t+ Checking initial device(s) isolation of CUDA device(s): {device_ids}")
             check_no_process_is_running_on_cuda_device(device_ids)
 
     def check_continuous_isolation(self) -> None:
         if self.device.type == "cuda":
-            cuda_devices = os.environ.get("CUDA_VISIBLE_DEVICES")
-            if cuda_devices is None:
-                LOGGER.warning(
-                    "Asked to check the continuous device(s) isolation, but the variable CUDA_VISIBLE_DEVICES was not set. "
-                    "Defaulting to checking the main device only."
-                )
-                device_ids = {self.device.index if self.device.index is not None else 0}
+            # at this point we are sure that CUDA_VISIBLE_DEVICES is set if there are multiple GPUs available on the machine
+            CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", None)
+            if CUDA_VISIBLE_DEVICES is None:
+                device_ids = [self.device.index if self.device.index is not None else 0]
             else:
-                device_ids = {int(device_index) for device_index in cuda_devices.split(",")}
+                device_ids = list(map(int, CUDA_VISIBLE_DEVICES.split(",")))
 
+            LOGGER.info(f"\t+ Checking contineous device(s) isolation of CUDA device(s): {device_ids}")
             self.isolation_thread = Process(
                 target=check_only_this_process_is_running_on_cuda_device,
                 args=(device_ids, os.getpid()),
@@ -130,7 +127,6 @@ class Backend(Generic[BackendConfigT], ABC):
 
     def configure(self, config: BackendConfigT) -> None:
         LOGGER.info(f"Configuring {self.NAME} backend")
-        # storing config
         self.config = config
 
         # seeding backend
@@ -138,10 +134,8 @@ class Backend(Generic[BackendConfigT], ABC):
 
         # isolation options
         if self.config.initial_isolation_check:
-            LOGGER.info("\t+ Checking initial device(s) isolation")
             self.check_initial_isolation()
         if self.config.continous_isolation_check:
-            LOGGER.info("\t+ Checking contineous device(s) isolation")
             self.check_continuous_isolation()
 
         # clean up options
@@ -153,10 +147,12 @@ class Backend(Generic[BackendConfigT], ABC):
         random.seed(self.config.seed)
         np.random.seed(self.config.seed)
         torch.manual_seed(self.config.seed)
-        torch.cuda.manual_seed_all(self.config.seed)  # safe to call
-        # torch.use_deterministic_algorithms()  # might throw an error
-        # torch.backends.cudnn.deterministic = True # same as above
-        # torch.backends.cudnn.benchmark = False  # might reduce performance
+
+        if self.device.type == "cuda":
+            torch.cuda.manual_seed_all(self.config.seed)  # safe to call
+            # torch.use_deterministic_algorithms()  # might throw an error
+            # torch.backends.cudnn.deterministic = True # same as above
+            # torch.backends.cudnn.benchmark = False  # might reduce performance
 
     # compiling in openvino requires input shapes
     def prepare_for_inference(self, input_shapes: Dict[str, int]) -> Dict[str, Any]:
