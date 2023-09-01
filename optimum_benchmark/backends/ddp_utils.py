@@ -92,6 +92,6 @@ def record_if_available(func):
     if is_torch_distributed_available():
         from torch.distributed.elastic.multiprocessing.errors import record
 
-        return record()(func)
+        return record(func)
     else:
         return func
