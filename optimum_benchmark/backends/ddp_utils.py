@@ -10,6 +10,8 @@ from omegaconf import OmegaConf
 if TYPE_CHECKING:
     from transformers import TrainerState
 
+from ..import_utils import is_torch_distributed_available
+
 # from launchConfig in https://github.com/pytorch/pytorch/blob/v2.0.0/torch/distributed/launcher/api.py#L29 adjusted
 # to defaults of torch.distributed.run in https://github.com/pytorch/pytorch/blob/v2.0.0/torch/distributed/run.py#L770
 DDP_CONFIG = {
@@ -83,3 +85,13 @@ def training_worker(args) -> "TrainerState":
     trainer.train()
     LOGGER_WORKER.info("\t+ Training finished successfully")
     return trainer.state
+
+
+# a conditional decorator that is only applied if torch.distributed.elastic.multiprocessing.errors.record is available
+def record_if_available(func):
+    if is_torch_distributed_available():
+        from torch.distributed.elastic.multiprocessing.errors import record
+
+        return record(func)
+    else:
+        return func
