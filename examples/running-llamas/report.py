@@ -85,7 +85,6 @@ def get_short_report(inference_report):
         "forward.peak_memory(MB)": "Forward Peak Memory (MB)",
         "generate.throughput(tokens/s)": "Generate Throughput (tokens/s)",
         "generate.peak_memory(MB)": "Generate Peak Memory (MB)",
-        "environment.gpu": "GPU",
     }
     short_report = inference_report[list(short_columns.keys())].rename(columns=short_columns)
 
@@ -114,7 +113,9 @@ def get_throughput_plot(short_report):
     fig3, ax3 = plt.subplots()
     fig4, ax4 = plt.subplots()
 
-    short_report["Quantization Scheme"].fillna("none", inplace=True)
+    short_report["Quantization Scheme"].fillna("Unquantized", inplace=True)
+    short_report["Quantization Scheme"].replace("bnb", "BnB", inplace=True)
+    short_report["Quantization Scheme"].replace("gptq", "GPTQ", inplace=True)
 
     for quantization_scheme in short_report["Quantization Scheme"].unique():
         mask = short_report["Quantization Scheme"] == quantization_scheme
@@ -143,13 +144,13 @@ def get_throughput_plot(short_report):
             forward_memory["Batch Size"],
             forward_memory["Forward Peak Memory (MB)"],
             label=quantization_scheme,
-            marker="o",
+            marker="*",
         )
         ax4.plot(
             generate_memory["Batch Size"],
             generate_memory["Generate Peak Memory (MB)"],
             label=quantization_scheme,
-            marker="o",
+            marker="*",
         )
 
     ax1.set_xlabel("Batch Size")

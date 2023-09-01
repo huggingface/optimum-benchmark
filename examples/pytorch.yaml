@@ -5,4 +5,4 @@ defaults:
 experiment_name: pytorch
 
 model: bert-base-uncased
-device: cuda:0
+device: cuda
