@@ -19,7 +19,7 @@ TORCH_DTYPES = ["bfloat16", "float16", "float32", "auto"]
 
 GPTQ_CONFIG = {
     "bits": 4,  # because it's mandatory in gptq config, even for overriding exllama
-    "dataset": ["lorem ipsum dolor sit amet consectetur"],  # to avoid using big datasets
+    "dataset": ["lorem ipsum dolor sit amet consectetur"],  # tdefault for fast quantization
 }
 BNB_CONFIG = {
     "load_in_8bit": False,

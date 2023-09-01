@@ -16,15 +16,17 @@ The experiment management and tracking is handled using [hydra](https://hydra.cc
 
 ## Features
 
-General:
+Benchmarks:
 
-- [x] Latency and throughput tracking (default behavior)
+- [x] Inference and Training benchmarks.
+- [x] Latency and throughput tracking (default)
 - [x] Peak memory tracking (`benchmark.memory=true`)
-- [ ] Energy and carbon emissions estimation (`benchmark.energy=true`)
+- [x] Energy and carbon emissions estimation (`benchmark.energy=true`)
 - [x] Input shapes control (e.g. `benchmark.input_shapes.batch_size=8`)
-- [x] Random weights initialization (`backend.no_weights=true` practical for benchmarking big models without downloading them).
+- [x] Forward and Generation pass control (e.g. `benchmark.generate.max_new_tokens=100`, `benchmark.forward.num_images_per_prompt=4`)
+- [x] Training warmup steps (`benchmark.warmup_steps=20`)
 
-Inference:
+Backends:
 
 - [x] Pytorch backend for CPU
 - [x] Pytorch backend for CUDA
@@ -37,16 +39,17 @@ Inference:
 
 Features:
 
-- [x] Pytorch's Automatic Mixed Precision
-- [x] Optimum's BetterTransformer
-- [x] Pytorch's Dynamo compiling
-- [x] Optimum's Optimization and AutoOptimization (Onnxruntime)
+- [x] Random weights initialization (practical for benchmarking big/many models withut downloading the weights).
 - [x] Optimum's Quantization and AutoQuantization (Onnxruntime, OpenVINO, Intel Neural Compressor)
 - [x] Optimum's Calibration for Static Quantization (Onnxruntime, OpenVINO, Intel Neural Compressor)
-- [x] BitsAndBytes quantization scheme (Pytorch)
-- [x] GPTQ quantization scheme (Pytorch)
+- [x] Optimum's Optimization and AutoOptimization (Onnxruntime)
 - [x] PEFT training (Pytorch and Onnxruntime)
 - [x] DDP training (Pytorch and Onnxruntime)
+- [x] BitsAndBytes quantization scheme (Pytorch)
+- [x] Optimum's BetterTransformer (Pytorch)
+- [x] Automatic Mixed Precision (Pytorch)
+- [x] GPTQ quantization scheme (Pytorch)
+- [x] Dynamo compiling (Pytorch)
 
 ## Quickstart
 
