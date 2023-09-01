@@ -9,13 +9,19 @@ LOGGER = getLogger("latency_tracker")
 
 
 class LatencyTracker:
-    def __init__(self, backend):
-        self.device = backend.device
+    def __init__(self, device: torch.device, backend: str):
+        self.device = device
+        self.backend = backend
         self.latencies: List[float] = []
+
+        if self.device.type == "cuda" and self.backend == "pytorch":
+            # because pytorch will always see devices as 0, 1, 2, ... CUDA_VISIBLE_DEVICES doesn't matter
+            self.device_ids = list(range(torch.cuda.device_count()))
+            LOGGER.info(f"Tracked Pytorch devices: {self.device_ids}")
 
     @contextmanager
     def track(self):
-        if self.device.type == "cuda":
+        if self.device.type == "cuda" and self.backend == "pytorch":
             yield from self._cuda_latency()
         else:
             yield from self._cpu_latency()
@@ -26,11 +32,17 @@ class LatencyTracker:
     def _cuda_latency(self):
         start_event = torch.cuda.Event(enable_timing=True)
         end_event = torch.cuda.Event(enable_timing=True)
-        torch.cuda.synchronize(device=self.device)
-        start_event.record(stream=torch.cuda.Stream(device=self.device))
+        for device_index in self.device_ids:
+            torch.cuda.synchronize(device=device_index)
+        # here must record the start event after the synchronization of all devices
+        start_event.record(stream=torch.cuda.current_stream(device=self.device_ids[-1]))
         yield
-        end_event.record(stream=torch.cuda.Stream(device=self.device))
-        torch.cuda.synchronize(device=self.device)
+        for device_index in self.device_ids:
+            if device_index == self.device_ids[-1]:
+                # here we must record the end event before the synchronization of the last device
+                end_event.record(stream=torch.cuda.current_stream(device=self.device_ids[-1]))
+            torch.cuda.synchronize(device=device_index)
+
         latency_ms = start_event.elapsed_time(end_event)
         latency = latency_ms / 1e3
 
@@ -46,42 +58,3 @@ class LatencyTracker:
 
         LOGGER.debug(f"Tracked CPU latency: {latency:.2e}s")
         self.latencies.append(latency)
-
-
-class PyTorchLatencyTracker(LatencyTracker):
-    def __init__(self, backend):
-        super().__init__(backend)
-        if backend.config.device_map:
-            self.hf_device_map = backend.pretrained_model.hf_device_map
-            self.end_device = max(self.hf_device_map.values())
-            self.device_indexes = set(self.hf_device_map.values())
-        else:
-            self.hf_device_map = None
-            self.end_device = self.device
-            if self.device.type == "cuda":
-                self.device_indexes = {self.device.index if self.device.index is not None else 0}
-
-    def _cuda_latency(self):
-        start_event = torch.cuda.Event(enable_timing=True)
-        end_event = torch.cuda.Event(enable_timing=True)
-
-        for device_index in self.device_indexes:
-            torch.cuda.synchronize(device=device_index)
-        start_event.record(stream=torch.cuda.Stream(device=self.end_device))
-        yield
-        end_event.record(stream=torch.cuda.Stream(device=self.end_device))
-        for device_index in self.device_indexes:
-            torch.cuda.synchronize(device=device_index)
-        latency_ms = start_event.elapsed_time(end_event)
-        latency = latency_ms / 1e3
-
-        LOGGER.debug(f"Tracked CUDA latency: {latency:.2e}s")
-        self.latencies.append(latency)
-
-
-latency_tracker_class_for_backend = {
-    "neural_compressor": LatencyTracker,
-    "onnxruntime": LatencyTracker,
-    "openvino": LatencyTracker,
-    "pytorch": PyTorchLatencyTracker,
-}

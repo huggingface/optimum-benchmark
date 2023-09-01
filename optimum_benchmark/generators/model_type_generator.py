@@ -1,6 +1,7 @@
 from logging import getLogger
 from typing import Dict, List
 
+import torch
 from optimum.exporters.tasks import TasksManager
 from transformers import PretrainedConfig
 
@@ -30,4 +31,9 @@ class ModelTypeGenerator:
         )(pretrained_config)
 
     def generate(self) -> Dict[str, int]:
-        return self.onnx_config.generate_dummy_inputs(framework="pt", **self.shapes)
+        dummy_input = self.onnx_config.generate_dummy_inputs(framework="pt", **self.shapes)
+
+        if "attention_mask" in dummy_input:
+            dummy_input["attention_mask"] = torch.ones_like(dummy_input["attention_mask"])
+
+        return dummy_input

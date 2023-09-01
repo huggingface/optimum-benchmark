@@ -12,11 +12,20 @@ from ..peft_utils import PEFT_CONFIGS, PEFT_TASKS_TYPES
 
 def infer_device_id(device: str) -> int:
     """Infer the device id from the given device string."""
-    if device == "cuda":
-        # torch.cuda.current_device() will always return 0 unless torch.cuda.set_device() is called
-        return 0
-    elif "cuda" in device:
-        return int(device.split(":")[1])
+    if "cuda" in device:
+        # here we resolve conflicts between CUDA_VISIBLE_DEVICES and pytorch's indexing
+        # e.g. CUDA_VISIBLE_DEVICES=1 and device=cuda:0 should return 1
+        CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", None)
+        if CUDA_VISIBLE_DEVICES is None:
+            if ":" in device:
+                return int(device.split(":")[1])
+            else:
+                return 0
+        else:
+            if ":" in device:
+                return int(CUDA_VISIBLE_DEVICES.split(",")[int(device.split(":")[1])])
+            else:
+                return int(CUDA_VISIBLE_DEVICES.split(",")[0])
     elif device == "cpu":
         return -1
     else:
@@ -24,7 +33,6 @@ def infer_device_id(device: str) -> int:
 
 
 OmegaConf.register_new_resolver("onnxruntime_version", onnxruntime_version)
-
 OmegaConf.register_new_resolver("is_gpu", lambda device: "cuda" in device)
 OmegaConf.register_new_resolver("infer_device_id", lambda device: infer_device_id(device))
 OmegaConf.register_new_resolver("is_profiling", lambda benchmark_name: benchmark_name == "profiling")
