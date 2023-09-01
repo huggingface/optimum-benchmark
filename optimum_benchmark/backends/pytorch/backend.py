@@ -3,9 +3,7 @@ from logging import getLogger
 from typing import TYPE_CHECKING, Any, Callable, Dict, List
 
 import torch
-from torch.distributed.elastic.multiprocessing.errors import record
-from torch.distributed.launcher.api import LaunchConfig, elastic_launch
-from transformers import BitsAndBytesConfig, Trainer, TrainingArguments, GPTQConfig
+from transformers import BitsAndBytesConfig, GPTQConfig, Trainer, TrainingArguments
 from transformers.utils.fx import symbolic_trace
 
 if TYPE_CHECKING:
@@ -159,9 +157,9 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
     def load_model_from_config(self) -> None:
         # TODO: create no_weights tests
-        LOGGER.info("\t+ Initializing empty weights model on device: meta")
         from accelerate import init_empty_weights
 
+        LOGGER.info("\t+ Initializing empty weights model on device: meta")
         with init_empty_weights():
             self.pretrained_model = self.automodel_class.from_config(
                 config=self.pretrained_config,
@@ -220,7 +218,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             with torch.autocast(device_type=self.device.type, dtype=self.amp_dtype, enabled=self.config.amp_autocast):
                 return super().generate(input, **kwargs)
 
-    @record
     def train(
         self,
         training_dataset: "Dataset",
@@ -241,10 +238,13 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.pretrained_model,
         )
         if self.config.use_ddp:
+            from torch.distributed.elastic.multiprocessing.errors import record
+            from torch.distributed.launcher.api import LaunchConfig, elastic_launch
+
             # For DDP, we log only the state of the first rank as transformers does.
             # since the batch size used in measuring the throughput is the one of world size.
             ddp_config = LaunchConfig(**self.config.ddp_config)
-            results = elastic_launch(config=ddp_config, entrypoint=training_worker)(worker_args)[0]
+            results = elastic_launch(config=ddp_config, entrypoint=record(training_worker))(worker_args)[0]
         else:
             # For DP, we can still use training_worker, simply not wrapped by the elastic_launch class.
             results = training_worker(worker_args)

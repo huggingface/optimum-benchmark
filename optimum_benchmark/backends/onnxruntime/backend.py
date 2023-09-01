@@ -5,7 +5,6 @@ from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING, Any, Callable, Dict, List
 
 import torch
-from accelerate import init_empty_weights
 from hydra.utils import get_class
 from onnxruntime import SessionOptions
 from optimum.onnxruntime import (
@@ -23,8 +22,6 @@ from optimum.onnxruntime.configuration import (
     OptimizationConfig,
     QuantizationConfig,
 )
-from torch.distributed.elastic.multiprocessing.errors import record
-from torch.distributed.launcher.api import LaunchConfig, elastic_launch
 
 if TYPE_CHECKING:
     from datasets import Dataset
@@ -138,6 +135,9 @@ class ORTBackend(Backend[ORTConfig]):
         self.tmpdir.cleanup()
 
     def load_automodel_from_config(self) -> None:
+        # TODO: create no_weights tests
+        from accelerate import init_empty_weights
+
         LOGGER.info("\t+ Loading AutoModel from config")
         with init_empty_weights():
             self.pretrained_model = self.automodel_class.from_config(
@@ -316,7 +316,6 @@ class ORTBackend(Backend[ORTConfig]):
         LOGGER.info("\t+ Wrapping model inside profiler")
         self.pretrained_model = ORTProfilingWrapper(self.pretrained_model)
 
-    @record
     def train(
         self,
         training_dataset: "Dataset",
@@ -338,10 +337,13 @@ class ORTBackend(Backend[ORTConfig]):
         )
 
         if self.config.use_ddp:
+            from torch.distributed.elastic.multiprocessing.errors import record
+            from torch.distributed.launcher.api import LaunchConfig, elastic_launch
+
             # For DDP, we log only the state of the first rank as transformers does.
             # since the batch size used in measuring the throughput is the one of world size.
             ddp_config = LaunchConfig(**self.config.ddp_config)
-            results = elastic_launch(config=ddp_config, entrypoint=training_worker)(worker_args)[0]
+            results = elastic_launch(config=ddp_config, entrypoint=record(training_worker))(worker_args)[0]
         else:
             # For DP, we can still use training_worker, simply not wrapped by the elastic_launch class.
             results = training_worker(worker_args)
