@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 from ...profilers.fx_profiler import FXProfilingWrapper
 from ..base import Backend
-from ..ddp_utils import training_worker
+from ..ddp_utils import record, training_worker
 from .config import PyTorchConfig
 from .utils import randomize_weights
 
@@ -238,6 +238,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             with torch.autocast(device_type=self.device.type, dtype=self.amp_dtype, enabled=self.config.amp_autocast):
                 return super().generate(input, **kwargs)
 
+    @record
     def train(
         self,
         training_dataset: "Dataset",
@@ -258,7 +259,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.pretrained_model,
         )
         if self.config.use_ddp:
-            # from torch.distributed.elastic.multiprocessing.errors import record
             from torch.distributed.launcher.api import LaunchConfig, elastic_launch
 
             # For DDP, we log only the state of the first rank as transformers does.

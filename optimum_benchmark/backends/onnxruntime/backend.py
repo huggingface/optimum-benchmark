@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
 from ...profilers.ort_profiler import ORTProfilingWrapper
 from ..base import Backend
-from ..ddp_utils import training_worker
+from ..ddp_utils import record, training_worker
 from ..optimum_utils import main_export
 from ..pytorch.utils import randomize_weights
 from .config import ORTConfig
@@ -316,6 +316,7 @@ class ORTBackend(Backend[ORTConfig]):
         LOGGER.info("\t+ Wrapping model inside profiler")
         self.pretrained_model = ORTProfilingWrapper(self.pretrained_model)
 
+    @record
     def train(
         self,
         training_dataset: "Dataset",
@@ -337,7 +338,6 @@ class ORTBackend(Backend[ORTConfig]):
         )
 
         if self.config.use_ddp:
-            # from torch.distributed.elastic.multiprocessing.errors import record
             from torch.distributed.launcher.api import LaunchConfig, elastic_launch
 
             # For DDP, we log only the state of the first rank as transformers does.
