@@ -188,6 +188,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 )
                 LOGGER.info("\t+ Quantizing model while on cpu")
                 self.pretrained_model = load_and_quantize_model(self.pretrained_model, bnb_quantization_config)
+                LOGGER.info(f"\t+ Moving model to target device: {self.device}")
+                self.pretrained_model.to(device=self.device)
             elif self.config.quantization_strategy == "gptq":
                 LOGGER.info("\t+ Processing GPTQ config")
                 from optimum.gptq import GPTQQuantizer
@@ -199,12 +201,13 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 LOGGER.info("\t+ Creating GPTQQuantizer")
                 gptq_quantizer = GPTQQuantizer(**self.config.quantization_config)
                 LOGGER.info("\t+ Quantizing model while on cpu")
-                gptq_quantizer.quantize_model(self.pretrained_model, self.model)
+                gptq_quantizer.convert_model(self.pretrained_model)
+                LOGGER.info(f"\t+ Moving model to target device: {self.device}")
+                self.pretrained_model.to(device=self.device)
+                LOGGER.info("\t+ Postprocessing model")
                 self.pretrained_model.config.quantization_config = GPTQConfig.from_dict(gptq_quantizer.to_dict())
                 self.pretrained_model._is_quantized_training_enabled = True
-
-            LOGGER.info(f"\t+ Moving model to target device: {self.device}")
-            self.pretrained_model.to_empty(device=self.device)
+                gptq_quantizer.post_init_model(self.pretrained_model)
         else:
             LOGGER.info(f"\t+ Materializing model on device: {self.device}")
             self.pretrained_model.to_empty(device=self.device)
