@@ -87,10 +87,11 @@ def training_worker(args) -> "TrainerState":
     return trainer.state
 
 
-def record(func):
+# a conditional decorator that is only applied if torch.distributed.elastic.multiprocessing.errors.record is available
+def record_if_available(func):
     if is_torch_distributed_available():
         from torch.distributed.elastic.multiprocessing.errors import record
 
-        record(func)
+        return record()(func)
     else:
-        func()
+        return func
