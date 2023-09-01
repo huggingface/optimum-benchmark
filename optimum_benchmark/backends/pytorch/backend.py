@@ -3,8 +3,6 @@ from logging import getLogger
 from typing import TYPE_CHECKING, Any, Callable, Dict, List
 
 import torch
-from torch.distributed.elastic.multiprocessing.errors import record
-from torch.distributed.launcher.api import LaunchConfig, elastic_launch
 from transformers import BitsAndBytesConfig, GPTQConfig, Trainer, TrainingArguments
 from transformers.utils.fx import symbolic_trace
 
@@ -15,7 +13,7 @@ if TYPE_CHECKING:
 
 from ...profilers.fx_profiler import FXProfilingWrapper
 from ..base import Backend
-from ..ddp_utils import training_worker
+from ..ddp_utils import record_if_available, training_worker
 from .config import PyTorchConfig
 from .utils import randomize_weights
 
@@ -159,9 +157,9 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
     def load_model_from_config(self) -> None:
         # TODO: create no_weights tests
-        LOGGER.info("\t+ Initializing empty weights model on device: meta")
         from accelerate import init_empty_weights
 
+        LOGGER.info("\t+ Initializing empty weights model on device: meta")
         with init_empty_weights():
             self.pretrained_model = self.automodel_class.from_config(
                 config=self.pretrained_config,
@@ -240,7 +238,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             with torch.autocast(device_type=self.device.type, dtype=self.amp_dtype, enabled=self.config.amp_autocast):
                 return super().generate(input, **kwargs)
 
-    @record
+    @record_if_available
     def train(
         self,
         training_dataset: "Dataset",
@@ -261,6 +259,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.pretrained_model,
         )
         if self.config.use_ddp:
+            from torch.distributed.launcher.api import LaunchConfig, elastic_launch
+
             # For DDP, we log only the state of the first rank as transformers does.
             # since the batch size used in measuring the throughput is the one of world size.
             ddp_config = LaunchConfig(**self.config.ddp_config)
