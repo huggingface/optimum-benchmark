@@ -96,14 +96,15 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
                     _ = backend.forward(forward_input, **self.config.forward_kwargs)
                     num_forward_passes += 1
 
+            num_forward_samples = num_forward_passes * self.config.input_shapes["batch_size"]
             self.forward_energy = extract_three_significant_digits(
-                energy_tracker.get_total_energy() / num_forward_passes
+                energy_tracker.get_total_energy() / num_forward_samples
             )
             self.forward_emissions = extract_three_significant_digits(
-                energy_tracker.get_total_emissions() / num_forward_passes
+                energy_tracker.get_total_emissions() / num_forward_samples
             )
-            LOGGER.info(f"\t+ Forward pass energy consumption: {self.forward_energy} (kWh)")
-            LOGGER.info(f"\t+ Forward pass carbon emissions: {self.forward_emissions} (kgCO2eq)")
+            LOGGER.info(f"\t+ Forward pass energy consumption: {self.forward_energy} (kWh/sample)")
+            LOGGER.info(f"\t+ Forward pass carbon emissions: {self.forward_emissions} (kgCO2eq/sample)")
             LOGGER.info(f"\t+ Full details in the CodeCarbon report: {os.getcwd()}/forward_codecarbon.csv")
 
     def run_generate_tracking(self, backend: "Backend") -> None:
@@ -136,7 +137,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             LOGGER.info(f"\t+ Generation pass peak memory: {self.generate_peak_memory} (MB)")
 
         if self.config.energy:
-            LOGGER.info("\t+ Tracking forward pass energy consumption")
+            LOGGER.info("\t+ Tracking generation pass energy consumption")
             num_generate_passes = 0
             energy_tracker = EnergyTracker()
             with energy_tracker.track(interval=1, file_prefix="generate"):
@@ -144,14 +145,19 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
                     _ = backend.generate(generate_input, **self.config.generate_kwargs)
                     num_generate_passes += 1
 
+            num_generated_tokens = (
+                num_generate_passes
+                * self.config.generate_kwargs["min_new_tokens"]
+                * self.config.input_shapes["batch_size"]
+            )
             self.generate_energy = extract_three_significant_digits(
-                energy_tracker.get_total_energy() / num_generate_passes
+                energy_tracker.get_total_energy() / num_generated_tokens
             )
             self.generate_emissions = extract_three_significant_digits(
-                energy_tracker.get_total_emissions() / num_generate_passes
+                energy_tracker.get_total_emissions() / num_generated_tokens
             )
-            LOGGER.info(f"\t+ Generation pass energy consumption: {self.generate_energy} (kWh)")
-            LOGGER.info(f"\t+ Generation pass carbon emissions: {self.generate_emissions} (kgCO2eq)")
+            LOGGER.info(f"\t+ Generation pass energy consumption: {self.generate_energy} (kWh/token)")
+            LOGGER.info(f"\t+ Generation pass carbon emissions: {self.generate_emissions} (kgCO2eq/token)")
             LOGGER.info(f"\t+ Full details in the CodeCarbon report: {os.getcwd()}/generate_codecarbon.csv")
 
     # Metrics
@@ -204,8 +210,8 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             results_dict["forward.peak_memory(MB)"] = self.forward_peak_memory
 
         if self.config.energy:
-            results_dict["forward.energy_consumption(kWh)"] = self.forward_energy
-            results_dict["forward.carbon_emissions(kgCO2eq)"] = self.forward_emissions
+            results_dict["forward.energy_consumption(kWh/sample)"] = self.forward_energy
+            results_dict["forward.carbon_emissions(kgCO2eq/sample)"] = self.forward_emissions
 
         if self.config.can_generate:
             results_dict["generate.latency(s)"] = self.generate_latency
@@ -215,8 +221,8 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
                 results_dict["generate.peak_memory(MB)"] = self.generate_peak_memory
 
             if self.config.energy:
-                results_dict["generate.energy_consumption(kWh)"] = self.generate_energy
-                results_dict["generate.carbon_emissions(kgCO2eq)"] = self.generate_emissions
+                results_dict["generate.energy_consumption(kWh/token)"] = self.generate_energy
+                results_dict["generate.carbon_emissions(kgCO2eq/token)"] = self.generate_emissions
 
         return DataFrame(results_dict, index=[0])
 
