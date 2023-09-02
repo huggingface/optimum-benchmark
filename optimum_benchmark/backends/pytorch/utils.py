@@ -1,5 +1,11 @@
 import torch
 
+DTYPES_MAPPING = {
+    "float32": "fp32",
+    "float16": "fp16",
+    "bfloat16": "bf16",
+}
+
 
 def randomize_weights(model):
     for param in model.parameters():

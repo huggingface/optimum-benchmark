@@ -15,10 +15,11 @@ from ...profilers.fx_profiler import FXProfilingWrapper
 from ..base import Backend
 from ..ddp_utils import record_if_available, training_worker
 from .config import PyTorchConfig
-from .utils import randomize_weights
+from .utils import DTYPES_MAPPING, randomize_weights
 
 # bachend logger
 LOGGER = getLogger("pytorch")
+
 
 
 class PyTorchBackend(Backend[PyTorchConfig]):
@@ -181,7 +182,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 LOGGER.info("\t+ Processing BnBQuantizationConfig")
                 bnb_quantization_config = BnbQuantizationConfig(
                     **self.config.quantization_config,
-                    torch_dtype=self.config.torch_dtype,
+                    torch_dtype=DTYPES_MAPPING[self.config.torch_dtype],
                     keep_in_fp32_modules=getattr(self.pretrained_model, "keep_in_fp32_modules", None),
                 )
                 LOGGER.info("\t+ Quantizing model while on cpu")
