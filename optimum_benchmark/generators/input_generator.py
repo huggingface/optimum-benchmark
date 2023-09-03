@@ -21,11 +21,15 @@ class InputGenerator:
     task_generator: Optional[TaskGenerator]
 
     def __init__(
-        self, task: str, input_shapes: Dict[str, int], pretrained_config: Optional["PretrainedConfig"] = None
+        self,
+        task: str,
+        input_shapes: Dict[str, int],
+        pretrained_config: Optional["PretrainedConfig"] = None,
     ):
-        if pretrained_config is not None and pretrained_config.model_type in SUPPURTED_MODEL_TYPES:
+        model_type = pretrained_config.model_type if pretrained_config is not None else task
+
+        if model_type in SUPPURTED_MODEL_TYPES:
             self.used_generator = "model_type"
-            model_type = pretrained_config.model_type
             LOGGER.info(f"Using {model_type} model type generator")
             self.model_type_generator = ModelTypeGenerator(
                 task=task,
@@ -42,11 +46,11 @@ class InputGenerator:
             )
         else:
             raise NotImplementedError(
-                f"Neither task {task} nor model type {model_type} is supported. \n"
-                f"Available tasks: {list(TASKS_TO_GENERATORS.keys())}. \n"
+                f"Neither task {task} nor model type {model_type} are supported. "
+                f"Available tasks: {list(TASKS_TO_GENERATORS.keys())}. "
                 "If you want to add support for this task, "
-                "please submit a PR or a feature request to optimum-benchmark. \n"
-                f"Available model types: {SUPPURTED_MODEL_TYPES}. \n"
+                "please submit a PR or a feature request to optimum-benchmark. "
+                f"Available model types: {SUPPURTED_MODEL_TYPES}. "
                 "If you want to add support for this model type, "
                 "please submit a PR or a feature request to optimum."
             )
