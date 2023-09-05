@@ -12,11 +12,10 @@ backend:
   initial_isolation_check: false
   continous_isolation_check: false
   torch_dtype: float16
-  stream: true
 
 benchmark:
   input_shapes:
-    batch_size: 8
-    sequence_length: 512
+    batch_size: 2
+    sequence_length: 1
 
   new_tokens: 1000

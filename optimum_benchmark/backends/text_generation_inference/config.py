@@ -18,9 +18,6 @@ class TGIConfig(BackendConfig):
     address: str = "127.0.0.1"
     port: int = 1111
 
-    # client options
-    stream: bool = False  # True, False
-
     # torch options
     torch_dtype: Optional[str] = None  # None, float32, float16, bfloat16
     # optimization options
