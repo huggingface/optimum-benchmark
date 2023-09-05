@@ -1,0 +1,20 @@
+defaults:
+  - base_config # inherits from base config
+  - _self_ # for hydra 1.1 compatibility
+  - override backend: text-generation-inference
+
+experiment_name: tgi
+
+model: NousResearch/Llama-2-7b-hf
+device: cuda
+
+backend:
+  initial_isolation_check: false
+  continous_isolation_check: false
+
+benchmark:
+  input_shapes:
+    batch_size: 1
+    sequence_length: 512
+
+  new_tokens: 1000
