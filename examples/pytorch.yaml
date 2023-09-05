@@ -1,0 +1,20 @@
+defaults:
+  - base_config # inherits from base config
+  - _self_ # for hydra 1.1 compatibility
+
+experiment_name: pytorch
+
+model: decapoda-research/llama-7b-hf
+device: cuda
+
+backend:
+  # we turn off isolation checks because tests run on shared resources
+  initial_isolation_check: false
+  continous_isolation_check: false
+
+benchmark:
+  input_shapes:
+    batch_size: 1
+    sequence_length: 512
+
+  new_tokens: 1000

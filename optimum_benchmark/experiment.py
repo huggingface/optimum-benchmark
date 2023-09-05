@@ -13,6 +13,7 @@ from .backends.neural_compressor.config import INCConfig
 from .backends.onnxruntime.config import ORTConfig
 from .backends.openvino.config import OVConfig
 from .backends.pytorch.config import PyTorchConfig
+from .backends.tgi.config import TGIConfig
 from .benchmarks.inference.config import InferenceConfig
 from .benchmarks.training.config import TrainingConfig
 from .env_utils import get_cpu, get_cpu_ram_mb, get_gpus
@@ -102,10 +103,11 @@ class ExperimentConfig:
 # Register configurations
 cs = ConfigStore.instance()
 cs.store(name="experiment", node=ExperimentConfig)
+cs.store(group="backend", name="openvino", node=OVConfig)
 cs.store(group="backend", name="pytorch", node=PyTorchConfig)
 cs.store(group="backend", name="onnxruntime", node=ORTConfig)
-cs.store(group="backend", name="openvino", node=OVConfig)
 cs.store(group="backend", name="neural_compressor", node=INCConfig)
+cs.store(group="backend", name="text-generation-inference", node=TGIConfig)
 cs.store(group="benchmark", name="inference", node=InferenceConfig)
 cs.store(group="benchmark", name="training", node=TrainingConfig)
 
@@ -131,6 +133,7 @@ def run_experiment(experiment: DictConfig) -> None:
         backend.configure(experiment.backend)
     except Exception as e:
         LOGGER.error("Error during backend configuration: %s", e)
+        backend.clean()
         raise e
 
     # Allocate requested benchmark
@@ -140,6 +143,7 @@ def run_experiment(experiment: DictConfig) -> None:
         benchmark.configure(experiment.benchmark)
     except Exception as e:
         LOGGER.error("Error during benchmark configuration: %s", e)
+        backend.clean()
         raise e
 
     try:
