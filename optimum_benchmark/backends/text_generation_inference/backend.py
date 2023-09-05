@@ -1,7 +1,7 @@
 import os
 from concurrent.futures import ThreadPoolExecutor
 from logging import getLogger
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any, Dict, List
 
 from huggingface_hub import InferenceClient
 
@@ -100,60 +100,50 @@ class TGIBackend(Backend[TGIConfig]):
         self.client = InferenceClient(model=f"http://{self.config.address}:{self.config.port}")
 
     def prepare_input(self, input: Dict[str, Any]) -> Dict[str, Any]:
-        if self.config.stream:
-            return {"prompt": self.pretrained_processor.batch_decode(input["input_ids"].tolist())}
-        elif len(input["input_ids"]) > 1:
-            raise NotImplementedError(
-                "TGI does not support batched requests in non-stream mode. "
-                "Please set `backend.stream=true` or use a batch size of 1."
-            )
-        else:
-            return {"prompt": self.pretrained_processor.decode(input["input_ids"].squeeze().tolist())}
+        return {"prompt": self.pretrained_processor.batch_decode(input["input_ids"].tolist())}
 
-    def forward(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> "TextGenerationResponse":
-        if self.config.stream:
-            output = []
-            with ThreadPoolExecutor(max_workers=len(input["prompt"])) as executor:
-                futures = [
-                    executor.submit(
-                        self.client.text_generation,
-                        decoder_input_details=True,
-                        max_new_tokens=1,
-                        prompt=prompt,
-                        details=True,
-                        stream=True,
-                    )
-                    for prompt in input["prompt"]
-                ]
-            for future in futures:
-                output.append(future.result())
-            return output
-        else:
-            return self.client.text_generation(
-                input["prompt"], max_new_tokens=1, decoder_input_details=True, details=True
-            )
+    def forward(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> List["TextGenerationResponse"]:
+        output = []
+        with ThreadPoolExecutor(max_workers=len(input["prompt"])) as executor:
+            futures = [
+                executor.submit(
+                    self.client.text_generation,
+                    decoder_input_details=True,
+                    prompt=input["prompt"][i],
+                    max_new_tokens=1,
+                    details=True,
+                )
+                for i in range(len(input["prompt"]))
+            ]
 
-    def generate(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> "TextGenerationResponse":
-        if self.config.stream:
-            output = []
-            with ThreadPoolExecutor(max_workers=len(input["prompt"])) as executor:
-                futures = [
-                    executor.submit(
-                        self.client.text_generation,
-                        max_new_tokens=kwargs["max_new_tokens"],
-                        do_sample=kwargs["do_sample"],
-                        prompt=prompt,
-                        details=True,
-                    )
-                    for prompt in input["prompt"]
-                ]
-            for future in futures:
-                output.append(future.result())
-            return output
-        else:
-            return self.client.text_generation(
-                input["prompt"], do_sample=kwargs["do_sample"], max_new_tokens=kwargs["max_new_tokens"], details=True
-            )
+        for future in futures:
+            output.append(future.result())
+
+        return output
+
+    def generate(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> List["TextGenerationResponse"]:
+        output = []
+        with ThreadPoolExecutor(max_workers=len(input["prompt"])) as executor:
+            futures = [
+                executor.submit(
+                    self.client.text_generation,
+                    max_new_tokens=kwargs["max_new_tokens"],
+                    do_sample=kwargs["do_sample"],
+                    prompt=input["prompt"][i],
+                    details=True,
+                )
+                for i in range(len(input["prompt"]))
+            ]
+
+        for i in range(len(input["prompt"])):
+            output.append(futures[i].result())
+            if len(output[-1].details["tokens"]) < kwargs["max_new_tokens"]:
+                LOGGER.warning(
+                    f"\t+ Generated {len(output[-1].details['tokens'])} tokens instead of {kwargs['max_new_tokens']}"
+                    " tokens. Benchmark results might be inaccurate."
+                )
+
+        return output
 
     def clean(self) -> None:
         super().clean()
