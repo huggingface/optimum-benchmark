@@ -4,5 +4,17 @@ defaults:
 
 experiment_name: pytorch
 
-model: bert-base-uncased
+model: decapoda-research/llama-7b-hf
 device: cuda
+
+backend:
+  # we turn off isolation checks because tests run on shared resources
+  initial_isolation_check: false
+  continous_isolation_check: false
+
+benchmark:
+  input_shapes:
+    batch_size: 1
+    sequence_length: 512
+
+  new_tokens: 1000

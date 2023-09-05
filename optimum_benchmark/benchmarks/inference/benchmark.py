@@ -57,24 +57,21 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
     def run_forward_tracking(self, backend: "Backend") -> None:
         forward_input = self.input_generator.generate(mode="forward")
 
-        # TODO: can be handled by the backend later
-        for key, value in forward_input.items():
-            if key == "prompt":
-                continue
-            forward_input[key] = value.to(backend.device)
+        LOGGER.info("\t+ Preparing input for the forward pass")
+        forward_input = backend.prepare_input(forward_input)
 
         # for backends that require compilation with static shapes
         backend.prepare_for_inference(input_shapes=self.config.input_shapes)
 
         LOGGER.info("\t+ Warming up the forward pass")
         for _ in range(self.config.warmup_runs):
-            _ = backend.forward(forward_input, **self.config.forward_kwargs)
+            _ = backend.forward(forward_input, self.config.forward_kwargs)
 
         LOGGER.info("\t+ Tracking forward pass latency and throughput")
         latency_tracker = LatencyTracker(device=backend.device, backend=backend.NAME)
         while sum(self.forward_latencies) < self.config.duration:
             with latency_tracker.track():
-                _ = backend.forward(forward_input, **self.config.forward_kwargs)
+                _ = backend.forward(forward_input, self.config.forward_kwargs)
             self.forward_latencies = latency_tracker.get_latencies()
         LOGGER.info(f"\t+ Forward pass latency: {self.forward_latency:.2e} (s)")
         LOGGER.info(f"\t+ Forward pass throughput: {self.forward_throughput:.2f} (samples/s)")
@@ -93,7 +90,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             energy_tracker = EnergyTracker()
             with energy_tracker.track(interval=1, file_prefix="forward"):
                 while energy_tracker.get_elapsed_time() < self.config.duration:
-                    _ = backend.forward(forward_input, **self.config.forward_kwargs)
+                    _ = backend.forward(forward_input, self.config.forward_kwargs)
                     num_forward_passes += 1
 
             num_forward_samples = num_forward_passes * self.config.input_shapes["batch_size"]
@@ -110,20 +107,17 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
     def run_generate_tracking(self, backend: "Backend") -> None:
         generate_input = self.input_generator.generate(mode="generate")
 
-        # TODO: can be handled by the backend later
-        for key, value in generate_input.items():
-            if key == "prompt":
-                continue
-            generate_input[key] = value.to(backend.device)
+        LOGGER.info("\t+ Preparing input for the generation pass")
+        generate_input = backend.prepare_input(generate_input)
 
         LOGGER.info("\t+ Warming up the generation pass")
-        _ = backend.generate(input=generate_input, **self.config.generate_kwargs)
+        _ = backend.generate(generate_input, self.config.generate_kwargs)
 
         LOGGER.info("\t+ Tracking generation latency and throughput")
         latency_tracker = LatencyTracker(device=backend.device, backend=backend.NAME)
         while sum(self.generate_latencies) < self.config.duration:
             with latency_tracker.track():
-                _ = backend.generate(generate_input, **self.config.generate_kwargs)
+                _ = backend.generate(generate_input, self.config.generate_kwargs)
             self.generate_latencies = latency_tracker.get_latencies()
         LOGGER.info(f"\t+ Generation pass latency: {self.generate_latency:.2e} (s)")
         LOGGER.info(f"\t+ Generation pass throughput: {self.generate_throughput:.2f} (tokens/s)")
@@ -132,7 +126,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             LOGGER.info("\t+ Tracking generation pass peak memory")
             memory_tracker = MemoryTracker(device=backend.device)
             with memory_tracker.track(interval=self.generate_latency / 10):
-                _ = backend.generate(generate_input, **self.config.generate_kwargs)
+                _ = backend.generate(generate_input, self.config.generate_kwargs)
             self.generate_peak_memory = memory_tracker.get_peak_memory()
             LOGGER.info(f"\t+ Generation pass peak memory: {self.generate_peak_memory} (MB)")
 
@@ -142,7 +136,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             energy_tracker = EnergyTracker()
             with energy_tracker.track(interval=1, file_prefix="generate"):
                 while energy_tracker.get_elapsed_time() < self.config.duration:
-                    _ = backend.generate(generate_input, **self.config.generate_kwargs)
+                    _ = backend.generate(generate_input, self.config.generate_kwargs)
                     num_generate_passes += 1
 
             num_generated_tokens = (
