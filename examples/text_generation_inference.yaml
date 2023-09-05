@@ -11,10 +11,12 @@ device: cuda
 backend:
   initial_isolation_check: false
   continous_isolation_check: false
+  torch_dtype: float16
+  stream: true
 
 benchmark:
   input_shapes:
-    batch_size: 1
+    batch_size: 8
     sequence_length: 512
 
   new_tokens: 1000

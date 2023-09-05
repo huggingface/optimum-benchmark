@@ -4,14 +4,8 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 if TYPE_CHECKING:
     from transformers import PretrainedConfig
 
-from optimum_benchmark.generators.model_type_generator import (
-    SUPPURTED_MODEL_TYPES,
-    ModelTypeGenerator,
-)
-from optimum_benchmark.generators.task_generator import (
-    TASKS_TO_GENERATORS,
-    TaskGenerator,
-)
+from ..generators.model_type_generator import SUPPURTED_MODEL_TYPES, ModelTypeGenerator
+from ..generators.task_generator import TASKS_TO_GENERATORS, TaskGenerator
 
 LOGGER = getLogger("input_generator")
 

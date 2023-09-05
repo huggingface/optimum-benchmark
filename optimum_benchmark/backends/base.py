@@ -173,10 +173,10 @@ class Backend(Generic[BackendConfigT], ABC):
     def prepare_for_profiling(self, input_names: List[str]) -> Dict[str, Any]:
         pass
 
-    def forward(self, input: Dict[str, Any], kwargs) -> "ModelOutput":
+    def forward(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> "ModelOutput":
         return self.pretrained_model(**input, **kwargs)
 
-    def generate(self, input: Dict[str, Any], kwargs) -> "ModelOutput":
+    def generate(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> "ModelOutput":
         return self.pretrained_model.generate(**input, **kwargs)
 
     def train(

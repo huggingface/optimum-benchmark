@@ -5,9 +5,14 @@ import torch
 from optimum.exporters.tasks import TasksManager
 from transformers import PretrainedConfig
 
+from ..import_utils import is_onnx_available
+
 LOGGER = getLogger("model_type_generator")
 
-SUPPURTED_MODEL_TYPES: List[str] = list(TasksManager._SUPPORTED_MODEL_TYPE.keys())
+EXPORTER = "onnx"  # used for its configs as input generators
+SUPPURTED_MODEL_TYPES: List[str] = (
+    list(TasksManager._SUPPORTED_MODEL_TYPE.keys()) if is_onnx_available() else []
+)  # should be empty if onnx is not available
 
 
 class ModelTypeGenerator:
@@ -26,7 +31,7 @@ class ModelTypeGenerator:
 
         self.onnx_config = TasksManager.get_exporter_config_constructor(
             task=task,
-            exporter="onnx",
+            exporter=EXPORTER,
             model_type=model_type,
         )(pretrained_config)
 
