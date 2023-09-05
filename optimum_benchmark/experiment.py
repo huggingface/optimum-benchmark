@@ -13,7 +13,7 @@ from .backends.neural_compressor.config import INCConfig
 from .backends.onnxruntime.config import ORTConfig
 from .backends.openvino.config import OVConfig
 from .backends.pytorch.config import PyTorchConfig
-from .backends.tgi.config import TGIConfig
+from .backends.text_generation_inference.config import TGIConfig
 from .benchmarks.inference.config import InferenceConfig
 from .benchmarks.training.config import TrainingConfig
 from .env_utils import get_cpu, get_cpu_ram_mb, get_gpus

@@ -222,7 +222,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         LOGGER.info("\t+ Wrapping model with FXProfilingWrapper")
         self.pretrained_model = FXProfilingWrapper(self.pretrained_model)
 
-    def forward(self, input: Dict[str, Any], kwargs) -> "ModelOutput":
+    def forward(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> "ModelOutput":
         if self.is_diffusion_pipeline():
             return super().forward(input, kwargs)
         else:
@@ -230,7 +230,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             with torch.autocast(device_type=self.device.type, dtype=self.amp_dtype, enabled=self.config.amp_autocast):
                 return super().forward(input, kwargs)
 
-    def generate(self, input: Dict[str, torch.Tensor], kwargs) -> "ModelOutput":
+    def generate(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> "ModelOutput":
         if self.is_diffusion_pipeline():
             return super().generate(input, kwargs)
         else:
