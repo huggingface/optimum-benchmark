@@ -3,7 +3,10 @@ from concurrent.futures import ThreadPoolExecutor
 from logging import getLogger
 from typing import TYPE_CHECKING, Any, Dict, List
 
+import torch
+from accelerate import init_empty_weights
 from huggingface_hub import InferenceClient
+from transformers import GenerationConfig
 
 if TYPE_CHECKING:
     from huggingface_hub.inference._text_generation import TextGenerationResponse
@@ -11,6 +14,7 @@ if TYPE_CHECKING:
 import docker
 
 from ..base import Backend
+from ..pytorch.utils import randomize_weights
 from .config import TGIConfig
 
 # bachend logger
@@ -35,10 +39,20 @@ class TGIBackend(Backend[TGIConfig]):
         super().configure(config)
         self.config = config
 
+        if self.config.no_weights:
+            # creates dummy model
+            self.load_model_from_config()
+            self.save_model_snapshot()
+        else:
+            self.load_model_from_pretrained()
+        self.delete_pretrained_model()
+
+        LOGGER.info("\t+ Modifying generation config")
+        self.modify_generation_config()
+
         LOGGER.info("\t+ Starting Docker client")
         self.docker_client = docker.from_env()
 
-        # check if image exists and pull it if needed
         LOGGER.info("\t+ Checking if TGI image exists")
         try:
             self.docker_client.images.get(f"{self.config.image}:{self.config.version}")
@@ -86,18 +100,56 @@ class TGIBackend(Backend[TGIConfig]):
         LOGGER.info("\t+ Waiting for TGI server to be ready")
         for line in self.tgi_container.logs(stream=True):
             tgi_log = line.decode("utf-8").strip()
-
             if not tgi_log:
                 continue
             else:
                 LOGGER.info(f"\t\t+ TGI log: {tgi_log}")
-
             if "Connected" in tgi_log:
                 LOGGER.info("\t+ TGI server is ready")
                 break
 
         LOGGER.info("\t+ Creating InferenceClient")
         self.client = InferenceClient(model=f"http://{self.config.address}:{self.config.port}")
+
+    def load_model_from_config(self) -> None:
+        LOGGER.info("\t+ Initializing empty weights model on device: meta")
+        with init_empty_weights():
+            self.pretrained_model = self.automodel_class.from_config(
+                config=self.pretrained_config,
+                torch_dtype=getattr(torch, self.config.torch_dtype),
+                trust_remote_code=self.hub_kwargs.get("trust_remote_code", False),
+            )
+        # could add model dispatching to accelerate saving and support bigger models
+        LOGGER.info(f"\t+ Materializing model on device: {self.device}")
+        self.pretrained_model.to_empty(device=self.device)
+        LOGGER.info("\t+ Randomizing model weights")
+        randomize_weights(self.pretrained_model)
+        LOGGER.info("\t+ Tying weights")
+        self.pretrained_model.tie_weights()
+
+    @property
+    def model_snapshot_path(self) -> str:
+        model_cache_folder = f"models/{self.model}".replace("/", "--")
+        model_cache_path = f"{self.config.volume}/{model_cache_folder}"
+        snapshot_ref = open(f"{model_cache_path}/refs/{self.hub_kwargs.get('revision', 'main')}", "r").read().strip()
+        return f"{model_cache_path}/snapshots/{snapshot_ref}"
+
+    def save_model_snapshot(self) -> None:
+        LOGGER.info("\t+ Saving pretrained model snapshot")
+        self.pretrained_model.save_pretrained(self.model_snapshot_path, safe_serialization=True)
+
+    def load_model_from_pretrained(self) -> None:
+        LOGGER.info("\t+ Downloading pretrained model")
+        with init_empty_weights():
+            self.pretrained_model = self.automodel_class.from_pretrained(self.model, **self.hub_kwargs)
+
+    def modify_generation_config(self) -> None:
+        # this should, theorically, make the generated output's sequence length fully controlled by max_new_tokens
+        # instead of stopping at the first eos_token_id/pad_token_id
+        generation_config = GenerationConfig.from_pretrained(self.model, **self.hub_kwargs)
+        generation_config.eos_token_id = -100
+        generation_config.pad_token_id = -101
+        generation_config.save_pretrained(self.model_snapshot_path)
 
     def prepare_input(self, input: Dict[str, Any]) -> Dict[str, Any]:
         return {"prompt": self.pretrained_processor.batch_decode(input["input_ids"].tolist())}
@@ -115,7 +167,6 @@ class TGIBackend(Backend[TGIConfig]):
                 )
                 for i in range(len(input["prompt"]))
             ]
-
         for future in futures:
             output.append(future.result())
 
@@ -134,7 +185,6 @@ class TGIBackend(Backend[TGIConfig]):
                 )
                 for i in range(len(input["prompt"]))
             ]
-
         for i in range(len(input["prompt"])):
             output.append(futures[i].result())
             if len(output[-1].details["tokens"]) < kwargs["max_new_tokens"]:

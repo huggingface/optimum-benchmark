@@ -3,6 +3,8 @@
 git+https://github.com/huggingface/transformers.git
 # optimum
 git+https://github.com/huggingface/optimum.git
+# accelerate
+git+https://github.com/huggingface/accelerate.git
 
 # hydra
 omegaconf==2.3.0
