@@ -59,8 +59,8 @@ class TGIBackend(Backend[TGIConfig]):
         if self.hub_kwargs.get("trust_remote_code", False):
             self.command.append("--trust-remote-code")
 
-        if self.config.quantization_scheme is not None:
-            self.command.extend(["--quantize", self.config.quantization_scheme])
+        if self.config.quantization is not None:
+            self.command.extend(["--quantize", self.config.quantization])
 
         if self.config.disable_custom_kernels:
             self.command.append("--disable-custom-kernels")
