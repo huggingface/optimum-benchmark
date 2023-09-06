@@ -19,6 +19,7 @@ class TGIConfig(BackendConfig):
     port: int = 1111
 
     # torch options
+    no_weights: bool = False  # True, False
     torch_dtype: Optional[str] = None  # None, float32, float16, bfloat16
     # optimization options
     disable_custom_kernels: bool = False  # True, False

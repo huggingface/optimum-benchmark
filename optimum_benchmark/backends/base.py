@@ -204,14 +204,14 @@ class Backend(Generic[BackendConfigT], ABC):
 
     def delete_pretrained_model(self) -> None:
         if hasattr(self, "pretrained_model"):
+            LOGGER.info("\t+ Deleting pretrained model")
             del self.pretrained_model
-
         gc.collect()
 
     def delete_model_cache(self) -> None:
         LOGGER.info("\t+ Deleting model cache")
-        model_cache_path = f"models/{self.model}".replace("/", "--")
-        model_cache_path = os.path.join(os.path.expanduser("~/.cache/huggingface/hub"), model_cache_path)
+        model_cache_folder = f"models/{self.model}".replace("/", "--")
+        model_cache_path = os.path.join(os.path.expanduser("~/.cache/huggingface/hub"), model_cache_folder)
         shutil.rmtree(model_cache_path, ignore_errors=True)
 
     def clean(self) -> None:

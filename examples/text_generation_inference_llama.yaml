@@ -1,0 +1,34 @@
+defaults:
+  - backend: text-generation-inference # default backend
+  - benchmark: inference # default benchmark
+  - experiment # inheriting experiment schema
+  - _self_ # for hydra 1.1 compatibility
+  - override hydra/job_logging: colorlog # colorful logging
+  - override hydra/hydra_logging: colorlog # colorful logging
+
+hydra:
+  run:
+    dir: runs/${experiment_name}
+  sweep:
+    dir: sweeps/${experiment_name}
+  job:
+    chdir: true
+    env_set:
+      CUDA_VISIBLE_DEVICES: 0,1
+
+experiment_name: text_generation_inference
+model: NousResearch/Llama-2-7b-hf
+device: cuda
+
+backend:
+  no_weights: true
+  initial_isolation_check: false
+  continous_isolation_check: false
+  torch_dtype: float16
+
+benchmark:
+  input_shapes:
+    batch_size: 32
+    sequence_length: 128
+
+  new_tokens: 1000
