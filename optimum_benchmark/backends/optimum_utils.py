@@ -156,8 +156,11 @@ def main_export(
 
     if fp16 is True and device == "cpu":
         raise ValueError(
-            "The --fp16 option is supported only when exporting on GPU. Please pass the option `--device cuda`."
+            "FP16 export is supported only when exporting on GPU. Please pass the option `--device cuda`."
         )
+        float_dtype = "fp16"
+    else:
+        float_dtype = "fp32"
 
     output = Path(output)
     if not output.exists():
@@ -277,6 +280,7 @@ def main_export(
         monolith=monolith,
         custom_onnx_configs=custom_onnx_configs if custom_onnx_configs is not None else {},
         custom_architecture=custom_architecture,
+        float_dtype=float_dtype,
         fn_get_submodels=fn_get_submodels,
         preprocessors=preprocessors,
         _variant=_variant,
@@ -328,7 +332,7 @@ def main_export(
                 f" referring to `optimum.exporters.tasks.TaskManager`'s `_TASKS_TO_AUTOMODELS`."
             )
 
-        onnx_files_subpaths = None
+        onnx_files_subpaths = [key + ".onnx" for key in models_and_onnx_configs.keys()]
     else:
         # save the subcomponent configuration
         for model_name in models_and_onnx_configs:
@@ -373,67 +377,3 @@ def main_export(
         models_and_onnx_configs[key] = ("dummy_model", models_and_onnx_configs[key][1])
 
     return onnx_config, models_and_onnx_configs
-
-    # if optimize is not None:
-    #     from ...onnxruntime import AutoOptimizationConfig, ORTOptimizer
-
-    #     if onnx_files_subpaths is None:
-    #         onnx_files_subpaths = [key + ".onnx" for key in models_and_onnx_configs.keys()]
-    #     optimizer = ORTOptimizer.from_pretrained(output, file_names=onnx_files_subpaths)
-
-    #     optimization_config = AutoOptimizationConfig.with_optimization_level(optimization_level=optimize)
-
-    #     optimization_config.disable_shape_inference = True
-    #     optimizer.optimize(save_dir=output, optimization_config=optimization_config, file_suffix="")
-
-    # # Optionally post process the obtained ONNX file(s), for example to merge the decoder / decoder with past if any
-    # # TODO: treating stable diffusion separately is quite ugly
-    # if not no_post_process and not is_stable_diffusion:
-    #     try:
-    #         logger.info("Post-processing the exported models...")
-    #         models_and_onnx_configs, onnx_files_subpaths = onnx_config.post_process_exported_models(
-    #             output, models_and_onnx_configs, onnx_files_subpaths
-    #         )
-    #     except Exception as e:
-    #         raise Exception(
-    #             f"The post-processing of the ONNX export failed. The export can still be performed by passing the option --no-post-process. Detailed error: {e}"
-    #         )
-
-    # if is_stable_diffusion:
-    #     use_subprocess = (
-    #         False  # TODO: fix Can't pickle local object 'get_stable_diffusion_models_for_export.<locals>.<lambda>'
-    #     )
-    # elif model.config.model_type in UNPICKABLE_ARCHS:
-    #     # Pickling is bugged for nn.utils.weight_norm: https://github.com/pytorch/pytorch/issues/102983
-    #     # TODO: fix "Cowardly refusing to serialize non-leaf tensor" error for wav2vec2-conformer
-    #     use_subprocess = False
-
-    # if do_validation is True:
-    #     try:
-    #         validate_models_outputs(
-    #             models_and_onnx_configs=models_and_onnx_configs,
-    #             onnx_named_outputs=onnx_outputs,
-    #             atol=atol,
-    #             output_dir=output,
-    #             onnx_files_subpaths=onnx_files_subpaths,
-    #             input_shapes=input_shapes,
-    #             device=device,
-    #             dtype=torch_dtype,
-    #             use_subprocess=use_subprocess,
-    #             model_kwargs=model_kwargs,
-    #         )
-    #         logger.info(f"The ONNX export succeeded and the exported model was saved at: {output.as_posix()}")
-    #     except ShapeError as e:
-    #         raise e
-    #     except AtolError as e:
-    #         logger.warning(
-    #             f"The ONNX export succeeded with the warning: {e}.\n The exported model was saved at: {output.as_posix()}"
-    #         )
-    #     except OutputMatchError as e:
-    #         logger.warning(
-    #             f"The ONNX export succeeded with the warning: {e}.\n The exported model was saved at: {output.as_posix()}"
-    #         )
-    #     except Exception as e:
-    #         raise Exception(
-    #             f"An error occured during validation, but the model was saved nonetheless at {output.as_posix()}. Detailed error: {e}."
-    #         )

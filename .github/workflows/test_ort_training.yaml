@@ -27,8 +27,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Build OnnxRuntime Training Docker image
-        if: github.event_name == 'push' && (contains(github.event_path, 'docker/ort_training.dockerfile') || contains(github.event_path, 'gpu_requirements.txt'))
-        run: docker build -f docker/ort_training.dockerfile -t optimum-benchmark-ort-training .
+        run: docker build --no-cache --build-arg CACHEBUST=$(date +%s) -f docker/ort_training.dockerfile -t optimum-benchmark-ort-training .
 
       - name: Run OnnxRuntime Training tests
         run: docker run

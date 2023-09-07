@@ -29,6 +29,9 @@ RUN unattended-upgrade
 RUN apt-get autoremove -y
 RUN pip install --upgrade pip
 
+# this line forces the docker build to rebuild from this point on
+ARG CACHEBUST=1
+
 # Install optimum-benchmark dependencies
 COPY gpu_requirements.txt /tmp/gpu_requirements.txt
 RUN pip install -r /tmp/gpu_requirements.txt

@@ -1,1 +1,1 @@
-docker build -f docker/ort_training.dockerfile -t optimum-benchmark-ort-training .
+docker build --no-cache --build-arg CACHEBUST=$(date +%s) -f docker/ort_training.dockerfile -t optimum-benchmark-ort-training .
