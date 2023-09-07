@@ -63,28 +63,28 @@ python -m pip install -r gpu_requirements.txt
 Then install the package:
 
 ```bash
-python -m pip install .
+python -m pip install -e .
 ```
 
 You can now run a benchmark using the command line by specifying the configuration directory and the configuration name.
-Both arguments are mandatory. The `config-dir` is the directory where the configuration files are stored and the `config-name` is the name of the configuration file without the `.yaml` extension.
+Both arguments are mandatory. The `config-dir` is the directory where the configuration files are stored and the `config-name` is the name of the configuration file without its `.yaml` extension.
 
 ```bash
-optimum-benchmark --config-dir examples/ --config-name pytorch
+optimum-benchmark --config-dir examples/ --config-name pytorch_bert
 ```
 
-This will run the benchmark using the configuration in [`examples/pytorch.yaml`](examples/pytorch.yaml) and store the results in `runs/pytorch`.
+This will run the benchmark using the configuration in [`examples/pytorch_bert.yaml`](examples/pytorch_bert.yaml) and store the results in `runs/pytorch_bert`.
 
-The result files are `inference_results.csv`, the program's logs `main.log` and the configuration that's been used `hydra_config.yaml`. Some other files might be generated depending on the configuration (e.g. `forward_codecarbon.csv` if `benchmark.energy=true`).
+The result files are `inference_results.csv`, the program's logs `experiment.log` and the configuration that's been used `hydra_config.yaml`. Some other files might be generated depending on the configuration (e.g. `forward_codecarbon.csv` if `benchmark.energy=true`).
 
-The directory for storing these results can be changed bysetting `hydra.run.dir` (and/or `hydra.sweep.dir` in case of a multirun) in the command line or in the config file (see [`base_config.yaml`](examples/base_config.yaml)).
+The directory for storing these results can be changed by setting `hydra.run.dir` (and/or `hydra.sweep.dir` in case of a multirun) in the command line or in the config file.
 
 ## Command-line configuration overrides
 
 It's easy to override the default behavior of a benchmark from the command line.
 
 ```bash
-optimum-benchmark --config-dir examples/ --config-name pytorch model=gpt2 device=cuda:1
+optimum-benchmark --config-dir examples/ --config-name pytorch_bert model=gpt2 device=cuda:1
 ```
 
 ## Multirun configuration sweeps
@@ -92,13 +92,13 @@ optimum-benchmark --config-dir examples/ --config-name pytorch model=gpt2 device
 You can easily run configuration sweeps using the `-m` or `--multirun` option. By default, configurations will be executed serially but other kinds of executions are supported with hydra's launcher plugins : `hydra/launcher=submitit`, `hydra/launcher=rays`, `hydra/launcher=joblib`, etc.
 
 ```bash
-optimum-benchmark --config-dir examples --config-name pytorch -m device=cpu,cuda
+optimum-benchmark --config-dir examples --config-name pytorch_bert -m device=cpu,cuda
 ```
 
 Also, for integer parameters like `batch_size`, one can specify a range of values to sweep over:
 
 ```bash
-optimum-benchmark --config-dir examples --config-name pytorch -m device=cpu,cuda benchmark.input_shapes.batch_size='range(1,10,step=2)'
+optimum-benchmark --config-dir examples --config-name pytorch_bert -m device=cpu,cuda benchmark.input_shapes.batch_size='range(1,10,step=2)'
 ```
 
 ## Reporting benchamrk results (WIP)
@@ -116,23 +116,22 @@ You can also reuse some components of the reporting script for your use case (ex
 ## Configurations structure
 
 You can create custom configuration files following the [examples here](examples).
-The easiest way to do so is by using `hydra`'s [composition](https://hydra.cc/docs/0.11/tutorial/composition/) with a base configuratin [`examples/base_config.yaml`](examples/base_config.yaml).
+You can also use `hydra`'s [composition](https://hydra.cc/docs/0.11/tutorial/composition/) with a base configuratin ([`examples/pytorch_bert.yaml`](examples/pytorch_bert.yaml) for example) and override/define parameters.
 
 To create a configuration that uses a `wav2vec2` model and `onnxruntime` backend, it's as easy as:
 
 ```yaml
 defaults:
-  - base_config
+  - pytorch_bert
   - _self_
   - override backend: onnxruntime
 
 experiment_name: onnxruntime_wav2vec2
-
 model: bookbot/distil-wav2vec2-adult-child-cls-37m
 device: cpu
 ```
 
-Some examples are provided in the [`tests/configs`](tests/configs/) folder for different backends and models.
+Other than the [examples](examples), you can check [`tests` configuration files](tests/configs/).
 
 ## Contributing
 
@@ -142,4 +141,4 @@ Things that we'd like to see:
 - More tests (right now we only have few tests per backend).
 - Task evaluators for the most common tasks (would be great for output regression).
 - More backends (Tensorflow, TFLite, Jax, etc).
-- More hardware support (Habana Gaudi Processor (HPU), etc).
+- More hardware support (Habana Gaudi Processor (HPU), RadeonOpenCompute (ROCm), etc).
