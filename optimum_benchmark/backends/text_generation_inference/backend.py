@@ -12,6 +12,8 @@ if TYPE_CHECKING:
     from huggingface_hub.inference._text_generation import TextGenerationResponse
 
 import docker
+import docker.errors
+import docker.types
 
 from ..base import Backend
 from ..pytorch.utils import randomize_weights
@@ -53,11 +55,11 @@ class TGIBackend(Backend[TGIConfig]):
         LOGGER.info("\t+ Starting Docker client")
         self.docker_client = docker.from_env()
 
-        LOGGER.info("\t+ Checking if TGI image exists")
         try:
+            LOGGER.info("\t+ Checking if TGI image exists")
             self.docker_client.images.get(f"{self.config.image}:{self.config.version}")
-        except docker.errors.APIError:
-            LOGGER.info("\t+ Pulling TGI image")
+        except docker.errors.ImageNotFound:
+            LOGGER.info("\t+ TGI image not found, pulling it")
             self.docker_client.images.pull(f"{self.config.image}:{self.config.version}")
 
         LOGGER.info("\t+ Building TGI command")
@@ -66,16 +68,14 @@ class TGIBackend(Backend[TGIConfig]):
             self.model,
             "--revision",
             self.hub_kwargs["revision"],
-            "--dtype",
-            str(self.config.torch_dtype),
         ]
-
-        if self.hub_kwargs.get("trust_remote_code", False):
-            self.command.append("--trust-remote-code")
 
         if self.config.quantization is not None:
             self.command.extend(["--quantize", self.config.quantization])
-
+        if self.config.torch_dtype is not None:
+            self.command.extend(["--torch-dtype", self.config.torch_dtype])
+        if self.hub_kwargs.get("trust_remote_code", False):
+            self.command.append("--trust-remote-code")
         if self.config.disable_custom_kernels:
             self.command.append("--disable-custom-kernels")
 
@@ -102,11 +102,11 @@ class TGIBackend(Backend[TGIConfig]):
             tgi_log = line.decode("utf-8").strip()
             if not tgi_log:
                 continue
-            else:
-                LOGGER.info(f"\t\t+ TGI log: {tgi_log}")
-            if "Connected" in tgi_log:
+            elif "Connected" in tgi_log:
                 LOGGER.info("\t+ TGI server is ready")
                 break
+            else:
+                LOGGER.info(f"\t {tgi_log}")
 
         LOGGER.info("\t+ Creating InferenceClient")
         self.client = InferenceClient(model=f"http://{self.config.address}:{self.config.port}")
