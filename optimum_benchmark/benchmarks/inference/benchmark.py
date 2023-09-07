@@ -80,7 +80,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             LOGGER.info("\t+ Tracking forward pass peak memory")
             memory_tracker = MemoryTracker(device=backend.device)
             with memory_tracker.track(interval=self.forward_latency / 10):
-                _ = backend.forward(forward_input)
+                _ = backend.forward(forward_input, self.config.forward_kwargs)
             self.forward_peak_memory = memory_tracker.get_peak_memory()
             LOGGER.info(f"\t+ Forward pass peak memory: {self.forward_peak_memory} (MB)")
 
