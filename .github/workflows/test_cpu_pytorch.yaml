@@ -1,4 +1,4 @@
-name: CPU Unit Tests
+name: Pytorch CPU tests
 
 on:
   push:
@@ -14,7 +14,7 @@ jobs:
   run_cpu_tests:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v2
 
       - name: Set up Python 3.8
@@ -22,11 +22,11 @@ jobs:
         with:
           python-version: 3.8
 
-      - name: Install CPU requirements
+      - name: Install requirements
         run: |
           pip install --upgrade pip
-          pip install -r cpu_requirements.txt
           pip install -e .[test]
 
-      - name: Run CPU tests
-        run: pytest -k "cpu"
+      - name: Run tests
+        run: |
+          pytest -k "cpu_pytorch"
