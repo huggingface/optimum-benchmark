@@ -21,7 +21,6 @@ from .utils import DTYPES_MAPPING, randomize_weights
 LOGGER = getLogger("pytorch")
 
 
-
 class PyTorchBackend(Backend[PyTorchConfig]):
     NAME: str = "pytorch"
 
@@ -223,21 +222,21 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         LOGGER.info("\t+ Wrapping model with FXProfilingWrapper")
         self.pretrained_model = FXProfilingWrapper(self.pretrained_model)
 
-    def forward(self, input: Dict[str, Any], **kwargs) -> "ModelOutput":
+    def forward(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> "ModelOutput":
         if self.is_diffusion_pipeline():
-            return super().forward(input, **kwargs)
+            return super().forward(input, kwargs)
         else:
-            # TODO: autocast as whole can be managed by one config/kwargs
+            # TODO: autocast as whole can be managed by one config/kwargs ?
             with torch.autocast(device_type=self.device.type, dtype=self.amp_dtype, enabled=self.config.amp_autocast):
-                return super().forward(input, **kwargs)
+                return super().forward(input, kwargs)
 
-    def generate(self, input: Dict[str, torch.Tensor], **kwargs) -> "ModelOutput":
+    def generate(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> "ModelOutput":
         if self.is_diffusion_pipeline():
-            return super().generate(input, **kwargs)
+            return super().generate(input, kwargs)
         else:
-            # TODO: autocast as whole can be managed by one config/kwargs
+            # TODO: autocast as whole can be managed by one config/kwargs ?
             with torch.autocast(device_type=self.device.type, dtype=self.amp_dtype, enabled=self.config.amp_autocast):
-                return super().generate(input, **kwargs)
+                return super().generate(input, kwargs)
 
     @record_if_available
     def train(

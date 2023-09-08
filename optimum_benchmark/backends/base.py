@@ -154,6 +154,17 @@ class Backend(Generic[BackendConfigT], ABC):
             # torch.backends.cudnn.deterministic = True # same as above
             # torch.backends.cudnn.benchmark = False  # might reduce performance
 
+    def prepare_input(self, input: Dict[str, Any]) -> Dict[str, Any]:
+        if self.is_diffusion_pipeline():
+            # diffusion pipelines expect a list of strings as input
+            return input
+        else:
+            # models expect tensors on the target device as input
+            for key, value in input.items():
+                input[key] = value.to(self.device)
+
+        return input
+
     # compiling in openvino requires input shapes
     def prepare_for_inference(self, input_shapes: Dict[str, int]) -> Dict[str, Any]:
         pass
@@ -162,10 +173,10 @@ class Backend(Generic[BackendConfigT], ABC):
     def prepare_for_profiling(self, input_names: List[str]) -> Dict[str, Any]:
         pass
 
-    def forward(self, input: Dict[str, Any], **kwargs) -> "ModelOutput":
+    def forward(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> "ModelOutput":
         return self.pretrained_model(**input, **kwargs)
 
-    def generate(self, input: Dict[str, Any], **kwargs) -> "ModelOutput":
+    def generate(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> "ModelOutput":
         return self.pretrained_model.generate(**input, **kwargs)
 
     def train(
@@ -193,14 +204,14 @@ class Backend(Generic[BackendConfigT], ABC):
 
     def delete_pretrained_model(self) -> None:
         if hasattr(self, "pretrained_model"):
+            LOGGER.info("\t+ Deleting pretrained model")
             del self.pretrained_model
-
         gc.collect()
 
     def delete_model_cache(self) -> None:
         LOGGER.info("\t+ Deleting model cache")
-        model_cache_path = f"models/{self.model}".replace("/", "--")
-        model_cache_path = os.path.join(os.path.expanduser("~/.cache/huggingface/hub"), model_cache_path)
+        model_cache_folder = f"models/{self.model}".replace("/", "--")
+        model_cache_path = os.path.join(os.path.expanduser("~/.cache/huggingface/hub"), model_cache_folder)
         shutil.rmtree(model_cache_path, ignore_errors=True)
 
     def clean(self) -> None:
