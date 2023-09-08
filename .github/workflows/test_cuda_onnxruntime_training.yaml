@@ -34,4 +34,4 @@ jobs:
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
           onnxruntime-training
-          -c "pip install -e .[test] && pytest -k 'onnxruntime_training' -x"
+          -c "pip install -e .[test,peft] && pytest -k 'onnxruntime_training' -x"

@@ -34,4 +34,4 @@ jobs:
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
           optimum-benchmark-gpu
-          -c "pip install -e .[test,diffusers] && pytest -k 'cuda_pytorch' -x"
+          -c "pip install -e .[test,peft,diffusers] && pytest -k 'cuda_pytorch' -x"
