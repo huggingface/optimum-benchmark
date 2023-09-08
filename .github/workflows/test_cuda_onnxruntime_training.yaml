@@ -1,4 +1,4 @@
-name: OnnxRuntime Training Unit Tests
+name: OnnxRuntime CUDA Training Tests
 
 on:
   pull_request:
