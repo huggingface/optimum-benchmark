@@ -28,7 +28,3 @@ RUN apt-get install -y software-properties-common wget apt-utils patchelf git li
 RUN unattended-upgrade
 RUN apt-get autoremove -y
 RUN pip install --upgrade pip
-
-# Install optimum-benchmark dependencies
-COPY gpu_requirements.txt /tmp/gpu_requirements.txt
-RUN pip install -r /tmp/gpu_requirements.txt

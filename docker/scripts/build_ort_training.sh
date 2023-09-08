@@ -1,1 +1,0 @@
-docker build -f docker/ort_training.dockerfile -t optimum-benchmark-ort-training .

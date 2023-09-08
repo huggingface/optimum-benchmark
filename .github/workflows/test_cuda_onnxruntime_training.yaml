@@ -1,4 +1,4 @@
-name: GPU Unit Tests
+name: OnnxRuntime Training Unit Tests
 
 on:
   pull_request:
@@ -12,7 +12,7 @@ jobs:
   build-and-test:
     runs-on: self-hosted
     steps:
-      - name: Restore docker ownership
+      - name: Restore files ownership
         run: docker run
           --rm
           --entrypoint /bin/bash
@@ -23,19 +23,15 @@ jobs:
           ubuntu
           -c 'chown -R ${HOST_UID}:${HOST_GID} /workspace/optimum-benchmark'
 
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Build GPU Docker image
-        if: github.event_name == 'push' && (contains(github.event_path, 'docker/gpu.dockerfile') || contains(github.event_path, 'gpu_requirements.txt'))
-        run: docker build -f docker/gpu.dockerfile -t optimum-benchmark-gpu .
-
-      - name: Run GPU tests
+      - name: Run tests
         run: docker run
           --rm
           --entrypoint /bin/bash
           --gpus '"device=0,1"'
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
-          optimum-benchmark-gpu
-          -c "pip install -e .[test] && pytest -k '(cuda or tensorrt) and not onnxruntime_training' -x"
+          onnxruntime-training
+          -c "pip install -e .[test] && pytest -k 'onnxruntime_training' -x"
