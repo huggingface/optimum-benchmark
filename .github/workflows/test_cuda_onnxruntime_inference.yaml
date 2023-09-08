@@ -1,4 +1,12 @@
+<<<<<<< HEAD
 name: OnnxRuntime CUDA Inference Tests
+=======
+<<<<<<< HEAD:.github/workflows/test_cuda_pytorch.yaml
+name: Pytorch CUDA Tests
+=======
+name: OnnxRuntime CUDA Inference Tests
+>>>>>>> 426195cd6a0486e6594b50a0bb43eedc943aaaaf:.github/workflows/test_cuda_onnxruntime_inference.yaml
+>>>>>>> 426195cd6a0486e6594b50a0bb43eedc943aaaaf
 
 on:
   pull_request:
@@ -26,6 +34,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
+<<<<<<< HEAD
 <<<<<<< HEAD:.github/workflows/test_gpu.yaml
       - name: Build GPU Docker image
         run: docker build --no-cache --build-arg CACHEBUST=$(date +%s) -f docker/gpu.dockerfile -t optimum-benchmark-gpu .
@@ -34,6 +43,9 @@ jobs:
 =======
       - name: Run tests
 >>>>>>> seperated backend-device tests and update setup.py:.github/workflows/test_cuda_onnxruntime_inference.yaml
+=======
+      - name: Run tests
+>>>>>>> 426195cd6a0486e6594b50a0bb43eedc943aaaaf
         run: docker run
           --rm
           --entrypoint /bin/bash

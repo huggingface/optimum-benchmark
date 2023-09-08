@@ -63,6 +63,7 @@ RUN $PYTHON_EXE -m pip install torch-ort
 ENV TORCH_CUDA_ARCH_LIST="5.2 6.0 6.1 7.0 7.5 8.0 8.6+PTX"
 RUN $PYTHON_EXE -m pip install --upgrade protobuf==3.20.2
 RUN $PYTHON_EXE -m torch_ort.configure
+<<<<<<< HEAD:docker/onnxruntime_training.dockerfile
 <<<<<<< HEAD:docker/ort_training.dockerfile
 
 # this line forces the docker build to rebuild from this point on
@@ -73,3 +74,5 @@ COPY requirements.txt /tmp/requirements.txt
 RUN pip install -r /tmp/requirements.txt
 =======
 >>>>>>> seperated backend-device tests and update setup.py:docker/onnxruntime_training.dockerfile
+=======
+>>>>>>> 426195cd6a0486e6594b50a0bb43eedc943aaaaf:docker/ort_training.dockerfile

@@ -28,6 +28,7 @@ RUN apt-get install -y software-properties-common wget apt-utils patchelf git li
 RUN unattended-upgrade
 RUN apt-get autoremove -y
 <<<<<<< HEAD
+<<<<<<< HEAD
 RUN pip install --upgrade pip
 
 # this line forces the docker build to rebuild from this point on
@@ -39,3 +40,6 @@ RUN pip install -r /tmp/gpu_requirements.txt
 =======
 RUN pip install --upgrade pip
 >>>>>>> seperated backend-device tests and update setup.py
+=======
+RUN pip install --upgrade pip
+>>>>>>> 426195cd6a0486e6594b50a0bb43eedc943aaaaf

@@ -1,4 +1,12 @@
+<<<<<<< HEAD
+<<<<<<< HEAD:.github/workflows/test_cuda_pytorch.yaml
 name: Pytorch CUDA Tests
+=======
+name: OnnxRuntime CUDA Inference Tests
+>>>>>>> 426195cd6a0486e6594b50a0bb43eedc943aaaaf:.github/workflows/test_cuda_onnxruntime_inference.yaml
+=======
+name: Pytorch CUDA Tests
+>>>>>>> 426195cd6a0486e6594b50a0bb43eedc943aaaaf
 
 on:
   pull_request:
