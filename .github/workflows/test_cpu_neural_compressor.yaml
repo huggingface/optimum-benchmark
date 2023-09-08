@@ -1,0 +1,32 @@
+name: Intel Neural Compressor CPU Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run_cpu_tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: Install Intel Neural Compressor CPU requirements
+        run: |
+          pip install --upgrade pip
+          pip install -e .[neural-compressor,test]
+
+      - name: Run Intel Neural Compressor CPU tests
+        run: |
+          pytest -k "cpu_neural_compressor"

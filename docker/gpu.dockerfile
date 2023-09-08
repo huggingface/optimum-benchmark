@@ -27,6 +27,7 @@ RUN apt-get install -y software-properties-common wget apt-utils patchelf git li
     apt-get clean
 RUN unattended-upgrade
 RUN apt-get autoremove -y
+<<<<<<< HEAD
 RUN pip install --upgrade pip
 
 # this line forces the docker build to rebuild from this point on
@@ -35,3 +36,6 @@ ARG CACHEBUST=1
 # Install optimum-benchmark dependencies
 COPY gpu_requirements.txt /tmp/gpu_requirements.txt
 RUN pip install -r /tmp/gpu_requirements.txt
+=======
+RUN pip install --upgrade pip
+>>>>>>> seperated backend-device tests and update setup.py
