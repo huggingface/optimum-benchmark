@@ -34,4 +34,4 @@ jobs:
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
           optimum-benchmark-gpu
-          -c "pip install -e .[test,diffusers] && pytest -k '(cuda or tensorrt) and not onnxruntime_training' -x"
+          -c "pip install -e .[test,diffusers] && pytest -k '(cuda or tensorrt) and onnxruntime and not training' -x"
