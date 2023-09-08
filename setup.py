@@ -1,10 +1,11 @@
 from setuptools import find_packages, setup
 
+OPTIMUM_VERSION = "1.13.0"
+
 INSTALL_REQUIRES = [
     # Mandatory HF dependencies
-    "optimum>=1.13.0",  # backends, tasks and input generation
-    "transformers>=4.20.0",  # pytorch, models, configs, hub, etc.
-    "accelerate>=0.22.0",  # distributed inference and no weights init
+    f"optimum=={OPTIMUM_VERSION}",  # backends, tasks and input generation
+    "accelerate",  # distributed inference and no weights init
     # Hydra
     "omegaconf==2.3.0",
     "hydra-core==1.3.2",
@@ -13,8 +14,17 @@ INSTALL_REQUIRES = [
     # Other
     "codecarbon==2.3.1",
     "psutil==5.9.0",
-    "pandas>=2.0.0",
+    "pandas==2.1.0",
 ]
+
+# add py3nvml if nvidia driver is installed
+try:
+    import subprocess
+
+    subprocess.run(["nvidia-smi"], stdout=subprocess.DEVNULL)
+    INSTALL_REQUIRES.append("py3nvml==0.2.7")
+except FileNotFoundError:
+    pass
 
 
 EXTRAS_REQUIRE = {
@@ -22,15 +32,15 @@ EXTRAS_REQUIRE = {
     "quality": ["black", "ruff"],
     "report": ["flatten_dict", "matplotlib", "seaborn", "rich"],
     # cpu backends
-    "openvino": ["optimum[openvino,nncf]>=1.13.0"],
-    "onnxruntime": ["optimum[onnxruntime]>=1.13.0"],
-    "neural-compressor": ["optimum[neural-compressor]>=1.13.0"],
-    # cuda backends
-    "onnxruntime-gpu": ["py3nvml", "optimum[onnxruntime-gpu]>=1.13.0"],
-    "text-generation-inference": ["py3nvml-0.2.7", "docker==6.1.3"],
+    "openvino": [f"optimum[openvino,nncf]=={OPTIMUM_VERSION}"],
+    "onnxruntime": [f"optimum[onnxruntime]=={OPTIMUM_VERSION}"],
+    "onnxruntime-gpu": [f"optimum[onnxruntime-gpu]=={OPTIMUM_VERSION}"],
+    "neural-compressor": [f"optimum[neural-compressor]=={OPTIMUM_VERSION}"],
+    # server-like backend
+    "text-generation-inference": ["docker==6.1.3"],
     # specific settings
-    "peft": ["peft"],
     "diffusers": ["diffusers"],
+    "peft": ["peft"],
 }
 
 
