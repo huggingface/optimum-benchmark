@@ -14,7 +14,7 @@ INSTALL_REQUIRES = [
     # Other
     "codecarbon==2.3.1",
     "psutil==5.9.0",
-    "pandas==2.1.0",
+    "pandas>=2.0.0",
 ]
 
 # add py3nvml if nvidia driver is installed
