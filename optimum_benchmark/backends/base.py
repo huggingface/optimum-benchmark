@@ -165,13 +165,13 @@ class Backend(Generic[BackendConfigT], ABC):
 
         return input
 
-    # compiling in openvino requires input shapes
-    def prepare_for_inference(self, input_shapes: Dict[str, int]) -> Dict[str, Any]:
+    # compiling in openvino requires input shapes, trt ep requires max tokens, etc.
+    def prepare_for_inference(self, **kwargs) -> None:
         pass
 
-    # symbolic tracing in transformers requires input names
-    def prepare_for_profiling(self, input_names: List[str]) -> Dict[str, Any]:
-        pass
+    # # symbolic tracing in transformers requires input names
+    # def prepare_for_profiling(self, input_names: List[str]) -> Dict[str, Any]:
+    #     pass
 
     def forward(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> "ModelOutput":
         return self.pretrained_model(**input, **kwargs)

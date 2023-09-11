@@ -47,6 +47,12 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             input_shapes=self.config.input_shapes,
         )
 
+        # openvino requires compiling with static shapes and trt ep requires max tokens
+        backend.prepare_for_inference(
+            input_shapes=self.config.input_shapes,
+            max_new_tokens=self.config.generate_kwargs.get("max_new_tokens", 0),
+        )
+
         # run forward pass tracking
         self.run_forward_tracking(backend)
 
@@ -59,9 +65,6 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
 
         LOGGER.info("\t+ Preparing input for the forward pass")
         forward_input = backend.prepare_input(forward_input)
-
-        # for backends that require compilation with static shapes
-        backend.prepare_for_inference(input_shapes=self.config.input_shapes)
 
         LOGGER.info("\t+ Warming up the forward pass")
         for _ in range(self.config.warmup_runs):

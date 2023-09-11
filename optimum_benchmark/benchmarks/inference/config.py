@@ -57,9 +57,6 @@ class InferenceConfig(BenchmarkConfig):
         },
     )
 
-    # TODO: deprecate this and use `benchamrk.generate_kwargs`
-    new_tokens: Optional[int] = None
-
     # forward options
     can_diffuse: bool = "${can_diffuse:${task}}"
     forward_kwargs: Dict[str, Any] = field(default_factory=dict)
@@ -77,14 +74,6 @@ class InferenceConfig(BenchmarkConfig):
 
             if self.generate_kwargs["max_new_tokens"] != self.generate_kwargs["min_new_tokens"]:
                 raise ValueError("`max_new_tokens` and `min_new_tokens` must be equal for fixed length output.")
-
-        if self.new_tokens is not None:
-            LOGGER.warning(
-                "The `new_tokens` option is deprecated, please use `generate_kwargs` instead. "
-                "`generate_kwargs.max_new_tokens` and `generate_kwargs.min_new_tokens` will be set to the value of `new_tokens`."
-            )
-            self.generate_kwargs["max_new_tokens"] = self.new_tokens
-            self.generate_kwargs["min_new_tokens"] = self.new_tokens
 
         if self.benchmark_duration is not None:
             LOGGER.warning(

@@ -311,6 +311,30 @@ class ORTBackend(Backend[ORTConfig]):
                 )
         self.model = quantized_model_path
 
+    def prepare_for_inference(self, **kwargs) -> None:
+        input_shapes = kwargs["input_shapes"]
+        max_new_tokens = kwargs["max_new_tokens"]
+
+        if self.config.provider == "TensorrtExecutionProvider" and self.is_text_generation_model():
+            LOGGER.info("\t+ Building TensorRT engine for short sequence")
+            short_ids = torch.randint(
+                0,
+                input_shapes["vocab_size"],
+                (input_shapes["batch_size"], input_shapes["sequence_length"]),
+                device=self.device,
+            )
+            short_attention_mask = torch.ones_like(short_ids, device=self.device)
+            self.pretrained_model(short_ids, attention_mask=short_attention_mask)
+            LOGGER.info("\t+ Building TensorRT engine for long sequence")
+            long_ids = torch.randint(
+                0,
+                input_shapes["vocab_size"],
+                (input_shapes["batch_size"], input_shapes["sequence_length"] + max_new_tokens),
+                device=self.device,
+            )
+            long_attention_mask = torch.ones_like(long_ids, device=self.device)
+            self.pretrained_model(long_ids, attention_mask=long_attention_mask)
+
     def prepare_for_profiling(self, input_names: List[str]) -> None:
         LOGGER.info("Preparing model for profiling")
         LOGGER.info("\t+ Wrapping model inside profiler")
