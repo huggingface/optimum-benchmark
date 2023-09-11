@@ -1,1 +1,0 @@
-docker build --no-cache --build-arg CACHEBUST=$(date +%s) -f docker/gpu.dockerfile -t optimum-benchmark-gpu .
