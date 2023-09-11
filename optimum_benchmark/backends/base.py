@@ -64,30 +64,30 @@ class Backend(Generic[BackendConfigT], ABC):
 
         if self.is_diffusion_pipeline():
             # for pipelines
+            self.library = "diffusers"
+            self.model_type = self.task
             self.pretrained_config = None
             self.pretrained_processor = None
-            self.model_type = self.task
         else:
             # for models
+            self.library = "transformers"
             self.pretrained_config = AutoConfig.from_pretrained(
                 pretrained_model_name_or_path=self.model, **self.hub_kwargs
             )
             self.model_type = self.pretrained_config.model_type
 
             try:
-                # the processor sometimes contains information about the model's
-                # input shapes that's not available in the config
+                # the processor sometimes contains information about the model's input shapes that's not available in the config
                 self.pretrained_processor = AutoProcessor.from_pretrained(
                     pretrained_model_name_or_path=self.model, **self.hub_kwargs
                 )
             except ValueError:
+                # sometimes the processor is not available or can't be determined/detected
                 LOGGER.warning("Could not find the model's preprocessor")
                 self.pretrained_processor = None
 
         self.automodel_class = TasksManager.get_model_class_for_task(
-            task=self.task,
-            framework="pt",
-            model_type=self.model_type,
+            task=self.task, library=self.library, model_type=self.model_type
         )
 
     def is_text_generation_model(self) -> bool:
