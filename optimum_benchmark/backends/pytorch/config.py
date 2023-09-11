@@ -67,7 +67,7 @@ class PyTorchConfig(BackendConfig):
     bettertransformer: bool = False
 
     # quantization options
-    quantization_strategy: Optional[str] = None
+    quantization_scheme: Optional[str] = None
     quantization_config: Dict[str, Any] = field(default_factory=dict)
 
     # training options
@@ -98,12 +98,12 @@ class PyTorchConfig(BackendConfig):
             if self.amp_dtype not in AMP_DTYPES:
                 raise ValueError(f"`amp_dtype` must be one of {AMP_DTYPES}. Got {self.amp_dtype} instead.")
 
-        if self.quantization_strategy is not None:
-            if self.quantization_strategy not in QUANTIZATION_CONFIGS:
+        if self.quantization_scheme is not None:
+            if self.quantization_scheme not in QUANTIZATION_CONFIGS:
                 raise ValueError(
-                    f"`quantization_strategy` must be one of {list(QUANTIZATION_CONFIGS.keys())}. Got {self.quantization_strategy} instead."
+                    f"`quantization_scheme` must be one of {list(QUANTIZATION_CONFIGS.keys())}. Got {self.quantization_scheme} instead."
                 )
-            QUANTIZATION_CONFIG = QUANTIZATION_CONFIGS[self.quantization_strategy]
+            QUANTIZATION_CONFIG = QUANTIZATION_CONFIGS[self.quantization_scheme]
             self.quantization_config = OmegaConf.to_object(
                 OmegaConf.merge(QUANTIZATION_CONFIG, self.quantization_config)
             )

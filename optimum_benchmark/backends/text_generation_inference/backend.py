@@ -70,8 +70,8 @@ class TGIBackend(Backend[TGIConfig]):
             self.hub_kwargs["revision"],
         ]
 
-        if self.config.quantization is not None:
-            self.command.extend(["--quantize", self.config.quantization])
+        if self.config.quantization_scheme is not None:
+            self.command.extend(["--quantize", self.config.quantization_scheme])
         if self.config.torch_dtype is not None:
             self.command.extend(["--torch-dtype", self.config.torch_dtype])
         if self.hub_kwargs.get("trust_remote_code", False):

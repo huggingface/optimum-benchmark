@@ -101,10 +101,10 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.pretrained_model = get_peft_model(self.pretrained_model, peft_config=peft_config)
 
     def load_model_from_pretrained(self) -> None:
-        if self.config.quantization_strategy == "gptq":
+        if self.config.quantization_scheme == "gptq":
             LOGGER.info("\t+ Processing GPTQ config")
             self.quantization_config = GPTQConfig(**self.config.quantization_config)
-        elif self.config.quantization_strategy == "bnb":
+        elif self.config.quantization_scheme == "bnb":
             LOGGER.info("\t+ Processing BnB config")
             self.quantization_config = self.config.quantization_config.copy()
             if self.quantization_config.get("bnb_4bit_compute_dtype", None) is not None:
@@ -167,8 +167,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 trust_remote_code=self.hub_kwargs.get("trust_remote_code", False),
             )
 
-        if self.config.quantization_strategy is not None:
-            if self.config.quantization_strategy == "bnb":
+        if self.config.quantization_scheme is not None:
+            if self.config.quantization_scheme == "bnb":
                 from accelerate.utils import (
                     BnbQuantizationConfig,
                     load_and_quantize_model,
@@ -188,7 +188,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 self.pretrained_model = load_and_quantize_model(self.pretrained_model, bnb_quantization_config)
                 LOGGER.info(f"\t+ Moving model to target device: {self.device}")
                 self.pretrained_model.to(device=self.device)
-            elif self.config.quantization_strategy == "gptq":
+            elif self.config.quantization_scheme == "gptq":
                 LOGGER.info("\t+ Processing GPTQ config")
                 from optimum.gptq import GPTQQuantizer
 

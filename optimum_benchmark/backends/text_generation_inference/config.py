@@ -24,7 +24,7 @@ class TGIConfig(BackendConfig):
     # optimization options
     disable_custom_kernels: bool = False  # True, False
     # quantization options
-    quantization: Optional[str] = None  # None, bitsandbytes-nf4, bitsandbytes-fp4
+    quantization_scheme: Optional[str] = None  # None, bitsandbytes-nf4, bitsandbytes-fp4
 
     def __post_init__(self):
         super().__post_init__()
