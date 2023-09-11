@@ -1,32 +1,30 @@
-# Optimum-Benchmark (🚧 WIP 🚧)
+# Optimum-Benchmark
 
-## The Goal
+Optimum-Benchmark is a unified multi-backend utility for benchmarking `transformers`, `diffusers`, `peft` and `timm` models with [Optimum](https://github.com/huggingface/optimum)'s optimizations & quantization, for [inference](https://github.com/huggingface/optimum#accelerated-inference) & [training](https://github.com/huggingface/optimum#accelerated-training), on different backends & hardwares (OnnxRuntime, Intel Neural Compressor, OpenVINO, Habana Gaudi Processor (HPU), etc).
 
-A repository aiming to create a universal benchmarking utility for any model on [HuggingFace's Hub](https://huggingface.co/models) supporting [Optimum](https://github.com/huggingface/optimum)'s [inference](https://github.com/huggingface/optimum#accelerated-inference) & [training](https://github.com/huggingface/optimum#accelerated-training), optimizations & quantizations, on different backends & hardwares (OnnxRuntime, Intel Neural Compressor, OpenVINO, Habana Gaudi Processor (HPU), etc).
-
-The experiment management and tracking is handled using [hydra](https://hydra.cc/) from the command line with minimum configuration changes and maximum flexibility (inspired by [tune](https://github.com/huggingface/tune)).
+The experiment management and tracking is handled using [hydra](https://hydra.cc/) which allows for simple cli with minimum configuration changes and maximum flexibility (inspired by [tune](https://github.com/huggingface/tune)).
 
 ## Motivation
 
-- Many users would want to know how their chosen model performs in terms of latency & throughput before deploying it to production.
-- Many hardware vendors would want to know how their hardware performs on different models and how it compares to other hardware.
-- Optimum offers a lot of hardware and backend specific optimizations that can be applied to models and improve their performance, but it might be hard to know which ones to use if you don't know a lot about your hardware. It's also hard to estimate how much these optimizations will improve the performance before training your model or downloading it from the hub and applying them.
-- Benchmarks depend heavily on many factors, like the machine/hardware/os/releases etc, but these details are not put forward with the results. And that makes most of the benchmarks available or published, not very useful for decision making.
+- Many hardware vendors would want to know how their hardware performs compared to others on the same models.
+- Many HF users would want to know how their chosen model performs in terms of latency, throughput, memory usage, energy consumption, etc.
+- Optimum offers a lot of hardware and backend specific optimizations & quantization schemas that can be applied to models and improve their performance.
+- Benchmarks depend heavily on many factors, like input/hardware/releases/etc, but most don't report these factors (e.g. comparing an A100 to an RTX 3090 on a singleton batch).
 - [...]
 
 ## Features
 
-Benchmarks:
+`optimum-benchmark` allows you to run benchmarks with no code and minimal user input, just specify:
 
-- [x] Inference and Training benchmarks.
-- [x] Latency and throughput tracking (default)
-- [x] Peak memory tracking (`benchmark.memory=true`)
-- [x] Energy and carbon emissions estimation (`benchmark.energy=true`)
-- [x] Input shapes control (e.g. `benchmark.input_shapes.batch_size=8`)
-- [x] Forward and Generation pass control (e.g. `benchmark.generate.max_new_tokens=100`, `benchmark.forward.num_images_per_prompt=4`)
-- [x] Training warmup steps (`benchmark.warmup_steps=20`)
+- The device to use (e.g. `cuda`).
+- The type of benchmark (e.g. `training`)
+- The backend to run on (e.g. `onnxruntime`).
+- The model name or path (e.g. `bert-base-uncased`)
+- And optionally, the model's task (e.g. `text-classification`).
 
-Backends:
+Everything else is either optional or inferred from the model's name or path.
+
+### Supported Backends/Dvices
 
 - [x] Pytorch backend for CPU
 - [x] Pytorch backend for CUDA
@@ -37,37 +35,58 @@ Backends:
 - [x] Intel Neural Compressor backend for CPU
 - [x] OpenVINO backend for CPU
 
-Features:
+### Benchmark features
 
-- [x] Random weights initialization (practical for benchmarking big/many models withut downloading the weights).
-- [x] Optimum's Quantization and AutoQuantization (Onnxruntime, OpenVINO, Intel Neural Compressor)
-- [x] Optimum's Calibration for Static Quantization (Onnxruntime, OpenVINO, Intel Neural Compressor)
-- [x] Optimum's Optimization and AutoOptimization (Onnxruntime)
-- [x] PEFT training (Pytorch and Onnxruntime)
-- [x] DDP training (Pytorch and Onnxruntime)
-- [x] BitsAndBytes quantization scheme (Pytorch)
-- [x] Optimum's BetterTransformer (Pytorch)
-- [x] Automatic Mixed Precision (Pytorch)
-- [x] GPTQ quantization scheme (Pytorch)
-- [x] Dynamo compiling (Pytorch)
+- [x] Latency and throughput tracking (default).
+- [x] Peak memory tracking (`benchmark.memory=true`).
+- [x] Energy and carbon emissions (`benchmark.energy=true`).
+- [x] Warm up runs before inference (`benchmark.warmup_runs=20`).
+- [x] Warm up steps during training (`benchmark.warmup_steps=20`).
+- [x] Inputs shapes control (e.g. `benchamrk.input_shapes.sequence_length=128`).
+- [x] Dataset shapes control (e.g. `benchmark.dataset_shapes.dataset_size=1000`).
+- [x] Forward and Generation pass control (e.g. for an LLM `benchmark.generate.max_new_tokens=100`, for a diffusion model `benchmark.forward.num_images_per_prompt=4`).
+
+### Backend features
+
+- [x] Random weights initialization (`backend.no_weights=true` for fast model instantiation without downloading weights).
+- [x] Onnxruntime Quantization and AutoQuantization (`backend.quantization=true` or `backend.auto_quantization=avx2`, etc).
+- [x] Onnxruntime Calibration for Static Quantization (`backend.quantization_config.is_static=true`, etc).
+- [x] Onnxruntime Optimization and AutoOptimization (`backend.optimization=true` or `backend.auto_optimization=O4`, etc).
+- [x] PEFT training (`backend.peft_strategy=lora`, `backend.peft_config.task_type=CAUSAL_LM`, etc).
+- [x] DDP training (`backend.use_ddp=true`, `backend.ddp_config.nproc_per_node=2`, etc).
+- [x] BitsAndBytes quantization scheme (`backend.quantization_scheme=bnb`, ``backend.quantization_config.load_in_4bit`, etc).
+- [x] GPTQ quantization scheme (`backend.quantization_scheme=gptq`, `backend.quantization_config.bits=4`, etc).
+- [x] Optimum's BetterTransformer (`backend.bettertransformer=true`).
+- [x] Automatic Mixed Precision (`backend.amp_autocast=true`).
+- [x] Dynamo/Inductor compiling (`backend.torch_compile=true`).
 
 ## Quickstart
 
-Start by installing the required dependencies for your hardware you want to use.
-For example, if you're gonna be running some GPU/CUDA benchmarks, you can install the requirements with:
+### Installation
+
+You can install `optimum-benchmark` using pip:
 
 ```bash
-python -m pip install -r gpu_requirements.txt
+python -m pip install git+https://github.com/huggingface/optimum-benchmark.git
 ```
 
-Then install the package:
+or by cloning the repository and installing it in editable mode:
 
 ```bash
+git clone https://github.com/huggingface/optimum-benchmark.git && cd optimum-benchmark
+
 python -m pip install -e .
 ```
 
-You can now run a benchmark using the command line by specifying the configuration directory and the configuration name.
-Both arguments are mandatory. The `config-dir` is the directory where the configuration files are stored and the `config-name` is the name of the configuration file without its `.yaml` extension.
+Depending on the backends you want to use, you might need to install some extra dependencies:
+
+- OpenVINO: `pip install optimum-benchmark[openvino]`
+- OnnxRuntime: `pip install optimum-benchmark[onnxruntime]`
+- OnnxRuntime-GPU: `pip install optimum-benchmark[onnxruntime-gpu]`
+- Intel Neural Compressor: `pip install optimum-benchmark[neural-compressor]`
+- Text Generation Inference: `pip install optimum-benchmark[text-generation-inference]`
+
+You can now run a benchmark using the command line by specifying the configuration directory and the configuration name. Both arguments are mandatory for `hydra`. `config-dir` is the directory where the configuration files are stored and `config-name` is the name of the configuration file without its `.yaml` extension.
 
 ```bash
 optimum-benchmark --config-dir examples/ --config-name pytorch_bert
@@ -131,14 +150,14 @@ model: bookbot/distil-wav2vec2-adult-child-cls-37m
 device: cpu
 ```
 
-Other than the [examples](examples), you can check [`tests` configuration files](tests/configs/).
+Other than the [examples](examples), you can also check [`tests`](tests/configs/).
 
 ## Contributing
 
 Contributions are welcome! And we're happy to help you get started. Feel free to open an issue or a pull request.
 Things that we'd like to see:
 
+- More backends (Tensorflow, TFLite, Jax, etc).
 - More tests (right now we only have few tests per backend).
 - Task evaluators for the most common tasks (would be great for output regression).
-- More backends (Tensorflow, TFLite, Jax, etc).
 - More hardware support (Habana Gaudi Processor (HPU), RadeonOpenCompute (ROCm), etc).
