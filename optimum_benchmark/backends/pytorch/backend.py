@@ -81,13 +81,13 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 # TODO: should we compile vae and/or clip as well ?
                 self.pretrained_model.unet.forward = torch.compile(
                     self.pretrained_model.unet.forward,
-                    **self.config.torch_compile_kwargs,
+                    **self.config.torch_compile_config,
                 )
             else:
                 LOGGER.info("\t+ Using torch.compile on forward pass")
                 self.pretrained_model.forward = torch.compile(
                     self.pretrained_model.forward,
-                    **self.config.torch_compile_kwargs,
+                    **self.config.torch_compile_config,
                 )
 
         if self.config.peft_strategy is not None:

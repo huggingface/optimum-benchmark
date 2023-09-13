@@ -60,12 +60,13 @@ class InferenceConfig(BenchmarkConfig):
     # TODO: deprecate this and use `benchamrk.generate_kwargs`
     new_tokens: Optional[int] = None
 
-    # forward options
     can_diffuse: bool = "${can_diffuse:${task}}"
+    can_generate: bool = "${can_generate:${task}}"
+
+    # forward options
     forward_kwargs: Dict[str, Any] = field(default_factory=dict)
 
     # generation options
-    can_generate: bool = "${can_generate:${task}}"
     generate_kwargs: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
