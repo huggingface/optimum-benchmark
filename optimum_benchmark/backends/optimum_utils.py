@@ -245,7 +245,7 @@ def main_export(
         and not is_stable_diffusion
         and task + "-with-past" in TasksManager.get_supported_tasks_for_model_type(model_type, "onnx")
     ):
-        if original_task == "auto":  # Make -with-past the default if --task was not explicitely specified
+        if original_task == "auto":  # Make -with-past the default if --task was not explicitly specified
             task = task + "-with-past"
         else:
             logger.info(
@@ -328,7 +328,7 @@ def main_export(
         if model.config.is_encoder_decoder and task.startswith("text-generation"):
             raise ValueError(
                 f"model.config.is_encoder_decoder is True and task is `{task}`, which are incompatible. If the task was auto-inferred, please fill a bug report"
-                f"at https://github.com/huggingface/optimum, if --task was explicitely passed, make sure you selected the right task for the model,"
+                f"at https://github.com/huggingface/optimum, if --task was explicitly passed, make sure you selected the right task for the model,"
                 f" referring to `optimum.exporters.tasks.TaskManager`'s `_TASKS_TO_AUTOMODELS`."
             )
 

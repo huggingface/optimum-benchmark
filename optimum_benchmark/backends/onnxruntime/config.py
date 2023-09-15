@@ -144,7 +144,7 @@ class ORTConfig(BackendConfig):
     auto_quantization: Optional[str] = None
     auto_quantization_config: Dict[str, Any] = field(default_factory=dict)
 
-    # ort-training is basically a different package so we might need to seperate these two backends in the future
+    # ort-training is basically a different package so we might need to separate these two backends in the future
     use_inference_session: bool = "${is_inference:${benchmark.name}}"
 
     # training options

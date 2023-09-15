@@ -120,7 +120,7 @@ Also, for integer parameters like `batch_size`, one can specify a range of value
 optimum-benchmark --config-dir examples --config-name pytorch_bert -m device=cpu,cuda benchmark.input_shapes.batch_size='range(1,10,step=2)'
 ```
 
-## Reporting benchamrk results (WIP)
+## Reporting benchmark results (WIP)
 
 To aggregate the results of a benchmark (run(s) or sweep(s)), you can use the `optimum-report` command.
 
@@ -135,7 +135,7 @@ You can also reuse some components of the reporting script for your use case (ex
 ## Configurations structure
 
 You can create custom configuration files following the [examples here](examples).
-You can also use `hydra`'s [composition](https://hydra.cc/docs/0.11/tutorial/composition/) with a base configuratin ([`examples/pytorch_bert.yaml`](examples/pytorch_bert.yaml) for example) and override/define parameters.
+You can also use `hydra`'s [composition](https://hydra.cc/docs/0.11/tutorial/composition/) with a base configuration ([`examples/pytorch_bert.yaml`](examples/pytorch_bert.yaml) for example) and override/define parameters.
 
 To create a configuration that uses a `wav2vec2` model and `onnxruntime` backend, it's as easy as:
 

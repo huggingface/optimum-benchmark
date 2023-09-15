@@ -143,7 +143,7 @@ def get_inference_rich_table(inference_report, with_baseline=False, with_generat
 
 
 def get_inference_plots(report, with_baseline=False, with_generate=False, subtitle=""):
-    # create bar charts seperately
+    # create bar charts separately
     fig1, ax1 = plt.subplots(figsize=(20, 10))
     fig2, ax2 = plt.subplots(figsize=(20, 10))
 

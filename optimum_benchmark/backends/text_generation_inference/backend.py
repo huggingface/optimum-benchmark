@@ -31,7 +31,7 @@ class TGIBackend(Backend[TGIConfig]):
         self.validate_task()
 
         automodel = self.automodel_class.__name__
-        LOGGER.info(f"\t+ Infered AutoModel class {automodel} for task {self.task} and model_type {self.model_type}")
+        LOGGER.info(f"\t+ Inferred AutoModel class {automodel} for task {self.task} and model_type {self.model_type}")
 
     def validate_task(self) -> None:
         if self.task not in ["text-generation", "text2text-generation"]:
@@ -144,7 +144,7 @@ class TGIBackend(Backend[TGIConfig]):
             self.pretrained_model = self.automodel_class.from_pretrained(self.model, **self.hub_kwargs)
 
     def modify_generation_config(self) -> None:
-        # this should, theorically, make the generated output's sequence length fully controlled by max_new_tokens
+        # this should, theoretically, make the generated output's sequence length fully controlled by max_new_tokens
         # instead of stopping at the first eos_token_id/pad_token_id
         generation_config = GenerationConfig.from_pretrained(self.model, **self.hub_kwargs)
         generation_config.eos_token_id = -100
@@ -199,7 +199,7 @@ class TGIBackend(Backend[TGIConfig]):
         super().clean()
 
         if hasattr(self, "tgi_container"):
-            LOGGER.info("\t+ Stoping TGI container")
+            LOGGER.info("\t+ Stopping TGI container")
             self.tgi_container.stop()
             LOGGER.info("\t+ Waiting for TGI container to stop")
             self.tgi_container.wait()

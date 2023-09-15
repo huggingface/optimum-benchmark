@@ -13,7 +13,7 @@ Where `${device}` is either `cpu` or `cuda`.
 
 ## Metrics
 
-Fo this benchmark I tried to compare `whisper-base` model's throughputs (forward and generate).
+For this benchmark I tried to compare `whisper-base` model's throughputs (forward and generate).
 
 Forward throughput is measured in `samples/second` with the formula `number_processed_samples / total_time`.
 Where `number_processed_samples = batch_size * number_forward_passes` is the number of samples processed by the model in `total_time`.
@@ -23,7 +23,7 @@ Where `number_generated_tokens = batch_size * num_tokens * number_generate_passe
 
 ## Search Space
 
-To be exhaustive, I benchmarked different auto optimization configurations supported by Optimum on GPU & CPU and auto quantization configrations on CPU only.
+To be exhaustive, I benchmarked different auto optimization configurations supported by Optimum on GPU & CPU and auto quantization configurations on CPU only.
 
 I also added `benchmark.batch_size=64,128 benchmark.new_tokens=10,100` to compare behavior across different batch sizes and number of generated tokens.
 

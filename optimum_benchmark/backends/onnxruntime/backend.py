@@ -53,7 +53,7 @@ class ORTBackend(Backend[ORTConfig]):
 
         ortmodel_name = self.ortmodel_class.__name__
         LOGGER.info(
-            f"\t+ Infered ORTModel class {ortmodel_name} for task {self.task} and model_type {self.model_type}"
+            f"\t+ Inferred ORTModel class {ortmodel_name} for task {self.task} and model_type {self.model_type}"
         )
 
     def validate_device(self) -> None:
@@ -71,7 +71,7 @@ class ORTBackend(Backend[ORTConfig]):
         self.torch_dtype = getattr(torch, self.config.torch_dtype) if self.config.torch_dtype is not None else None
 
         ###### Training with ORTModule ######
-        # ort-training is basically a different package so we might need to seperate these two backends in the future
+        # ort-training is basically a different package so we might need to separate these two backends in the future
         if not self.config.use_inference_session:
             if self.config.no_weights:
                 self.load_automodel_from_config()
@@ -114,7 +114,7 @@ class ORTBackend(Backend[ORTConfig]):
             self.export = False
         else:
             if self.config.export:
-                self.use_merged = False  # merging is handeled seperately
+                self.use_merged = False  # merging is handled separately
                 self.load_automodel_from_pretrained()  # creates automodel from pretrained
                 self.export_automodel()  # exports automodel
                 self.export = False
