@@ -66,9 +66,6 @@ class InferenceConfig(BenchmarkConfig):
     # generation options
     generate_kwargs: Dict[str, Any] = field(default_factory=dict)
 
-    # generation option to override max_new_tokens and min_new_tokens
-    new_tokens: Optional[int] = None
-
     def __post_init__(self):
         if self.can_diffuse:
             self.forward_kwargs = OmegaConf.to_object(OmegaConf.merge(self.forward_kwargs, DIFUSION_CONFIG))
