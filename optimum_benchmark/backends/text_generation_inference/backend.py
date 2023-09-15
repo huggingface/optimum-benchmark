@@ -187,11 +187,6 @@ class TGIBackend(Backend[TGIConfig]):
             ]
         for i in range(len(input["prompt"])):
             output.append(futures[i].result())
-            if len(output[-1].details["tokens"]) < kwargs["max_new_tokens"]:
-                LOGGER.warning(
-                    f"\t+ Generated {len(output[-1].details['tokens'])} tokens instead of {kwargs['max_new_tokens']}"
-                    " tokens. Benchmark results might be inaccurate."
-                )
 
         return output
 
