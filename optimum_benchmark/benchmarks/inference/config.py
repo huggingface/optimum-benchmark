@@ -34,7 +34,6 @@ class InferenceConfig(BenchmarkConfig):
     # benchmark options
     duration: int = 10
     warmup_runs: int = 10
-    benchmark_duration: Optional[int] = None  # deprecated
 
     # additional/optional metrics
     memory: bool = False
@@ -65,6 +64,9 @@ class InferenceConfig(BenchmarkConfig):
     can_generate: bool = "${can_generate:${task}}"
     generate_kwargs: Dict[str, Any] = field(default_factory=dict)
 
+    # generation option to override max_new_tokens and min_new_tokens
+    new_tokens: Optional[int] = None
+
     def __post_init__(self):
         if self.can_diffuse:
             self.forward_kwargs = OmegaConf.to_object(OmegaConf.merge(self.forward_kwargs, DIFUSION_CONFIG))
@@ -75,9 +77,9 @@ class InferenceConfig(BenchmarkConfig):
             if self.generate_kwargs["max_new_tokens"] != self.generate_kwargs["min_new_tokens"]:
                 raise ValueError("`max_new_tokens` and `min_new_tokens` must be equal for fixed length output.")
 
-        if self.benchmark_duration is not None:
-            LOGGER.warning(
-                "The `benchmark_duration` option is deprecated, please use `duration` instead. "
-                "`duration` will be set to the value of `benchmark_duration`."
-            )
-            self.duration = self.benchmark_duration
+            if self.new_tokens is not None:
+                LOGGER.info(
+                    f"`new_tokens` was set to {self.new_tokens}. `max_new_tokens` and `min_new_tokens` will be set to {self.new_tokens}."
+                )
+                self.generate_kwargs["max_new_tokens"] = self.new_tokens
+                self.generate_kwargs["min_new_tokens"] = self.new_tokens
