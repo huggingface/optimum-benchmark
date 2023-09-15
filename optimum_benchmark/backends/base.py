@@ -50,7 +50,7 @@ LOGGER = getLogger("backend")
 class Backend(Generic[BackendConfigT], ABC):
     NAME: ClassVar[str]
 
-    # instance variables withouth default values https://stackoverflow.com/a/44962662
+    # instance variables without default values https://stackoverflow.com/a/44962662
     config: BackendConfigT
     pretrained_model: Union["PreTrainedModel", "Pipeline"]
     pretrained_processor: Optional["PreTrainedProcessor"]
@@ -117,7 +117,7 @@ class Backend(Generic[BackendConfigT], ABC):
             else:
                 device_ids = list(map(int, CUDA_VISIBLE_DEVICES.split(",")))
 
-            LOGGER.info(f"\t+ Checking contineous device(s) isolation of CUDA device(s): {device_ids}")
+            LOGGER.info(f"\t+ Checking continuous device(s) isolation of CUDA device(s): {device_ids}")
             self.isolation_thread = Process(
                 target=check_only_this_process_is_running_on_cuda_device,
                 args=(device_ids, os.getpid()),
@@ -165,13 +165,13 @@ class Backend(Generic[BackendConfigT], ABC):
 
         return input
 
-    # compiling in openvino requires input shapes
-    def prepare_for_inference(self, input_shapes: Dict[str, int]) -> Dict[str, Any]:
+    # compiling in openvino requires input shapes, trt ep requires max tokens, etc.
+    def prepare_for_inference(self, **kwargs) -> None:
         pass
 
-    # symbolic tracing in transformers requires input names
-    def prepare_for_profiling(self, input_names: List[str]) -> Dict[str, Any]:
-        pass
+    # # symbolic tracing in transformers requires input names
+    # def prepare_for_profiling(self, input_names: List[str]) -> Dict[str, Any]:
+    #     pass
 
     def forward(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> "ModelOutput":
         return self.pretrained_model(**input, **kwargs)

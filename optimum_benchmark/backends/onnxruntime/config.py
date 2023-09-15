@@ -13,31 +13,29 @@ from ..peft_utils import PEFT_CONFIGS, PEFT_TASKS_TYPES
 def infer_device_id(device: str) -> int:
     """Infer the device id from the given device string."""
     if "cuda" in device:
-        # here we resolve conflicts between CUDA_VISIBLE_DEVICES and pytorch's indexing
-        # e.g. CUDA_VISIBLE_DEVICES=1 and device=cuda:0 should return 1
-        CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", None)
-        if CUDA_VISIBLE_DEVICES is None:
-            if ":" in device:
-                return int(device.split(":")[1])
-            else:
-                return 0
+        if ":" in device:
+            # either CUDA_VISIBLE_DEVICES is set or device is set to cuda:0
+            return int(device.split(":")[1])
         else:
-            if ":" in device:
-                return int(CUDA_VISIBLE_DEVICES.split(",")[int(device.split(":")[1])])
-            else:
-                return int(CUDA_VISIBLE_DEVICES.split(",")[0])
+            # device is set to cuda
+            return 0
     elif device == "cpu":
         return -1
     else:
         raise ValueError(f"Unknown device: {device}")
 
 
+DEVICE_PROVIDER_MAP = {
+    "cpu": "CPUExecutionProvider",
+    "cuda": "CUDAExecutionProvider",
+}
+
 OmegaConf.register_new_resolver("onnxruntime_version", onnxruntime_version)
-OmegaConf.register_new_resolver("is_gpu", lambda device: "cuda" in device)
 OmegaConf.register_new_resolver("infer_device_id", lambda device: infer_device_id(device))
+OmegaConf.register_new_resolver("infer_provider", lambda device: DEVICE_PROVIDER_MAP[device])
 OmegaConf.register_new_resolver("is_profiling", lambda benchmark_name: benchmark_name == "profiling")
 OmegaConf.register_new_resolver(
-    "infer_provider", lambda device: "CPUExecutionProvider" if device == "cpu" else "CUDAExecutionProvider"
+    "io_bind", lambda provider: provider in ["CPUExecutionProvider", "CUDAExecutionProvider"]
 )
 
 
@@ -97,6 +95,11 @@ CALIBRATION_CONFIG = {
     "preprocess_class": "optimum_benchmark.preprocessors.glue.GluePreprocessor",
 }
 
+TRT_PROVIDER_OPTIONS = {
+    "trt_engine_cache_enable": True,
+    "trt_engine_cache_path": "tmp/trt_cache",
+}
+
 
 @dataclass
 class ORTConfig(BackendConfig):
@@ -114,12 +117,10 @@ class ORTConfig(BackendConfig):
 
     # provider options
     provider: str = "${infer_provider:${device}}"
-    device_id: Optional[int] = "${oc.deprecated:backend.provider_options.device_id}"
     provider_options: Dict[str, Any] = field(default_factory=lambda: {"device_id": "${infer_device_id:${device}}"})
 
     # inference options
-    use_io_binding: bool = "${is_gpu:${device}}"
-    enable_profiling: bool = "${oc.deprecated:backend.session_options.enable_profiling}"
+    use_io_binding: bool = "${io_bind:${device}}"
     session_options: Dict[str, Any] = field(
         default_factory=lambda: {"enable_profiling": "${is_profiling:${benchmark.name}}"}
     )
@@ -144,7 +145,7 @@ class ORTConfig(BackendConfig):
     auto_quantization: Optional[str] = None
     auto_quantization_config: Dict[str, Any] = field(default_factory=dict)
 
-    # ort-training is basically a different package so we might need to seperate these two backends in the future
+    # ort-training is basically a different package so we might need to separate these two backends in the future
     use_inference_session: bool = "${is_inference:${benchmark.name}}"
 
     # training options
@@ -160,6 +161,10 @@ class ORTConfig(BackendConfig):
 
         if not self.no_weights and not self.export and self.torch_dtype is not None:
             raise NotImplementedError("Can't convert an exported model's weights to a different dtype.")
+
+        if self.provider == "TensorrtExecutionProvider":
+            self.provider_options = OmegaConf.to_object(OmegaConf.merge(TRT_PROVIDER_OPTIONS, self.provider_options))
+            os.makedirs(self.provider_options["trt_engine_cache_path"], exist_ok=True)
 
         if self.optimization:
             self.optimization_config = OmegaConf.to_object(

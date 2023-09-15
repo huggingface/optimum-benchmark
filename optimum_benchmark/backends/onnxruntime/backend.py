@@ -53,7 +53,7 @@ class ORTBackend(Backend[ORTConfig]):
 
         ortmodel_name = self.ortmodel_class.__name__
         LOGGER.info(
-            f"\t+ Infered ORTModel class {ortmodel_name} for task {self.task} and model_type {self.model_type}"
+            f"\t+ Inferred ORTModel class {ortmodel_name} for task {self.task} and model_type {self.model_type}"
         )
 
     def validate_device(self) -> None:
@@ -71,7 +71,7 @@ class ORTBackend(Backend[ORTConfig]):
         self.torch_dtype = getattr(torch, self.config.torch_dtype) if self.config.torch_dtype is not None else None
 
         ###### Training with ORTModule ######
-        # ort-training is basically a different package so we might need to seperate these two backends in the future
+        # ort-training is basically a different package so we might need to separate these two backends in the future
         if not self.config.use_inference_session:
             if self.config.no_weights:
                 self.load_automodel_from_config()
@@ -102,6 +102,7 @@ class ORTBackend(Backend[ORTConfig]):
         # Some statefullness to handle the different combinations of options
         self.export = self.config.export
         self.use_merged = self.config.use_merged
+        self.provider_options = self.config.provider_options.copy()
 
         if self.is_diffusion_pipeline():
             self.load_ortmodel()
@@ -114,7 +115,7 @@ class ORTBackend(Backend[ORTConfig]):
             self.export = False
         else:
             if self.config.export:
-                self.use_merged = False  # merging is handeled seperately
+                self.use_merged = False  # merging is handled separately
                 self.load_automodel_from_pretrained()  # creates automodel from pretrained
                 self.export_automodel()  # exports automodel
                 self.export = False
@@ -131,11 +132,11 @@ class ORTBackend(Backend[ORTConfig]):
         if self.config.auto_quantization or self.config.quantization:
             self.quantize_onnx_files()
 
-        self.load_ortmodel()
-        self.tmpdir.cleanup()
+        if not (self.config.provider == "TensorrtExecutionProvider" and self.is_text_generation_model()):
+            self.load_ortmodel()
+            self.tmpdir.cleanup()
 
     def load_automodel_from_config(self) -> None:
-        # TODO: create no_weights tests
         from accelerate import init_empty_weights
 
         LOGGER.info("\t+ Loading AutoModel from config")
@@ -164,8 +165,8 @@ class ORTBackend(Backend[ORTConfig]):
             export=self.export,
             provider=self.config.provider,
             session_options=self.session_options,
+            provider_options=self.provider_options,
             use_io_binding=self.config.use_io_binding,
-            provider_options=self.config.provider_options,
             **self.ortmodel_kwargs,
             **self.hub_kwargs,
         )
@@ -310,6 +311,23 @@ class ORTBackend(Backend[ORTConfig]):
                     preprocessor=None,
                 )
         self.model = quantized_model_path
+
+    def prepare_for_inference(self, **kwargs) -> None:
+        if self.config.provider == "TensorrtExecutionProvider" and self.is_text_generation_model():
+            max_new_tokens = kwargs["max_new_tokens"]
+            batch_size = kwargs["input_shapes"]["batch_size"]
+            sequence_length = kwargs["input_shapes"]["sequence_length"]
+
+            LOGGER.info("\t+ Creating dynamic shapes for Tensorrt engine, loading will take a while")
+            self.provider_options = {
+                **self.provider_options,
+                "trt_profile_min_shapes": f"input_ids:{batch_size}x{sequence_length},attention_mask:{batch_size}x{sequence_length}",
+                "trt_profile_max_shapes": f"input_ids:{batch_size}x{sequence_length + max_new_tokens},attention_mask:{batch_size}x{sequence_length + max_new_tokens}",
+                "trt_profile_opt_shapes": f"input_ids:{batch_size}x{sequence_length + max_new_tokens},attention_mask:{batch_size}x{sequence_length + max_new_tokens}",
+            }
+
+            self.load_ortmodel()
+            self.tmpdir.cleanup()
 
     def prepare_for_profiling(self, input_names: List[str]) -> None:
         LOGGER.info("Preparing model for profiling")

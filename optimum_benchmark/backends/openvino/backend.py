@@ -24,7 +24,9 @@ class OVBackend(Backend[OVConfig]):
 
         self.ovmodel_class = get_class(TASKS_TO_OVMODEL[self.task])
         ortmodel_name = self.ovmodel_class.__name__
-        LOGGER.info(f"\t+ Infered OVModel class {ortmodel_name} for task {self.task} and model_type {self.model_type}")
+        LOGGER.info(
+            f"\t+ Inferred OVModel class {ortmodel_name} for task {self.task} and model_type {self.model_type}"
+        )
 
     def validate_task(self) -> None:
         if self.task not in TASKS_TO_OVMODEL:
@@ -95,7 +97,8 @@ class OVBackend(Backend[OVConfig]):
         )
         self.model = quantized_model_path
 
-    def prepare_for_inference(self, input_shapes: Dict[str, int]) -> None:
+    def prepare_for_inference(self, **kwargs) -> None:
+        input_shapes = kwargs["input_shapes"]
         if self.config.reshape:
             static_shapes = {
                 key: value
