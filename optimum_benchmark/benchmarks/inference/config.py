@@ -34,7 +34,6 @@ class InferenceConfig(BenchmarkConfig):
     # benchmark options
     duration: int = 10
     warmup_runs: int = 10
-    benchmark_duration: Optional[int] = None  # deprecated
 
     # additional/optional metrics
     memory: bool = False
@@ -57,9 +56,7 @@ class InferenceConfig(BenchmarkConfig):
         },
     )
 
-    # TODO: deprecate this and use `benchamrk.generate_kwargs`
     new_tokens: Optional[int] = None
-
     can_diffuse: bool = "${can_diffuse:${task}}"
     can_generate: bool = "${can_generate:${task}}"
 
@@ -79,17 +76,9 @@ class InferenceConfig(BenchmarkConfig):
             if self.generate_kwargs["max_new_tokens"] != self.generate_kwargs["min_new_tokens"]:
                 raise ValueError("`max_new_tokens` and `min_new_tokens` must be equal for fixed length output.")
 
-        if self.new_tokens is not None:
-            LOGGER.warning(
-                "The `new_tokens` option is deprecated, please use `generate_kwargs` instead. "
-                "`generate_kwargs.max_new_tokens` and `generate_kwargs.min_new_tokens` will be set to the value of `new_tokens`."
-            )
-            self.generate_kwargs["max_new_tokens"] = self.new_tokens
-            self.generate_kwargs["min_new_tokens"] = self.new_tokens
-
-        if self.benchmark_duration is not None:
-            LOGGER.warning(
-                "The `benchmark_duration` option is deprecated, please use `duration` instead. "
-                "`duration` will be set to the value of `benchmark_duration`."
-            )
-            self.duration = self.benchmark_duration
+            if self.new_tokens is not None:
+                LOGGER.info(
+                    f"`new_tokens` was set to {self.new_tokens}. `max_new_tokens` and `min_new_tokens` will be set to {self.new_tokens}."
+                )
+                self.generate_kwargs["max_new_tokens"] = self.new_tokens
+                self.generate_kwargs["min_new_tokens"] = self.new_tokens

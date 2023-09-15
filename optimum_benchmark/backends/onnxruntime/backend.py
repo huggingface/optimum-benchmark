@@ -102,6 +102,7 @@ class ORTBackend(Backend[ORTConfig]):
         # Some statefullness to handle the different combinations of options
         self.export = self.config.export
         self.use_merged = self.config.use_merged
+        self.provider_options = self.config.provider_options.copy()
 
         if self.is_diffusion_pipeline():
             self.load_ortmodel()
@@ -131,11 +132,11 @@ class ORTBackend(Backend[ORTConfig]):
         if self.config.auto_quantization or self.config.quantization:
             self.quantize_onnx_files()
 
-        self.load_ortmodel()
-        self.tmpdir.cleanup()
+        if not (self.config.provider == "TensorrtExecutionProvider" and self.is_text_generation_model()):
+            self.load_ortmodel()
+            self.tmpdir.cleanup()
 
     def load_automodel_from_config(self) -> None:
-        # TODO: create no_weights tests
         from accelerate import init_empty_weights
 
         LOGGER.info("\t+ Loading AutoModel from config")
@@ -164,8 +165,8 @@ class ORTBackend(Backend[ORTConfig]):
             export=self.export,
             provider=self.config.provider,
             session_options=self.session_options,
+            provider_options=self.provider_options,
             use_io_binding=self.config.use_io_binding,
-            provider_options=self.config.provider_options,
             **self.ortmodel_kwargs,
             **self.hub_kwargs,
         )
@@ -310,6 +311,23 @@ class ORTBackend(Backend[ORTConfig]):
                     preprocessor=None,
                 )
         self.model = quantized_model_path
+
+    def prepare_for_inference(self, **kwargs) -> None:
+        if self.config.provider == "TensorrtExecutionProvider" and self.is_text_generation_model():
+            max_new_tokens = kwargs["max_new_tokens"]
+            batch_size = kwargs["input_shapes"]["batch_size"]
+            sequence_length = kwargs["input_shapes"]["sequence_length"]
+
+            LOGGER.info("\t+ Creating dynamic shapes for Tensorrt engine, loading will take a while")
+            self.provider_options = {
+                **self.provider_options,
+                "trt_profile_min_shapes": f"input_ids:{batch_size}x{sequence_length},attention_mask:{batch_size}x{sequence_length}",
+                "trt_profile_max_shapes": f"input_ids:{batch_size}x{sequence_length + max_new_tokens},attention_mask:{batch_size}x{sequence_length + max_new_tokens}",
+                "trt_profile_opt_shapes": f"input_ids:{batch_size}x{sequence_length + max_new_tokens},attention_mask:{batch_size}x{sequence_length + max_new_tokens}",
+            }
+
+            self.load_ortmodel()
+            self.tmpdir.cleanup()
 
     def prepare_for_profiling(self, input_names: List[str]) -> None:
         LOGGER.info("Preparing model for profiling")
