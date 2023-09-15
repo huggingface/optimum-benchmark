@@ -28,7 +28,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         super().__init__(model, task, device, hub_kwargs)
 
         automodel = self.automodel_class.__name__
-        LOGGER.info(f"\t+ Infered AutoModel class {automodel} for task {self.task} and model_type {self.model_type}")
+        LOGGER.info(f"\t+ Inferred AutoModel class {automodel} for task {self.task} and model_type {self.model_type}")
 
     def configure(self, config: PyTorchConfig) -> None:
         super().configure(config)
