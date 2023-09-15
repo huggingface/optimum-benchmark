@@ -56,12 +56,14 @@ class InferenceConfig(BenchmarkConfig):
         },
     )
 
-    # forward options
+    new_tokens: Optional[int] = None
     can_diffuse: bool = "${can_diffuse:${task}}"
+    can_generate: bool = "${can_generate:${task}}"
+
+    # forward options
     forward_kwargs: Dict[str, Any] = field(default_factory=dict)
 
     # generation options
-    can_generate: bool = "${can_generate:${task}}"
     generate_kwargs: Dict[str, Any] = field(default_factory=dict)
 
     # generation option to override max_new_tokens and min_new_tokens
