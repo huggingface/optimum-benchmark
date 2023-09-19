@@ -7,7 +7,8 @@ from multiprocessing.connection import Connection
 import psutil
 import torch
 
-from ..env_utils import bytes_to_mega_bytes
+from ..import_utils import is_pyrsmi_available, is_py3nvml_available
+from ..env_utils import bytes_to_mega_bytes, is_rocm_system, is_nvidia_system
 
 LOGGER = getLogger("memory_tracker")
 
@@ -39,19 +40,39 @@ class MemoryTracker:
         return bytes_to_mega_bytes(self.peak_memory)
 
     def _cuda_peak_memory(self):
-        import py3nvml.py3nvml as nvml
+        if is_nvidia_system():
+            if is_py3nvml_available():
+                import py3nvml.py3nvml as nvml
+            else:
+                raise ValueError("The library py3nvml is required to run memory benchmark on NVIDIA GPUs, but is not installed. Please install it through `pip install py3nvml`.")
 
-        handles = []
-        nvml.nvmlInit()
-        for device_index in self.device_ids:
-            handle = nvml.nvmlDeviceGetHandleByIndex(device_index)
-            handles.append(handle)
-        yield
-        for handle in handles:
-            meminfo = nvml.nvmlDeviceGetMemoryInfo(handle)
-            self.peak_memory += meminfo.used
+            handles = []
+            nvml.nvmlInit()
+            for device_index in self.device_ids:
+                handle = nvml.nvmlDeviceGetHandleByIndex(device_index)
+                handles.append(handle)
+            yield
+            for handle in handles:
+                meminfo = nvml.nvmlDeviceGetMemoryInfo(handle)
+                self.peak_memory += meminfo.used
 
-        nvml.nvmlShutdown()
+            nvml.nvmlShutdown()
+        elif is_rocm_system():
+            if is_pyrsmi_available():
+                from pyrsmi import rocml
+            else:
+                raise ValueError("The library pyrsmi is required to run memory benchmark on RoCm-powered GPUs, but is not installed. Please install it following the instructions https://github.com/RadeonOpenCompute/pyrsmi.")
+            rocml.smi_initialize()
+
+            yield
+
+            for device_index in self.device_ids:
+                meminfo_used = rocml.smi_get_device_memory_used(device_index)
+                self.peak_memory += meminfo_used
+            rocml.smi_shutdown()
+        else:
+            raise ValueError("Could not measure GPU memory usage for a system different than NVIDIA or AMD RoCm.")
+
         LOGGER.debug(f"Peak memory usage: {self.get_peak_memory()} MB")
 
     def _cpu_peak_memory(self, interval: float):

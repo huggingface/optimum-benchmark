@@ -166,3 +166,6 @@ runs/
 sweeps/
 data/
 version.txt
+
+# Experiments
+experiments/

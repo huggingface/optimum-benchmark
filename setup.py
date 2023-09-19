@@ -4,16 +4,16 @@ OPTIMUM_VERSION = "1.13.0"
 
 INSTALL_REQUIRES = [
     # Mandatory HF dependencies
-    f"optimum=={OPTIMUM_VERSION}",  # backends, tasks and input generation
+    f"optimum>={OPTIMUM_VERSION}",  # backends, tasks and input generation
     "accelerate",  # distributed inference and no weights init
     # Hydra
-    "omegaconf==2.3.0",
-    "hydra-core==1.3.2",
-    "hydra_colorlog==1.2.0",
-    "hydra-joblib-launcher==1.2.0",
+    "omegaconf>=2.3.0",
+    "hydra-core>=1.3.2",
+    "hydra_colorlog>=1.2.0",
+    "hydra-joblib-launcher>=1.2.0",
     # Other
-    "codecarbon==2.3.1",
-    "psutil==5.9.0",
+    "codecarbon>=2.3.1",
+    "psutil>=5.9.0",
     "pandas>=2.0.0",
 ]
 
@@ -32,12 +32,12 @@ EXTRAS_REQUIRE = {
     "quality": ["black", "ruff"],
     "report": ["flatten_dict", "matplotlib", "seaborn", "rich"],
     # cpu backends
-    "openvino": [f"optimum[openvino,nncf]=={OPTIMUM_VERSION}"],
-    "onnxruntime": [f"optimum[onnxruntime]=={OPTIMUM_VERSION}"],
-    "onnxruntime-gpu": [f"optimum[onnxruntime-gpu]=={OPTIMUM_VERSION}"],
-    "neural-compressor": [f"optimum[neural-compressor]=={OPTIMUM_VERSION}"],
+    "openvino": [f"optimum[openvino,nncf]>={OPTIMUM_VERSION}"],
+    "onnxruntime": [f"optimum[onnxruntime]>={OPTIMUM_VERSION}"],
+    "onnxruntime-gpu": [f"optimum[onnxruntime-gpu]>={OPTIMUM_VERSION}"],
+    "neural-compressor": [f"optimum[neural-compressor]>={OPTIMUM_VERSION}"],
     # server-like backend
-    "text-generation-inference": ["docker==6.1.3"],
+    "text-generation-inference": ["docker>=6.1.3"],
     # specific settings
     "diffusers": ["diffusers"],
     "peft": ["peft"],
