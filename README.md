@@ -24,7 +24,7 @@ The experiment management and tracking is handled using [hydra](https://hydra.cc
 
 Everything else is either optional or inferred from the model's name or path.
 
-### Supported Backends/Dvices
+### Supported Backends/Devices
 
 - [x] Pytorch backend for CPU
 - [x] Pytorch backend for CUDA
@@ -42,7 +42,7 @@ Everything else is either optional or inferred from the model's name or path.
 - [x] Energy and carbon emissions (`benchmark.energy=true`).
 - [x] Warm up runs before inference (`benchmark.warmup_runs=20`).
 - [x] Warm up steps during training (`benchmark.warmup_steps=20`).
-- [x] Inputs shapes control (e.g. `benchamrk.input_shapes.sequence_length=128`).
+- [x] Inputs shapes control (e.g. `benchmark.input_shapes.sequence_length=128`).
 - [x] Dataset shapes control (e.g. `benchmark.dataset_shapes.dataset_size=1000`).
 - [x] Forward and Generation pass control (e.g. for an LLM `benchmark.generate.max_new_tokens=100`, for a diffusion model `benchmark.forward.num_images_per_prompt=4`).
 
@@ -54,7 +54,7 @@ Everything else is either optional or inferred from the model's name or path.
 - [x] Onnxruntime Optimization and AutoOptimization (`backend.optimization=true` or `backend.auto_optimization=O4`, etc).
 - [x] PEFT training (`backend.peft_strategy=lora`, `backend.peft_config.task_type=CAUSAL_LM`, etc).
 - [x] DDP training (`backend.use_ddp=true`, `backend.ddp_config.nproc_per_node=2`, etc).
-- [x] BitsAndBytes quantization scheme (`backend.quantization_scheme=bnb`, ``backend.quantization_config.load_in_4bit`, etc).
+- [x] BitsAndBytes quantization scheme (`backend.quantization_scheme=bnb`, `backend.quantization_config.load_in_4bit`, etc).
 - [x] GPTQ quantization scheme (`backend.quantization_scheme=gptq`, `backend.quantization_config.bits=4`, etc).
 - [x] Optimum's BetterTransformer (`backend.bettertransformer=true`).
 - [x] Automatic Mixed Precision (`backend.amp_autocast=true`).
