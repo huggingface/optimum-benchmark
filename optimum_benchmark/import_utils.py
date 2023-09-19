@@ -44,6 +44,10 @@ def is_torch_distributed_available():
     return _torch_distributed_available
 
 
+def is_codecarbon_available():
+    return _codecarbon_available
+
+
 def torch_version():
     if is_torch_available():
         return importlib.metadata.version("torch")
