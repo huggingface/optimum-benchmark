@@ -2,7 +2,10 @@ import os
 from contextlib import contextmanager
 from logging import getLogger
 
-from codecarbon import EmissionsTracker, OfflineEmissionsTracker
+from ..import_utils import is_codecarbon_available
+
+if is_codecarbon_available():
+    from codecarbon import EmissionsTracker, OfflineEmissionsTracker
 
 LOGGER = getLogger("latency_tracker")
 

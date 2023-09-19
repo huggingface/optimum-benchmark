@@ -12,7 +12,6 @@ INSTALL_REQUIRES = [
     "hydra_colorlog>=1.2.0",
     "hydra-joblib-launcher>=1.2.0",
     # Other
-    "codecarbon>=2.3.1",
     "psutil>=5.9.0",
     "pandas>=2.0.0",
 ]
