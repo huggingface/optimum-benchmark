@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 
 from omegaconf import OmegaConf
 
-from ...env_utils import is_nivida_system
+from ...env_utils import is_nvidia_system
 from ...task_utils import DIFFUSION_TASKS, TEXT_GENERATION_TASKS
 from ..base import BenchmarkConfig
 
@@ -84,5 +84,5 @@ class InferenceConfig(BenchmarkConfig):
                 self.generate_kwargs["max_new_tokens"] = self.new_tokens
                 self.generate_kwargs["min_new_tokens"] = self.new_tokens
 
-        if self.energy and not is_nivida_system():
+        if self.energy and not is_nvidia_system():
             raise ValueError("Energy measurement through codecarbon is available only on NVIDIA devices.")
