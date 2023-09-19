@@ -7,8 +7,8 @@ from multiprocessing.connection import Connection
 import psutil
 import torch
 
-from ..import_utils import is_pyrsmi_available, is_py3nvml_available
-from ..env_utils import bytes_to_mega_bytes, is_rocm_system, is_nvidia_system
+from ..env_utils import bytes_to_mega_bytes, is_nvidia_system, is_rocm_system
+from ..import_utils import is_py3nvml_available, is_pyrsmi_available
 
 LOGGER = getLogger("memory_tracker")
 
@@ -44,7 +44,9 @@ class MemoryTracker:
             if is_py3nvml_available():
                 import py3nvml.py3nvml as nvml
             else:
-                raise ValueError("The library py3nvml is required to run memory benchmark on NVIDIA GPUs, but is not installed. Please install it through `pip install py3nvml`.")
+                raise ValueError(
+                    "The library py3nvml is required to run memory benchmark on NVIDIA GPUs, but is not installed. Please install it through `pip install py3nvml`."
+                )
 
             handles = []
             nvml.nvmlInit()
@@ -61,7 +63,9 @@ class MemoryTracker:
             if is_pyrsmi_available():
                 from pyrsmi import rocml
             else:
-                raise ValueError("The library pyrsmi is required to run memory benchmark on RoCm-powered GPUs, but is not installed. Please install it following the instructions https://github.com/RadeonOpenCompute/pyrsmi.")
+                raise ValueError(
+                    "The library pyrsmi is required to run memory benchmark on RoCm-powered GPUs, but is not installed. Please install it following the instructions https://github.com/RadeonOpenCompute/pyrsmi."
+                )
             rocml.smi_initialize()
 
             yield

@@ -18,12 +18,14 @@ def is_nvidia_system():
     except Exception:
         return False
 
+
 def is_rocm_system():
     try:
         subprocess.check_output("rocm-smi")
         return True
     except Exception:
         return False
+
 
 def bytes_to_mega_bytes(bytes: int) -> int:
     # Reference: https://en.wikipedia.org/wiki/Byte#Multiple-byte_units
@@ -57,7 +59,9 @@ def get_cpu_ram_mb():
 def get_gpus():
     if is_nvidia_system():
         if not is_py3nvml_available():
-            raise ValueError("The library py3nvml is required to collect information on NVIDIA GPUs, but is not installed. Please install it through `pip install py3nvml`.")
+            raise ValueError(
+                "The library py3nvml is required to collect information on NVIDIA GPUs, but is not installed. Please install it through `pip install py3nvml`."
+            )
         import py3nvml.py3nvml as nvml
 
         gpus = []
@@ -69,8 +73,11 @@ def get_gpus():
         nvml.nvmlShutdown()
     elif is_rocm_system():
         if not is_pyrsmi_available():
-                raise ValueError("The library pyrsmi is required to collect information on RoCm-powered GPUs, but is not installed. Please install it following the instructions https://github.com/RadeonOpenCompute/pyrsmi.")
+            raise ValueError(
+                "The library pyrsmi is required to collect information on RoCm-powered GPUs, but is not installed. Please install it following the instructions https://github.com/RadeonOpenCompute/pyrsmi."
+            )
         from pyrsmi import rocml
+
         rocml.smi_initialize()
 
         device_count = rocml.smi_get_device_count()

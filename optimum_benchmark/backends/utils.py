@@ -3,7 +3,8 @@ import signal
 import subprocess
 import time
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
-from ..env_utils import is_rocm_system, is_nvidia_system
+
+from ..env_utils import is_nvidia_system, is_rocm_system
 from ..import_utils import is_py3nvml_available, is_pyrsmi_available
 
 if is_rocm_system() and is_pyrsmi_available():
@@ -132,8 +133,10 @@ def check_no_process_is_running_on_cuda_device(device_ids: List[int]) -> None:
         for device_id in device_ids:
             pids_on_device_ids[device_id] = set(rocml.smi_get_device_compute_process(device_id))
     else:
-        raise ValueError("check_no_process_is_running_on_cuda_device is not available. Please disable `initial_isolation_check`.")
-        
+        raise ValueError(
+            "check_no_process_is_running_on_cuda_device is not available. Please disable `initial_isolation_check`."
+        )
+
     # TODO: It would be safer to run each run of a sweep in a subprocess.
     # Although we can trust PyTorch to clear GPU memory when asked,
     # it is not a safe assumption to make for all backends.
@@ -146,7 +149,6 @@ def check_no_process_is_running_on_cuda_device(device_ids: List[int]) -> None:
             )
 
 
-
 def check_only_this_process_is_running_on_cuda_device(device_ids: List[int], pid) -> None:
     """Raises a RuntimeError if at any point in time, there is a process running
     on the given cuda device that is not the current process.
@@ -157,7 +159,9 @@ def check_only_this_process_is_running_on_cuda_device(device_ids: List[int], pid
             # get list of all PIDs running on nvidia devices
             pids = [
                 int(other_pid)
-                for other_pid in subprocess.check_output(["nvidia-smi", "--query-compute-apps=pid", "--format=csv,noheader"])
+                for other_pid in subprocess.check_output(
+                    ["nvidia-smi", "--query-compute-apps=pid", "--format=csv,noheader"]
+                )
                 .decode()
                 .strip()
                 .split("\n")
@@ -185,7 +189,9 @@ def check_only_this_process_is_running_on_cuda_device(device_ids: List[int], pid
             for device_id in device_ids:
                 pids_on_device_ids[device_id] = set(rocml.smi_get_device_compute_process(device_id))
         else:
-            raise ValueError("check_only_this_process_is_running_on_cuda_device is not available. Please disable `continous_isolation_check`.")
+            raise ValueError(
+                "check_only_this_process_is_running_on_cuda_device is not available. Please disable `continous_isolation_check`."
+            )
 
         for device_id, pids_on_device_id in pids_on_device_ids.items():
             # check if there is a process running on device_id that is not the current process
