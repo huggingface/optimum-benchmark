@@ -50,7 +50,7 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
             "training.throughput(samples/s)": trainer_state.training_samples_per_second,
             # overall training metrics
             "overall_training.runtime(s)": trainer_state.overall_training_runtime,
-            "overall_training.throughput(samles/s)": (trainer_state.overall_training_samples_per_second),
+            "overall_training.throughput(samples/s)": (trainer_state.overall_training_samples_per_second),
         }
 
     def get_results_df(self) -> DataFrame:
