@@ -268,7 +268,7 @@ def generate_report():
     # create reporting directory and title using the filters
     if report_name is None:
         report_name = "Inference Report"
-        reporting_directory = "reports/inferece_report"
+        reporting_directory = "reports/inference_report"
     else:
         reporting_directory = f"reports/{report_name}"
 
