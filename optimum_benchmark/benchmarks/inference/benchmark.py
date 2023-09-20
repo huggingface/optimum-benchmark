@@ -226,4 +226,4 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
     def save(self) -> None:
         LOGGER.info("Saving inference results")
         results_df = self.get_results_df()
-        results_df.to_csv("inference_results.csv")
+        results_df.to_csv("inference_results.csv", index=False)
