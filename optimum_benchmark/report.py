@@ -79,10 +79,7 @@ def format_row(row, style=""):
 
 
 def get_inference_rich_table(inference_report, with_baseline=False, with_generate=False, title=""):
-    perf_columns = [
-        "forward.latency(s)",
-        "forward.throughput(samples/s)",
-    ] + (
+    perf_columns = ["forward.latency(s)", "forward.throughput(samples/s)",] + (
         [
             "forward.peak_memory(MB)",
         ]
@@ -268,7 +265,7 @@ def generate_report():
     # create reporting directory and title using the filters
     if report_name is None:
         report_name = "Inference Report"
-        reporting_directory = "reports/inferece_report"
+        reporting_directory = "reports/inference_report"
     else:
         reporting_directory = f"reports/{report_name}"
 

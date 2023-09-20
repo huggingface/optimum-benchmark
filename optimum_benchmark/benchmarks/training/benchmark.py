@@ -59,4 +59,4 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
     def save(self) -> None:
         LOGGER.info("Saving training results")
         results_df = self.get_results_df()
-        results_df.to_csv("training_results.csv")
+        results_df.to_csv("training_results.csv", index=False)
