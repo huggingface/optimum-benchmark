@@ -1,0 +1,31 @@
+defaults:
+  - benchmark: inference # default benchmark
+  - experiment # inheriting from experiment config
+  - _self_ # for hydra 1.1 compatibility
+  - override hydra/job_logging: colorlog # colorful logging
+  - override hydra/hydra_logging: colorlog # colorful logging
+
+hydra:
+  run:
+    dir: experiments/${experiment_name}_batch_size(${benchmark.input_shapes.batch_size})_sequence_length(${benchmark.input_shapes.sequence_length})
+  sweep:
+    dir: experiments/${experiment_name}_batch_size(${benchmark.input_shapes.batch_size})_sequence_length(${benchmark.input_shapes.sequence_length})
+  job:
+    chdir: true
+    env_set:
+      CUDA_VISIBLE_DEVICES: 0
+
+experiment_name: bge_seq_len_sweep_pytorch
+model: BAAI/bge-base-en-v1.5
+task: feature-extraction
+device: cuda
+
+backend:
+  initial_isolation_check: false
+  continous_isolation_check: false
+
+benchmark:
+  memory: true
+  input_shapes:
+    batch_size: null
+    sequence_length: null
