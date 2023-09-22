@@ -40,4 +40,5 @@ We achieve a throughput of +2000 samples per second for the forward pass of the 
 
 ### Notes
 
-Some other cases, such as processing big batches of short sequences, can demonstrate even higher speedups (~15x). We don't study them here.
+- The `TensorrtExecutionProvider` requires engine building, which can take a few minutes during model loading and the first forward pass. It also rebuilds the engine every time the sequence length changes. This is why I think that `CUDAExecutionProvider` with `O4` optimization level is the sweetspot for GPU inference.
+- Some other cases, such as processing big batches of short sequences, can demonstrate even higher speedups (~15x). We don't study them here.
