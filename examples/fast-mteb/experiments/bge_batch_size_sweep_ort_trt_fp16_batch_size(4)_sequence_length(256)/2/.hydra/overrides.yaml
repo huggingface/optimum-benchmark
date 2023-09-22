@@ -1,0 +1,2 @@
+- benchmark.input_shapes.batch_size=4
+- benchmark.input_shapes.sequence_length=256

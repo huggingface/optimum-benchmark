@@ -1,0 +1,10 @@
+defaults:
+  - bge_seq_len_sweep_baseline
+  - _self_
+  - override backend: onnxruntime
+
+experiment_name: bge_seq_len_sweep_ort_cuda_o4
+
+backend:
+  provider: CUDAExecutionProvider
+  auto_optimization: O4

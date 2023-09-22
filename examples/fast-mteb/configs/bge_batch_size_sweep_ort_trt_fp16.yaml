@@ -1,0 +1,11 @@
+defaults:
+  - bge_batch_size_sweep_baseline
+  - _self_
+  - override backend: onnxruntime
+
+experiment_name: bge_batch_size_sweep_ort_trt_fp16
+
+backend:
+  provider: TensorrtExecutionProvider
+  provider_options:
+    trt_fp16_enable: true

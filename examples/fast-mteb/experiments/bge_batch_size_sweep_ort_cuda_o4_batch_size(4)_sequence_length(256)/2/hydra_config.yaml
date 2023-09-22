@@ -1,0 +1,80 @@
+backend:
+  name: onnxruntime
+  version: ort-gpu:1.15.1
+  _target_: optimum_benchmark.backends.onnxruntime.backend.ORTBackend
+  seed: 42
+  inter_op_num_threads: null
+  intra_op_num_threads: null
+  initial_isolation_check: false
+  continous_isolation_check: false
+  delete_cache: false
+  no_weights: false
+  export: true
+  use_cache: true
+  use_merged: false
+  torch_dtype: null
+  provider: CUDAExecutionProvider
+  provider_options:
+    device_id: 0
+  use_io_binding: false
+  session_options:
+    enable_profiling: false
+  optimization: false
+  optimization_config: {}
+  quantization: false
+  quantization_config: {}
+  calibration: false
+  calibration_config: {}
+  auto_optimization: O4
+  auto_optimization_config:
+    disable_shape_inference: false
+  auto_quantization: null
+  auto_quantization_config: {}
+  use_inference_session: true
+  use_ddp: false
+  ddp_config: {}
+  peft_strategy: null
+  peft_config: {}
+benchmark:
+  name: inference
+  _target_: optimum_benchmark.benchmarks.inference.benchmark.InferenceBenchmark
+  duration: 10
+  warmup_runs: 10
+  memory: true
+  energy: false
+  input_shapes:
+    batch_size: 4
+    sequence_length: 256
+    num_choices: 1
+    feature_size: 80
+    nb_max_frames: 3000
+    audio_sequence_length: 16000
+  new_tokens: null
+  can_diffuse: false
+  can_generate: false
+  forward_kwargs: {}
+  generate_kwargs: {}
+experiment_name: bge_batch_size_sweep_ort_cuda_o4
+model: BAAI/bge-base-en-v1.5
+device: cuda
+task: feature-extraction
+hub_kwargs:
+  revision: main
+  cache_dir: null
+  force_download: false
+  local_files_only: false
+environment:
+  optimum_version: 1.13.0
+  transformers_version: 4.34.0.dev0
+  accelerate_version: 0.23.0.dev0
+  diffusers_version: 0.21.0.dev0
+  python_version: 3.8.10
+  system: Linux
+  cpu: ' AMD EPYC 7742 64-Core Processor'
+  cpu_count: 128
+  cpu_ram_mb: 540684
+  gpus:
+  - NVIDIA A100-SXM4-80GB
+  - NVIDIA A100-SXM4-80GB
+  - NVIDIA A100-SXM4-80GB
+  - NVIDIA A100-SXM4-80GB
