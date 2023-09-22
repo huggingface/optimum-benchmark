@@ -2,6 +2,8 @@
 
 A set of performance benchmarks using [`BAAI/bge-base-en-v1.5`](https://huggingface.co/BAAI/bge-base-en-v1.5), the number one embedding model on the [`Massive Text Embedding Benchmark (MTEB) Leaderboard`](https://huggingface.co/spaces/mteb/leaderboard).
 
+For these benchmarks in particular, we recommend using a docker image with TensorRT intalled, for example [`nvcr.io/nvidia/tensorrt:22.12-py3`](../../docker/gpu.dockerfile) or removing the `TensorrtExecutionProvider` experiments from `configs/`.
+
 Just run `script.sh` from this directory:
 
 ```bash
