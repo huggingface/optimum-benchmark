@@ -148,12 +148,6 @@ class Backend(Generic[BackendConfigT], ABC):
         np.random.seed(self.config.seed)
         torch.manual_seed(self.config.seed)
 
-        if self.device.type == "cuda":
-            torch.cuda.manual_seed_all(self.config.seed)  # safe to call
-            # torch.use_deterministic_algorithms()  # might throw an error
-            # torch.backends.cudnn.deterministic = True # same as above
-            # torch.backends.cudnn.benchmark = False  # might reduce performance
-
     def prepare_input(self, input: Dict[str, Any]) -> Dict[str, Any]:
         if self.is_diffusion_pipeline():
             # diffusion pipelines expect a list of strings as input
