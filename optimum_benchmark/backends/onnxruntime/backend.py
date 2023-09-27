@@ -181,7 +181,7 @@ class ORTBackend(Backend[ORTConfig]):
             return {}
 
     @property
-    def true_task(self) -> str:
+    def export_task(self) -> str:
         return self.task + "-with-past" if self.config.use_cache and self.is_text_generation_model() else self.task
 
     def export_automodel(self) -> None:
@@ -190,7 +190,7 @@ class ORTBackend(Backend[ORTConfig]):
         self.merging_config, self.models_and_onnx_configs = main_export(
             self.model,
             output=exported_model_dir,
-            task=self.true_task,
+            task=self.export_task,
             device=self.device.type,
             fp16=self.torch_dtype == torch.float16,
             **self.hub_kwargs,

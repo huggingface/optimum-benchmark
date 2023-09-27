@@ -1,0 +1,12 @@
+defaults:
+  - backend: pytorch
+  - bge_base_config
+  - _self_
+
+hydra:
+  sweeper:
+    params:
+      benchmark.input_shapes.batch_size: 1,2,4,8,16,32,64,128,256,512,1024,2048
+      benchmark.input_shapes.sequence_length: 256
+
+experiment_name: bge_batch_size_sweep_baseline
