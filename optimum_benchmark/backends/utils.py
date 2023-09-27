@@ -129,6 +129,9 @@ def check_no_process_is_running_on_cuda_device(device_ids: List[int]) -> None:
                 .startswith(f"{pid},")
             }
     elif is_rocm_system() and is_pyrsmi_available():
+        raise ValueError(
+            "check_no_process_is_running_on_cuda_device is not available on RoCm system (see https://github.com/RadeonOpenCompute/pyrsmi/issues/4). Please disable `initial_isolation_check`."
+        )
         rocml.smi_initialize()
         for device_id in device_ids:
             pids_on_device_ids[device_id] = set(rocml.smi_get_device_compute_process(device_id))
@@ -185,6 +188,9 @@ def check_only_this_process_is_running_on_cuda_device(device_ids: List[int], pid
                     .startswith(f"{other_pid},")
                 }
         elif is_rocm_system() and is_pyrsmi_available():
+            raise ValueError(
+                "check_only_this_process_is_running_on_cuda_device is not available on RoCm system (see https://github.com/RadeonOpenCompute/pyrsmi/issues/4). Please disable `continous_isolation_check`."
+            )
             rocml.smi_initialize()
             for device_id in device_ids:
                 pids_on_device_ids[device_id] = set(rocml.smi_get_device_compute_process(device_id))
