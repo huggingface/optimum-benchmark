@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass, field
 from logging import getLogger
 from typing import Any, Dict, Optional
@@ -84,5 +85,5 @@ class InferenceConfig(BenchmarkConfig):
                 self.generate_kwargs["max_new_tokens"] = self.new_tokens
                 self.generate_kwargs["min_new_tokens"] = self.new_tokens
 
-        if self.energy and not is_nvidia_system():
+        if self.energy and os.environ.get("CUDA_VISIBLE_DEVICES", None) and not is_nvidia_system():
             raise ValueError("Energy measurement through codecarbon is available only on NVIDIA devices.")
