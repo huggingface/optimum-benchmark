@@ -5,7 +5,7 @@ from optimum.pipelines import ORT_SUPPORTED_TASKS
 
 TASKS_TO_ORTSD = {
     "stable-diffusion": "optimum.onnxruntime.ORTStableDiffusionPipeline",
-    "stzble-diffusion-xl": "optimum.onnxruntime.ORTStableDiffusionXLPipeline",
+    "stable-diffusion-xl": "optimum.onnxruntime.ORTStableDiffusionXLPipeline",
 }
 
 TASKS_TO_ORTMODELS = {task: task_dict["class"][0] for task, task_dict in ORT_SUPPORTED_TASKS.items()}
