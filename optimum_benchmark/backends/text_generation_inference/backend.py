@@ -1,4 +1,5 @@
 import os
+import time
 from concurrent.futures import ThreadPoolExecutor
 from logging import getLogger
 from typing import TYPE_CHECKING, Any, Dict, List
@@ -62,6 +63,10 @@ class TGIBackend(Backend[TGIConfig]):
             LOGGER.info("\t+ TGI image not found, pulling it")
             self.docker_client.images.pull(f"{self.config.image}:{self.config.version}")
 
+        env = {}
+        if os.environ.get("HUGGING_FACE_HUB_TOKEN", None) is not None:
+            env["HUGGING_FACE_HUB_TOKEN"] = os.environ["HUGGING_FACE_HUB_TOKEN"]
+
         LOGGER.info("\t+ Building TGI command")
         self.command = [
             "--model-id",
@@ -73,7 +78,7 @@ class TGIBackend(Backend[TGIConfig]):
         if self.config.quantization_scheme is not None:
             self.command.extend(["--quantize", self.config.quantization_scheme])
         if self.config.torch_dtype is not None:
-            self.command.extend(["--torch-dtype", self.config.torch_dtype])
+            self.command.extend(["--dtype", self.config.torch_dtype])
         if self.hub_kwargs.get("trust_remote_code", False):
             self.command.append("--trust-remote-code")
         if self.config.disable_custom_kernels:
@@ -94,6 +99,7 @@ class TGIBackend(Backend[TGIConfig]):
             volumes={self.config.volume: {"bind": "/data", "mode": "rw"}},
             ports={"80/tcp": (self.config.address, self.config.port)},
             device_requests=device_requests,
+            environment=env,
             detach=True,
         )
 
@@ -110,6 +116,16 @@ class TGIBackend(Backend[TGIConfig]):
 
         LOGGER.info("\t+ Creating InferenceClient")
         self.client = InferenceClient(model=f"http://{self.config.address}:{self.config.port}")
+
+        while True:
+            try:
+                LOGGER.info("\t+ Checking if TGI client is ready")
+                self.client.text_generation(prompt="test", max_new_tokens=1)
+                LOGGER.info("\t+ TGI client is ready")
+                break
+            except Exception as e:
+                LOGGER.info(f"\t+ TGI client is not ready yet: {e}")
+                time.sleep(0.5)
 
     def load_model_from_config(self) -> None:
         LOGGER.info("\t+ Initializing empty weights model on device: meta")
