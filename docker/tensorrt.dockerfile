@@ -12,9 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# https://docs.nvidia.com/deeplearning/tensorrt/container-release-notes/index.html#rel-23-09
+
+# to build with tensorrt:23.09
 # docker build -f docker/tensorrt.dockerfile -t opt-bench-tensorrt:23.09 .
-FROM nvcr.io/nvidia/tensorrt:23.09-py3
+
+ARG TENSORRT_VERSION=23.09
+
+FROM nvcr.io/nvidia/tensorrt:${TENSORRT_VERSION}-py3
 
 # Ignore interactive questions during `docker build`
 ENV DEBIAN_FRONTEND noninteractive
