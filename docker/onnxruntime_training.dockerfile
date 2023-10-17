@@ -13,20 +13,19 @@
 # limitations under the License.
 
 # docker build -f docker/onnxruntime_training.dockerfile -t onnxruntime-training .
-FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
+
+ARG CUDNN_VERSION=8
+ARG CUDA_VERSION=11.8.0
+ARG UBUNTU_VERSION=22.04
+
+FROM nvidia/cuda:${CUDA_VERSION}-cudnn${CUDNN_VERSION}-devel-ubuntu${UBUNTU_VERSION}
+
+ARG PYTHON_VERSION=3.9
+ARG TORCH_VERSION=2.0.0
+ARG TORCHVISION_VERSION=0.15.1
 
 # Ignore interactive questions during `docker build`
 ENV DEBIAN_FRONTEND noninteractive
-
-# Bash shell
-RUN chsh -s /bin/bash
-SHELL ["/bin/bash", "-c"]
-
-# Versions
-ARG PYTHON_VERSION=3.9
-ARG TORCH_CUDA_VERSION=cu118
-ARG TORCH_VERSION=2.0.0
-ARG TORCHVISION_VERSION=0.15.1
 
 # Install and update tools to minimize security vulnerabilities
 RUN apt-get update
@@ -36,28 +35,14 @@ RUN apt-get install -y software-properties-common wget apt-utils patchelf git li
 RUN unattended-upgrade
 RUN apt-get autoremove -y
 
-# Install miniconda (comes with python 3.9 default)
-ARG BUILD_USER=onnxruntimedev
-ARG MINICONDA_PREFIX=/home/$BUILD_USER/miniconda3
-RUN apt-get install curl
+# Install python
+RUN apt-get install -y python3 python3-pip python3-dev python3-setuptools python3-wheel python3-venv && \
+    apt-get clean
 
-ARG CONDA_URL=https://repo.anaconda.com/miniconda/Miniconda3-py37_4.9.2-Linux-x86_64.sh
-RUN curl -fSsL --insecure ${CONDA_URL} -o install-conda.sh && \
-    /bin/bash ./install-conda.sh -b -p $MINICONDA_PREFIX && \
-    $MINICONDA_PREFIX/bin/conda clean -ya && \
-    $MINICONDA_PREFIX/bin/conda install -y python=${PYTHON_VERSION}
-
-ENV PATH=$MINICONDA_PREFIX/bin:${PATH}
-
-ARG PYTHON_EXE=$MINICONDA_PREFIX/bin/python
-
-# PyTorch
-RUN $PYTHON_EXE -m pip install onnx ninja
-RUN $PYTHON_EXE -m pip install torch==${TORCH_VERSION} torchvision==${TORCHVISION_VERSION} -f https://download.pytorch.org/whl/${TORCH_CUDA_VERSION}
-
-# ORT Module
-RUN $PYTHON_EXE -m pip install onnxruntime-training==1.15.1 -f https://download.onnxruntime.ai/onnxruntime_stable_cu118.html
-RUN $PYTHON_EXE -m pip install torch-ort
+# Install dependencies
+RUN pip install onnx ninja
+RUN pip install onnxruntime-training==1.15.1
+RUN pip install torch==${TORCH_VERSION} torchvision==${TORCHVISION_VERSION}
+RUN pip install torch-ort
 ENV TORCH_CUDA_ARCH_LIST="5.2 6.0 6.1 7.0 7.5 8.0 8.6+PTX"
-RUN $PYTHON_EXE -m pip install --upgrade protobuf==3.20.2
-RUN $PYTHON_EXE -m torch_ort.configure
+RUN python3 -m torch_ort.configure
