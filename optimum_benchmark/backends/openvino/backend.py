@@ -4,6 +4,7 @@ from tempfile import TemporaryDirectory
 from typing import Any, Dict
 
 from hydra.utils import get_class
+from openvino.runtime import properties
 from optimum.intel.openvino import OVConfig as OVQuantizationConfig  # naming conflict
 from optimum.intel.openvino import OVQuantizer
 
@@ -39,6 +40,14 @@ class OVBackend(Backend[OVConfig]):
     def configure(self, config: OVConfig) -> None:
         super().configure(config)
 
+        self.openvino_config = self.config.openvino_config.copy()
+        if self.config.inter_op_num_threads is not None:
+            LOGGER.info(f"\t+ Setting inter_op_num_threads to {self.config.inter_op_num_threads}")
+            self.openvino_config[properties.inference_num_threads()] = self.config.inter_op_num_threads
+
+        if self.config.intra_op_num_threads is not None:
+            raise NotImplementedError("OVBackend does not support intra_op_num_threads")
+
         self.tmpdir = TemporaryDirectory()
 
         if self.config.quantization:
@@ -66,6 +75,7 @@ class OVBackend(Backend[OVConfig]):
         self.pretrained_model = self.ovmodel_class.from_pretrained(
             self.model,
             export=self.export,
+            ov_config=self.openvino_config,
             **self.ovmodel_kwargs,
             **self.hub_kwargs,
         )
