@@ -15,6 +15,7 @@ INSTALL_REQUIRES = [
     "codecarbon==2.3.1",
     "psutil==5.9.0",
     "pandas>=2.0.0",
+    "torch==2.0.1",
 ]
 
 # add py3nvml if nvidia driver is installed
