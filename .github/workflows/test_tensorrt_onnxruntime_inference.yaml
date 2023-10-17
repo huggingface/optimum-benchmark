@@ -33,5 +33,5 @@ jobs:
           --gpus '"device=0,1"'
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
-          opt-bench-tensorrt:23.09
+          opt-bench-tensorrt:22.12
           -c "pip install -e .[test,onnxruntime-gpu,diffusers] && pytest -k 'tensorrt and onnxruntime and inference' -x"

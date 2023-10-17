@@ -34,7 +34,7 @@ EXTRAS_REQUIRE = {
     # cpu backends
     "openvino": [f"optimum[openvino,nncf]>={OPTIMUM_VERSION}"],
     "onnxruntime": [f"optimum[onnxruntime]>={OPTIMUM_VERSION}"],
-    "onnxruntime-gpu": [f"optimum[onnxruntime-gpu]>={OPTIMUM_VERSION}"],
+    "onnxruntime-gpu": [f"optimum[onnxruntime-gpu]>={OPTIMUM_VERSION}", "torch==2.0"],
     "neural-compressor": [f"optimum[neural-compressor]>={OPTIMUM_VERSION}"],
     # server-like backend
     "text-generation-inference": ["docker==6.1.3"],

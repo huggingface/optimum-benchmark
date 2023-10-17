@@ -15,6 +15,8 @@
 
 # to build with tensorrt:23.09
 # docker build -f docker/tensorrt.dockerfile -t opt-bench-tensorrt:23.09 .
+# to build with tensorrt:22.12
+# docker build -f docker/tensorrt.dockerfile --build-arg TENSORRT_VERSION=22.12 -t opt-bench-tensorrt:22.12 .
 
 ARG TENSORRT_VERSION=23.09
 
