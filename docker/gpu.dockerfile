@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# coding=utf-8
 # Copyright 2023 The HuggingFace Team All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +13,7 @@
 # limitations under the License.
 
 # use version with CUDA 11.8 and TensorRT 8.5.1.7 to match ORT 1.14 requirements
-FROM nvcr.io/nvidia/tensorrt:22.12-py3
+FROM nvcr.io/nvidia/tensorrt:23.09-py3
 
 # Ignore interactive questions during `docker build`
 ENV DEBIAN_FRONTEND noninteractive
