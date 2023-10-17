@@ -1,4 +1,4 @@
-name: OnnxRuntime CUDA Training Tests
+name: OnnxRuntime CUDA Inference Tests
 
 on:
   pull_request:
@@ -33,5 +33,5 @@ jobs:
           --gpus '"device=0,1"'
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
-          onnxruntime-training
-          -c "pip install -e .[test,peft] && pytest -k 'cuda and onnxruntime and training' -x"
+          opt-bench-tensorrt
+          -c "pip install -e .[test,onnxruntime-gpu,diffusers] && pytest -k 'tensorrt and onnxruntime and inference' -x"

@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# use version with CUDA 11.8 and TensorRT 8.5.1.7 to match ORT 1.14 requirements
+# https://docs.nvidia.com/deeplearning/tensorrt/container-release-notes/index.html#rel-23-09
+# docker build -f docker/cuda.dockerfile -t opt-bench-tensorrt:23.09 .
 FROM nvcr.io/nvidia/tensorrt:23.09-py3
 
 # Ignore interactive questions during `docker build`
