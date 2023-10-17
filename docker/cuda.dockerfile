@@ -25,3 +25,7 @@ RUN apt-get install -y software-properties-common wget apt-utils patchelf git li
     apt-get clean
 RUN unattended-upgrade
 RUN apt-get autoremove -y
+
+# Install python
+RUN apt-get install -y python3 python3-pip python3-dev python3-setuptools python3-wheel python3-venv && \
+    apt-get clean
