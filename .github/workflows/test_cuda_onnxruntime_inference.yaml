@@ -33,5 +33,5 @@ jobs:
           --gpus '"device=0,1"'
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
-          opt-bench-cuda
+          opt-bench-cuda:11.8.0-cudnn8
           -c "pip install -e .[test,onnxruntime-gpu,diffusers] && pytest -k 'cuda and onnxruntime and inference' -x"

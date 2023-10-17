@@ -33,5 +33,5 @@ jobs:
           --gpus '"device=0,1"'
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
-          onnxruntime-training
+          onnxruntime-training:11.8.0-cudnn8
           -c "pip install -e .[test,peft] && pytest -k 'cuda and onnxruntime and training' -x"

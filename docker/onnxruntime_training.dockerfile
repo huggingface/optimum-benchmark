@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Use nvidia/cuda image
 # docker build -f docker/onnxruntime_training.dockerfile -t onnxruntime-training .
-FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
+FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
 
 # Ignore interactive questions during `docker build`
 ENV DEBIAN_FRONTEND noninteractive
