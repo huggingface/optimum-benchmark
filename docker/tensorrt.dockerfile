@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # https://docs.nvidia.com/deeplearning/tensorrt/container-release-notes/index.html#rel-23-09
-# docker build -f docker/cuda.dockerfile -t opt-bench-tensorrt:23.09 .
+# docker build -f docker/tensorrt.dockerfile -t opt-bench-tensorrt:23.09 .
 FROM nvcr.io/nvidia/tensorrt:23.09-py3
 
 # Ignore interactive questions during `docker build`
