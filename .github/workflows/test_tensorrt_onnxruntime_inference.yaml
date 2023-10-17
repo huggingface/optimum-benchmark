@@ -1,4 +1,4 @@
-name: OnnxRuntime CUDA Inference Tests
+name: OnnxRuntime TensorRT Inference Tests
 
 on:
   pull_request:
