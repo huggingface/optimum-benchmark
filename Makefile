@@ -19,7 +19,7 @@ DEFAULT_CLONE_URL := https://github.com/huggingface/optimum-benchmark.git
 REAL_CLONE_URL = $(if $(CLONE_URL),$(CLONE_URL),$(DEFAULT_CLONE_URL))
 
 # Install the library in development mode
-.PHONY:	style test
+.PHONY:	style_check style test
 
 # Run code quality checks
 style_check:

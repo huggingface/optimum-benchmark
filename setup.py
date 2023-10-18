@@ -32,8 +32,8 @@ EXTRAS_REQUIRE = {
     "report": ["flatten_dict", "matplotlib", "seaborn", "rich"],
     # cpu backends
     "openvino": [f"optimum[openvino,nncf]>={OPTIMUM_VERSION}"],
-    "onnxruntime": [f"optimum[onnxruntime]>={OPTIMUM_VERSION}"],
-    "onnxruntime-gpu": [f"optimum[onnxruntime-gpu]>={OPTIMUM_VERSION}"],
+    "onnxruntime": [f"optimum[onnxruntime]>={OPTIMUM_VERSION}", "torch==2.0.1"],
+    "onnxruntime-gpu": [f"optimum[onnxruntime-gpu]>={OPTIMUM_VERSION}", "torch==2.0.1"],
     "neural-compressor": [f"optimum[neural-compressor]>={OPTIMUM_VERSION}"],
     # server-like backend
     "text-generation-inference": ["docker>=6.1.3"],

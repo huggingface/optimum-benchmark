@@ -38,7 +38,7 @@ def get_cpu() -> Optional[str]:
 
     elif platform.system() == "Darwin":
         command = "sysctl -n machdep.cpu.brand_string"
-        return str(subprocess.check_output(command).strip())
+        return str(subprocess.check_output(command, shell=True).decode().strip())
 
     elif platform.system() == "Linux":
         command = "cat /proc/cpuinfo"

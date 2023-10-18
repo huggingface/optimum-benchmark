@@ -36,7 +36,10 @@ class OVConfig(BackendConfig):
     use_cache: bool = True
     use_merged: bool = False
 
-    # compiling options
+    # openvino config
+    openvino_config: Dict[str, Any] = field(default_factory=dict)
+
+    # compilation options
     reshape: bool = False
     half: bool = False
 
@@ -49,6 +52,8 @@ class OVConfig(BackendConfig):
     calibration_config: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
+        super().__post_init__()
+
         if self.quantization:
             self.quantization_config = OmegaConf.to_object(
                 OmegaConf.merge(QUANTIZATION_CONFIG, self.quantization_config)
