@@ -16,6 +16,10 @@ hydra:
     env_set:
       CUDA_VISIBLE_DEVICES: 0,1
 
+backend:
+  initial_isolation_check: false
+  continous_isolation_check: false
+
 experiment_name: pytorch_bert
 model: bert-base-uncased
 device: cuda

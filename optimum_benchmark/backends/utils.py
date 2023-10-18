@@ -7,9 +7,6 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 from ..env_utils import is_nvidia_system, is_rocm_system
 from ..import_utils import is_py3nvml_available, is_pyrsmi_available
 
-if is_rocm_system() and is_pyrsmi_available():
-    from pyrsmi import rocml
-
 if TYPE_CHECKING:
     from transformers import (
         FeatureExtractionMixin,
@@ -132,9 +129,10 @@ def check_no_process_is_running_on_cuda_device(device_ids: List[int]) -> None:
         raise ValueError(
             "check_no_process_is_running_on_cuda_device is not available on RoCm system (see https://github.com/RadeonOpenCompute/pyrsmi/issues/4). Please disable `initial_isolation_check`."
         )
-        rocml.smi_initialize()
-        for device_id in device_ids:
-            pids_on_device_ids[device_id] = set(rocml.smi_get_device_compute_process(device_id))
+        # TODO: Find a replacement for pyrsmi that allows to find processes per GPU.
+        # rocml.smi_initialize()
+        # for device_id in device_ids:
+        #     pids_on_device_ids[device_id] = set(rocml.smi_get_device_compute_process(device_id))
     else:
         raise ValueError(
             "check_no_process_is_running_on_cuda_device is not available. Please disable `initial_isolation_check`."
@@ -191,9 +189,10 @@ def check_only_this_process_is_running_on_cuda_device(device_ids: List[int], pid
             raise ValueError(
                 "check_only_this_process_is_running_on_cuda_device is not available on RoCm system (see https://github.com/RadeonOpenCompute/pyrsmi/issues/4). Please disable `continous_isolation_check`."
             )
-            rocml.smi_initialize()
-            for device_id in device_ids:
-                pids_on_device_ids[device_id] = set(rocml.smi_get_device_compute_process(device_id))
+            # TODO: Find a replacement for pyrsmi that allows to find processes per GPU.
+            # rocml.smi_initialize()
+            # for device_id in device_ids:
+            #     pids_on_device_ids[device_id] = set(rocml.smi_get_device_compute_process(device_id))
         else:
             raise ValueError(
                 "check_only_this_process_is_running_on_cuda_device is not available. Please disable `continous_isolation_check`."

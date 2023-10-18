@@ -1,0 +1,27 @@
+name: Pytorch CUDA Tests
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: hf-amd-mi210-dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Build image
+        run: |
+          echo "ls:"
+          ls
+          docker build -f docker/rocm.dockerfile -t opt-bench-rocm .
+
+      - name: Run tests
+        run: |
+          docker run --rm --entrypoint /bin/bash --device /dev/kfd --device /dev/dri --shm-size=64G --volume $(pwd):/workspace/optimum-benchmark --workdir /workspace/optimum-benchmark opt-bench-rocm:latest -c "pip install -e .[test,peft,diffusers] && pytest -k 'cuda and pytorch' -x"
