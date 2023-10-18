@@ -1,3 +1,5 @@
+import os
+
 from setuptools import find_packages, setup
 
 OPTIMUM_VERSION = "1.13.0"
@@ -16,15 +18,13 @@ INSTALL_REQUIRES = [
     "pandas>=2.0.0",
 ]
 
-# add py3nvml if nvidia driver is installed
-try:
-    import subprocess
+use_rocm = os.environ.get("USE_ROCM", None)
+ues_cuda = os.environ.get("USE_CUDA", None)
+if ues_cuda == "1":
+    INSTALL_REQUIRES.append("py3nvml>=0.2.7")
 
-    subprocess.run(["nvidia-smi"], stdout=subprocess.DEVNULL)
-    INSTALL_REQUIRES.append("py3nvml==0.2.7")
-except FileNotFoundError:
-    pass
-
+if use_rocm == "1":
+    INSTALL_REQUIRES.append("pyrsmi@git+https://github.com/RadeonOpenCompute/pyrsmi.git")
 
 EXTRAS_REQUIRE = {
     "test": ["pytest"],
