@@ -12,6 +12,8 @@ _torch_distributed_available = importlib.util.find_spec("torch.distributed")
 _onnxruntime_available = importlib.util.find_spec("onnxruntime") is not None
 _openvino_available = importlib.util.find_spec("openvino") is not None
 _neural_compressor_available = importlib.util.find_spec("neural_compressor") is not None
+_pyrsmi_available = importlib.util.find_spec("pyrsmi") is not None
+_codecarbon_available = importlib.util.find_spec("codecarbon") is not None
 
 
 def is_onnx_available():
@@ -30,12 +32,20 @@ def is_py3nvml_available():
     return _py3nvml_available
 
 
+def is_pyrsmi_available():
+    return _pyrsmi_available
+
+
 def is_torch_available():
     return _torch_available
 
 
 def is_torch_distributed_available():
     return _torch_distributed_available
+
+
+def is_codecarbon_available():
+    return _codecarbon_available
 
 
 def torch_version():

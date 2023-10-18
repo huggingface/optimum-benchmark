@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional
 
 from omegaconf import OmegaConf
 
+from ...env_utils import is_rocm_system
 from ...import_utils import torch_version
 from ..config import BackendConfig
 from ..ddp_utils import DDP_CONFIG
@@ -127,3 +128,8 @@ class PyTorchConfig(BackendConfig):
 
             if self.peft_config["task_type"] is None:
                 raise ValueError(f"`peft_config.task_type` must be set to one of the following {PEFT_TASKS_TYPES}")
+
+        if self.quantization_scheme == "bnb" and is_rocm_system():
+            raise ValueError(
+                "bitsandbytes is not supported on RoCm GPUs. Please disable it in the yaml configuration used."
+            )

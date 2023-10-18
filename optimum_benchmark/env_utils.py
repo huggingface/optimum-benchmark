@@ -6,9 +6,25 @@ from typing import Optional
 
 import psutil
 
-from .import_utils import is_py3nvml_available
+from .import_utils import is_py3nvml_available, is_pyrsmi_available
 
 LOGGER = getLogger("utils")
+
+
+def is_nvidia_system():
+    try:
+        subprocess.check_output("nvidia-smi")
+        return True
+    except Exception:
+        return False
+
+
+def is_rocm_system():
+    try:
+        subprocess.check_output("rocm-smi")
+        return True
+    except Exception:
+        return False
 
 
 def bytes_to_mega_bytes(bytes: int) -> int:
@@ -41,7 +57,11 @@ def get_cpu_ram_mb():
 
 
 def get_gpus():
-    if is_py3nvml_available():
+    if is_nvidia_system():
+        if not is_py3nvml_available():
+            raise ValueError(
+                "The library py3nvml is required to collect information on NVIDIA GPUs, but is not installed. Please install it through `pip install py3nvml`."
+            )
         import py3nvml.py3nvml as nvml
 
         gpus = []
@@ -51,7 +71,20 @@ def get_gpus():
             handle = nvml.nvmlDeviceGetHandleByIndex(i)
             gpus.append(nvml.nvmlDeviceGetName(handle))
         nvml.nvmlShutdown()
+    elif is_rocm_system():
+        if not is_pyrsmi_available():
+            raise ValueError(
+                "The library pyrsmi is required to collect information on RoCm-powered GPUs, but is not installed. Please install it following the instructions https://github.com/RadeonOpenCompute/pyrsmi."
+            )
+        from pyrsmi import rocml
+
+        rocml.smi_initialize()
+
+        device_count = rocml.smi_get_device_count()
+
+        gpus = [rocml.smi_get_device_name(index) for index in range(device_count)]
+        rocml.smi_shutdown()
     else:
-        gpus = ["py3nvml not available"]
+        gpus = ["GPUs not available"]
 
     return gpus

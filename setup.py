@@ -1,3 +1,6 @@
+import os
+import subprocess
+
 from setuptools import find_packages, setup
 
 OPTIMUM_VERSION = "1.13.0"
@@ -7,25 +10,38 @@ INSTALL_REQUIRES = [
     f"optimum>={OPTIMUM_VERSION}",  # backends, tasks and input generation
     "accelerate",  # distributed inference and no weights init
     # Hydra
-    "omegaconf==2.3.0",
-    "hydra-core==1.3.2",
-    "hydra_colorlog==1.2.0",
-    "hydra-joblib-launcher==1.2.0",
+    "omegaconf>=2.3.0",
+    "hydra-core>=1.3.2",
+    "hydra_colorlog>=1.2.0",
+    "hydra-joblib-launcher>=1.2.0",
     # Other
-    "codecarbon==2.3.1",
-    "psutil==5.9.0",
+    "psutil>=5.9.0",
     "pandas>=2.0.0",
 ]
 
-# add py3nvml if nvidia driver is installed
-try:
-    import subprocess
+# We may allow to install CUDA or RoCm dependencies even when building in a non-CUDA or non-RoCm environment.
+use_rocm = os.environ.get("USE_ROCM", None)
+use_cuda = os.environ.get("USE_CUDA", None)
 
-    subprocess.run(["nvidia-smi"], stdout=subprocess.DEVNULL)
-    INSTALL_REQUIRES.append("py3nvml==0.2.7")
-except FileNotFoundError:
-    pass
+if use_cuda is None:
+    try:
+        subprocess.run(["nvidia-smi"], stdout=subprocess.DEVNULL)
+        use_cuda = "1"
+    except FileNotFoundError:
+        pass
 
+if use_rocm is None:
+    try:
+        subprocess.run(["nvidia-smi"], stdout=subprocess.DEVNULL)
+        use_rocm = "1"
+    except FileNotFoundError:
+        pass
+
+if use_cuda == "1":
+    INSTALL_REQUIRES.append("py3nvml>=0.2.7")
+
+if use_rocm == "1":
+    INSTALL_REQUIRES.append("pyrsmi@git+https://github.com/RadeonOpenCompute/pyrsmi.git")
 
 EXTRAS_REQUIRE = {
     "test": ["pytest"],
@@ -37,7 +53,7 @@ EXTRAS_REQUIRE = {
     "onnxruntime-gpu": [f"optimum[onnxruntime-gpu]>={OPTIMUM_VERSION}", "torch==2.0.1"],
     "neural-compressor": [f"optimum[neural-compressor]>={OPTIMUM_VERSION}"],
     # server-like backend
-    "text-generation-inference": ["docker==6.1.3"],
+    "text-generation-inference": ["docker>=6.1.3"],
     # specific settings
     "diffusers": ["diffusers"],
     "peft": ["peft"],
