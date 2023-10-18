@@ -1,4 +1,4 @@
-name: Pytorch CUDA Tests
+name: Pytorch RoCm Tests
 
 on:
   workflow_dispatch:
