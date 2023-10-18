@@ -32,3 +32,5 @@ RUN apt-get install -y software-properties-common wget apt-utils patchelf git li
     apt-get clean
 RUN unattended-upgrade
 RUN apt-get autoremove -y
+
+RUN pip install --upgrade pip
