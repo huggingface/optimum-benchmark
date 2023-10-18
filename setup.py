@@ -1,4 +1,5 @@
 import os
+import subprocess
 
 from setuptools import find_packages, setup
 
@@ -18,9 +19,25 @@ INSTALL_REQUIRES = [
     "pandas>=2.0.0",
 ]
 
+# We may allow to install CUDA or RoCm dependencies even when building in a non-CUDA or non-RoCm environment.
 use_rocm = os.environ.get("USE_ROCM", None)
-ues_cuda = os.environ.get("USE_CUDA", None)
-if ues_cuda == "1":
+use_cuda = os.environ.get("USE_CUDA", None)
+
+if use_cuda is None:
+    try:
+        subprocess.run(["nvidia-smi"], stdout=subprocess.DEVNULL)
+        use_cuda = "1"
+    except FileNotFoundError:
+        pass
+
+if use_rocm is None:
+    try:
+        subprocess.run(["nvidia-smi"], stdout=subprocess.DEVNULL)
+        use_rocm = "1"
+    except FileNotFoundError:
+        pass
+
+if use_cuda == "1":
     INSTALL_REQUIRES.append("py3nvml>=0.2.7")
 
 if use_rocm == "1":

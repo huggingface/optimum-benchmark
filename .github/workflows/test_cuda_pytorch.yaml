@@ -31,6 +31,7 @@ jobs:
         run: docker run
           --rm
           --entrypoint /bin/bash
+          --env USE_CUDA="1"
           --gpus '"device=0,1"'
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
