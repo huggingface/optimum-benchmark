@@ -12,8 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# use version with CUDA 11.8 and TensorRT 8.5.1.7 to match ORT 1.14 requirements
-FROM nvcr.io/nvidia/tensorrt:23.09-py3
+# to build with 12.1.1-cudnn8-devel-ubuntu22.04
+# docker build -f docker/cuda.dockerfile -t opt-bench-cuda:12.1.1-cudnn8 .
+# to build with 11.8.0-cudnn8-devel-ubuntu22.04
+# docker build -f docker/cuda.dockerfile -t opt-bench-cuda:11.8.0-cudnn8 --build-arg CUDA_VERSION=11.8.0 --build-arg UBUNTU_VERSION=22.04 .
+
+ARG CUDNN_VERSION=8
+ARG CUDA_VERSION=12.1.1
+ARG UBUNTU_VERSION=22.04
+
+FROM nvidia/cuda:${CUDA_VERSION}-cudnn${CUDNN_VERSION}-devel-ubuntu${UBUNTU_VERSION}
 
 # Ignore interactive questions during `docker build`
 ENV DEBIAN_FRONTEND noninteractive
@@ -25,3 +33,9 @@ RUN apt-get install -y software-properties-common wget apt-utils patchelf git li
     apt-get clean
 RUN unattended-upgrade
 RUN apt-get autoremove -y
+
+# Install python
+RUN apt-get install -y python3 python3-pip python3-dev python3-setuptools python3-wheel python3-venv && \
+    apt-get clean
+
+RUN pip install --upgrade pip

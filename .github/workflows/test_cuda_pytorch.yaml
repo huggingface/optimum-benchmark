@@ -33,5 +33,5 @@ jobs:
           --gpus '"device=0,1"'
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
-          optimum-benchmark-gpu
-          -c "pip install -e .[test,peft,diffusers] && pytest -k 'cuda_pytorch' -x"
+          opt-bench-cuda:12.1.1-cudnn8
+          -c "pip install -e .[test,peft,diffusers] && pytest -k 'cuda and pytorch' -x"
