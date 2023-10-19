@@ -27,6 +27,13 @@ ARG TORCHVISION_VERSION=0.15.1
 # Ignore interactive questions during `docker build`
 ENV DEBIAN_FRONTEND noninteractive
 
+# Run as non-root user
+ARG USER_ID
+ARG GROUP_ID
+
+RUN addgroup --gid $GROUP_ID user
+RUN adduser --disabled-password --gecos '' --uid $USER_ID --gid $GROUP_ID user
+
 # Install and update tools to minimize security vulnerabilities
 RUN apt-get update
 RUN apt-get install -y software-properties-common wget apt-utils patchelf git libprotobuf-dev protobuf-compiler cmake \
@@ -39,6 +46,15 @@ RUN apt-get autoremove -y
 RUN apt-get install -y python3 python3-pip python3-dev python3-setuptools python3-wheel python3-venv && \
     apt-get clean
 
+# Add user to sudoers
+RUN adduser user sudo
+RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+# Change user
+USER user
+WORKDIR /home/user
+
+# Update pip
 RUN pip install --upgrade pip
 
 # Install dependencies

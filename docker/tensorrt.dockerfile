@@ -25,6 +25,13 @@ FROM nvcr.io/nvidia/tensorrt:${TENSORRT_VERSION}-py3
 # Ignore interactive questions during `docker build`
 ENV DEBIAN_FRONTEND noninteractive
 
+# Run as non-root user
+ARG USER_ID
+ARG GROUP_ID
+
+RUN addgroup --gid $GROUP_ID user
+RUN adduser --disabled-password --gecos '' --uid $USER_ID --gid $GROUP_ID user
+
 # Install and update tools to minimize security vulnerabilities
 RUN apt-get update
 RUN apt-get install -y software-properties-common wget apt-utils patchelf git libprotobuf-dev protobuf-compiler cmake \
@@ -33,4 +40,13 @@ RUN apt-get install -y software-properties-common wget apt-utils patchelf git li
 RUN unattended-upgrade
 RUN apt-get autoremove -y
 
+# Add user to sudoers
+RUN adduser user sudo
+RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+# Change user
+USER user
+WORKDIR /home/user
+
+# Update pip
 RUN pip install --upgrade pip

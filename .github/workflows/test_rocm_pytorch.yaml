@@ -18,10 +18,21 @@ jobs:
 
       - name: Build image
         run: |
-          echo "ls:"
-          ls
-          docker build -f docker/rocm.dockerfile -t opt-bench-rocm .
+          docker build 
+            --file docker/rocm.dockerfile 
+            --tage opt-bench-rocm 
+            .
 
       - name: Run tests
         run: |
-          docker run --rm --entrypoint /bin/bash --device /dev/kfd --device /dev/dri --shm-size=64G --volume $(pwd):/workspace/optimum-benchmark --workdir /workspace/optimum-benchmark --env USE_ROCM="1" opt-bench-rocm:latest -c "pip install -e .[test,peft,diffusers] && pytest -k 'cuda and pytorch' -x"
+          docker run
+            --rm
+            --device /dev/kfd
+            --device /dev/dri
+            --entrypoint /bin/bash
+            --shm-size=64G
+            --volume $(pwd):/workspace/optimum-benchmark
+            --workdir /workspace/optimum-benchmark
+            --env USE_ROCM="1"
+            opt-bench-rocm:latest
+            -c "pip install -e .[test,peft,diffusers] && pytest -k 'cuda and pytorch' -x"
