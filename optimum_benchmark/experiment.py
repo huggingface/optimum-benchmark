@@ -16,7 +16,7 @@ from .backends.pytorch.config import PyTorchConfig
 from .backends.text_generation_inference.config import TGIConfig
 from .benchmarks.inference.config import InferenceConfig
 from .benchmarks.training.config import TrainingConfig
-from .env_utils import get_cpu, get_cpu_ram_mb, get_gpus
+from .env_utils import get_cpu, get_cpu_ram_mb, get_git_revision_hash, get_gpus
 from .import_utils import (
     accelerate_version,
     diffusers_version,
@@ -66,9 +66,13 @@ class ExperimentConfig:
     environment: Dict = field(
         default_factory=lambda: {
             "optimum_version": optimum_version(),
+            "optimum_commit": get_git_revision_hash(os.environ.get("OPTIMUM_PATH")),
             "transformers_version": transformers_version(),
+            "transformers_commit": get_git_revision_hash(os.environ.get("TRANSFORMERS_PATH")),
             "accelerate_version": accelerate_version(),
+            "accelerate_commit": get_git_revision_hash(os.environ.get("ACCELERATE_PATH")),
             "diffusers_version": diffusers_version(),
+            "diffusers_commit": get_git_revision_hash(os.environ.get("DIFFUSERS_PATH")),
             "python_version": platform.python_version(),
             "system": platform.system(),
             "cpu": get_cpu(),
