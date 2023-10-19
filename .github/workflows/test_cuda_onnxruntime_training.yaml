@@ -11,29 +11,27 @@ concurrency:
 
 jobs:
   build-and-test:
-    runs-on: self-hosted
+    runs-on: hf-dgx-01
     steps:
-      - name: Restore files ownership
-        run: docker run
-          --rm
-          --entrypoint /bin/bash
-          --env HOST_UID=`id -u`
-          --env HOST_GID=`id -g`
-          --volume $(pwd):/workspace/optimum-benchmark
-          --workdir /workspace/optimum-benchmark
-          ubuntu
-          -c 'chown -R ${HOST_UID}:${HOST_GID} /workspace/optimum-benchmark'
-
       - name: Checkout
         uses: actions/checkout@v2
+
+      - name: Build image
+        run: docker build
+          --file docker/onnxruntime_training.dockerfile
+          --build-arg USER_ID=$(id -u)
+          --build-arg GROUP_ID=$(id -g)
+          --build-arg CUDA_VERSION=11.8.0
+          --tag onnxruntime-training:11.8.0
+          .
 
       - name: Run tests
         run: docker run
           --rm
-          --entrypoint /bin/bash
-          --env USE_CUDA="1"
           --gpus '"device=0,1"'
+          --entrypoint /bin/bash
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
-          onnxruntime-training:11.8.0-cudnn8
+          --env USE_CUDA="1"
+          onnxruntime-training:11.8.0
           -c "pip install -e .[test,peft] && pytest -k 'cuda and onnxruntime and training' -x"

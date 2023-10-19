@@ -17,11 +17,23 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Build image
-        run: |
-          echo "ls:"
-          ls
-          docker build -f docker/rocm.dockerfile -t opt-bench-rocm .
+        run: docker build
+          --file docker/rocm.dockerfile
+          --build-arg USER_ID=$(id -u)
+          --build-arg GROUP_ID=$(id -g)
+          --build-arg ROCM_VERSION=5.6.1
+          --tag opt-bench-rocm:5.6.1
+          .
 
       - name: Run tests
-        run: |
-          docker run --rm --entrypoint /bin/bash --device /dev/kfd --device /dev/dri --shm-size=64G --volume $(pwd):/workspace/optimum-benchmark --workdir /workspace/optimum-benchmark --env USE_ROCM="1" opt-bench-rocm:latest -c "pip install -e .[test,peft,diffusers] && pytest -k 'cuda and pytorch' -x"
+        run: docker run
+          --rm
+          --device /dev/kfd
+          --device /dev/dri
+          --entrypoint /bin/bash
+          --shm-size=64G
+          --volume $(pwd):/workspace/optimum-benchmark
+          --workdir /workspace/optimum-benchmark
+          --env USE_ROCM="1"
+          opt-bench-rocm:5.6.1
+          -c "pip install -e .[test,peft,diffusers] && pytest -k 'cuda and pytorch' -x"

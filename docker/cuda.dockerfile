@@ -26,16 +26,32 @@ FROM nvidia/cuda:${CUDA_VERSION}-cudnn${CUDNN_VERSION}-devel-ubuntu${UBUNTU_VERS
 # Ignore interactive questions during `docker build`
 ENV DEBIAN_FRONTEND noninteractive
 
-# Install and update tools to minimize security vulnerabilities
-RUN apt-get update
-RUN apt-get install -y software-properties-common wget apt-utils patchelf git libprotobuf-dev protobuf-compiler cmake \
-    bzip2 ca-certificates libglib2.0-0 libxext6 libsm6 libxrender1 mercurial subversion libopenmpi-dev && \
-    apt-get clean
-RUN unattended-upgrade
-RUN apt-get autoremove -y
+# Run as non-root user
+ARG USER_ID
+ARG GROUP_ID
+
+RUN addgroup --gid $GROUP_ID user
+RUN adduser --disabled-password --gecos '' --uid $USER_ID --gid $GROUP_ID user
 
 # Install python
-RUN apt-get install -y python3 python3-pip python3-dev python3-setuptools python3-wheel python3-venv && \
-    apt-get clean
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.10 \
+    python3.10-dev \
+    python3-pip \
+    git && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1
 
+ENV PATH="/home/user/.local/bin:${PATH}"
+
+# Add user to sudoers
+RUN adduser user sudo
+RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >>/etc/sudoers
+
+# Change user
+USER user
+WORKDIR /home/user
+
+# Update pip
 RUN pip install --upgrade pip
