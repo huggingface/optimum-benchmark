@@ -16,21 +16,19 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Build image
-        run: |
-          docker build 
-            --file docker/tensorrt.dockerfile 
-            --build-arg TENSORRT_VERSION=22.12 
-            --tag opt-bench-tensorrt:22.12 
-            .
+        run: docker build 
+          --file docker/tensorrt.dockerfile 
+          --build-arg TENSORRT_VERSION=22.12 
+          --tag opt-bench-tensorrt:22.12
+          .
 
       - name: Run tests
-        run: |
-          docker run
-            --rm
-            --gpus '"device=0,1"'
-            --entrypoint /bin/bash
-            --volume $(pwd):/workspace/optimum-benchmark
-            --workdir /workspace/optimum-benchmark
-            --env USE_CUDA="1"
-            opt-bench-tensorrt:22.12
-            -c "pip install -e .[test,onnxruntime-gpu,diffusers] && pytest -k 'tensorrt and onnxruntime and inference' -x"
+        run: docker run
+          --rm
+          --gpus '"device=0,1"'
+          --entrypoint /bin/bash
+          --volume $(pwd):/workspace/optimum-benchmark
+          --workdir /workspace/optimum-benchmark
+          --env USE_CUDA="1"
+          opt-bench-tensorrt:22.12
+          -c "pip install -e .[test,onnxruntime-gpu,diffusers] && pytest -k 'tensorrt and onnxruntime and inference' -x"
