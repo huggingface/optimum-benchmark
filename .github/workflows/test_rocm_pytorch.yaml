@@ -13,6 +13,17 @@ jobs:
   build-and-test:
     runs-on: hf-amd-mi210-dev
     steps:
+      - name: Restore files ownership
+        run: docker run
+          --rm
+          --entrypoint /bin/bash
+          --env HOST_UID=`id -u`
+          --env HOST_GID=`id -g`
+          --volume $(pwd):/workspace/optimum-benchmark
+          --workdir /workspace/optimum-benchmark
+          ubuntu
+          -c 'chown -R ${HOST_UID}:${HOST_GID} /workspace/optimum-benchmark'
+
       - name: Checkout
         uses: actions/checkout@v2
 
