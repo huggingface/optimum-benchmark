@@ -16,7 +16,7 @@ from .backends.pytorch.config import PyTorchConfig
 from .backends.text_generation_inference.config import TGIConfig
 from .benchmarks.inference.config import InferenceConfig
 from .benchmarks.training.config import TrainingConfig
-from .env_utils import get_cpu, get_cpu_ram_mb, get_gpus, get_git_revision_hash
+from .env_utils import get_cpu, get_cpu_ram_mb, get_git_revision_hash, get_gpus
 from .import_utils import (
     accelerate_version,
     diffusers_version,
