@@ -21,8 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
-    update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 && \
-    python -m pip install -U pip
+    update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1
 
 ENV PATH="/home/user/.local/bin:${PATH}"
 
@@ -37,6 +36,9 @@ RUN usermod -a -G render user
 # Change user
 USER user
 WORKDIR /home/user
+
+# Update pip
+RUN pip install --upgrade pip
 
 # Install PyTorch
 RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm5.6

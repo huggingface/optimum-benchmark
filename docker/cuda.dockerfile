@@ -41,8 +41,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
-    update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 && \
-    python -m pip install -U pip
+    update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1
 
 ENV PATH="/home/user/.local/bin:${PATH}"
 

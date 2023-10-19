@@ -20,7 +20,6 @@ ARG UBUNTU_VERSION=22.04
 
 FROM nvidia/cuda:${CUDA_VERSION}-cudnn${CUDNN_VERSION}-devel-ubuntu${UBUNTU_VERSION}
 
-ARG PYTHON_VERSION=3.9
 ARG TORCH_VERSION=2.0.0
 ARG TORCHVISION_VERSION=0.15.1
 
@@ -42,8 +41,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
-    update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 && \
-    python -m pip install -U pip
+    update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1
 
 ENV PATH="/home/user/.local/bin:${PATH}"
 
@@ -54,6 +52,9 @@ RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 # Change user
 USER user
 WORKDIR /home/user
+
+# Update pip
+RUN pip install --upgrade pip
 
 # Install dependencies
 RUN pip install onnx ninja
