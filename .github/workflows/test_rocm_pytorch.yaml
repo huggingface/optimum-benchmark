@@ -22,7 +22,6 @@ jobs:
           --build-arg USER_ID=$(id -u)
           --build-arg GROUP_ID=$(id -g)
           --build-arg ROCM_VERSION=5.6.1
-          --build-arg UBUNTU_VERSION=22.04
           --tag opt-bench-rocm:5.6.1
           .
 

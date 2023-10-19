@@ -22,8 +22,7 @@ jobs:
           --build-arg USER_ID=$(id -u)
           --build-arg GROUP_ID=$(id -g)
           --build-arg CUDA_VERSION=11.8.0
-          --build-arg UBUNTU_VERSION=22.04
-          --tag onnxruntime-training:11.8.0-cudnn8
+          --tag onnxruntime-training:11.8.0
           .
 
       - name: Run tests
@@ -34,5 +33,5 @@ jobs:
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
           --env USE_CUDA="1"
-          onnxruntime-training:11.8.0-cudnn8
+          onnxruntime-training:11.8.0
           -c "pip install -e .[test,peft] && pytest -k 'cuda and onnxruntime and training' -x"
