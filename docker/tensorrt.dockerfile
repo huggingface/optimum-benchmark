@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 # to build with tensorrt:23.09
 # docker build -f docker/tensorrt.dockerfile -t opt-bench-tensorrt:23.09 .
 # to build with tensorrt:22.12
@@ -35,14 +34,14 @@ RUN adduser --disabled-password --gecos '' --uid $USER_ID --gid $GROUP_ID user
 # Install and update tools to minimize security vulnerabilities
 RUN apt-get update
 RUN apt-get install -y software-properties-common wget apt-utils patchelf git libprotobuf-dev protobuf-compiler cmake \
-    bzip2 ca-certificates libglib2.0-0 libxext6 libsm6 libxrender1 mercurial subversion libopenmpi-dev && \
+    bzip2 ca-certificates libglib2.0-0 libxext6 libsm6 libxrender1 mercurial subversion libopenmpi-dev &&
     apt-get clean
 RUN unattended-upgrade
 RUN apt-get autoremove -y
 
 # Add user to sudoers
 RUN adduser user sudo
-RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >>/etc/sudoers
 
 # Change user
 USER user

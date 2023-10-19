@@ -21,7 +21,9 @@ jobs:
           --file docker/rocm.dockerfile
           --build-arg USER_ID=$(id -u)
           --build-arg GROUP_ID=$(id -g)
-          --tag opt-bench-rocm
+          --build-arg ROCM_VERSION=5.6.1
+          --build-arg UBUNTU_VERSION=22.04
+          --tag opt-bench-rocm:5.6.1
           .
 
       - name: Run tests
@@ -34,5 +36,5 @@ jobs:
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
           --env USE_ROCM="1"
-          opt-bench-rocm:latest
+          opt-bench-rocm:5.6.1
           -c "pip install -e .[test,peft,diffusers] && pytest -k 'cuda and pytorch' -x"

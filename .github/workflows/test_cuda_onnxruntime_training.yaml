@@ -18,12 +18,12 @@ jobs:
 
       - name: Build image
         run: docker build
-          --file docker/cuda.dockerfile
+          --file docker/onnxruntime-training.dockerfile
           --build-arg USER_ID=$(id -u)
           --build-arg GROUP_ID=$(id -g)
           --build-arg CUDA_VERSION=11.8.0
           --build-arg UBUNTU_VERSION=22.04
-          --tag opt-bench-cuda:11.8.0-cudnn8
+          --tag onnxruntime-training:11.8.0-cudnn8
           .
 
       - name: Run tests
