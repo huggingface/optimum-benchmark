@@ -27,14 +27,12 @@ jobs:
           .
 
       - name: Run tests
-        run: |
-          docker run
-            -it
-            --rm
-            --gpus '"device=0,1"'
-            --entrypoint /bin/bash
-            --volume $(pwd):/workspace/optimum-benchmark
-            --workdir /workspace/optimum-benchmark
-            --env USE_CUDA="1"
-            onnxruntime-training:11.8.0-cudnn8
-            -c "pip install -e .[test,peft] && pytest -k 'cuda and onnxruntime and training' -x"
+        run: docker run
+          --rm
+          --gpus '"device=0,1"'
+          --entrypoint /bin/bash
+          --volume $(pwd):/workspace/optimum-benchmark
+          --workdir /workspace/optimum-benchmark
+          --env USE_CUDA="1"
+          onnxruntime-training:11.8.0-cudnn8
+          -c "pip install -e .[test,peft] && pytest -k 'cuda and onnxruntime and training' -x"
