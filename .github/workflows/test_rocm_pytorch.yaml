@@ -13,23 +13,14 @@ jobs:
   build-and-test:
     runs-on: hf-amd-mi210-dev
     steps:
-      - name: Restore files ownership
-        run: docker run
-          --rm
-          --entrypoint /bin/bash
-          --env HOST_UID=`id -u`
-          --env HOST_GID=`id -g`
-          --volume $(pwd):/workspace/optimum-benchmark
-          --workdir /workspace/optimum-benchmark
-          ubuntu
-          -c 'chown -R ${HOST_UID}:${HOST_GID} /workspace/optimum-benchmark'
-
       - name: Checkout
         uses: actions/checkout@v2
 
       - name: Build image
-        run: docker build 
-          --file docker/rocm.dockerfile 
+        run: docker build
+          --file docker/rocm.dockerfile
+          --build-arg USER_ID=$(id -u)
+          --build-arg GROUP_ID=$(id -g)
           --tag opt-bench-rocm
           .
 
