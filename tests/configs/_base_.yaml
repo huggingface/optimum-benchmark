@@ -25,4 +25,4 @@ backend:
   initial_isolation_check: false
   continous_isolation_check: false
 
-experiment_name: ${device}_${backend}_${benchmark}_${task}
+experiment_name: ${device}_${backend.name}_${benchmark.name}_${task}
