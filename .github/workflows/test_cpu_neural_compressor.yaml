@@ -30,4 +30,4 @@ jobs:
 
       - name: Run Intel Neural Compressor CPU tests
         run: |
-          pytest -k "cpu_neural_compressor"
+          pytest -k "cpu and neural-compressor"

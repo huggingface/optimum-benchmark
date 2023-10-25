@@ -1,3 +1,5 @@
+import logging.config
+import multiprocessing
 import os
 import platform
 from dataclasses import dataclass, field
@@ -110,17 +112,19 @@ cs.store(name="experiment", node=ExperimentConfig)
 cs.store(group="backend", name="openvino", node=OVConfig)
 cs.store(group="backend", name="pytorch", node=PyTorchConfig)
 cs.store(group="backend", name="onnxruntime", node=ORTConfig)
-cs.store(group="backend", name="neural_compressor", node=INCConfig)
+cs.store(group="backend", name="neural-compressor", node=INCConfig)
 cs.store(group="backend", name="text-generation-inference", node=TGIConfig)
 cs.store(group="benchmark", name="inference", node=InferenceConfig)
 cs.store(group="benchmark", name="training", node=TrainingConfig)
 
 
-@hydra.main(version_base=None)
-def run_experiment(experiment: DictConfig) -> None:
+def run(experiment: DictConfig) -> None:
+    # Configure logging
+    hydra_conf = OmegaConf.load(".hydra/hydra.yaml")
+    logging.config.dictConfig(OmegaConf.to_container(hydra_conf.hydra.job_logging, resolve=True))
+
     # This is required to trigger __post_init__. Reference: https://github.com/omry/omegaconf/issues/377
     experiment: ExperimentConfig = OmegaConf.to_object(experiment)
-
     # Save the config
     OmegaConf.save(experiment, "hydra_config.yaml", resolve=True)
 
@@ -161,3 +165,19 @@ def run_experiment(experiment: DictConfig) -> None:
         LOGGER.error("Error during benchmark execution: %s", e)
         backend.clean()
         raise e
+
+
+def run_isolated(experiment: DictConfig) -> None:
+    # Set the multiprocessing start method if not already set
+    if multiprocessing.get_start_method(allow_none=True) is None:
+        multiprocessing.set_start_method("spawn")
+
+    # Spawn a new process
+    p = multiprocessing.Process(target=run, args=(experiment,))
+    p.start()
+    p.join()
+
+
+@hydra.main(version_base=None)
+def main(experiment: DictConfig) -> None:
+    run_isolated(experiment)

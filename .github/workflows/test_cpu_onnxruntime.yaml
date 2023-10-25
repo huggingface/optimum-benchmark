@@ -30,4 +30,4 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -k "cpu_onnxruntime"
+          pytest -k "cpu and onnxruntime"

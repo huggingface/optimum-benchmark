@@ -1,9 +1,8 @@
 defaults:
-  - base_config # inherits from base config
+  - benchmark: inference
+  - backend: onnxruntime
+  - _base_ # inherits from base config
   - _self_ # for hydra 1.1 compatibility
-  - override backend: onnxruntime # override backend to onnxruntime
-
-experiment_name: cuda_onnxruntime_inference_gpt2
 
 model: hf-internal-testing/tiny-random-gpt2
 task: text-generation

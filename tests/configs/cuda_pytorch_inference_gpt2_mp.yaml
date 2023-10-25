@@ -2,8 +2,10 @@ defaults:
   - benchmark: inference
   - backend: pytorch
   - _base_ # inherits from base config
+  - _mp_ # inherits from mp config
   - _self_ # for hydra 1.1 compatibility
 
-model: hf-internal-testing/tiny-random-gpt2
+# we use gpt2 because tiny-gpt2 fails probably because it's just too small to distribute
+model: gpt2
 task: text-generation
-device: cpu
+device: cuda

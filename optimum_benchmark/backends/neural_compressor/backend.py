@@ -14,11 +14,11 @@ from ..base import Backend
 from .config import INCConfig
 from .utils import TASKS_TO_INCMODELS
 
-LOGGER = getLogger("neural_compressor")
+LOGGER = getLogger("neural-compressor")
 
 
 class INCBackend(Backend[INCConfig]):
-    NAME: str = "neural_compressor"
+    NAME: str = "neural-compressor"
 
     def __init__(self, model: str, task: str, device: str, hub_kwargs: Dict[str, Any]) -> None:
         super().__init__(model, task, device, hub_kwargs)

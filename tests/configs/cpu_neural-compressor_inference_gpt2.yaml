@@ -1,9 +1,9 @@
 defaults:
   - benchmark: inference
-  - backend: onnxruntime
+  - backend: neural-compressor
   - _base_ # inherits from base config
   - _self_ # for hydra 1.1 compatibility
 
-model: hf-internal-testing/tiny-random-bert
-task: text-classification
+model: hf-internal-testing/tiny-random-gpt2
+task: text-generation
 device: cpu
