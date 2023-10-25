@@ -1,4 +1,4 @@
-name: Pytorch RoCm Tests
+name: Pytorch ROCm Tests
 
 on:
   workflow_dispatch:
