@@ -1,9 +1,8 @@
 defaults:
-  - base_config # inherits from base config
+  - benchmark: inference
+  - backend: neural-compressor
+  - _base_ # inherits from base config
   - _self_ # for hydra 1.1 compatibility
-  - override backend: neural_compressor # override backend to openvino
-
-experiment_name: cpu_neural_compressor_inference_bert
 
 model: hf-internal-testing/tiny-random-bert
 task: text-classification

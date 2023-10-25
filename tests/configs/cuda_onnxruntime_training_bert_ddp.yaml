@@ -4,17 +4,11 @@ defaults:
   - override benchmark: training
   - override backend: onnxruntime
 
-experiment_name: distributed_cuda_onnxruntime_training_bert_ddp
+experiment_name: ${device}_${backend}_${benchmark}_${task}_ddp
 
 model: hf-internal-testing/tiny-random-bert
 task: text-classification
 device: cuda
-
-backend:
-  use_ddp: true
-  ddp_config:
-    # let's not use the default port to avoid network conflicts
-    rdzv_endpoint: 127.0.0.1:29509
 
 benchmark:
   dataset_shapes:
@@ -22,6 +16,11 @@ benchmark:
     sequence_length: 256
   training_arguments:
     per_device_train_batch_size: 8
+
+backend:
+  use_ddp: true
+  ddp_config:
+    rdzv_endpoint: 127.0.0.1:29509
 
 hydra:
   job:

@@ -1,9 +1,8 @@
 defaults:
-  - base_config # inherits from base config
+  - benchmark: training
+  - backend: pytorch
+  - _base_ # inherits from base config
   - _self_ # for hydra 1.1 compatibility
-  - override benchmark: training
-
-experiment_name: cpu_pytorch_training_gpt2.yaml
 
 model: hf-internal-testing/tiny-random-gpt2
 task: text-generation
