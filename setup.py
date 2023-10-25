@@ -13,7 +13,6 @@ INSTALL_REQUIRES = [
     "omegaconf>=2.3.0",
     "hydra-core>=1.3.2",
     "hydra_colorlog>=1.2.0",
-    "hydra-joblib-launcher>=1.2.0",
     # Other
     "psutil>=5.9.0",
     "pandas>=2.0.0",
@@ -70,7 +69,7 @@ setup(
     extras_require=EXTRAS_REQUIRE,
     entry_points={
         "console_scripts": [
-            "optimum-benchmark=optimum_benchmark.experiment:run_experiment",
+            "optimum-benchmark=optimum_benchmark.experiment:main",
             "optimum-report=optimum_benchmark.report:generate_report",
         ]
     },
