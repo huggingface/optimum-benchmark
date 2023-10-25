@@ -17,6 +17,5 @@ line-length = 119
 target-version = ['py37']
 
 [tool.ruff]
-# Never enforce `E501` and `C901` as they are too strict
 ignore = ["E501", "C901"]
 select = ["C", "E", "F", "I", "W"]

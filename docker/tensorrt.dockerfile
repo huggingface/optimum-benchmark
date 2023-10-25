@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# to build with tensorrt:23.09
-# docker build -f docker/tensorrt.dockerfile -t opt-bench-tensorrt:23.09 .
-# to build with tensorrt:22.12
-# docker build -f docker/tensorrt.dockerfile --build-arg TENSORRT_VERSION=22.12 -t opt-bench-tensorrt:22.12 .
-
 ARG TENSORRT_VERSION=23.09
 
 FROM nvcr.io/nvidia/tensorrt:${TENSORRT_VERSION}-py3
+
+ARG TORCH_CUDA=cu121
 
 # Ignore interactive questions during `docker build`
 ENV DEBIAN_FRONTEND noninteractive
@@ -43,3 +40,6 @@ WORKDIR /home/user
 
 # Update pip
 RUN pip install --upgrade pip
+
+# Install PyTorch
+RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA}

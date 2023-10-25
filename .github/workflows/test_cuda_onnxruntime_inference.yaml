@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-test:
+  build_image_and_run_gpu_tests:
     runs-on: hf-dgx-01
     steps:
       - name: Checkout
@@ -22,6 +22,7 @@ jobs:
           --build-arg USER_ID=$(id -u)
           --build-arg GROUP_ID=$(id -g)
           --build-arg CUDA_VERSION=11.8.0
+          --build-arg TORCH_CUDA=cu118
           --tag opt-bench-cuda:11.8.0
           .
 

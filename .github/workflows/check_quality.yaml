@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  run_cpu_tests:
+  run_quality_checks:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -27,10 +27,6 @@ jobs:
           pip install --upgrade pip
           pip install -e .[quality]
 
-      - name: Check style with black
+      - name: Check style
         run: |
-          black --check .
-
-      - name: Check style with ruff
-        run: |
-          ruff .
+          make style_check
