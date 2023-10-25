@@ -36,4 +36,4 @@ jobs:
           --env TORCH_CUDA_ARCH_LIST="5.2 6.0 6.1 7.0 7.5 8.0 8.6+PTX"
           --env USE_CUDA="1"
           opt-bench-cuda:11.8.0
-          -c "python -m torch_ort.configure && pip install -e .[test,onnxruntime-training,peft] && pytest -k 'cuda and onnxruntime and training' -x"
+          -c "pip install -e .[test,onnxruntime-training,peft] && python -m torch_ort.configure && pytest -k 'cuda and onnxruntime and training' -x"
