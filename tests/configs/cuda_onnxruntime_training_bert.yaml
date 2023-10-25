@@ -7,8 +7,3 @@ defaults:
 model: hf-internal-testing/tiny-random-bert
 task: text-classification
 device: cuda
-
-benchmark:
-  dataset_shapes:
-    dataset_size: 1600
-    sequence_length: 256

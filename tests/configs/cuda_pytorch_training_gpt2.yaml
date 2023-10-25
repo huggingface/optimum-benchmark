@@ -1,5 +1,5 @@
 defaults:
-  - benchmark: inference
+  - benchmark: training
   - backend: pytorch
   - _base_ # inherits from base config
   - _self_ # for hydra 1.1 compatibility
@@ -7,8 +7,3 @@ defaults:
 model: hf-internal-testing/tiny-random-gpt2
 task: text-generation
 device: cuda
-
-benchmark:
-  dataset_shapes:
-    dataset_size: 1600
-    sequence_length: 256
