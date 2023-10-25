@@ -12,16 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# to build with 12.1.1-cudnn8-devel-ubuntu22.04
-# docker build -f docker/cuda.dockerfile -t opt-bench-cuda:12.1.1-cudnn8 .
-# to build with 11.8.0-cudnn8-devel-ubuntu22.04
-# docker build -f docker/cuda.dockerfile -t opt-bench-cuda:11.8.0-cudnn8 --build-arg CUDA_VERSION=11.8.0 --build-arg UBUNTU_VERSION=22.04 .
-
 ARG CUDNN_VERSION=8
 ARG CUDA_VERSION=12.1.1
 ARG UBUNTU_VERSION=22.04
 
 FROM nvidia/cuda:${CUDA_VERSION}-cudnn${CUDNN_VERSION}-devel-ubuntu${UBUNTU_VERSION}
+
+ARG TORCH_CUDA=cu121
 
 # Ignore interactive questions during `docker build`
 ENV DEBIAN_FRONTEND noninteractive
@@ -55,3 +52,6 @@ WORKDIR /home/user
 
 # Update pip
 RUN pip install --upgrade pip
+
+# Install PyTorch
+RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA}

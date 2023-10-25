@@ -24,12 +24,12 @@ REAL_CLONE_URL = $(if $(CLONE_URL),$(CLONE_URL),$(DEFAULT_CLONE_URL))
 # Run code quality checks
 style_check:
 	black --check .
-	ruff .
+	ruff check .
 
 # Format the code
 style:
 	black .
-	ruff . --fix
+	ruff --fix .
 
 # Run tests for the library
 test:
