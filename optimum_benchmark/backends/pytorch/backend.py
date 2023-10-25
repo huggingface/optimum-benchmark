@@ -3,11 +3,19 @@ from logging import getLogger
 from typing import TYPE_CHECKING, Any, Callable, Dict, List
 
 import torch
-from transformers import BitsAndBytesConfig, GPTQConfig, Trainer, TrainingArguments
+
+from transformers import (
+    AWQConfig,
+    BitsAndBytesConfig,
+    GPTQConfig,
+    Trainer,
+    TrainingArguments,
+)
 from transformers.utils.fx import symbolic_trace
 
 if TYPE_CHECKING:
     from datasets import Dataset
+
     from transformers import TrainerCallback, TrainerState
     from transformers.utils import ModelOutput
 
@@ -15,7 +23,7 @@ from ...profilers.fx_profiler import FXProfilingWrapper
 from ..base import Backend
 from ..ddp_utils import record_if_available, training_worker
 from .config import PyTorchConfig
-from .utils import DTYPES_MAPPING, randomize_weights
+from .utils import DTYPES_MAPPING, randomize_weights, to_pow2
 
 # bachend logger
 LOGGER = getLogger("pytorch")
@@ -101,9 +109,12 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.pretrained_model = get_peft_model(self.pretrained_model, peft_config=peft_config)
 
     def load_model_from_pretrained(self) -> None:
-        if self.config.quantization_scheme == "gptq":
+        if self.config.quantization_scheme == "gptq" and self.config.quantization_config:
             LOGGER.info("\t+ Processing GPTQ config")
             self.quantization_config = GPTQConfig(**self.config.quantization_config)
+        elif self.config.quantization_scheme == "awq" and self.config.quantization_config:
+            LOGGER.info("\t+ Processing AWQ config")
+            self.quantization_config = AWQConfig(**self.config.quantization_config)
         elif self.config.quantization_scheme == "bnb":
             LOGGER.info("\t+ Processing BnB config")
             self.quantization_config = self.config.quantization_config.copy()
@@ -214,6 +225,16 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         LOGGER.info("\t+ Tying weights")
         self.pretrained_model.tie_weights()
+
+    def prepare_for_inference(self, input_shapes: Dict[str, int], **kwargs) -> None:
+        super().prepare_for_inference(input_shapes=input_shapes, **kwargs)
+
+        if self.config.quantization_scheme == "gptq":
+            LOGGER.info("\t+ Setting GPTQ max_input_length")
+            from auto_gptq import exllama_set_max_input_length
+
+            max_input_length = to_pow2(input_shapes["batch_size"] * input_shapes["sequence_length"])
+            self.pretrained_model = exllama_set_max_input_length(self.pretrained_model, max_input_length)
 
     def prepare_for_profiling(self, input_names: List[str]) -> None:
         LOGGER.info("Preparing model for profiling")

@@ -1,3 +1,5 @@
+import math
+
 import torch
 
 DTYPES_MAPPING = {
@@ -5,6 +7,10 @@ DTYPES_MAPPING = {
     "float16": "fp16",
     "bfloat16": "bf16",
 }
+
+
+def to_pow2(x: int) -> int:
+    return 2 ** int(math.ceil(math.log2(x)))
 
 
 def randomize_weights(model):
