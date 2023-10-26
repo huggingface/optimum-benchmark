@@ -79,7 +79,6 @@ def format_row(row, style=""):
 
 def get_short_report(inference_report):
     short_columns = {
-        "backend.quantization_scheme": "Quantization Scheme",
         "benchmark.input_shapes.batch_size": "Batch Size",
         "forward.latency(s)": "Forward Latency (s)",
         "forward.throughput(samples/s)": "Forward Throughput (samples/s)",
@@ -88,6 +87,7 @@ def get_short_report(inference_report):
         "generate.peak_memory(MB)": "Generate Peak Memory (MB)",
     }
     short_report = inference_report[list(short_columns.keys())].rename(columns=short_columns)
+    short_report["Quantization Scheme"] = inference_report.index.str.split("-").str[0]
 
     return short_report
 

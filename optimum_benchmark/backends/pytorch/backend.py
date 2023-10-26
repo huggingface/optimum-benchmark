@@ -239,7 +239,10 @@ class PyTorchBackend(Backend[PyTorchConfig]):
     def prepare_for_inference(self, input_shapes: Dict[str, int], **kwargs) -> None:
         super().prepare_for_inference(input_shapes=input_shapes, **kwargs)
 
-        if self.config.quantization_scheme == "gptq":
+        if self.config.quantization_scheme == "gptq" or (
+            hasattr(self.pretrained_config, "quantization_config")
+            and self.pretrained_config.quantization_config["quant_method"] == "gptq"
+        ):
             LOGGER.info("\t+ Setting GPTQ max_input_length")
             from auto_gptq import exllama_set_max_input_length
 
@@ -256,18 +259,20 @@ class PyTorchBackend(Backend[PyTorchConfig]):
     def forward(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> "ModelOutput":
         if self.is_diffusion_pipeline():
             return super().forward(input, kwargs)
-        else:
-            # TODO: autocast as whole can be managed by one config/kwargs ?
-            with torch.autocast(device_type=self.device.type, dtype=self.amp_dtype, enabled=self.config.amp_autocast):
+        elif self.config.amp_autocast:
+            with torch.autocast(device_type=self.device.type, dtype=self.amp_dtype):
                 return super().forward(input, kwargs)
+        else:
+            return super().forward(input, kwargs)
 
     def generate(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> "ModelOutput":
         if self.is_diffusion_pipeline():
             return super().generate(input, kwargs)
-        else:
-            # TODO: autocast as whole can be managed by one config/kwargs ?
-            with torch.autocast(device_type=self.device.type, dtype=self.amp_dtype, enabled=self.config.amp_autocast):
+        elif self.config.amp_autocast:
+            with torch.autocast(device_type=self.device.type, dtype=self.amp_dtype):
                 return super().generate(input, kwargs)
+        else:
+            return super().generate(input, kwargs)
 
     @record_if_available
     def train(

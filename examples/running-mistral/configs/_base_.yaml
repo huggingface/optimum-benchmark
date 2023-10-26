@@ -14,13 +14,13 @@ hydra:
   job:
     chdir: true
     env_set:
-      CUDA_VISIBLE_DEVICES: 0
+      CUDA_VISIBLE_DEVICES: 1
       CUDA_DEVICE_ORDER: PCI_BUS_ID
   sweeper:
     params:
       benchmark.input_shapes.batch_size: 1,2,4,8,16
 
-experiment_name: ${backend.quantization_scheme}-batch_size(${benchmark.input_shapes.batch_size})-sequence_length(${benchmark.input_shapes.sequence_length})-new_tokens(${benchmark.new_tokens})
+experiment_name: fp16-batch_size(${benchmark.input_shapes.batch_size})-sequence_length(${benchmark.input_shapes.sequence_length})-new_tokens(${benchmark.new_tokens})
 model: mistralai/Mistral-7B-v0.1
 device: cuda
 
