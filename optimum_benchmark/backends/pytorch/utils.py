@@ -1,3 +1,5 @@
+import math
+
 import torch
 
 DTYPES_MAPPING = {
@@ -18,3 +20,7 @@ def randomize_weights(model):
             param.data.cuda().normal_(mean=0.0, std=0.2).cpu()
         else:
             param.data.normal_(mean=0.0, std=0.2)
+
+
+def to_pow2(x: int) -> int:
+    return 2 ** int(math.ceil(math.log2(x)))

@@ -1,0 +1,6 @@
+defaults:
+  - _base_
+  - _self_
+
+experiment_name: gptq-batch_size(${benchmark.input_shapes.batch_size})-sequence_length(${benchmark.input_shapes.sequence_length})-new_tokens(${benchmark.new_tokens})
+model: TheBloke/Mistral-7B-v0.1-GPTQ

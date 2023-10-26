@@ -18,18 +18,10 @@ DEVICE_MAPS = ["auto", "sequential"]
 AMP_DTYPES = ["bfloat16", "float16"]
 TORCH_DTYPES = ["bfloat16", "float16", "float32", "auto"]
 
-GPTQ_CONFIG = {
-    "bits": 4,  # because it's mandatory in gptq config, even for overriding exllama
-    "dataset": ["lorem ipsum dolor sit amet consectetur"],  # tdefault for fast quantization
-}
-BNB_CONFIG = {
-    "load_in_8bit": False,
-    "load_in_4bit": False,
-    "llm_int8_threshold": 0.0,
-}
 QUANTIZATION_CONFIGS = {
-    "gptq": GPTQ_CONFIG,
-    "bnb": BNB_CONFIG,
+    "gptq": {"dataset": ["lorem ipsum dolor sit amet consectetur"]},
+    "bnb": {"llm_int8_threshold": 0.0},
+    "awq": {},
 }
 COMPILE_CONFIG = {
     "fullgraph": False,
@@ -104,10 +96,11 @@ class PyTorchConfig(BackendConfig):
                 raise ValueError(
                     f"`quantization_scheme` must be one of {list(QUANTIZATION_CONFIGS.keys())}. Got {self.quantization_scheme} instead."
                 )
-            QUANTIZATION_CONFIG = QUANTIZATION_CONFIGS[self.quantization_scheme]
-            self.quantization_config = OmegaConf.to_object(
-                OmegaConf.merge(QUANTIZATION_CONFIG, self.quantization_config)
-            )
+            if self.quantization_config:
+                QUANTIZATION_CONFIG = QUANTIZATION_CONFIGS[self.quantization_scheme]
+                self.quantization_config = OmegaConf.to_object(
+                    OmegaConf.merge(QUANTIZATION_CONFIG, self.quantization_config)
+                )
 
         if self.use_ddp:
             if CUDA_VISIBLE_DEVICES is None:
