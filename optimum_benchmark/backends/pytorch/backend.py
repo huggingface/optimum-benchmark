@@ -3,7 +3,6 @@ from logging import getLogger
 from typing import TYPE_CHECKING, Any, Callable, Dict, List
 
 import torch
-from transformers import BitsAndBytesConfig, GPTQConfig, Trainer, TrainingArguments
 from transformers.utils.fx import symbolic_trace
 
 if TYPE_CHECKING:
@@ -15,7 +14,7 @@ from ...profilers.fx_profiler import FXProfilingWrapper
 from ..base import Backend
 from ..ddp_utils import record_if_available, training_worker
 from .config import PyTorchConfig
-from .utils import DTYPES_MAPPING, randomize_weights
+from .utils import DTYPES_MAPPING, randomize_weights, to_pow2
 
 # bachend logger
 LOGGER = getLogger("pytorch")
@@ -101,11 +100,21 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.pretrained_model = get_peft_model(self.pretrained_model, peft_config=peft_config)
 
     def load_model_from_pretrained(self) -> None:
-        if self.config.quantization_scheme == "gptq":
+        # attempting inline quantization if possible
+        if self.config.quantization_scheme == "gptq" and self.config.quantization_config:
             LOGGER.info("\t+ Processing GPTQ config")
+            from transformers import GPTQConfig
+
             self.quantization_config = GPTQConfig(**self.config.quantization_config)
+        elif self.config.quantization_scheme == "awq" and self.config.quantization_config:
+            LOGGER.info("\t+ Processing AWQ config")
+            from transformers import AWQConfig
+
+            self.quantization_config = AWQConfig(**self.config.quantization_config)
         elif self.config.quantization_scheme == "bnb":
-            LOGGER.info("\t+ Processing BnB config")
+            LOGGER.info("\t+ Processing BitsAndBytesConfig")
+            from transformers import BitsAndBytesConfig
+
             self.quantization_config = self.config.quantization_config.copy()
             if self.quantization_config.get("bnb_4bit_compute_dtype", None) is not None:
                 self.quantization_config["bnb_4bit_compute_dtype"] = getattr(
@@ -128,25 +137,34 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 LOGGER.info(f"\t+ Moving diffusion pipeline to device: {self.device}")
                 # Diffusers does not support loading with torch.device context manager
                 self.pretrained_model.to(self.device)
+        elif self.config.device_map is not None:
+            LOGGER.info(f"\t+ Loading model with device_map: {self.config.device_map}")
+            self.pretrained_model = self.automodel_class.from_pretrained(
+                self.model,
+                torch_dtype=self.torch_dtype,
+                device_map=self.config.device_map,
+                **self.automodel_kwargs,
+                **self.hub_kwargs,
+            )
+        elif hasattr(self.pretrained_config, "quantization_config"):
+            LOGGER.info("\t+ Loading quantized model")
+            self.pretrained_model = self.automodel_class.from_pretrained(
+                self.model,
+                device_map=self.device,
+                low_cpu_mem_usage=True,
+                torch_dtype=self.torch_dtype,
+                **self.automodel_kwargs,
+                **self.hub_kwargs,
+            )
         else:
-            if self.config.device_map is not None:
-                LOGGER.info(f"\t+ Loading model on visible cuda devices with device_map: {self.config.device_map}")
+            LOGGER.info(f"\t+ Loading model on device: {self.device}")
+            with self.device:
                 self.pretrained_model = self.automodel_class.from_pretrained(
                     self.model,
                     torch_dtype=self.torch_dtype,
-                    device_map=self.config.device_map,
                     **self.automodel_kwargs,
                     **self.hub_kwargs,
                 )
-            else:
-                LOGGER.info(f"\t+ Loading model on device: {self.device}")
-                with self.device:
-                    self.pretrained_model = self.automodel_class.from_pretrained(
-                        self.model,
-                        torch_dtype=self.torch_dtype,
-                        **self.automodel_kwargs,
-                        **self.hub_kwargs,
-                    )
 
     @property
     def automodel_kwargs(self) -> Dict[str, Any]:
@@ -191,6 +209,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             elif self.config.quantization_scheme == "gptq":
                 LOGGER.info("\t+ Processing GPTQ config")
                 from optimum.gptq import GPTQQuantizer
+                from transformers import GPTQConfig
 
                 LOGGER.info("\t+ Materializing model on cpu for quantization to not OOM")
                 self.pretrained_model.to_empty(device="cpu")
@@ -206,6 +225,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 self.pretrained_model.config.quantization_config = GPTQConfig.from_dict(gptq_quantizer.to_dict())
                 self.pretrained_model._is_quantized_training_enabled = True
                 gptq_quantizer.post_init_model(self.pretrained_model)
+            else:
+                raise ValueError("Only bnb and gptq quantization schemes are supported with no_weights=True")
         else:
             LOGGER.info(f"\t+ Materializing model on device: {self.device}")
             self.pretrained_model.to_empty(device=self.device)
@@ -214,6 +235,16 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         LOGGER.info("\t+ Tying weights")
         self.pretrained_model.tie_weights()
+
+    def prepare_for_inference(self, input_shapes: Dict[str, int], **kwargs) -> None:
+        super().prepare_for_inference(input_shapes=input_shapes, **kwargs)
+
+        if self.config.quantization_scheme == "gptq":
+            LOGGER.info("\t+ Setting GPTQ max_input_length")
+            from auto_gptq import exllama_set_max_input_length
+
+            max_input_length = to_pow2(input_shapes["batch_size"] * input_shapes["sequence_length"])
+            self.pretrained_model = exllama_set_max_input_length(self.pretrained_model, max_input_length)
 
     def prepare_for_profiling(self, input_names: List[str]) -> None:
         LOGGER.info("Preparing model for profiling")
@@ -246,6 +277,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         training_callbacks: List["TrainerCallback"],
         training_data_collator: Callable,
     ) -> "TrainerState":
+        from transformers import Trainer, TrainingArguments
+
         worker_args = (
             "torch",
             LOGGER,
