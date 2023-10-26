@@ -1,0 +1,9 @@
+defaults:
+  - _base_
+  - _self_
+
+backend:
+  quantization_scheme: bnb
+  quantization_config:
+    load_in_4bit: true
+    bnb_4bit_compute_dtype: float16

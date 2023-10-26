@@ -1,0 +1,5 @@
+defaults:
+  - _base_
+  - _self_
+
+model: ybelkada/test-mistral-7b-v0.1-awq

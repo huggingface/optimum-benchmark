@@ -1,0 +1,5 @@
+defaults:
+  - _base_
+  - _self_
+
+model: TheBloke/Mistral-7B-v0.1-GPTQ
