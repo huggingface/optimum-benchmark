@@ -14,7 +14,7 @@ hydra:
   job:
     chdir: true
     env_set:
-      CUDA_VISIBLE_DEVICES: 1
+      CUDA_VISIBLE_DEVICES: 0
       CUDA_DEVICE_ORDER: PCI_BUS_ID
   sweeper:
     params:
