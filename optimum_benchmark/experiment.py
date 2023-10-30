@@ -1,3 +1,4 @@
+import glob
 import logging.config
 import multiprocessing
 import os
@@ -180,4 +181,8 @@ def run_isolated(experiment: DictConfig) -> None:
 
 @hydra.main(version_base=None)
 def main(experiment: DictConfig) -> None:
+    if glob.glob("*.csv"):
+        LOGGER.warning("Skipping because results already exist in experiment directory.")
+        return
+
     run_isolated(experiment)
