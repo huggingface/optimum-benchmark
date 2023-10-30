@@ -241,6 +241,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         if self.config.quantization_scheme == "gptq" or (
             hasattr(self.pretrained_config, "quantization_config")
+            and self.pretrained_config.quantization_config["desc_act"]
             and self.pretrained_config.quantization_config["quant_method"] == "gptq"
         ):
             LOGGER.info("\t+ Setting GPTQ max_input_length")
