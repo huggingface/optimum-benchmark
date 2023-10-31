@@ -22,7 +22,7 @@ hydra:
 
 experiment_name: fp16-batch_size(${benchmark.input_shapes.batch_size})-sequence_length(${benchmark.input_shapes.sequence_length})-new_tokens(${benchmark.new_tokens})
 model: meta-llama/Llama-2-7b-hf
-device: cuda
+device: cuda:0
 
 backend:
   initial_isolation_check: false
@@ -33,6 +33,6 @@ benchmark:
   memory: true
   warmup_runs: 10
 
-  new_tokens: 1000
+  new_tokens: 512
   input_shapes:
-    sequence_length: 512
+    sequence_length: 256

@@ -17,7 +17,7 @@ class LatencyTracker:
         if self.device.type == "cuda" and self.backend == "pytorch":
             # because pytorch will always see devices as 0, 1, 2, ... CUDA_VISIBLE_DEVICES doesn't matter
             self.device_ids = list(range(torch.cuda.device_count()))
-            LOGGER.info(f"Tracked Pytorch devices: {self.device_ids}")
+            LOGGER.info(f"Tracking Pytorch CUDA devices: {self.device_ids}")
 
     @contextmanager
     def track(self):
