@@ -238,13 +238,12 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
     def prepare_for_inference(self, input_shapes: Dict[str, int], **kwargs) -> None:
         super().prepare_for_inference(input_shapes=input_shapes, **kwargs)
-
-        if self.config.quantization_scheme == "gptq" or (
+        if (self.config.quantization_scheme == "gptq" and self.config.quantization_config["desc_act"]) or (
             hasattr(self.pretrained_config, "quantization_config")
             and self.pretrained_config.quantization_config["desc_act"]
             and self.pretrained_config.quantization_config["quant_method"] == "gptq"
         ):
-            LOGGER.info("\t+ Setting GPTQ max_input_length")
+            LOGGER.info("\t+ Setting GPTQ's max_input_length")
             from auto_gptq import exllama_set_max_input_length
 
             max_input_length = to_pow2(input_shapes["batch_size"] * input_shapes["sequence_length"])
