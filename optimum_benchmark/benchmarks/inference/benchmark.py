@@ -26,12 +26,16 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         # initialize inference results
         self.forward_energy: float = 0
         self.forward_emissions: float = 0
-        self.forward_peak_memory: int = 0
+        self.forward_max_memory_used: int = 0
+        self.forward_max_memory_allocated: int = 0
+        self.forward_max_memory_reserved: int = 0
         self.forward_latencies: List[float] = []
 
         self.generate_energy: float = 0
         self.generate_emissions: float = 0
-        self.generate_peak_memory: int = 0
+        self.generate_max_memory_used: int = 0
+        self.generate_max_memory_allocated: int = 0
+        self.generate_max_memory_reserved: int = 0
         self.generate_latencies: List[float] = []
 
     def configure(self, config: "InferenceConfig"):
@@ -84,8 +88,12 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             memory_tracker = MemoryTracker(device=backend.device)
             with memory_tracker.track(interval=self.forward_latency / 10):
                 _ = backend.forward(forward_input, self.config.forward_kwargs)
-            self.forward_peak_memory = memory_tracker.get_peak_memory()
-            LOGGER.info(f"\t+ Forward pass peak memory: {self.forward_peak_memory} (MB)")
+            self.forward_max_memory_used = memory_tracker.get_max_memory_used()
+            self.forward_max_memory_allocated = memory_tracker.get_max_memory_allocated()
+            self.forward_max_memory_reserved = memory_tracker.get_max_memory_reserved()
+            LOGGER.info(f"\t+ Forward pass max memory used: {self.forward_max_memory_used} (MB)")
+            LOGGER.info(f"\t+ Forward pass max memory allocated: {self.forward_max_memory_allocated} (MB)")
+            LOGGER.info(f"\t+ Forward pass max memory reserved: {self.forward_max_memory_reserved} (MB)")
 
         if self.config.energy:
             LOGGER.info("\t+ Tracking forward pass energy consumption")
@@ -130,8 +138,12 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             memory_tracker = MemoryTracker(device=backend.device)
             with memory_tracker.track(interval=self.generate_latency / 10):
                 _ = backend.generate(generate_input, self.config.generate_kwargs)
-            self.generate_peak_memory = memory_tracker.get_peak_memory()
-            LOGGER.info(f"\t+ Generation pass peak memory: {self.generate_peak_memory} (MB)")
+            self.generate_max_memory_used = memory_tracker.get_max_memory_used()
+            self.generate_max_memory_allocated = memory_tracker.get_max_memory_allocated()
+            self.generate_max_memory_reserved = memory_tracker.get_max_memory_reserved()
+            LOGGER.info(f"\t+ Generation pass max memory used: {self.generate_max_memory_used} (MB)")
+            LOGGER.info(f"\t+ Generation pass max memory allocated: {self.generate_max_memory_allocated} (MB)")
+            LOGGER.info(f"\t+ Generation pass max memory reserved: {self.generate_max_memory_reserved} (MB)")
 
         if self.config.energy:
             LOGGER.info("\t+ Tracking generation pass energy consumption")
@@ -204,7 +216,9 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             results_dict["diffusion.throughput(images/s)"] = self.diffusion_throughput
 
         if self.config.memory:
-            results_dict["forward.peak_memory(MB)"] = self.forward_peak_memory
+            results_dict["forward.max_memory_used(MB)"] = self.forward_max_memory_used
+            results_dict["forward.max_memory_allocated(MB)"] = self.forward_max_memory_allocated
+            results_dict["forward.max_memory_reserved(MB)"] = self.forward_max_memory_reserved
 
         if self.config.energy:
             results_dict["forward.energy_consumption(kWh/sample)"] = self.forward_energy
@@ -215,7 +229,9 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             results_dict["generate.throughput(tokens/s)"] = self.generate_throughput
 
             if self.config.memory:
-                results_dict["generate.peak_memory(MB)"] = self.generate_peak_memory
+                results_dict["generate.max_memory_used(MB)"] = self.generate_max_memory_used
+                results_dict["generate.max_memory_allocated(MB)"] = self.generate_max_memory_allocated
+                results_dict["generate.max_memory_reserved(MB)"] = self.generate_max_memory_reserved
 
             if self.config.energy:
                 results_dict["generate.energy_consumption(kWh/token)"] = self.generate_energy

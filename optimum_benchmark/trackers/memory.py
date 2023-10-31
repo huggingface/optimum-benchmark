@@ -16,7 +16,10 @@ LOGGER = getLogger("memory_tracker")
 class MemoryTracker:
     def __init__(self, device: torch.device):
         self.device = device
-        self.peak_memory: int = 0
+
+        self.max_memory_used: int = 0
+        self.max_memory_allocated: int = 0
+        self.max_memory_reserved: int = 0
 
         if self.device.type == "cuda":
             CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", None)
@@ -27,19 +30,28 @@ class MemoryTracker:
                 # if CUDA_VISIBLE_DEVICES is not set, only the main device's memory is tracked
                 # which is 0 because otherwise experiment would've raised an error
                 self.device_ids = [self.device.index if self.device.index is not None else 0]
-            LOGGER.info(f"Tracked CUDA devices: {self.device_ids}")
+            LOGGER.info(f"Tracking CUDA devices: {self.device_ids}")
 
     @contextmanager
     def track(self, interval: float = 0.01):
         if self.device.type == "cuda":
-            yield from self._cuda_peak_memory()
+            yield from self._cuda_memory()
         else:
-            yield from self._cpu_peak_memory(interval)
+            yield from self._cpu_memory(interval)
 
-    def get_peak_memory(self):
-        return bytes_to_mega_bytes(self.peak_memory)
+    def get_max_memory_used(self):
+        return bytes_to_mega_bytes(self.max_memory_used)
 
-    def _cuda_peak_memory(self):
+    def get_max_memory_allocated(self):
+        return bytes_to_mega_bytes(self.max_memory_allocated)
+
+    def get_max_memory_reserved(self):
+        return bytes_to_mega_bytes(self.max_memory_reserved)
+
+    def _cuda_memory(self):
+        for device_index in self.device_ids:
+            torch.cuda.reset_peak_memory_stats(device=device_index)
+
         if is_nvidia_system():
             if is_py3nvml_available():
                 import py3nvml.py3nvml as nvml
@@ -53,10 +65,12 @@ class MemoryTracker:
             for device_index in self.device_ids:
                 handle = nvml.nvmlDeviceGetHandleByIndex(device_index)
                 handles.append(handle)
+
             yield
+
             for handle in handles:
                 meminfo = nvml.nvmlDeviceGetMemoryInfo(handle)
-                self.peak_memory += meminfo.used
+                self.max_memory_used += meminfo.used
 
             nvml.nvmlShutdown()
         elif is_rocm_system():
@@ -72,14 +86,21 @@ class MemoryTracker:
 
             for device_index in self.device_ids:
                 meminfo_used = rocml.smi_get_device_memory_used(device_index)
-                self.peak_memory += meminfo_used
+                self.max_memory_used += meminfo_used
+
             rocml.smi_shutdown()
         else:
             raise ValueError("Could not measure GPU memory usage for a system different than NVIDIA or AMD RoCm.")
 
-        LOGGER.debug(f"Peak memory usage: {self.get_peak_memory()} MB")
+        for device_index in self.device_ids:
+            self.max_memory_allocated += torch.cuda.max_memory_allocated(device=device_index)
+            self.max_memory_reserved += torch.cuda.max_memory_reserved(device=device_index)
 
-    def _cpu_peak_memory(self, interval: float):
+        LOGGER.debug(f"Peak memory usage: {self.get_max_memory_used()} MB")
+        LOGGER.debug(f"Pytorch max memory allocated: {self.get_max_memory_allocated()} MB")
+        LOGGER.debug(f"Pytorch max memory reserved: {self.get_max_memory_reserved()} MB")
+
+    def _cpu_max_memory_used(self, interval: float):
         child_connection, parent_connection = Pipe()
         # instantiate process
         mem_process: Process = PeakMemoryMeasureProcess(os.getpid(), child_connection, interval)
@@ -90,8 +111,8 @@ class MemoryTracker:
         # start parent connection
         parent_connection.send(0)
         # receive peak memory
-        self.peak_memory = parent_connection.recv()
-        LOGGER.debug(f"Peak memory usage: {self.get_peak_memory()} MB")
+        self.max_memory_used = parent_connection.recv()
+        LOGGER.debug(f"Peak memory usage: {self.get_max_memory_used()} MB")
 
 
 class PeakMemoryMeasureProcess(Process):
