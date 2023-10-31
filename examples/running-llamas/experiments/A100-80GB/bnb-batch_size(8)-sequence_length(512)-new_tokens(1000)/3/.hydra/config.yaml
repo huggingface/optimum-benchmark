@@ -1,0 +1,72 @@
+backend:
+  name: pytorch
+  version: ${pytorch_version:}
+  _target_: optimum_benchmark.backends.pytorch.backend.PyTorchBackend
+  seed: 42
+  inter_op_num_threads: null
+  intra_op_num_threads: null
+  initial_isolation_check: false
+  continous_isolation_check: false
+  delete_cache: false
+  no_weights: false
+  device_map: null
+  torch_dtype: float16
+  disable_grad: ${is_inference:${benchmark.name}}
+  eval_mode: ${is_inference:${benchmark.name}}
+  amp_autocast: false
+  amp_dtype: null
+  torch_compile: false
+  torch_compile_config: {}
+  bettertransformer: false
+  quantization_scheme: bnb
+  quantization_config:
+    load_in_4bit: true
+    bnb_4bit_compute_dtype: float16
+  use_ddp: false
+  ddp_config: {}
+  peft_strategy: null
+  peft_config: {}
+benchmark:
+  name: inference
+  _target_: optimum_benchmark.benchmarks.inference.benchmark.InferenceBenchmark
+  duration: 10
+  warmup_runs: 10
+  memory: true
+  energy: false
+  input_shapes:
+    batch_size: 8
+    sequence_length: 512
+    num_choices: 1
+    feature_size: 80
+    nb_max_frames: 3000
+    audio_sequence_length: 16000
+  new_tokens: 1000
+  can_diffuse: ${can_diffuse:${task}}
+  can_generate: ${can_generate:${task}}
+  forward_kwargs: {}
+  generate_kwargs: {}
+experiment_name: bnb-batch_size(${benchmark.input_shapes.batch_size})-sequence_length(${benchmark.input_shapes.sequence_length})-new_tokens(${benchmark.new_tokens})
+model: meta-llama/Llama-2-7b-hf
+device: cuda
+task: ${infer_task:${model}}
+hub_kwargs:
+  revision: main
+  cache_dir: null
+  force_download: false
+  local_files_only: false
+environment:
+  optimum_version: 1.13.2
+  optimum_commit: null
+  transformers_version: 4.34.1
+  transformers_commit: null
+  accelerate_version: 0.24.1
+  accelerate_commit: null
+  diffusers_version: null
+  diffusers_commit: null
+  python_version: 3.10.12
+  system: Linux
+  cpu: ' AMD EPYC 7742 64-Core Processor'
+  cpu_count: 128
+  cpu_ram_mb: 540684
+  gpus:
+  - NVIDIA A100-SXM4-80GB

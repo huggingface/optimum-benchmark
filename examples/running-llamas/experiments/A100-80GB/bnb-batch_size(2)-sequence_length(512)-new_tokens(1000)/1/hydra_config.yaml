@@ -1,0 +1,79 @@
+backend:
+  name: pytorch
+  version: 2.1.0+cu118
+  _target_: optimum_benchmark.backends.pytorch.backend.PyTorchBackend
+  seed: 42
+  inter_op_num_threads: null
+  intra_op_num_threads: null
+  initial_isolation_check: false
+  continous_isolation_check: false
+  delete_cache: false
+  no_weights: false
+  device_map: null
+  torch_dtype: float16
+  disable_grad: true
+  eval_mode: true
+  amp_autocast: false
+  amp_dtype: null
+  torch_compile: false
+  torch_compile_config: {}
+  bettertransformer: false
+  quantization_scheme: bnb
+  quantization_config:
+    llm_int8_threshold: 0.0
+    load_in_4bit: true
+    bnb_4bit_compute_dtype: float16
+  use_ddp: false
+  ddp_config: {}
+  peft_strategy: null
+  peft_config: {}
+benchmark:
+  name: inference
+  _target_: optimum_benchmark.benchmarks.inference.benchmark.InferenceBenchmark
+  duration: 10
+  warmup_runs: 10
+  memory: true
+  energy: false
+  input_shapes:
+    batch_size: 2
+    sequence_length: 512
+    num_choices: 1
+    feature_size: 80
+    nb_max_frames: 3000
+    audio_sequence_length: 16000
+  new_tokens: 1000
+  can_diffuse: false
+  can_generate: true
+  forward_kwargs: {}
+  generate_kwargs:
+    max_new_tokens: 1000
+    min_new_tokens: 1000
+    do_sample: false
+    use_cache: true
+    pad_token_id: 0
+    num_beams: 1
+experiment_name: bnb-batch_size(2)-sequence_length(512)-new_tokens(1000)
+model: meta-llama/Llama-2-7b-hf
+device: cuda
+task: text-generation
+hub_kwargs:
+  revision: main
+  cache_dir: null
+  force_download: false
+  local_files_only: false
+environment:
+  optimum_version: 1.13.2
+  optimum_commit: null
+  transformers_version: 4.34.1
+  transformers_commit: null
+  accelerate_version: 0.24.1
+  accelerate_commit: null
+  diffusers_version: null
+  diffusers_commit: null
+  python_version: 3.10.12
+  system: Linux
+  cpu: ' AMD EPYC 7742 64-Core Processor'
+  cpu_count: 128
+  cpu_ram_mb: 540684
+  gpus:
+  - NVIDIA A100-SXM4-80GB
