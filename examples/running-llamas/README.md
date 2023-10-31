@@ -1,4 +1,4 @@
-# Optimum-Benchmark x LLaMAs x BnB & GPTQ
+# Optimum-Benchmark x LLaMAs x GPTQ
 
 A set of benchmarks on Meta's LLaMA2's inference.
 
@@ -7,7 +7,6 @@ A set of benchmarks on Meta's LLaMA2's inference.
 You will need to install these quantization packages:
 
 ```bash
-pip install bitsandbytes
 pip install auto-gptq # or install it from source
 ```
 
@@ -17,11 +16,10 @@ Then run these commands from this directory:
 
 ```bash
 optimum-benchmark --config-dir configs/ --config-name _base_ --multirun
-optimum-benchmark --config-dir configs/ --config-name bnb --multirun
 optimum-benchmark --config-dir configs/ --config-name gptq --multirun
 ```
 
-This will create a folder called `experiments` with the results of the benchmarks with an inference `batch_size` ranging from 1 to 16 and an input `sequence_length` (prompt size) of 512.
+This will create a folder called `experiments` with the results of the benchmarks with an inference `batch_size` ranging from 1 to 16 and an input `sequence_length` (prompt size) of 256.
 
 ## Reporting
 

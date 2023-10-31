@@ -51,7 +51,7 @@ benchmark:
     num_beams: 1
 experiment_name: gptq-batch_size(16)-sequence_length(256)-new_tokens(512)
 model: TheBloke/Llama-2-7B-GPTQ
-device: cuda
+device: cuda:0
 task: text-generation
 hub_kwargs:
   revision: main
@@ -73,4 +73,7 @@ environment:
   cpu_count: 128
   cpu_ram_mb: 540684
   gpus:
+  - NVIDIA A100-SXM4-80GB
+  - NVIDIA A100-SXM4-80GB
+  - NVIDIA A100-SXM4-80GB
   - NVIDIA A100-SXM4-80GB

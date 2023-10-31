@@ -101,6 +101,8 @@ def get_short_report(inference_report):
     short_report["GPU"].replace("AMD INSTINCT MI250 (MCM) OAM AC MBA", "MI250", inplace=True)
     short_report["GPU"].replace("NVIDIA A100-SXM4-80GB", "A100", inplace=True)
 
+    short_report["Group"] = short_report["GPU"] + "-" + short_report["Quantization Scheme"]
+
     return short_report
 
 
@@ -126,10 +128,8 @@ def get_throughput_plot(short_report):
     fig3, ax3 = plt.subplots()
     fig4, ax4 = plt.subplots()
 
-    short_report["Quantization Scheme"] = short_report["GPU"] + "-" + short_report["Quantization Scheme"]
-
-    for quantization_scheme in short_report["Quantization Scheme"].unique():
-        mask = short_report["Quantization Scheme"] == quantization_scheme
+    for group in short_report["Group"].unique():
+        mask = short_report["Group"] == group
 
         forward_latency = short_report[mask][["Batch Size", "Forward Latency (s)"]].sort_values(by="Batch Size")
         generate_throughput = short_report[mask][["Batch Size", "Generate Throughput (tokens/s)"]].sort_values(
@@ -157,50 +157,50 @@ def get_throughput_plot(short_report):
         ax1.plot(
             forward_latency["Batch Size"],
             forward_latency["Forward Latency (s)"],
-            label=quantization_scheme,
+            label=group,
             marker="o",
         )
         ax2.plot(
             generate_throughput["Batch Size"],
             generate_throughput["Generate Throughput (tokens/s)"],
-            label=quantization_scheme,
+            label=group,
             marker="o",
         )
         ax3.plot(
             forward_memory["Batch Size"],
             forward_memory["Forward Max Memory Used (MB)"],
-            label=quantization_scheme + "-used",
-            marker="*",
-        )
-        ax3.plot(
-            forward_pytorch_max_memory_allocated["Batch Size"],
-            forward_pytorch_max_memory_allocated["Forward Max Memory Allocated (MB)"],
-            label=quantization_scheme + "-allocated",
-            marker="v",
+            label=group + "-used",
+            marker="^",
         )
         ax3.plot(
             forward_pytorch_max_memory_reserved["Batch Size"],
             forward_pytorch_max_memory_reserved["Forward Max Memory Reserved (MB)"],
-            label=quantization_scheme + "-reserved",
-            marker="^",
+            label=group + "-reserved",
+            marker=".",
+        )
+        ax3.plot(
+            forward_pytorch_max_memory_allocated["Batch Size"],
+            forward_pytorch_max_memory_allocated["Forward Max Memory Allocated (MB)"],
+            label=group + "-allocated",
+            marker="v",
         )
         ax4.plot(
             generate_memory["Batch Size"],
             generate_memory["Generate Max Memory Used (MB)"],
-            label=quantization_scheme + "-used",
-            marker="*",
-        )
-        ax4.plot(
-            generate_pytorch_max_memory_allocated["Batch Size"],
-            generate_pytorch_max_memory_allocated["Generate Max Memory Allocated (MB)"],
-            label=quantization_scheme + "-allocated",
-            marker="v",
+            label=group + "-used",
+            marker="^",
         )
         ax4.plot(
             generate_pytorch_max_memory_reserved["Batch Size"],
             generate_pytorch_max_memory_reserved["Generate Max Memory Reserved (MB)"],
-            label=quantization_scheme + "-reserved",
-            marker="^",
+            label=group + "-reserved",
+            marker=".",
+        )
+        ax4.plot(
+            generate_pytorch_max_memory_allocated["Batch Size"],
+            generate_pytorch_max_memory_allocated["Generate Max Memory Allocated (MB)"],
+            label=group + "-allocated",
+            marker="v",
         )
 
     ax1.set_xlabel("Batch Size")

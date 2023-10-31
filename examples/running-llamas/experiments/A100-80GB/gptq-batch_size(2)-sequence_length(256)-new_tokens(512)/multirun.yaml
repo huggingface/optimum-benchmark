@@ -129,7 +129,7 @@ hydra:
     num: ???
     config_name: gptq
     env_set:
-      CUDA_VISIBLE_DEVICES: '0'
+      CUDA_VISIBLE_DEVICES: '3'
       CUDA_DEVICE_ORDER: PCI_BUS_ID
     env_copy: []
     config:
@@ -218,7 +218,7 @@ benchmark:
   generate_kwargs: {}
 experiment_name: gptq-batch_size(${benchmark.input_shapes.batch_size})-sequence_length(${benchmark.input_shapes.sequence_length})-new_tokens(${benchmark.new_tokens})
 model: TheBloke/Llama-2-7B-GPTQ
-device: cuda
+device: cuda:0
 task: ${infer_task:${model}}
 hub_kwargs:
   revision: main
@@ -240,4 +240,7 @@ environment:
   cpu_count: 128
   cpu_ram_mb: 540684
   gpus:
+  - NVIDIA A100-SXM4-80GB
+  - NVIDIA A100-SXM4-80GB
+  - NVIDIA A100-SXM4-80GB
   - NVIDIA A100-SXM4-80GB

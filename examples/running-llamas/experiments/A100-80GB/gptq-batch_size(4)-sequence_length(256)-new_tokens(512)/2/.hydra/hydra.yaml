@@ -130,7 +130,7 @@ hydra:
     num: 2
     config_name: gptq
     env_set:
-      CUDA_VISIBLE_DEVICES: '0'
+      CUDA_VISIBLE_DEVICES: '3'
       CUDA_DEVICE_ORDER: PCI_BUS_ID
     env_copy: []
     config:

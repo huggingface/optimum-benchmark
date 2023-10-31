@@ -45,7 +45,7 @@ benchmark:
   generate_kwargs: {}
 experiment_name: fp16-batch_size(${benchmark.input_shapes.batch_size})-sequence_length(${benchmark.input_shapes.sequence_length})-new_tokens(${benchmark.new_tokens})
 model: meta-llama/Llama-2-7b-hf
-device: cuda
+device: cuda:0
 task: ${infer_task:${model}}
 hub_kwargs:
   revision: main
@@ -67,4 +67,7 @@ environment:
   cpu_count: 128
   cpu_ram_mb: 540684
   gpus:
+  - NVIDIA A100-SXM4-80GB
+  - NVIDIA A100-SXM4-80GB
+  - NVIDIA A100-SXM4-80GB
   - NVIDIA A100-SXM4-80GB

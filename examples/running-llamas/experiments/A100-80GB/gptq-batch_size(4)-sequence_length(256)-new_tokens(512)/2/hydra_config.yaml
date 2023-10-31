@@ -74,3 +74,6 @@ environment:
   cpu_ram_mb: 540684
   gpus:
   - NVIDIA A100-SXM4-80GB
+  - NVIDIA A100-SXM4-80GB
+  - NVIDIA A100-SXM4-80GB
+  - NVIDIA A100-SXM4-80GB
