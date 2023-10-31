@@ -252,6 +252,11 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             results_dict["diffusion.throughput(images/s)"] = self.diffusion_throughput
 
         if self.config.memory:
+            LOGGER.warning(
+                "forward.peak_memory(MB) is deprecated and will be removed in a future release"
+                " please use forward.max_memory_used(MB) instead"
+            )
+            results_dict["forward.peak_memory(MB)"] = self.forward_max_memory_used
             results_dict["forward.max_memory_used(MB)"] = self.forward_max_memory_used
             results_dict["forward.max_memory_allocated(MB)"] = self.forward_max_memory_allocated
             results_dict["forward.max_memory_reserved(MB)"] = self.forward_max_memory_reserved
@@ -265,6 +270,11 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             results_dict["generate.throughput(tokens/s)"] = self.generate_throughput
 
             if self.config.memory:
+                LOGGER.warning(
+                    "generate.peak_memory(MB) is deprecated and will be removed in a future release"
+                    " please use generate.max_memory_used(MB) instead"
+                )
+                results_dict["generate.peak_memory(MB)"] = self.generate_max_memory_used
                 results_dict["generate.max_memory_used(MB)"] = self.generate_max_memory_used
                 results_dict["generate.max_memory_allocated(MB)"] = self.generate_max_memory_allocated
                 results_dict["generate.max_memory_reserved(MB)"] = self.generate_max_memory_reserved
