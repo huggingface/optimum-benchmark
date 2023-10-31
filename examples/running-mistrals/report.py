@@ -114,7 +114,7 @@ def get_throughput_plot(short_report):
     fig3, ax3 = plt.subplots()
     fig4, ax4 = plt.subplots()
 
-    short_report["Quantization Scheme"].fillna("Unquantized", inplace=True)
+    short_report["Quantization Scheme"].fillna("unquantized", inplace=True)
     short_report["Quantization Scheme"].replace("bnb", "BnB", inplace=True)
     short_report["Quantization Scheme"].replace("awq", "AWQ", inplace=True)
     short_report["Quantization Scheme"].replace("gptq", "GPTQ", inplace=True)
@@ -122,9 +122,7 @@ def get_throughput_plot(short_report):
     for quantization_scheme in short_report["Quantization Scheme"].unique():
         mask = short_report["Quantization Scheme"] == quantization_scheme
 
-        forward_latency = short_report[mask][["Batch Size", "Forward Latency (s)"]].sort_values(
-            by="Batch Size"
-        )
+        forward_latency = short_report[mask][["Batch Size", "Forward Latency (s)"]].sort_values(by="Batch Size")
         generate_throughput = short_report[mask][["Batch Size", "Generate Throughput (tokens/s)"]].sort_values(
             by="Batch Size"
         )

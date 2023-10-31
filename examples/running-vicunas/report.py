@@ -114,7 +114,7 @@ def get_throughput_plot(short_report):
     fig3, ax3 = plt.subplots()
     fig4, ax4 = plt.subplots()
 
-    short_report["Quantization Scheme"].fillna("Unquantized", inplace=True)
+    short_report["Quantization Scheme"].fillna("unquantized", inplace=True)
     short_report["Quantization Scheme"].replace("bnb", "BnB", inplace=True)
     short_report["Quantization Scheme"].replace("awq", "AWQ", inplace=True)
     short_report["Quantization Scheme"].replace("gptq", "GPTQ", inplace=True)

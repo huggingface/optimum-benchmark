@@ -33,5 +33,4 @@ benchmark:
 
   new_tokens: 1000
   input_shapes:
-    batch_size: null
     sequence_length: 512

@@ -1,0 +1,11 @@
+defaults:
+  - _base_
+  - _self_
+
+experiment_name: bnb-batch_size(${benchmark.input_shapes.batch_size})-sequence_length(${benchmark.input_shapes.sequence_length})-new_tokens(${benchmark.new_tokens})
+
+backend:
+  quantization_scheme: bnb
+  quantization_config:
+    load_in_4bit: true
+    bnb_4bit_compute_dtype: float16

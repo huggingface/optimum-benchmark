@@ -79,14 +79,15 @@ def format_row(row, style=""):
 
 def get_short_report(inference_report):
     short_columns = {
-        "backend.quantization_strategy": "Quantization Scheme",
         "benchmark.input_shapes.batch_size": "Batch Size",
+        "forward.latency(s)": "Forward Latency (s)",
         "forward.throughput(samples/s)": "Forward Throughput (samples/s)",
         "forward.peak_memory(MB)": "Forward Peak Memory (MB)",
         "generate.throughput(tokens/s)": "Generate Throughput (tokens/s)",
         "generate.peak_memory(MB)": "Generate Peak Memory (MB)",
     }
     short_report = inference_report[list(short_columns.keys())].rename(columns=short_columns)
+    short_report["Quantization Scheme"] = inference_report.index.str.split("-").str[0]
 
     return short_report
 
@@ -113,24 +114,22 @@ def get_throughput_plot(short_report):
     fig3, ax3 = plt.subplots()
     fig4, ax4 = plt.subplots()
 
-    short_report["Quantization Scheme"].fillna("Unquantized", inplace=True)
+    short_report["Quantization Scheme"].fillna("unquantized", inplace=True)
     short_report["Quantization Scheme"].replace("bnb", "BnB", inplace=True)
     short_report["Quantization Scheme"].replace("gptq", "GPTQ", inplace=True)
 
     for quantization_scheme in short_report["Quantization Scheme"].unique():
         mask = short_report["Quantization Scheme"] == quantization_scheme
 
-        forward_throughput = short_report[mask][["Batch Size", "Forward Throughput (samples/s)"]].sort_values(
-            by="Batch Size"
-        )
+        forward_latency = short_report[mask][["Batch Size", "Forward Latency (s)"]].sort_values(by="Batch Size")
         generate_throughput = short_report[mask][["Batch Size", "Generate Throughput (tokens/s)"]].sort_values(
             by="Batch Size"
         )
         forward_memory = short_report[mask][["Batch Size", "Forward Peak Memory (MB)"]].sort_values(by="Batch Size")
         generate_memory = short_report[mask][["Batch Size", "Generate Peak Memory (MB)"]].sort_values(by="Batch Size")
         ax1.plot(
-            forward_throughput["Batch Size"],
-            forward_throughput["Forward Throughput (samples/s)"],
+            forward_latency["Batch Size"],
+            forward_latency["Forward Latency (s)"],
             label=quantization_scheme,
             marker="o",
         )
@@ -154,8 +153,8 @@ def get_throughput_plot(short_report):
         )
 
     ax1.set_xlabel("Batch Size")
-    ax1.set_ylabel("Forward Throughput (samples/s)")
-    ax1.set_title("Forward Throughput per Batch Size")
+    ax1.set_ylabel("Forward Latency (s)")
+    ax1.set_title("Forward Latency per Batch Size")
 
     ax2.set_xlabel("Batch Size")
     ax2.set_ylabel("Generate Throughput (tokens/s)")
@@ -214,7 +213,7 @@ def generate_report():
     forward_throughput_plot, generate_throughput_plot, forward_memory_plot, generate_memory_plot = get_throughput_plot(
         short_report
     )
-    forward_throughput_plot.savefig(f"{report_folder}/forward_throughput_plot.png")
+    forward_throughput_plot.savefig(f"{report_folder}/forward_latency_plot.png")
     generate_throughput_plot.savefig(f"{report_folder}/generate_throughput_plot.png")
     forward_memory_plot.savefig(f"{report_folder}/forward_memory_plot.png")
     generate_memory_plot.savefig(f"{report_folder}/generate_memory_plot.png")

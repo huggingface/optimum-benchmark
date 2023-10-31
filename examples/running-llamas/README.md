@@ -2,14 +2,30 @@
 
 A set of benchmarks on Meta's LLaMA2's inference.
 
-Just run these commands from this directory:
+## Setup
+
+You will need to install these quantization packages:
 
 ```bash
-optimum-benchmark --config-dir configs/ --config-name llama_bnb --multirun
-optimum-benchmark --config-dir configs/ --config-name llama_gpq --multirun
+pip install bitsandbytes
+pip install auto-gptq # or install it from source
+```
+
+## Running
+
+Then run these commands from this directory:
+
+```bash
+optimum-benchmark --config-dir configs/ --config-name _base_ --multirun
+optimum-benchmark --config-dir configs/ --config-name bnb --multirun
+optimum-benchmark --config-dir configs/ --config-name gptq --multirun
 ```
 
 This will create a folder called `experiments` with the results of the benchmarks with an inference `batch_size` ranging from 1 to 16 and an input `sequence_length` (prompt size) of 512.
+
+## Reporting
+
+To create a report run:
 
 ```bash
 python report.py -e experiments
@@ -22,7 +38,7 @@ Which will create some quick reporting artifacts like a `full_report.csv`, `shor
 ### On A100-80GB
 
 <p align="center">
-<img src="artifacts/A100-80GB/forward_throughput_plot.png" alt="throughput_plot" width="60%"/>
+<img src="artifacts/A100-80GB/forward_latency_plot.png" alt="latency_plot" width="60%"/>
 </p>
 
 <p align="center">
