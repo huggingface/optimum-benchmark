@@ -28,7 +28,8 @@ class MemoryTracker:
                 self.device_ids = list(map(int, CUDA_VISIBLE_DEVICES.split(",")))
             else:
                 # if CUDA_VISIBLE_DEVICES is not set, only the main device's memory is tracked
-                # which is 0 because otherwise experiment would've raised an error
+                # which is 0 because otherwise, the experiment would've raised an error asking for
+                # CUDA_VISIBLE_DEVICES to be set
                 self.device_ids = [self.device.index if self.device.index is not None else 0]
             LOGGER.info(f"Tracking CUDA devices: {self.device_ids}")
 
@@ -49,7 +50,7 @@ class MemoryTracker:
         return bytes_to_mega_bytes(self.max_memory_reserved)
 
     def _cuda_memory(self):
-        for device_index in self.device_ids:
+        for device_index in range(len(self.device_ids)):
             torch.cuda.reset_peak_memory_stats(device=device_index)
 
         if is_nvidia_system():
@@ -82,6 +83,7 @@ class MemoryTracker:
                 )
             rocml.smi_initialize()
 
+            print(rocml.smi_get_device_compute_process())
             yield
 
             for device_index in self.device_ids:
@@ -92,7 +94,7 @@ class MemoryTracker:
         else:
             raise ValueError("Could not measure GPU memory usage for a system different than NVIDIA or AMD RoCm.")
 
-        for device_index in self.device_ids:
+        for device_index in range(len(self.device_ids)):
             self.max_memory_allocated += torch.cuda.max_memory_allocated(device=device_index)
             self.max_memory_reserved += torch.cuda.max_memory_reserved(device=device_index)
 
@@ -100,7 +102,7 @@ class MemoryTracker:
         LOGGER.debug(f"Pytorch max memory allocated: {self.get_max_memory_allocated()} MB")
         LOGGER.debug(f"Pytorch max memory reserved: {self.get_max_memory_reserved()} MB")
 
-    def _cpu_max_memory_used(self, interval: float):
+    def _cpu_memory(self, interval: float):
         child_connection, parent_connection = Pipe()
         # instantiate process
         mem_process: Process = PeakMemoryMeasureProcess(os.getpid(), child_connection, interval)
