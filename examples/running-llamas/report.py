@@ -79,15 +79,27 @@ def format_row(row, style=""):
 
 def get_short_report(inference_report):
     short_columns = {
+        "environment.gpus": "GPU",
         "benchmark.input_shapes.batch_size": "Batch Size",
         "forward.latency(s)": "Forward Latency (s)",
         "forward.throughput(samples/s)": "Forward Throughput (samples/s)",
-        "forward.peak_memory(MB)": "Forward Peak Memory (MB)",
+        "forward.max_memory_used(MB)": "Forward Max Memory Used (MB)",
+        "forward.max_memory_allocated(MB)": "Forward Max Memory Allocated (MB)",
+        "forward.max_memory_reserved(MB)": "Forward Max Memory Reserved (MB)",
         "generate.throughput(tokens/s)": "Generate Throughput (tokens/s)",
-        "generate.peak_memory(MB)": "Generate Peak Memory (MB)",
+        "generate.max_memory_used(MB)": "Generate Max Memory Used (MB)",
+        "generate.max_memory_allocated(MB)": "Generate Max Memory Allocated (MB)",
+        "generate.max_memory_reserved(MB)": "Generate Max Memory Reserved (MB)",
     }
     short_report = inference_report[list(short_columns.keys())].rename(columns=short_columns)
     short_report["Quantization Scheme"] = inference_report.index.str.split("-").str[0]
+    short_report["Quantization Scheme"].fillna("unquantized", inplace=True)
+    short_report["Quantization Scheme"].replace("bnb", "BnB", inplace=True)
+    short_report["Quantization Scheme"].replace("gptq", "GPTQ", inplace=True)
+
+    short_report["GPU"] = short_report["GPU"].str[0]
+    short_report["GPU"].replace("AMD INSTINCT MI250 (MCM) OAM AC MBA", "MI250", inplace=True)
+    short_report["GPU"].replace("NVIDIA A100-SXM4-80GB", "A100", inplace=True)
 
     return short_report
 
@@ -114,9 +126,7 @@ def get_throughput_plot(short_report):
     fig3, ax3 = plt.subplots()
     fig4, ax4 = plt.subplots()
 
-    short_report["Quantization Scheme"].fillna("unquantized", inplace=True)
-    short_report["Quantization Scheme"].replace("bnb", "BnB", inplace=True)
-    short_report["Quantization Scheme"].replace("gptq", "GPTQ", inplace=True)
+    short_report["Quantization Scheme"] = short_report["GPU"] + "-" + short_report["Quantization Scheme"]
 
     for quantization_scheme in short_report["Quantization Scheme"].unique():
         mask = short_report["Quantization Scheme"] == quantization_scheme
@@ -125,8 +135,25 @@ def get_throughput_plot(short_report):
         generate_throughput = short_report[mask][["Batch Size", "Generate Throughput (tokens/s)"]].sort_values(
             by="Batch Size"
         )
-        forward_memory = short_report[mask][["Batch Size", "Forward Peak Memory (MB)"]].sort_values(by="Batch Size")
-        generate_memory = short_report[mask][["Batch Size", "Generate Peak Memory (MB)"]].sort_values(by="Batch Size")
+        forward_memory = short_report[mask][["Batch Size", "Forward Max Memory Used (MB)"]].sort_values(
+            by="Batch Size"
+        )
+        forward_pytorch_max_memory_allocated = short_report[mask][
+            ["Batch Size", "Forward Max Memory Allocated (MB)"]
+        ].sort_values(by="Batch Size")
+        forward_pytorch_max_memory_reserved = short_report[mask][
+            ["Batch Size", "Forward Max Memory Reserved (MB)"]
+        ].sort_values(by="Batch Size")
+        generate_memory = short_report[mask][["Batch Size", "Generate Max Memory Used (MB)"]].sort_values(
+            by="Batch Size"
+        )
+        generate_pytorch_max_memory_allocated = short_report[mask][
+            ["Batch Size", "Generate Max Memory Allocated (MB)"]
+        ].sort_values(by="Batch Size")
+        generate_pytorch_max_memory_reserved = short_report[mask][
+            ["Batch Size", "Generate Max Memory Reserved (MB)"]
+        ].sort_values(by="Batch Size")
+
         ax1.plot(
             forward_latency["Batch Size"],
             forward_latency["Forward Latency (s)"],
@@ -141,15 +168,39 @@ def get_throughput_plot(short_report):
         )
         ax3.plot(
             forward_memory["Batch Size"],
-            forward_memory["Forward Peak Memory (MB)"],
-            label=quantization_scheme,
+            forward_memory["Forward Max Memory Used (MB)"],
+            label=quantization_scheme + "-used",
             marker="*",
+        )
+        ax3.plot(
+            forward_pytorch_max_memory_allocated["Batch Size"],
+            forward_pytorch_max_memory_allocated["Forward Max Memory Allocated (MB)"],
+            label=quantization_scheme + "-allocated",
+            marker="v",
+        )
+        ax3.plot(
+            forward_pytorch_max_memory_reserved["Batch Size"],
+            forward_pytorch_max_memory_reserved["Forward Max Memory Reserved (MB)"],
+            label=quantization_scheme + "-reserved",
+            marker="^",
         )
         ax4.plot(
             generate_memory["Batch Size"],
-            generate_memory["Generate Peak Memory (MB)"],
-            label=quantization_scheme,
+            generate_memory["Generate Max Memory Used (MB)"],
+            label=quantization_scheme + "-used",
             marker="*",
+        )
+        ax4.plot(
+            generate_pytorch_max_memory_allocated["Batch Size"],
+            generate_pytorch_max_memory_allocated["Generate Max Memory Allocated (MB)"],
+            label=quantization_scheme + "-allocated",
+            marker="v",
+        )
+        ax4.plot(
+            generate_pytorch_max_memory_reserved["Batch Size"],
+            generate_pytorch_max_memory_reserved["Generate Max Memory Reserved (MB)"],
+            label=quantization_scheme + "-reserved",
+            marker="^",
         )
 
     ax1.set_xlabel("Batch Size")
@@ -161,17 +212,17 @@ def get_throughput_plot(short_report):
     ax2.set_title("Generate Throughput per Batch Size")
 
     ax3.set_xlabel("Batch Size")
-    ax3.set_ylabel("Forward Peak Memory (MB)")
-    ax3.set_title("Forward Peak Memory per Batch Size")
+    ax3.set_ylabel("Forward Max Memory Used (MB)")
+    ax3.set_title("Forward Max Memory Used per Batch Size")
 
     ax4.set_xlabel("Batch Size")
-    ax4.set_ylabel("Generate Peak Memory (MB)")
-    ax4.set_title("Generate Peak Memory per Batch Size")
+    ax4.set_ylabel("Generate Max Memory Used (MB)")
+    ax4.set_title("Generate Max Memory Used per Batch Size")
 
-    ax1.legend()
-    ax2.legend()
-    ax3.legend()
-    ax4.legend()
+    ax1.legend(fancybox=True, shadow=True)
+    ax2.legend(fancybox=True, shadow=True)
+    ax3.legend(fancybox=True, shadow=True)
+    ax4.legend(fancybox=True, shadow=True)
 
     return fig1, fig2, fig3, fig4
 

@@ -1,16 +1,11 @@
-experiment_name,Batch Size,Forward Latency (s),Forward Throughput (samples/s),Forward Peak Memory (MB),Generate Throughput (tokens/s),Generate Peak Memory (MB),Quantization Scheme
-fp16-batch_size(8)-sequence_length(512)-new_tokens(1000),8,0.421,19.0,27294,243.0,72087,fp16
-fp16-batch_size(16)-sequence_length(512)-new_tokens(1000),16,0.846,18.9,33443,316.0,47496,fp16
-fp16-batch_size(4)-sequence_length(512)-new_tokens(1000),4,0.213,18.8,26367,144.0,32300,fp16
-gptq-batch_size(16)-sequence_length(512)-new_tokens(1000),16,0.852,18.8,19113,246.0,51357,gptq
-bnb-batch_size(16)-sequence_length(512)-new_tokens(1000),16,0.865,18.5,19117,217.0,51380,bnb
-gptq-batch_size(8)-sequence_length(512)-new_tokens(1000),8,0.437,18.3,12888,169.0,62843,gptq
-bnb-batch_size(8)-sequence_length(512)-new_tokens(1000),8,0.443,18.1,12905,141.0,62012,bnb
-fp16-batch_size(2)-sequence_length(512)-new_tokens(1000),2,0.111,18.0,25845,74.1,25845,fp16
-gptq-batch_size(4)-sequence_length(512)-new_tokens(1000),4,0.23,17.4,9785,120.0,40003,gptq
-fp16-batch_size(1)-sequence_length(512)-new_tokens(1000),1,0.0585,17.1,25843,36.4,25843,fp16
-bnb-batch_size(4)-sequence_length(512)-new_tokens(1000),4,0.237,16.9,9883,75.5,18708,bnb
-gptq-batch_size(2)-sequence_length(512)-new_tokens(1000),2,0.127,15.7,8245,69.0,16175,gptq
-bnb-batch_size(2)-sequence_length(512)-new_tokens(1000),2,0.134,14.9,8315,37.0,10840,bnb
-gptq-batch_size(1)-sequence_length(512)-new_tokens(1000),1,0.0713,14.0,7199,35.5,8780,gptq
-bnb-batch_size(1)-sequence_length(512)-new_tokens(1000),1,0.081,12.3,7614,24.2,8633,bnb
+experiment_name,GPU,Batch Size,Forward Latency (s),Forward Throughput (samples/s),Forward Max Memory Used (MB),Forward Max Memory Allocated (MB),Forward Max Memory Reserved (MB),Generate Throughput (tokens/s),Generate Max Memory Used (MB),Generate Max Memory Allocated (MB),Generate Max Memory Reserved (MB),Quantization Scheme
+fp16-batch_size(16)-sequence_length(256)-new_tokens(512),A100,16,0.402,39.8,26889,19191,24591,474.0,79295,26441,76996,fp16
+fp16-batch_size(8)-sequence_length(256)-new_tokens(512),A100,8,0.202,39.6,26369,16372,24071,293.0,32302,19990,30003,fp16
+gptq-batch_size(16)-sequence_length(256)-new_tokens(512),A100,16,0.415,38.6,13652,9752,11353,333.0,83302,17001,81004,GPTQ
+fp16-batch_size(4)-sequence_length(256)-new_tokens(512),A100,4,0.106,37.7,25843,14962,23544,149.0,25843,16768,23544,fp16
+gptq-batch_size(8)-sequence_length(256)-new_tokens(512),A100,8,0.22,36.4,10252,6933,7954,207.0,44107,10556,41808,GPTQ
+fp16-batch_size(2)-sequence_length(256)-new_tokens(512),A100,2,0.0574,34.8,25840,14258,23542,74.7,25840,15160,23542,fp16
+gptq-batch_size(4)-sequence_length(256)-new_tokens(512),A100,4,0.121,33.1,8541,5524,6243,135.0,16399,7334,14101,GPTQ
+fp16-batch_size(1)-sequence_length(256)-new_tokens(512),A100,1,0.0325,30.8,25840,13906,23542,38.8,25840,14356,23542,fp16
+gptq-batch_size(2)-sequence_length(256)-new_tokens(512),A100,2,0.0703,28.4,7167,4818,4869,68.3,8728,5722,6429,GPTQ
+gptq-batch_size(1)-sequence_length(256)-new_tokens(512),A100,1,0.0457,21.9,6803,4467,4504,35.1,7599,4916,5301,GPTQ
