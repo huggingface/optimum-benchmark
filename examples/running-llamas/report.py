@@ -11,7 +11,7 @@ from rich.table import Table
 from rich.terminal_theme import MONOKAI
 
 
-def gather_inference_report(root_folder: Path) -> DataFrame:
+def gather_full_report(root_folder: Path, report_folder: str = "artifacts") -> DataFrame:
     # key is path to inference file as string, value is dataframe
     inference_dfs = {
         f.parent.absolute().as_posix(): pd.read_csv(f) for f in root_folder.glob("**/inference_results.csv")
@@ -37,6 +37,10 @@ def gather_inference_report(root_folder: Path) -> DataFrame:
     # Concatenate all reports
     inference_report = pd.concat(inference_reports, axis=0, ignore_index=True)
     inference_report.set_index("experiment_name", inplace=True)
+
+    inference_report.sort_values(by="forward.throughput(samples/s)", ascending=False, inplace=True)
+    inference_report.to_csv(f"{report_folder}/full_report.csv")
+
     return inference_report
 
 
@@ -77,7 +81,7 @@ def format_row(row, style=""):
     return formated_row
 
 
-def get_short_report(inference_report):
+def get_short_report(full_report, report_folder: str = "artifacts"):
     short_columns = {
         "environment.gpus": "GPU",
         "benchmark.input_shapes.batch_size": "Batch Size",
@@ -91,8 +95,8 @@ def get_short_report(inference_report):
         "generate.max_memory_allocated(MB)": "Generate Max Memory Allocated (MB)",
         "generate.max_memory_reserved(MB)": "Generate Max Memory Reserved (MB)",
     }
-    short_report = inference_report[list(short_columns.keys())].rename(columns=short_columns)
-    short_report["Quantization Scheme"] = inference_report.index.str.split("-").str[0]
+    short_report = full_report[list(short_columns.keys())].rename(columns=short_columns)
+    short_report["Quantization Scheme"] = full_report.index.str.split("-").str[0]
     short_report["Quantization Scheme"].fillna("unquantized", inplace=True)
     short_report["Quantization Scheme"].replace("bnb", "BnB", inplace=True)
     short_report["Quantization Scheme"].replace("gptq", "GPTQ", inplace=True)
@@ -103,10 +107,12 @@ def get_short_report(inference_report):
 
     short_report["Group"] = short_report["GPU"] + "-" + short_report["Quantization Scheme"]
 
+    short_report.to_csv(f"{report_folder}/short_report.csv")
+
     return short_report
 
 
-def get_rich_table(short_report):
+def get_rich_table(short_report, report_folder: str = "artifacts"):
     # create rich table
     rich_table = Table(show_header=True, show_lines=True)
     # we add a column for the index
@@ -118,10 +124,14 @@ def get_rich_table(short_report):
     for index, row in short_report.iterrows():
         rich_table.add_row(index, *format_row(row.values, style=""))
 
+    console = Console(record=True)
+    console.print(rich_table, justify="center")
+    console.save_svg(f"{report_folder}/rich_table.svg", theme=MONOKAI, title="Inference Report")
+
     return rich_table
 
 
-def get_throughput_plot(short_report):
+def get_plots(short_report, memory: str = "allocated", report_folder: str = "artifacts"):
     # for each quantization scheme we plot the throughput vs batch size
     fig1, ax1 = plt.subplots()
     fig2, ax2 = plt.subplots()
@@ -166,42 +176,45 @@ def get_throughput_plot(short_report):
             label=group,
             marker="o",
         )
-        ax3.plot(
-            forward_memory["Batch Size"],
-            forward_memory["Forward Max Memory Used (MB)"],
-            label=group + "-used",
-            marker="^",
-        )
-        ax3.plot(
-            forward_pytorch_max_memory_reserved["Batch Size"],
-            forward_pytorch_max_memory_reserved["Forward Max Memory Reserved (MB)"],
-            label=group + "-reserved",
-            marker=".",
-        )
-        ax3.plot(
-            forward_pytorch_max_memory_allocated["Batch Size"],
-            forward_pytorch_max_memory_allocated["Forward Max Memory Allocated (MB)"],
-            label=group + "-allocated",
-            marker="v",
-        )
-        ax4.plot(
-            generate_memory["Batch Size"],
-            generate_memory["Generate Max Memory Used (MB)"],
-            label=group + "-used",
-            marker="^",
-        )
-        ax4.plot(
-            generate_pytorch_max_memory_reserved["Batch Size"],
-            generate_pytorch_max_memory_reserved["Generate Max Memory Reserved (MB)"],
-            label=group + "-reserved",
-            marker=".",
-        )
-        ax4.plot(
-            generate_pytorch_max_memory_allocated["Batch Size"],
-            generate_pytorch_max_memory_allocated["Generate Max Memory Allocated (MB)"],
-            label=group + "-allocated",
-            marker="v",
-        )
+        if "used" in memory:
+            ax3.plot(
+                forward_memory["Batch Size"],
+                forward_memory["Forward Max Memory Used (MB)"],
+                label=group + "-used",
+                marker="^",
+            )
+            ax4.plot(
+                generate_memory["Batch Size"],
+                generate_memory["Generate Max Memory Used (MB)"],
+                label=group + "-used",
+                marker="^",
+            )
+        elif "reserved" in memory:
+            ax3.plot(
+                forward_pytorch_max_memory_reserved["Batch Size"],
+                forward_pytorch_max_memory_reserved["Forward Max Memory Reserved (MB)"],
+                label=group + "-reserved",
+                marker=".",
+            )
+            ax4.plot(
+                generate_pytorch_max_memory_reserved["Batch Size"],
+                generate_pytorch_max_memory_reserved["Generate Max Memory Reserved (MB)"],
+                label=group + "-reserved",
+                marker=".",
+            )
+        elif "allocated" in memory:
+            ax3.plot(
+                forward_pytorch_max_memory_allocated["Batch Size"],
+                forward_pytorch_max_memory_allocated["Forward Max Memory Allocated (MB)"],
+                label=group + "-allocated",
+                marker="*",
+            )
+            ax4.plot(
+                generate_pytorch_max_memory_allocated["Batch Size"],
+                generate_pytorch_max_memory_allocated["Generate Max Memory Allocated (MB)"],
+                label=group + "-allocated",
+                marker="*",
+            )
 
     ax1.set_xlabel("Batch Size")
     ax1.set_ylabel("Forward Latency (s)")
@@ -224,6 +237,11 @@ def get_throughput_plot(short_report):
     ax3.legend(fancybox=True, shadow=True)
     ax4.legend(fancybox=True, shadow=True)
 
+    fig1.savefig(f"{report_folder}/forward_latency_plot.png")
+    fig2.savefig(f"{report_folder}/generate_throughput_plot.png")
+    fig3.savefig(f"{report_folder}/forward_memory_plot.png")
+    fig4.savefig(f"{report_folder}/generate_memory_plot.png")
+
     return fig1, fig2, fig3, fig4
 
 
@@ -237,42 +255,40 @@ def generate_report():
         help="The folder containing the results of experiments.",
     )
     parser.add_argument(
+        "--memory",
+        "-m",
+        nargs="*",
+        type=str,
+        required=True,
+        help="choose memory metric",
+        choices=["used", "reserved", "allocated"],
+        default="allocated",
+    )
+    parser.add_argument(
         "--report-name",
         "-r",
         type=str,
         required=False,
+        default="artifacts",
         help="The name of the report.",
     )
 
     args = parser.parse_args()
+    report_folder = args.report_name
     experiments_folders = args.experiments
 
-    if args.report_name:
-        report_folder = f"artifacts/{args.report_name}"
-    else:
-        report_folder = "artifacts"
     Path(report_folder).mkdir(parents=True, exist_ok=True)
 
+    if len(args.memory) == 0:
+        memory = ["used", "reserved", "allocated"]
+    else:
+        memory = args.memory
+
     # gather experiments results
-    inference_report = gather_inference_report(experiments_folders)
-    inference_report.sort_values(by="forward.throughput(samples/s)", ascending=False, inplace=True)
-    inference_report.to_csv(f"{report_folder}/full_report.csv")
-
-    short_report = get_short_report(inference_report)
-    short_report.to_csv(f"{report_folder}/short_report.csv")
-
-    forward_throughput_plot, generate_throughput_plot, forward_memory_plot, generate_memory_plot = get_throughput_plot(
-        short_report
-    )
-    forward_throughput_plot.savefig(f"{report_folder}/forward_latency_plot.png")
-    generate_throughput_plot.savefig(f"{report_folder}/generate_throughput_plot.png")
-    forward_memory_plot.savefig(f"{report_folder}/forward_memory_plot.png")
-    generate_memory_plot.savefig(f"{report_folder}/generate_memory_plot.png")
-
-    rich_table = get_rich_table(short_report)
-    console = Console(record=True)
-    console.print(rich_table, justify="center")
-    console.save_svg(f"{report_folder}/rich_table.svg", theme=MONOKAI, title="Inference Report")
+    full_report = gather_full_report(experiments_folders, report_folder=report_folder)
+    short_report = get_short_report(full_report, report_folder=report_folder)
+    figs = get_plots(short_report, memory=memory, report_folder=report_folder)
+    rich_table = get_rich_table(short_report, report_folder=report_folder)
 
 
 if __name__ == "__main__":

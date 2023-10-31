@@ -26,10 +26,15 @@ This will create a folder called `experiments` with the results of the benchmark
 To create a report run:
 
 ```bash
-python report.py -e experiments
+python report.py -e experiments -m allocated
 ```
 
 Which will create some quick reporting artifacts like a `full_report.csv`, `short_report.csv`, some plots and a `rich_table.svg`.
+
+`-e` is the experiments folder from which to read the results.
+`-r` is the report folder to which to write the resulting artifacts.
+`-m` is the memory type to use for the reporting. It can be `used`, `allocated` or `reserved`.
+
 
 ## Results
 
