@@ -58,11 +58,6 @@ class MemoryTracker:
         torch.cuda.empty_cache()
 
         for device_index in self.pytorch_device_ids:
-            # reset accumulated stats
-            torch.cuda.reset_accumulated_memory_stats(device=device_index)
-            # reset max stats
-            torch.cuda.reset_max_memory_allocated(device=device_index)
-            torch.cuda.reset_max_memory_cached(device=device_index)
             # reset peak stats
             torch.cuda.reset_peak_memory_stats(device=device_index)
 
