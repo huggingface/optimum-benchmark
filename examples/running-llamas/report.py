@@ -44,43 +44,6 @@ def gather_full_report(root_folder: Path, report_folder: str = "artifacts") -> D
     return inference_report
 
 
-def style_element(element, style=""):
-    if style:
-        return f"[{style}]{element}[/{style}]"
-    else:
-        return element
-
-
-def format_element(element, style=""):
-    if isinstance(element, float):
-        if element != element:  # nan
-            formated_element = ""
-        elif abs(element) >= 1:
-            formated_element = f"{element:.2f}"
-        elif abs(element) > 1e-6:
-            formated_element = f"{element:.2e}"
-        else:
-            formated_element = f"{element}"
-    elif element is None:
-        formated_element = ""
-    elif isinstance(element, bool):
-        if element:
-            formated_element = style_element("✔", style="green")
-        else:
-            formated_element = style_element("✘", style="red")
-    else:
-        formated_element = str(element)
-
-    return style_element(formated_element, style=style)
-
-
-def format_row(row, style=""):
-    formated_row = []
-    for element in row:
-        formated_row.append(format_element(element, style=style))
-    return formated_row
-
-
 def get_short_report(full_report, report_folder: str = "artifacts"):
     short_columns = {
         "environment.gpus": "GPU",
@@ -100,6 +63,8 @@ def get_short_report(full_report, report_folder: str = "artifacts"):
     short_report["Quantization Scheme"].fillna("unquantized", inplace=True)
     short_report["Quantization Scheme"].replace("bnb", "BnB", inplace=True)
     short_report["Quantization Scheme"].replace("gptq", "GPTQ", inplace=True)
+    short_report["Quantization Scheme"].replace("gptq+triton", "GPTQ+Triton", inplace=True)
+    short_report["Quantization Scheme"].replace("gptq+cuda_old", "GPTQ+CUDA_old", inplace=True)
 
     short_report["GPU"] = short_report["GPU"].str[0]
     short_report["GPU"].replace("AMD INSTINCT MI250 (MCM) OAM AC MBA", "MI250", inplace=True)
@@ -110,25 +75,6 @@ def get_short_report(full_report, report_folder: str = "artifacts"):
     short_report.to_csv(f"{report_folder}/short_report.csv")
 
     return short_report
-
-
-def get_rich_table(short_report, report_folder: str = "artifacts"):
-    # create rich table
-    rich_table = Table(show_header=True, show_lines=True)
-    # we add a column for the index
-    rich_table.add_column("Experiment Name", justify="left", header_style="")
-    # we populate the table with values
-    for column in short_report.columns:
-        rich_table.add_column(column, justify="right", header_style="bold")
-    # we add rows
-    for index, row in short_report.iterrows():
-        rich_table.add_row(index, *format_row(row.values, style=""))
-
-    console = Console(record=True)
-    console.print(rich_table, justify="center")
-    console.save_svg(f"{report_folder}/rich_table.svg", theme=MONOKAI, title="Inference Report")
-
-    return rich_table
 
 
 def get_plots(short_report, memory: str = "allocated", report_folder: str = "artifacts"):
@@ -189,7 +135,7 @@ def get_plots(short_report, memory: str = "allocated", report_folder: str = "art
                 label=group + "-used",
                 marker="^",
             )
-        elif "reserved" in memory:
+        if "reserved" in memory:
             ax3.plot(
                 forward_pytorch_max_memory_reserved["Batch Size"],
                 forward_pytorch_max_memory_reserved["Forward Max Memory Reserved (MB)"],
@@ -202,7 +148,7 @@ def get_plots(short_report, memory: str = "allocated", report_folder: str = "art
                 label=group + "-reserved",
                 marker=".",
             )
-        elif "allocated" in memory:
+        if "allocated" in memory:
             ax3.plot(
                 forward_pytorch_max_memory_allocated["Batch Size"],
                 forward_pytorch_max_memory_allocated["Forward Max Memory Allocated (MB)"],
@@ -245,6 +191,62 @@ def get_plots(short_report, memory: str = "allocated", report_folder: str = "art
     return fig1, fig2, fig3, fig4
 
 
+def style_element(element, style=""):
+    if style:
+        return f"[{style}]{element}[/{style}]"
+    else:
+        return element
+
+
+def format_element(element, style=""):
+    if isinstance(element, float):
+        if element != element:  # nan
+            formated_element = ""
+        elif abs(element) >= 1:
+            formated_element = f"{element:.2f}"
+        elif abs(element) > 1e-6:
+            formated_element = f"{element:.2e}"
+        else:
+            formated_element = f"{element}"
+    elif element is None:
+        formated_element = ""
+    elif isinstance(element, bool):
+        if element:
+            formated_element = style_element("✔", style="green")
+        else:
+            formated_element = style_element("✘", style="red")
+    else:
+        formated_element = str(element)
+
+    return style_element(formated_element, style=style)
+
+
+def format_row(row, style=""):
+    formated_row = []
+    for element in row:
+        formated_row.append(format_element(element, style=style))
+    return formated_row
+
+
+def get_rich_table(short_report, report_folder: str = "artifacts"):
+    # create rich table
+    rich_table = Table(show_header=True, show_lines=True)
+    # we add a column for the index
+    rich_table.add_column("Experiment Name", justify="left", header_style="")
+    # we populate the table with values
+    for column in short_report.columns:
+        rich_table.add_column(column, justify="right", header_style="bold")
+    # we add rows
+    for index, row in short_report.iterrows():
+        rich_table.add_row(index, *format_row(row.values, style=""))
+
+    console = Console(record=True)
+    console.print(rich_table, justify="center")
+    console.save_svg(f"{report_folder}/rich_table.svg", theme=MONOKAI, title="Inference Report")
+
+    return rich_table
+
+
 def generate_report():
     parser = ArgumentParser()
     parser.add_argument(
@@ -259,10 +261,9 @@ def generate_report():
         "-m",
         nargs="*",
         type=str,
-        required=True,
+        required=False,
         help="choose memory metric",
         choices=["used", "reserved", "allocated"],
-        default="allocated",
     )
     parser.add_argument(
         "--report-name",
@@ -279,7 +280,7 @@ def generate_report():
 
     Path(report_folder).mkdir(parents=True, exist_ok=True)
 
-    if len(args.memory) == 0:
+    if args.memory is None:
         memory = ["used", "reserved", "allocated"]
     else:
         memory = args.memory
