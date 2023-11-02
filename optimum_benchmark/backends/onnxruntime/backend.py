@@ -52,9 +52,7 @@ class ORTBackend(Backend[ORTConfig]):
             self.ortmodel_class = TASKS_TO_ORTMODELS[self.task]
 
         ortmodel_name = self.ortmodel_class.__name__
-        LOGGER.info(
-            f"\t+ Inferred ORTModel class {ortmodel_name} for task {self.task} and model_type {self.model_type}"
-        )
+        LOGGER.info(f"Inferred ORTModel class {ortmodel_name} for task {self.task} and model_type {self.model_type}")
 
     def validate_device(self) -> None:
         if self.device.type not in ["cpu", "cuda"]:

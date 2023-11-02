@@ -27,7 +27,7 @@ class INCBackend(Backend[INCConfig]):
 
         self.incmodel_class = get_class(TASKS_TO_INCMODELS[self.task])
         LOGGER.info(
-            f"\t+ Inferred INCModel {self.incmodel_class.__name__} for task {self.task} and model_type {self.model_type}"
+            f"Inferred INCModel {self.incmodel_class.__name__} for task {self.task} and model_type {self.model_type}"
         )
 
     def validate_device(self) -> None:

@@ -32,7 +32,7 @@ class TGIBackend(Backend[TGIConfig]):
         self.validate_task()
 
         automodel = self.automodel_class.__name__
-        LOGGER.info(f"\t+ Inferred AutoModel class {automodel} for task {self.task} and model_type {self.model_type}")
+        LOGGER.info(f"Inferred AutoModel class {automodel} for task {self.task} and model_type {self.model_type}")
 
     def validate_task(self) -> None:
         if self.task not in ["text-generation", "text2text-generation"]:
