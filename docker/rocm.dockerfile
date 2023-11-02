@@ -30,7 +30,7 @@ RUN addgroup --gid $GROUP_ID user
 RUN adduser --disabled-password --gecos '' --uid $USER_ID --gid $GROUP_ID user
 
 # Install python
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     python3.10 \
     python3.10-dev \
     python3-pip \
@@ -39,13 +39,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/* && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1
 
+# amd-smi must be installed before switching to user
+RUN apt-get update && apt-get upgrade -y && apt-get -y --no-install-recommends install amd-smi-lib
+RUN pip install --upgrade pip setuptools wheel && cd /opt/rocm/share/amd_smi && pip install .
+ENV PATH="/opt/rocm/bin:${PATH}"
+
+# Add local bin to PATH
 ENV PATH="/home/user/.local/bin:${PATH}"
 
 # Add user to sudoers
 RUN adduser user sudo
 RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >>/etc/sudoers
 
-# Fix permissions
+# Fix AMD permissions
 RUN usermod -g video user
 RUN usermod -a -G render user
 
