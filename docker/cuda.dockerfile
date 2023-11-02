@@ -40,6 +40,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/* && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1
 
+# Add local bin to PATH
 ENV PATH="/home/user/.local/bin:${PATH}"
 
 # Add user to sudoers

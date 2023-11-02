@@ -28,6 +28,7 @@ ARG GROUP_ID
 RUN addgroup --gid $GROUP_ID user
 RUN adduser --disabled-password --gecos '' --uid $USER_ID --gid $GROUP_ID user
 
+# Add local bin to PATH
 ENV PATH="/home/user/.local/bin:${PATH}"
 
 # Add user to sudoers
