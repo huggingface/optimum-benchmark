@@ -37,14 +37,24 @@ if TYPE_CHECKING:
 
 from ..task_utils import DIFFUSION_TASKS, TEXT_GENERATION_TASKS
 from .config import BackendConfigT
+from .isolation_utils import (
+    only_this_process_is_running_on_cuda_devices,
+    only_this_process_will_run_on_cuda_devices,
+)
 from .utils import (
-    check_no_process_is_running_on_cuda_device,
-    check_only_this_process_is_running_on_cuda_device,
     extract_shapes_from_diffusion_pipeline,
     extract_shapes_from_model_artifacts,
 )
 
 LOGGER = getLogger("backend")
+
+CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", None)
+if CUDA_VISIBLE_DEVICES is not None:
+    CUDA_DEVICES = list(map(int, CUDA_VISIBLE_DEVICES.split(",")))
+elif torch.cuda.is_available():
+    CUDA_DEVICES = list(range(torch.cuda.device_count()))
+else:
+    CUDA_DEVICES = []
 
 
 class Backend(Generic[BackendConfigT], ABC):
@@ -77,7 +87,8 @@ class Backend(Generic[BackendConfigT], ABC):
             self.model_type = self.pretrained_config.model_type
 
             try:
-                # the processor sometimes contains information about the model's input shapes that's not available in the config
+                # the processor sometimes contains information about the model's
+                # input shapes that's not available in the config
                 self.pretrained_processor = AutoProcessor.from_pretrained(
                     pretrained_model_name_or_path=self.model, **self.hub_kwargs
                 )
@@ -96,41 +107,9 @@ class Backend(Generic[BackendConfigT], ABC):
     def is_diffusion_pipeline(self) -> bool:
         return self.task in DIFFUSION_TASKS
 
-    def check_initial_isolation(self) -> None:
-        if self.device.type == "cuda":
-            # at this point we are sure that CUDA_VISIBLE_DEVICES is set if there are multiple GPUs available on the machine
-            CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", None)
-            if CUDA_VISIBLE_DEVICES is None:
-                device_ids = [self.device.index if self.device.index is not None else 0]
-            else:
-                device_ids = list(map(int, CUDA_VISIBLE_DEVICES.split(",")))
-
-            LOGGER.info(f"\t+ Checking initial device(s) isolation of CUDA device(s): {device_ids}")
-            check_no_process_is_running_on_cuda_device(device_ids)
-
-    def check_continuous_isolation(self) -> None:
-        if self.device.type == "cuda":
-            # at this point we are sure that CUDA_VISIBLE_DEVICES is set if there are multiple GPUs available on the machine
-            CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", None)
-            if CUDA_VISIBLE_DEVICES is None:
-                device_ids = [self.device.index if self.device.index is not None else 0]
-            else:
-                device_ids = list(map(int, CUDA_VISIBLE_DEVICES.split(",")))
-
-            LOGGER.info(f"\t+ Checking continuous device(s) isolation of CUDA device(s): {device_ids}")
-            self.isolation_thread = Process(
-                target=check_only_this_process_is_running_on_cuda_device,
-                args=(device_ids, os.getpid()),
-                daemon=True,
-            )
-            self.isolation_thread.start()
-
     def configure(self, config: BackendConfigT) -> None:
         LOGGER.info(f"Configuring {self.NAME} backend")
         self.config = config
-
-        # seeding backend
-        self.seed()
 
         # isolation options
         if self.config.initial_isolation_check:
@@ -138,9 +117,28 @@ class Backend(Generic[BackendConfigT], ABC):
         if self.config.continous_isolation_check:
             self.check_continuous_isolation()
 
+        # seeding backend
+        LOGGER.info(f"\t+ Seeding backend with seed {self.config.seed}")
+        self.seed()
+
         # clean up options
         if self.config.delete_cache:
             LOGGER.info("\t+ Model cache will be deleted after benchmark")
+
+    def check_initial_isolation(self) -> None:
+        if self.device.type == "cuda":
+            LOGGER.info(f"\t+ Checking initial device(s) isolation of CUDA device(s): {CUDA_DEVICES}")
+            only_this_process_is_running_on_cuda_devices(cuda_devices=CUDA_DEVICES, benchmark_pid=os.getpid())
+
+    def check_continuous_isolation(self) -> None:
+        if self.device.type == "cuda":
+            LOGGER.info(f"\t+ Checking continuous device(s) isolation of CUDA device(s): {CUDA_DEVICES}")
+            self.isolation_thread = Process(
+                target=only_this_process_will_run_on_cuda_devices,
+                kwargs={"cuda_devices": CUDA_DEVICES, "benchmark_pid": os.getpid()},
+                daemon=True,
+            )
+            self.isolation_thread.start()
 
     def seed(self) -> None:
         # https://pytorch.org/docs/stable/notes/randomness.html
@@ -150,16 +148,15 @@ class Backend(Generic[BackendConfigT], ABC):
 
     def prepare_input(self, input: Dict[str, Any]) -> Dict[str, Any]:
         if self.is_diffusion_pipeline():
-            # diffusion pipelines expect a list of strings as input
+            # diffusion pipelines takes a list of strings
             return input
         else:
-            # models expect tensors on the target device as input
+            # models expect tensors on the target device
             for key, value in input.items():
                 input[key] = value.to(self.device)
 
         return input
 
-    # compiling in openvino requires input shapes, trt ep requires max tokens, etc.
     def prepare_for_inference(self, **kwargs) -> None:
         pass
 

@@ -57,7 +57,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         # compile with static shapes if needed
         LOGGER.info("\t+ Preparing backend for inference")
         backend.prepare_for_inference(
-            input_shapes=self.config.input_shapes, new_tokens=self.config.generate_kwargs["min_new_tokens"]
+            input_shapes=self.config.input_shapes, new_tokens=self.config.generate_kwargs.get("min_new_tokens", 0)
         )
 
         # run memory tracking

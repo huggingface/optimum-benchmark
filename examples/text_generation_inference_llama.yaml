@@ -15,7 +15,8 @@ hydra:
     chdir: true
     env_set:
       CUDA_VISIBLE_DEVICES: 0,1
-
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      
 experiment_name: text_generation_inference
 model: NousResearch/Llama-2-7b-hf
 device: cuda

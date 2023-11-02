@@ -14,11 +14,8 @@ hydra:
   job:
     chdir: true
     env_set:
-      CUDA_VISIBLE_DEVICES: 0,1
-
-backend:
-  initial_isolation_check: false
-  continous_isolation_check: false
+      CUDA_VISIBLE_DEVICES: 0
+      CUDA_DEVICE_ORDER: PCI_BUS_ID
 
 experiment_name: pytorch_bert
 model: bert-base-uncased
