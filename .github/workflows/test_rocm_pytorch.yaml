@@ -29,12 +29,15 @@ jobs:
       - name: Run tests
         run: docker run
           --rm
-          --device /dev/kfd
-          --device /dev/dri
+          --net host
+          --pid host
+          --shm-size 64G
+          --env USE_ROCM="1"
           --entrypoint /bin/bash
-          --shm-size=64G
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
-          --env USE_ROCM="1"
+          --device /dev/kfd
+          --device /dev/dri/card0 --device /dev/dri/renderD128
+          --device /dev/dri/card1 --device /dev/dri/renderD129
           opt-bench-rocm:5.6.1
           -c "pip install -e .[test,peft,diffusers] && pytest -k 'cuda and pytorch' -x"
