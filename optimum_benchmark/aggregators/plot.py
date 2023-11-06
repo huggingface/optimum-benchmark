@@ -7,15 +7,13 @@ import pandas as pd
 
 
 def plot(
-    report: pd.DataFrame,
-    x_axis: str = "Batch Size",
-    y_axis: str = "Forward Latency (s)",
-    groupby: str = "Experiment",
+    report: pd.DataFrame, x_axis: str = "Batch Size", y_axis: str = "Forward Latency (s)", groupby: str = "Experiment"
 ) -> Tuple[plt.Figure, plt.Axes]:
     fig, ax = plt.subplots()
 
     for group, sweep in report.groupby(groupby):
-        ax.plot(sweep[x_axis], sweep[y_axis], label=group, marker="o")
+        sorted_sweep = sweep.sort_values(by=x_axis)
+        ax.plot(sorted_sweep[x_axis], sorted_sweep[y_axis], label=group, marker="o")
 
     ax.set_xlabel(x_axis)
     ax.set_ylabel(y_axis)
@@ -62,8 +60,7 @@ def plot_cli() -> None:
 
     args = parser.parse_args()
     report = pd.read_csv(args.report)
-    fig, _ = plot(report=report, x_axis=args.x_axis, y_axis=args.y_axis, groupby=args.groupby)
-
+    fig, _ = plot(report, args.x_axis, args.y_axis, args.groupby)
     if args.save_file is not None:
         args.save_file.parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(args.save_file)
