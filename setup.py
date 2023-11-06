@@ -45,7 +45,7 @@ if use_rocm == "1":
 EXTRAS_REQUIRE = {
     "test": ["pytest"],
     "quality": ["black", "ruff"],
-    "report": ["flatten_dict", "matplotlib", "seaborn", "rich"],
+    "report": ["matplotlib", "rich", "tabulate", "flatten_dict"],
     # cpu backends
     "openvino": [f"optimum[openvino,nncf]>={OPTIMUM_VERSION}"],
     "onnxruntime": [f"optimum[onnxruntime]>={OPTIMUM_VERSION}"],
@@ -70,7 +70,7 @@ setup(
     entry_points={
         "console_scripts": [
             "optimum-benchmark=optimum_benchmark.experiment:main",
-            "optimum-report=optimum_benchmark.report:generate_report",
+            "optimum-report=optimum_benchmark.report:main",
         ]
     },
 )
