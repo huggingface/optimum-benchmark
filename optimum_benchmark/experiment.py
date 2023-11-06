@@ -168,10 +168,10 @@ def run(experiment: DictConfig) -> None:
         raise e
 
 
-def run_isolated(experiment: DictConfig) -> None:
+def run_isolated(experiment: DictConfig, start_method: str = "spawn") -> None:
     # Set the multiprocessing start method if not already set
-    if multiprocessing.get_start_method(allow_none=True) is None:
-        multiprocessing.set_start_method("spawn")
+    if multiprocessing.get_start_method(allow_none=True) != start_method:
+        multiprocessing.set_start_method(start_method)
 
     # Spawn a new process
     p = multiprocessing.Process(target=run, args=(experiment,))
@@ -185,4 +185,4 @@ def main(experiment: DictConfig) -> None:
         LOGGER.warning("Skipping because results already exist in experiment directory.")
         return
 
-    run_isolated(experiment)
+    run_isolated(experiment, start_method="spawn")
