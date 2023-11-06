@@ -1,7 +1,7 @@
+import json
 from argparse import ArgumentParser
 from pathlib import Path
-from typing import Dict, Optional
-import json
+from typing import Dict
 
 import pandas as pd
 

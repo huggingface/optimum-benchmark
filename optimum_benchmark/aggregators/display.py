@@ -1,6 +1,5 @@
 from argparse import ArgumentParser
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 from rich.console import Console

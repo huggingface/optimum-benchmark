@@ -1,9 +1,9 @@
 import sys
 
-from .aggregators.gather import gather_cli
 from .aggregators.display import display_cli
-from .aggregators.summarize import summarize_cli
+from .aggregators.gather import gather_cli
 from .aggregators.plot import plot_cli
+from .aggregators.summarize import summarize_cli
 
 HELP = """
 Usage: optimum-report <action> <options>
