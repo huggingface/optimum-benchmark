@@ -14,6 +14,7 @@ _openvino_available = importlib.util.find_spec("openvino") is not None
 _neural_compressor_available = importlib.util.find_spec("neural_compressor") is not None
 _pyrsmi_available = importlib.util.find_spec("pyrsmi") is not None
 _codecarbon_available = importlib.util.find_spec("codecarbon") is not None
+_amdsmi_available = importlib.util.find_spec("amdsmi") is not None
 
 
 def is_onnx_available():
@@ -34,6 +35,10 @@ def is_py3nvml_available():
 
 def is_pyrsmi_available():
     return _pyrsmi_available
+
+
+def is_amdsmi_available():
+    return _amdsmi_available
 
 
 def is_torch_available():

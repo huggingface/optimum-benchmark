@@ -3,19 +3,19 @@ import subprocess
 
 from setuptools import find_packages, setup
 
-OPTIMUM_VERSION = "1.13.0"
+OPTIMUM_VERSION = "1.14.0"
 
 INSTALL_REQUIRES = [
     # Mandatory HF dependencies
     f"optimum>={OPTIMUM_VERSION}",  # backends, tasks and input generation
     "accelerate",  # distributed inference and no weights init
     # Hydra
-    "omegaconf>=2.3.0",
-    "hydra-core>=1.3.2",
-    "hydra_colorlog>=1.2.0",
+    "omegaconf",
+    "hydra-core",
+    "hydra_colorlog",
     # Other
-    "psutil>=5.9.0",
-    "pandas>=2.0.0",
+    "psutil",
+    "pandas",
 ]
 
 # We may allow to install CUDA or RoCm dependencies even when building in a non-CUDA or non-RoCm environment.
@@ -54,7 +54,7 @@ EXTRAS_REQUIRE = {
     "onnxruntime-gpu": [f"optimum[onnxruntime-gpu]>={OPTIMUM_VERSION}"],
     "onnxruntime-training": ["torch-ort", "onnxruntime-training"],
     # server-like backends
-    "text-generation-inference": ["docker>=6.1.3"],
+    "text-generation-inference": ["docker>=6.0.0"],
     # specific settings
     "diffusers": ["diffusers"],
     "peft": ["peft"],
