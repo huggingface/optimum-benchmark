@@ -11,20 +11,43 @@ concurrency:
 
 jobs:
   build_image_and_run_gpu_tests:
-    runs-on: hf-amd-mi210-dev
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          [
+            {
+              rocm_version: 5.6.1,
+              torch_rocm_version: 5.6,
+              torch_pre_release: 0,
+            },
+            {
+              rocm_version: 5.7,
+              torch_rocm_version: 5.7,
+              torch_pre_release: 1,
+            },
+          ]
+        runner: [hf-amd-mi210-dev]
+
+    runs-on: ${{ matrix.runner }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v3
 
       - name: Build image
         run: docker build
           --file docker/rocm.dockerfile
           --build-arg USER_ID=$(id -u)
           --build-arg GROUP_ID=$(id -g)
-          --build-arg ROCM_VERSION=5.6.1
-          --build-arg TORCH_ROCM=rocm5.6
-          --tag opt-bench-rocm:5.6.1
+          --build-arg ROCM_VERSION=$ROCM_VERSION
+          --build-arg TORCH_PRE_RELEASE=$TORCH_PRE_RELEASE
+          --build-arg TORCH_ROCM_VERSION=$TORCH_ROCM_VERSION
+          --tag opt-bench-rocm:$TORCH_ROCM_VERSION
           .
+        env:
+          ROCM_VERSION: ${{ matrix.image.rocm_version }}
+          TORCH_ROCM_VERSION: ${{ matrix.image.torch_rocm_version }}
+          TORCH_PRE_RELEASE: ${{ matrix.image.torch_pre_release }}
 
       - name: Run tests
         run: docker run
@@ -33,11 +56,14 @@ jobs:
           --pid host
           --shm-size 64G
           --env USE_ROCM="1"
-          --entrypoint /bin/bash
+          --volume $HOME/.cache/huggingface:/home/user/.cache/huggingface
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
           --device /dev/kfd
-          --device /dev/dri/card0 --device /dev/dri/renderD128
-          --device /dev/dri/card1 --device /dev/dri/renderD129
-          opt-bench-rocm:5.6.1
+          --device /dev/dri/renderD128
+          --device /dev/dri/renderD129
+          --entrypoint /bin/bash
+          opt-bench-rocm:$TORCH_ROCM_VERSION
           -c "pip install -e .[test,peft,diffusers] && pytest -k 'cuda and pytorch' -x"
+        env:
+          TORCH_ROCM_VERSION: ${{ matrix.image.torch_rocm_version }}

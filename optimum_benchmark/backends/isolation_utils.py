@@ -4,7 +4,7 @@ import time
 from typing import Dict, List
 
 from ..env_utils import is_nvidia_system, is_rocm_system
-from ..import_utils import is_py3nvml_available, is_pyrsmi_available
+from ..import_utils import is_amdsmi_available, is_py3nvml_available, torch_version
 
 
 def only_this_process_is_running_on_cuda_devices(cuda_devices: List[int], benchmark_pid: int) -> None:
@@ -29,24 +29,40 @@ def only_this_process_is_running_on_cuda_devices(cuda_devices: List[int], benchm
             pids[device_id] = set(nvml.nvmlDeviceGetComputeRunningProcesses(device_handle))
         nvml.nvmlShutdown()
     elif is_rocm_system():
-        if not is_pyrsmi_available():
+        rocm_version = torch_version().split("rocm")[-1]
+
+        if not is_amdsmi_available():
             raise ValueError(
-                "check_no_process_is_running_on_cuda_device requires pyrsmi. "
+                "check_no_process_is_running_on_cuda_device requires amdsmi. "
                 "Please follow the instructions at https://github.com/RadeonOpenCompute/amdsmi/tree/master"
             )
-        import amdsmi as rocml
+        import amdsmi as smi
 
-        rocml.amdsmi_init()
-        devices_handles = rocml.amdsmi_get_device_handles()
-        for device_id in cuda_devices:
-            device_handle = devices_handles[device_id]
-            processes_handles = rocml.amdsmi_get_process_list(device_handle)
-            for process_handle in processes_handles:
-                info = rocml.amdsmi_get_process_info(device_handle, process_handle)
-                if info["memory_usage"]["vram_mem"] == 4096:
-                    continue
-                pids[device_id].add(info["pid"])
-        rocml.amdsmi_shut_down()
+        smi.amdsmi_init()
+
+        if rocm_version >= "5.7":
+            # starting from rocm 5.7, the api seems to have changed names
+            devices_handles = smi.amdsmi_get_processor_handles()
+            for device_id in cuda_devices:
+                device_handle = devices_handles[device_id]
+                processes_handles = smi.amdsmi_get_gpu_process_list(device_handle)
+                for process_handle in processes_handles:
+                    info = smi.amdsmi_get_gpu_process_info(device_handle, process_handle)
+                    if info["memory_usage"]["vram_mem"] == 4096:
+                        continue
+                    pids[device_id].add(info["pid"])
+        else:
+            devices_handles = smi.amdsmi_get_device_handles()
+            for device_id in cuda_devices:
+                device_handle = devices_handles[device_id]
+                processes_handles = smi.amdsmi_get_process_list(device_handle)
+                for process_handle in processes_handles:
+                    info = smi.amdsmi_get_process_info(device_handle, process_handle)
+                    if info["memory_usage"]["vram_mem"] == 4096:
+                        continue
+                    pids[device_id].add(info["pid"])
+
+        smi.amdsmi_shut_down()
     else:
         raise ValueError("check_no_process_is_running_on_cuda_device is only supported on NVIDIA and AMD GPUs.")
 
