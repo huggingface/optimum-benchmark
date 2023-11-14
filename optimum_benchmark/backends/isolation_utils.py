@@ -26,7 +26,10 @@ def only_this_process_is_running_on_cuda_devices(cuda_devices: List[int], benchm
         nvml.nvmlInit()
         for device_id in cuda_devices:
             device_handle = nvml.nvmlDeviceGetHandleByIndex(device_id)
-            pids[device_id] = set(nvml.nvmlDeviceGetComputeRunningProcesses(device_handle))
+            device_processes = nvml.nvmlDeviceGetComputeRunningProcesses(device_handle)
+            for device_process in device_processes:
+                pids[device_id].add(device_process.pid)
+
         nvml.nvmlShutdown()
     elif is_rocm_system():
         rocm_version = torch_version().split("rocm")[-1]
@@ -73,10 +76,8 @@ def only_this_process_is_running_on_cuda_devices(cuda_devices: List[int], benchm
 
     if len(other_pids) > 0:
         error_message = f"Expected only process {benchmark_pid} on device(s) {cuda_devices}, but found {other_pids}."
-
         # for pid in other_pids:
         #     error_message += f"\nProcess {pid} info: {get_pid_info(pid)}"
-
         raise RuntimeError(error_message)
 
 
@@ -88,7 +89,7 @@ def only_this_process_will_run_on_cuda_devices(cuda_devices: List[int], benchmar
         try:
             only_this_process_is_running_on_cuda_devices(cuda_devices, benchmark_pid)
             time.sleep(0.1)
-        except RuntimeError as exception:
+        except Exception as exception:
             os.kill(benchmark_pid, signal.SIGTERM)
             raise exception
 
