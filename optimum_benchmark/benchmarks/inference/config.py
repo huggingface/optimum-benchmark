@@ -79,9 +79,6 @@ class InferenceConfig(BenchmarkConfig):
                 raise ValueError("`max_new_tokens` and `min_new_tokens` must be equal for fixed length output.")
 
             if self.new_tokens is not None:
-                LOGGER.info(
-                    f"`new_tokens` was set to {self.new_tokens}. `max_new_tokens` and `min_new_tokens` will be set to {self.new_tokens}."
-                )
                 self.generate_kwargs["max_new_tokens"] = self.new_tokens
                 self.generate_kwargs["min_new_tokens"] = self.new_tokens
 
