@@ -1,10 +1,5 @@
 import sys
 
-from .aggregators.display import display_cli
-from .aggregators.gather import gather_cli
-from .aggregators.plot import plot_cli
-from .aggregators.summarize import summarize_cli
-
 HELP = """
 Usage: optimum-report <action> <options>
 Actions:
@@ -24,12 +19,20 @@ def main():
     sys.argv = sys.argv[1:]
 
     if action == "gather":
+        from .aggregators.gather import gather_cli
+
         gather_cli()
     elif action == "display":
+        from .aggregators.display import display_cli
+
         display_cli()
     elif action == "summarize":
+        from .aggregators.summarize import summarize_cli
+
         summarize_cli()
     elif action == "plot":
+        from .aggregators.plot import plot_cli
+
         plot_cli()
     elif action in ["-h", "--help"]:
         print(HELP)

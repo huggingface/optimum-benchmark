@@ -27,8 +27,6 @@ def gather(root_folders: List[Path]) -> pd.DataFrame:
 
     if (len(results_dfs) == 0) or (len(configs_dfs) == 0):
         raise ValueError(f"No results found in {root_folder}")
-    elif len(results_dfs) != len(configs_dfs):
-        raise ValueError(f"Results and configs do not match in {root_folder}")
 
     # Merge inference and config dataframes
     full_dfs = {}
