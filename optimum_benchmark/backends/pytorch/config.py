@@ -57,7 +57,8 @@ class PyTorchConfig(BackendConfig):
     torch_compile_config: Dict[str, Any] = field(default_factory=dict)
 
     # optimization options
-    bettertransformer: bool = False
+    to_bettertransformer: bool = False
+    use_flash_attention_2: bool = False
 
     # quantization options
     quantization_scheme: Optional[str] = None
