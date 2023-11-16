@@ -1,4 +1,4 @@
-name: Test CLI Misc
+name: CLI Misc Tests
 
 on:
   workflow_dispatch:
