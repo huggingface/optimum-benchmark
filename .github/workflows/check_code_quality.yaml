@@ -1,4 +1,4 @@
-name: Quality Checks
+name: Quality Code Checks
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  run_quality_checks:
+  run_code_quality_checks:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
