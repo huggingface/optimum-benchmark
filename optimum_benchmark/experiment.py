@@ -137,6 +137,7 @@ def run(experiment: DictConfig) -> None:
         device=experiment.device,
         hub_kwargs=experiment.hub_kwargs,
     )
+
     try:
         # Configure the backend
         backend.configure(experiment.backend)
@@ -148,7 +149,9 @@ def run(experiment: DictConfig) -> None:
     # Allocate requested benchmark
     benchmark_factory: Type["Benchmark"] = get_class(experiment.benchmark._target_)
     benchmark: "Benchmark" = benchmark_factory()
+
     try:
+        # Configure the benchmark
         benchmark.configure(experiment.benchmark)
     except Exception as e:
         LOGGER.error("Error during benchmark configuration: %s", e)
@@ -173,10 +176,13 @@ def run_isolated(experiment: DictConfig, start_method: str = "spawn") -> None:
     if multiprocessing.get_start_method(allow_none=True) != start_method:
         multiprocessing.set_start_method(start_method)
 
-    # Spawn a new process
+    # Execute the experiment in a child process
     p = multiprocessing.Process(target=run, args=(experiment,))
     p.start()
     p.join()
+
+    # Exit with the same exit code as the child process
+    exit(p.exitcode)
 
 
 @hydra.main(version_base=None)
