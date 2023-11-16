@@ -1,7 +1,9 @@
-name: Pytorch ROCm Tests
+name: ROCm Pytorch Tests
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
   pull_request:
     types: [opened, reopened, synchronize]
 
@@ -16,20 +18,11 @@ jobs:
       matrix:
         image:
           [
-            {
-              rocm_version: 5.6.1,
-              torch_rocm_version: 5.6,
-              torch_pre_release: 0,
-            },
-            {
-              rocm_version: 5.7,
-              torch_rocm_version: 5.7,
-              torch_pre_release: 1,
-            },
+            { torch_rocm: rocm5.6, torch_pre_release: 0, rocm_version: 5.6.1 },
+            { torch_rocm: rocm5.7, torch_pre_release: 1, rocm_version: 5.7 },
           ]
-        runner: [hf-amd-mi210-dev]
 
-    runs-on: ${{ matrix.runner }}
+    runs-on: hf-amd-mi210-dev
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -39,15 +32,11 @@ jobs:
           --file docker/rocm.dockerfile
           --build-arg USER_ID=$(id -u)
           --build-arg GROUP_ID=$(id -g)
-          --build-arg ROCM_VERSION=$ROCM_VERSION
-          --build-arg TORCH_PRE_RELEASE=$TORCH_PRE_RELEASE
-          --build-arg TORCH_ROCM_VERSION=$TORCH_ROCM_VERSION
-          --tag opt-bench-rocm:$TORCH_ROCM_VERSION
+          --build-arg TORCH_ROCM=${{ matrix.image.torch_rocm }}
+          --build-arg TORCH_PRE_RELEASE=${{ matrix.image.torch_pre_release }}
+          --build-arg ROCM_VERSION=${{ matrix.image.rocm_version }}
+          --tag opt-bench-rocm:${{ matrix.image.rocm_version }}
           .
-        env:
-          ROCM_VERSION: ${{ matrix.image.rocm_version }}
-          TORCH_ROCM_VERSION: ${{ matrix.image.torch_rocm_version }}
-          TORCH_PRE_RELEASE: ${{ matrix.image.torch_pre_release }}
 
       - name: Run tests
         run: docker run
@@ -63,7 +52,5 @@ jobs:
           --device /dev/dri/renderD128
           --device /dev/dri/renderD129
           --entrypoint /bin/bash
-          opt-bench-rocm:$TORCH_ROCM_VERSION
+          opt-bench-rocm:${{ matrix.image.rocm_version }}
           -c "pip install -e .[test,peft,diffusers] && pytest -k 'cuda and pytorch' -x"
-        env:
-          TORCH_ROCM_VERSION: ${{ matrix.image.torch_rocm_version }}

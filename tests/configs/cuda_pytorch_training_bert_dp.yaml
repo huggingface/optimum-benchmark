@@ -1,6 +1,6 @@
 defaults:
   - benchmark: training
-  - backend: onnxruntime
+  - backend: pytorch
   - _base_ # inherits from base config
   - _dp_ # inherits from dp config
   - _self_ # for hydra 1.1 compatibility

@@ -1,4 +1,4 @@
-# Model Parallel (MP) inference
+# Pipeline Parallelism (PP)
 experiment_name: ${device}_${backend.name}_${benchmark.name}_${task}_mp
 
 backend:

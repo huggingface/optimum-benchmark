@@ -1,4 +1,4 @@
-name: CPU Intel Neural Compressor Tests
+name: CLI Misc Tests
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  run_cpu_tests:
+  run_misc_tests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -23,11 +23,11 @@ jobs:
         with:
           python-version: 3.8
 
-      - name: Install Intel Neural Compressor CPU requirements
+      - name: Install requirements
         run: |
           pip install --upgrade pip
-          pip install -e .[test,neural-compressor]
+          pip install -e .[test]
 
-      - name: Run Intel Neural Compressor CPU tests
+      - name: Run tests
         run: |
-          pytest -k "cpu and neural-compressor"
+          pytest -k "not (cpu or cuda or rocm or tensorrt)"
