@@ -19,6 +19,7 @@ ARG UBUNTU_VERSION=22.04
 FROM nvidia/cuda:${CUDA_VERSION}-cudnn${CUDNN_VERSION}-devel-ubuntu${UBUNTU_VERSION}
 
 ARG TORCH_CUDA=cu121
+ARG TORCH_PRE_RELEASE=0
 
 # Ignore interactive questions during `docker build`
 ENV DEBIAN_FRONTEND noninteractive
@@ -55,4 +56,7 @@ WORKDIR /home/user
 RUN pip install --upgrade pip
 
 # Install PyTorch
-RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA}
+RUN if [ "${TORCH_PRE_RELEASE}" = "1" ]; \
+    then pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/${TORCH_CUDA} ; \
+    else pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
+    fi
