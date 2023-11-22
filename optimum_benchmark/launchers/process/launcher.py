@@ -39,7 +39,7 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         # Start the process
         process.start()
 
-        while QUEUE.empty():
+        while QUEUE.empty() and process.is_alive():
             pass
 
         # Wait for the process to finish
@@ -47,7 +47,6 @@ class ProcessLauncher(Launcher[ProcessConfig]):
 
         if process.exitcode is None:
             LOGGER.warning("Process did not terminate even after getting benchmark result")
-            process.terminate()
         elif process.exitcode != 0:
             raise RuntimeError(f"Process exited with code {process.exitcode}")
 
@@ -69,3 +68,5 @@ def target(fn, *args):
 
     # Put the result in the queue
     QUEUE.put(result)
+
+    return result
