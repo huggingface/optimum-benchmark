@@ -48,6 +48,7 @@ class MeasurementCallback(TrainerCallback):
         state.training_end = time.time_ns() * 1e-9
         state.overall_training_end = time.time_ns() * 1e-9
 
+        print(args.world_size)
         state.total_training_batch_size = args.train_batch_size * args.gradient_accumulation_steps * args.world_size
 
         # warmup metrics

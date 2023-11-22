@@ -1,10 +1,10 @@
 # Pipeline Parallelism (PP)
-experiment_name: ${device}_${backend.name}_${benchmark.name}_${task}_mp
-
-backend:
-  device_map: auto
-
 hydra:
   job:
     env_set:
       CUDA_VISIBLE_DEVICES: 0,1
+
+experiment_name: ${device}_${backend.name}_${benchmark.name}_${task}_mp
+
+backend:
+  device_map: auto

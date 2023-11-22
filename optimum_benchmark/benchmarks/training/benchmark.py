@@ -56,7 +56,7 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
     def get_results_df(self) -> DataFrame:
         return DataFrame(self.training_metrics, index=[0])
 
-    def save(self) -> None:
+    def save_to_csv(self) -> None:
         LOGGER.info("Saving training results")
         results_df = self.get_results_df()
         results_df.to_csv("training_results.csv", index=False)

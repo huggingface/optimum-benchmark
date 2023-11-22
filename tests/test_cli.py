@@ -21,7 +21,7 @@ MULTIRUNS = [
 
 
 @pytest.mark.parametrize("config_file", SINGLERUNS)
-def test_configs(config_file):
+def test_single_run(config_file):
     config_name = config_file.split(".")[0]
 
     result = subprocess.run(

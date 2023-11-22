@@ -16,13 +16,12 @@ hydra:
     # this is useful for saving outputs in a separate directory
     chdir: true
     env_set:
-      # by default, we only use one GPU
-      CUDA_VISIBLE_DEVICES: 0
-      CUDA_DEVICE_ORDER: PCI_BUS_ID
+      CUDA_VISIBLE_DEVICES: 0 # by default we only use one GPU
+      CUDA_DEVICE_ORDER: PCI_BUS_ID # laking we use the right GPU
+      OVERRIDE_BENCHMARKS: 1 # to not skip benchmarks
 
 backend:
   # we turn off isolation checks because tests run on shared resources
-  initial_isolation_check: false
-  continous_isolation_check: false
+  continuous_isolation: false
 
 experiment_name: ${device}_${backend.name}_${benchmark.name}_${task}

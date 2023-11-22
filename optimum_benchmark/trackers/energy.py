@@ -7,7 +7,7 @@ from ..import_utils import is_codecarbon_available
 if is_codecarbon_available():
     from codecarbon import EmissionsTracker, OfflineEmissionsTracker
 
-LOGGER = getLogger("latency_tracker")
+LOGGER = getLogger("energy")
 
 
 class EnergyTracker:
@@ -30,9 +30,12 @@ class EnergyTracker:
             LOGGER.info("Falling back to Offline Emissions Tracker")
             country_iso_code = os.environ.get("COUNTRY_ISO_CODE", None)
             if country_iso_code is None:
-                raise ValueError(
-                    "COUNTRY_ISO_CODE environment variable must be set when using Offline Emissions Tracker"
+                LOGGER.warning(
+                    "Offline Emissions Tracker requires COUNTRY_ISO_CODE to be set. "
+                    "We will set it to FRA but the carbon footprint will be inaccurate."
                 )
+                country_iso_code = "FRA"
+
             self.emission_tracker = OfflineEmissionsTracker(
                 log_level="error",
                 tracking_mode="process",

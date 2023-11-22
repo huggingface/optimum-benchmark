@@ -10,9 +10,9 @@ INSTALL_REQUIRES = [
     f"optimum>={OPTIMUM_VERSION}",  # backends, tasks and input generation
     "accelerate",  # distributed inference and no weights init
     # Hydra
-    "omegaconf",
-    "hydra-core",
     "hydra_colorlog",
+    "hydra-core",
+    "omegaconf",
     # Other
     "psutil",
     "pandas",
@@ -53,9 +53,10 @@ EXTRAS_REQUIRE = {
     # gpu backends
     "onnxruntime-gpu": [f"optimum[onnxruntime-gpu]>={OPTIMUM_VERSION}"],
     "onnxruntime-training": ["torch-ort", "onnxruntime-training"],
-    # server-like backends
-    "text-generation-inference": ["docker>=6.0.0"],
+    # docker-based backends
+    "text-generation-inference": ["docker"],
     # specific settings
+    "deepspeed": ["deepspeed"],
     "diffusers": ["diffusers"],
     "peft": ["peft"],
 }
@@ -69,8 +70,8 @@ setup(
     extras_require=EXTRAS_REQUIRE,
     entry_points={
         "console_scripts": [
-            "optimum-benchmark=optimum_benchmark.experiment:main",
-            "optimum-report=optimum_benchmark.report:main",
+            "optimum-benchmark=optimum_benchmark.cli:benchmark_cli",
+            "optimum-report=optimum_benchmark.cli:report_cli",
         ]
     },
 )

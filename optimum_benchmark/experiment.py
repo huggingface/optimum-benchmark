@@ -1,13 +1,9 @@
-import glob
-import logging.config
-import multiprocessing
 import os
 import platform
 from dataclasses import dataclass, field
 from logging import getLogger
 from typing import TYPE_CHECKING, Any, Dict, Type
 
-import hydra
 from hydra.core.config_store import ConfigStore
 from hydra.utils import get_class
 from omegaconf import DictConfig, OmegaConf
@@ -26,11 +22,15 @@ from .import_utils import (
     optimum_version,
     transformers_version,
 )
+from .launchers.process.config import ProcessConfig
+from .launchers.torchrun.config import TorchrunConfig
 from .task_utils import infer_task_from_model_name_or_path
 
 if TYPE_CHECKING:
     from .backends.base import Backend
     from .benchmarks.base import Benchmark
+    from .launchers.base import Launcher
+
 
 LOGGER = getLogger("experiment")
 
@@ -39,6 +39,9 @@ OmegaConf.register_new_resolver("infer_task", lambda model: infer_task_from_mode
 
 @dataclass
 class ExperimentConfig:
+    # LAUNCHER CONFIGURATION
+    launcher: Any  # https://github.com/facebookresearch/hydra/issues/1722#issuecomment-883568386
+
     # BACKEND CONFIGURATION
     backend: Any  # https://github.com/facebookresearch/hydra/issues/1722#issuecomment-883568386
 
@@ -46,17 +49,18 @@ class ExperimentConfig:
     benchmark: Any  # https://github.com/facebookresearch/hydra/issues/1722#issuecomment-883568386
 
     # EXPERIMENT CONFIGURATION
-    experiment_name: str
+    experiment_name: str = "optimum-benchmark"
     # Model name or path (bert-base-uncased, google/vit-base-patch16-224, ...)
-    model: str
-    # Device name or path (cpu, cuda, cuda:0, ...)
-    device: str
+    model: str = "bert-base-uncased"
     # Task name (text-classification, image-classification, ...)
     task: str = "${infer_task:${model}}"
+    # Device name or path (cpu, cuda, cuda:0, ...)
+    device: str = "cuda"
 
     # ADDITIONAL MODEL CONFIGURATION: Model revision, use_auth_token, trust_remote_code
     hub_kwargs: Dict = field(
         default_factory=lambda: {
+            "token": None,
             "revision": "main",
             "cache_dir": None,
             "force_download": False,
@@ -65,7 +69,6 @@ class ExperimentConfig:
     )
 
     # ENVIRONMENT CONFIGURATION
-    # TODO: add gpu info when available
     environment: Dict = field(
         default_factory=lambda: {
             "optimum_version": optimum_version(),
@@ -86,22 +89,31 @@ class ExperimentConfig:
     )
 
     def __post_init__(self) -> None:
-        # if the number of available GPUs is 1, then we have no problem
-        # torch and nvidia-smi will both index it as 0, otherwise:
+        if self.device.startswith("cuda:"):
+            raise ValueError(
+                f"Device was specified as {self.device} with a target index."
+                "We recommend using the main cuda device (`cuda`) and specifying the target index in `CUDA_VISIBLE_DEVICES`."
+            )
+
+        if self.device not in ["cuda", "cpu", "mps", "xla"]:
+            raise ValueError("`device` must be either `cuda`, `cpu`, `mps` or `xla`.")
+
         if "cuda" in self.device and len(self.environment["gpus"]) > 1:
-            CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", None)
-            if CUDA_VISIBLE_DEVICES is None:
-                raise ValueError(
-                    "Multiple GPUs detected but CUDA_VISIBLE_DEVICES is not set. "
-                    "This means that code might allocate resources from GPUs that are not intended to be used. "
-                    "Please set `CUDA_VISIBLE_DEVICES` to the desired GPU ids."
-                )
-            CUDA_DEVICE_ORDER = os.environ.get("CUDA_DEVICE_ORDER", None)
-            if CUDA_DEVICE_ORDER is None or CUDA_DEVICE_ORDER != "PCI_BUS_ID":
+            if os.environ.get("CUDA_VISIBLE_DEVICES", None) is None:
                 LOGGER.warning(
-                    "Multiple GPUs detected but CUDA_DEVICE_ORDER is not set. "
-                    "This means that code might allocate resources from the wrong GPUs even if CUDA_VISIBLE_DEVICES is set. "
-                    "Pytorch uses the `FASTEST_FIRST` order by default, which is not guaranteed to be the same as nvidia-smi. "
+                    "Multiple GPUs detected but CUDA_VISIBLE_DEVICES is not set. "
+                    "This means that code might allocate resources from the wrong GPUs. "
+                    "We recommend setting CUDA_VISIBLE_DEVICES to isolate the GPUs that will be used for this experiment. "
+                    "`CUDA_VISIBLE_DEVICES` will be set to `0` to ensure that only the first GPU is used."
+                    "If you want to use multiple GPUs, please set `CUDA_VISIBLE_DEVICES` to the desired GPU indices."
+                )
+                os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
+            if os.environ.get("CUDA_DEVICE_ORDER", None) != "PCI_BUS_ID":
+                LOGGER.warning(
+                    "Multiple GPUs detected but CUDA_DEVICE_ORDER is not set to `PCI_BUS_ID`. "
+                    "This means that code might allocate resources from the wrong GPUs even if `CUDA_VISIBLE_DEVICES` is set. "
+                    "For example pytorch uses the `FASTEST_FIRST` order by default, which is not guaranteed to be the same as nvidia-smi. "
                     "`CUDA_DEVICE_ORDER` will be set to `PCI_BUS_ID` to ensure that the GPUs are allocated in the same order as nvidia-smi. "
                 )
                 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -117,16 +129,13 @@ cs.store(group="backend", name="neural-compressor", node=INCConfig)
 cs.store(group="backend", name="text-generation-inference", node=TGIConfig)
 cs.store(group="benchmark", name="inference", node=InferenceConfig)
 cs.store(group="benchmark", name="training", node=TrainingConfig)
+cs.store(group="launcher", name="process", node=ProcessConfig)
+cs.store(group="launcher", name="torchrun", node=TorchrunConfig)
 
 
-def run(experiment: DictConfig) -> None:
-    # Configure logging
-    hydra_conf = OmegaConf.load(".hydra/hydra.yaml")
-    logging.config.dictConfig(OmegaConf.to_container(hydra_conf.hydra.job_logging, resolve=True))
-
-    # This is required to trigger __post_init__. Reference: https://github.com/omry/omegaconf/issues/377
+def run(experiment: "ExperimentConfig") -> "Benchmark":
+    # Instantiate the experiment config to trigger __post_init__
     experiment: ExperimentConfig = OmegaConf.to_object(experiment)
-    # Save the config
     OmegaConf.save(experiment, "hydra_config.yaml", resolve=True)
 
     # Allocate requested backend
@@ -161,8 +170,6 @@ def run(experiment: DictConfig) -> None:
     try:
         # Run the benchmark
         benchmark.run(backend)
-        # Save the benchmark results
-        benchmark.save()
         # Clean up the backend
         backend.clean()
     except Exception as e:
@@ -170,25 +177,23 @@ def run(experiment: DictConfig) -> None:
         backend.clean()
         raise e
 
-
-def run_isolated(experiment: DictConfig, start_method: str = "spawn") -> None:
-    # Set the multiprocessing start method if not already set
-    if multiprocessing.get_start_method(allow_none=True) != start_method:
-        multiprocessing.set_start_method(start_method)
-
-    # Execute the experiment in a child process
-    p = multiprocessing.Process(target=run, args=(experiment,))
-    p.start()
-    p.join()
-
-    # Exit with the same exit code as the child process
-    exit(p.exitcode)
+    return benchmark
 
 
-@hydra.main(version_base=None)
-def main(experiment: DictConfig) -> None:
-    if glob.glob("*.csv"):
-        LOGGER.warning("Skipping because results already exist in experiment directory.")
-        return
+def run_with_launcher(experiment: DictConfig) -> "Benchmark":
+    launcher_factory: Type["Launcher"] = get_class(experiment.launcher._target_)
+    launcher: "Launcher" = launcher_factory()
 
-    run_isolated(experiment, start_method="spawn")
+    try:
+        launcher.configure(experiment.launcher)
+    except Exception as e:
+        LOGGER.error("Error during launcher configuration: %s", e)
+        raise e
+
+    try:
+        benchmark: Benchmark = launcher.launch(run, experiment)
+    except Exception as e:
+        LOGGER.error("Error during experiment execution: %s", e)
+        raise e
+
+    return benchmark

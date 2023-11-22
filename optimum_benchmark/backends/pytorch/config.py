@@ -7,7 +7,6 @@ from omegaconf import OmegaConf
 from ...env_utils import is_rocm_system
 from ...import_utils import torch_version
 from ..config import BackendConfig
-from ..ddp_utils import DDP_CONFIG
 from ..peft_utils import PEFT_CONFIGS, PEFT_TASKS_TYPES
 
 OmegaConf.register_new_resolver("device_count", lambda: len(os.environ.get("CUDA_VISIBLE_DEVICES", "").split(",")))
@@ -64,9 +63,9 @@ class PyTorchConfig(BackendConfig):
     quantization_scheme: Optional[str] = None
     quantization_config: Dict[str, Any] = field(default_factory=dict)
 
-    # training options
-    use_ddp: bool = False
-    ddp_config: Dict[str, Any] = field(default_factory=dict)
+    # distributed options
+    deepspeed_inference: bool = False
+    deepspeed_inference_config: Dict[str, Any] = field(default_factory=dict)
 
     # peft options
     peft_strategy: Optional[str] = None
@@ -102,15 +101,6 @@ class PyTorchConfig(BackendConfig):
                 self.quantization_config = OmegaConf.to_object(
                     OmegaConf.merge(QUANTIZATION_CONFIG, self.quantization_config)
                 )
-
-        if self.use_ddp:
-            if CUDA_VISIBLE_DEVICES is None:
-                raise ValueError("`use_ddp` can only be used when CUDA_VISIBLE_DEVICES is set.")
-
-            self.ddp_config = OmegaConf.to_object(OmegaConf.merge(DDP_CONFIG, self.ddp_config))
-            # TODO: check if it's not possible to use DDP with multiple nodes
-            if self.ddp_config["max_nodes"] > 1 or self.ddp_config["min_nodes"] > 1:
-                raise NotImplementedError("Currently, PyTorch DDP benchmark only supports training on a single node.")
 
         if self.peft_strategy is not None:
             if self.peft_strategy not in PEFT_CONFIGS:

@@ -1,27 +1,23 @@
-import gc
-import logging
+import os
 from logging import getLogger
 from typing import TYPE_CHECKING, Any, Callable, Dict, List
 
 import torch
-from transformers.utils.fx import symbolic_trace
+
+if torch.distributed.is_available():
+    import torch.distributed
 
 if TYPE_CHECKING:
     from datasets import Dataset
     from transformers import TrainerCallback, TrainerState
     from transformers.utils import ModelOutput
 
-from ...profilers.fx_profiler import FXProfilingWrapper
 from ..base import Backend
-from ..ddp_utils import record_if_available, training_worker
 from .config import PyTorchConfig
 from .utils import DTYPES_MAPPING, randomize_weights, to_pow2
 
 # bachend logger
 LOGGER = getLogger("pytorch")
-
-# disable numexpr.utils logger
-getLogger("numexpr.utils").setLevel(logging.CRITICAL)
 
 
 class PyTorchBackend(Backend[PyTorchConfig]):
@@ -30,11 +26,17 @@ class PyTorchBackend(Backend[PyTorchConfig]):
     def __init__(self, model: str, task: str, device: str, hub_kwargs: Dict[str, Any]):
         super().__init__(model, task, device, hub_kwargs)
 
-        automodel = self.automodel_class.__name__
-        LOGGER.info(f"Inferred AutoModel class {automodel} for task {self.task} and model_type {self.model_type}")
-
     def configure(self, config: PyTorchConfig) -> None:
         super().configure(config)
+
+        automodel = self.automodel_class.__name__
+        LOGGER.info(f"\t+ Inferred AutoModel class {automodel} for task {self.task} and model_type {self.model_type}")
+
+        # for now we rely on this env variable to know if we're in a distributed setting
+        if os.environ.get("WORLD_SIZE", None) is not None:
+            LOGGER.info(f"\t+ Detected world size: {os.environ['WORLD_SIZE']}")
+            LOGGER.info(f"\t+ Setting device to its corresponding local rank: {os.environ['LOCAL_RANK']}")
+            torch.cuda.set_device(int(os.environ.get("LOCAL_RANK", None)))
 
         # Gradients options
         if self.config.disable_grad:
@@ -98,6 +100,14 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             peft_config = peft_config_class(**self.config.peft_config)
             self.pretrained_model = get_peft_model(self.pretrained_model, peft_config=peft_config)
 
+        if self.config.deepspeed_inference:
+            LOGGER.info("\t+ Using DeepSpeed Inference")
+            from deepspeed import init_inference
+
+            self.pretrained_model = init_inference(
+                self.pretrained_model, config=self.config.deepspeed_inference_config
+            )
+
     def load_model_from_pretrained(self) -> None:
         # iniline quantization or quantization config modification
         if self.config.quantization_scheme == "gptq":
@@ -144,28 +154,21 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 **self.automodel_kwargs,
                 **self.hub_kwargs,
             )
-        elif hasattr(self.pretrained_config, "quantization_config") or self.quantization_config is not None:
-            LOGGER.info("\t+ Loading model with low cpu memory usage")
+        else:
+            LOGGER.info(f"\t+ Loading model and moving it to device: {self.device}")
             self.pretrained_model = self.automodel_class.from_pretrained(
                 self.model,
-                low_cpu_memory_usage=True,
                 torch_dtype=self.torch_dtype,
                 **self.automodel_kwargs,
                 **self.hub_kwargs,
             ).to(self.device)
-        else:
-            LOGGER.info(f"\t+ Loading model directly on device: {self.device}")
-            with self.device:
-                self.pretrained_model = self.automodel_class.from_pretrained(
-                    self.model,
-                    torch_dtype=self.torch_dtype,
-                    **self.automodel_kwargs,
-                    **self.hub_kwargs,
-                )
 
     @property
     def automodel_kwargs(self) -> Dict[str, Any]:
         kwargs = {}
+
+        if hasattr(self.pretrained_config, "quantization_config") or self.quantization_config is not None:
+            kwargs["low_cpu_memory_usage"] = True
 
         if self.quantization_config is not None:
             kwargs["quantization_config"] = self.quantization_config
@@ -247,17 +250,10 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             and self.pretrained_config.quantization_config.desc_act
         ):
             LOGGER.info("\t+ Setting GPTQ's max_input_length")
-            from auto_gptq import exllama_set_max_input_length
+            from auto_gptq import exllama_set_max_input_length  # type: ignore
 
             max_input_length = to_pow2(input_shapes["batch_size"] * input_shapes["sequence_length"])
             self.pretrained_model = exllama_set_max_input_length(self.pretrained_model, max_input_length)
-
-    def prepare_for_profiling(self, input_names: List[str]) -> None:
-        LOGGER.info("Preparing model for profiling")
-        LOGGER.info("\t+ Symbolicly tracing model")
-        self.pretrained_model = symbolic_trace(self.pretrained_model, input_names=input_names)
-        LOGGER.info("\t+ Wrapping model with FXProfilingWrapper")
-        self.pretrained_model = FXProfilingWrapper(self.pretrained_model)
 
     def forward(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> "ModelOutput":
         if self.is_diffusion_pipeline():
@@ -277,50 +273,38 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         else:
             return super().generate(input, kwargs)
 
-    @record_if_available
     def train(
         self,
         training_dataset: "Dataset",
         training_arguments: Dict[str, Any],
         training_callbacks: List["TrainerCallback"],
         training_data_collator: Callable,
+        dataset_format: str = "torch",
     ) -> "TrainerState":
         from transformers import Trainer, TrainingArguments
 
-        worker_args = (
-            "torch",
-            LOGGER,
-            Trainer,
-            TrainingArguments,
-            self.config.use_ddp,
-            training_dataset,
-            training_arguments,
-            training_data_collator,
-            training_callbacks,
-            self.pretrained_model,
+        LOGGER.info(f"\t+ Setting dataset format to `{dataset_format}`.")
+        training_dataset.set_format(type=dataset_format, columns=list(training_dataset.features.keys()))
+        LOGGER.info("\t+ Wrapping training arguments with transformers.TrainingArguments")
+        training_arguments = TrainingArguments(**training_arguments)
+        LOGGER.info("\t+ Wrapping model with transformers.Trainer")
+        trainer = Trainer(
+            model=self.pretrained_model,
+            args=training_arguments,
+            callbacks=training_callbacks,
+            train_dataset=training_dataset,
+            data_collator=training_data_collator,
         )
-        if self.config.use_ddp:
-            from torch.distributed.launcher.api import LaunchConfig, elastic_launch
+        LOGGER.info("\t+ Starting training")
+        trainer.train()
+        LOGGER.info("\t+ Training finished successfully")
 
-            # For DDP, we log only the state of the first rank as transformers does.
-            # since the batch size used in measuring the throughput is the one of world size.
-            ddp_config = LaunchConfig(**self.config.ddp_config)
-            results = elastic_launch(config=ddp_config, entrypoint=training_worker)(worker_args)[0]
-        else:
-            # For DP, we can still use training_worker, simply not wrapped by the elastic_launch class.
-            results = training_worker(worker_args)
-
-        return results
+        return trainer.state
 
     def seed(self):
         super().seed()
 
-        if self.device.type == "cuda":
+        torch.manual_seed(self.config.seed)
+
+        if self.device == "cuda":
             torch.cuda.manual_seed_all(self.config.seed)
-
-    def clean(self) -> None:
-        super().clean()
-
-        if self.device.type == "cuda":
-            torch.cuda.empty_cache()
-            gc.collect()

@@ -10,7 +10,7 @@ import torch
 from ..env_utils import bytes_to_mega_bytes, is_nvidia_system, is_rocm_system
 from ..import_utils import is_py3nvml_available, is_pyrsmi_available
 
-LOGGER = getLogger("memory_tracker")
+LOGGER = getLogger("memory")
 
 
 class MemoryTracker:
