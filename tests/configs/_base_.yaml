@@ -1,5 +1,6 @@
 # This is a base config file that can potentially be used for all tests
 defaults:
+  - launcher: process # we use process launcher for tests
   - experiment # inheriting experiment schema
   - _self_ # for hydra 1.1 compatibility
   - override hydra/job_logging: colorlog # colorful logging

@@ -1,6 +1,6 @@
 # Distributed Data Parallel (DDP) training
 defaults:
-  - launcher: torchrun
+  - override launcher: torchrun # for DDP training, use torchrun launcher
 
 hydra:
   job:
