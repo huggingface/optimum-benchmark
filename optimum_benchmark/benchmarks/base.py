@@ -36,5 +36,5 @@ class Benchmark(Generic[BenchmarkConfigT], ABC):
     def get_results_df(self) -> None:
         raise NotImplementedError("Benchmark must implement get_results_df method")
 
-    def save_to_csv(self) -> None:
-        raise NotImplementedError("Benchmark must implement save_to_csv method")
+    def save(self) -> None:
+        raise NotImplementedError("Benchmark must implement save method")

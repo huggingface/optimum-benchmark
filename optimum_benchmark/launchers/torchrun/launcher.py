@@ -45,13 +45,11 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             log_dir=self.config.log_dir,
         )
 
-        benchmarks = launch_agent(
+        launch_agent(
             entrypoint=entrypoint,
             args=(worker, *worker_args),
             config=launch_config,
         )
-
-        return benchmarks[0]
 
 
 @record
@@ -66,4 +64,4 @@ def entrypoint(fn, *args):
     else:
         logging.disable(logging.CRITICAL)
 
-    return fn(*args)
+    fn(*args)

@@ -21,10 +21,7 @@ def benchmark_cli(experiment: DictConfig) -> None:
         )
         return
 
-    # Run the benchmark
-    benchmark = run_with_launcher(experiment)
-    # Save results
-    benchmark.save_to_csv()
+    run_with_launcher(experiment)
 
 
 def report_cli() -> None:

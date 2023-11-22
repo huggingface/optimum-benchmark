@@ -167,20 +167,18 @@ def run(experiment: "ExperimentConfig") -> "Benchmark":
         backend.clean()
         raise e
 
+    # Run the benchmark
     try:
-        # Run the benchmark
         benchmark.run(backend)
-        # Clean up the backend
+        benchmark.save()
         backend.clean()
     except Exception as e:
         LOGGER.error("Error during benchmark execution: %s", e)
         backend.clean()
         raise e
 
-    return benchmark
 
-
-def run_with_launcher(experiment: DictConfig) -> "Benchmark":
+def run_with_launcher(experiment: DictConfig):
     launcher_factory: Type["Launcher"] = get_class(experiment.launcher._target_)
     launcher: "Launcher" = launcher_factory()
 
@@ -191,9 +189,7 @@ def run_with_launcher(experiment: DictConfig) -> "Benchmark":
         raise e
 
     try:
-        benchmark: Benchmark = launcher.launch(run, experiment)
+        launcher.launch(run, experiment)
     except Exception as e:
         LOGGER.error("Error during experiment execution: %s", e)
         raise e
-
-    return benchmark

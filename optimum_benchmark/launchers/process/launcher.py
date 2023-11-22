@@ -1,7 +1,7 @@
 import logging.config
 import multiprocessing as mp
 from logging import getLogger
-from multiprocessing import Process, Queue
+from multiprocessing import Process
 from typing import Callable
 
 from omegaconf import OmegaConf
@@ -10,9 +10,6 @@ from ..base import Launcher
 from .config import ProcessConfig
 
 LOGGER = getLogger("process")
-
-# Create the Queue
-QUEUE = Queue()
 
 
 class ProcessLauncher(Launcher[ProcessConfig]):
@@ -33,27 +30,17 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         process = Process(
             target=target,
             args=(worker, *worker_args),
-            daemon=True,
         )
 
         # Start the process
         process.start()
-
-        while QUEUE.empty() and process.is_alive():
-            pass
-
-        # Wait for the process to finish
-        process.join(timeout=1)
+        # Wait to finish
+        process.join()
 
         if process.exitcode is None:
             LOGGER.warning("Process did not terminate even after getting benchmark result")
         elif process.exitcode != 0:
             raise RuntimeError(f"Process exited with code {process.exitcode}")
-
-        # Get the benchmark from the queue
-        benchmark = QUEUE.get()
-
-        return benchmark
 
 
 def target(fn, *args):
@@ -63,10 +50,4 @@ def target(fn, *args):
     hydra_conf = OmegaConf.load(".hydra/hydra.yaml")
     logging.config.dictConfig(OmegaConf.to_container(hydra_conf.hydra.job_logging, resolve=True))
 
-    # Run the function
-    result = fn(*args)
-
-    # Put the result in the queue
-    QUEUE.put(result)
-
-    return result
+    fn(*args)
