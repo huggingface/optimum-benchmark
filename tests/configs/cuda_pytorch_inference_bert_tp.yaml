@@ -5,6 +5,6 @@ defaults:
   - _tp_ # inherits from tensor parallelism config
   - _self_ # for hydra 1.1 compatibility
 
-model: hf-internal-testing/tiny-random-bert
+model: bert-base-uncased
 task: text-classification
 device: cuda

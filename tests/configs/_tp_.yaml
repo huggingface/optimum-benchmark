@@ -1,6 +1,6 @@
 # Tensor Parallelism (TP)
 defaults:
-  - launcher: torchrun # for TP training, use torchrun launcher
+  - override launcher: torchrun # for TP training, use torchrun launcher
 
 hydra:
   job:
