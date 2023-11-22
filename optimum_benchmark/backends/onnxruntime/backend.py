@@ -27,7 +27,6 @@ if TYPE_CHECKING:
     from datasets import Dataset
     from transformers import TrainerCallback, TrainerState
 
-from ...profilers.ort_profiler import ORTProfilingWrapper
 from ..base import Backend
 from ..optimum_utils import main_export
 from ..pytorch.utils import randomize_weights
@@ -324,11 +323,6 @@ class ORTBackend(Backend[ORTConfig]):
 
             self.load_ortmodel()
             self.tmpdir.cleanup()
-
-    def prepare_for_profiling(self, input_names: List[str]) -> None:
-        LOGGER.info("Preparing model for profiling")
-        LOGGER.info("\t+ Wrapping model inside profiler")
-        self.pretrained_model = ORTProfilingWrapper(self.pretrained_model)
 
     def train(
         self,
