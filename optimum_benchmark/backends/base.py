@@ -111,12 +111,12 @@ class Backend(Generic[BackendConfigT], ABC):
 
     def check_continuous_isolation(self) -> None:
         if self.device == "cuda":
-            self.isolation_thread = Process(
+            self.isolation_process = Process(
                 target=check_cuda_continuous_isolation,
                 kwargs={"isolated_pid": os.getpid()},
                 daemon=True,
             )
-            self.isolation_thread.start()
+            self.isolation_process.start()
 
     def seed(self) -> None:
         random.seed(self.config.seed)
@@ -158,10 +158,9 @@ class Backend(Generic[BackendConfigT], ABC):
         return model_shapes
 
     def delete_pretrained_model(self) -> None:
-        if hasattr(self, "pretrained_model"):
-            LOGGER.info("\t+ Deleting pretrained model")
-            del self.pretrained_model
-            gc.collect()
+        LOGGER.info("\t+ Deleting pretrained model")
+        del self.pretrained_model
+        gc.collect()
 
     def delete_model_cache(self) -> None:
         LOGGER.info("\t+ Deleting model cache")
@@ -169,9 +168,22 @@ class Backend(Generic[BackendConfigT], ABC):
         model_cache_path = os.path.join(os.path.expanduser("~/.cache/huggingface/hub"), model_cache_folder)
         shutil.rmtree(model_cache_path, ignore_errors=True)
 
+    def terminate_isolation_process(self) -> None:
+        LOGGER.info("\t+ Stopping continuous device(s) isolation")
+        self.isolation_process.kill()
+        self.isolation_process.join()
+        self.isolation_process.close()
+
     def clean(self) -> None:
         LOGGER.info(f"Cleaning {self.NAME} backend")
-        self.delete_pretrained_model()
+
+        if self.config.continuous_isolation:
+            self.terminate_isolation_process()
+
+        if hasattr(self, "pretrained_model"):
+            self.delete_pretrained_model()
 
         if self.config.delete_cache:
             self.delete_model_cache()
+
+        gc.collect()
