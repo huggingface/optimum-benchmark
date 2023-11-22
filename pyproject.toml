@@ -23,3 +23,4 @@ select = ["C", "E", "F", "I", "W"]
 [tool.pytest.ini_options]
 log_cli = true
 log_cli_level = "INFO"
+log_cli_format = "%(message)s"
