@@ -21,25 +21,16 @@ class MemoryTracker:
         self.max_memory_reserved: int = 0
         self.max_memory_allocated: int = 0
 
-        if self.device.type == "cuda":
-            CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", None)
-            if CUDA_VISIBLE_DEVICES is not None:
-                # if CUDA_VISIBLE_DEVICES is set, only the visible devices' memory is tracked
-                self.cuda_device_ids = list(map(int, CUDA_VISIBLE_DEVICES.split(",")))
-            else:
-                # if CUDA_VISIBLE_DEVICES is not set, only the main device's memory is tracked
-                # which is 0 because otherwise, the experiment would've raised an error asking for
-                # CUDA_VISIBLE_DEVICES to be set
-                self.cuda_device_ids = [self.device.index if self.device.index is not None else 0]
-
-            self.pytorch_device_ids = list(range(len(self.cuda_device_ids)))
+        if self.device == "cuda":
+            self.pytorch_device_ids = list(range(torch.cuda.device_count()))
+            self.cuda_device_ids = list(map(int, os.environ.get("CUDA_VISIBLE_DEVICES", None).split(",")))
 
             LOGGER.info(f"Tracking CUDA devices: {self.cuda_device_ids}")
             LOGGER.info(f"Tracking Pytorch CUDA devices: {self.pytorch_device_ids}")
 
     @contextmanager
     def track(self):
-        if self.device.type == "cuda":
+        if self.device == "cuda":
             yield from self._cuda_memory()
         else:
             yield from self._cpu_memory()
