@@ -1,7 +1,12 @@
 import os
 import subprocess
+from logging import getLogger
+from subprocess import PIPE, STDOUT, Popen
 
 import pytest
+
+LOGGER = getLogger("test")
+
 
 SINGLERUNS = [
     config
@@ -24,7 +29,7 @@ MULTIRUNS = [
 def test_single_run(config_file):
     config_name = config_file.split(".")[0]
 
-    result = subprocess.run(
+    process = Popen(
         [
             "optimum-benchmark",
             "--config-dir",
@@ -32,10 +37,17 @@ def test_single_run(config_file):
             "--config-name",
             config_name,
         ],
-        capture_output=True,
+        stdout=PIPE,
+        stderr=STDOUT,
     )
 
-    assert result.returncode == 0, result.stderr.decode("utf-8")
+    for line in iter(process.stdout.readline, b""):
+        if line is not None:
+            LOGGER.info(line.decode("utf-8").rstrip())
+
+    process.wait()
+
+    assert process.returncode == 0, process.stderr
 
 
 def test_exit_code():
@@ -48,7 +60,6 @@ def test_exit_code():
             "cpu_pytorch_inference_bert",
             "model=inexistent_model",
         ],
-        capture_output=True,
     )
 
     assert result.returncode == 1, result.stderr.decode("utf-8")

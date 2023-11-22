@@ -19,3 +19,7 @@ target-version = ['py37']
 [tool.ruff]
 ignore = ["E501", "C901"]
 select = ["C", "E", "F", "I", "W"]
+
+[tool.pytest.ini_options]
+log_cli = true
+log_cli_level = "INFO"
