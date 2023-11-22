@@ -102,7 +102,7 @@ class Backend(Generic[BackendConfigT], ABC):
 
         # isolation options
         if self.config.continuous_isolation:
-            LOGGER.info("\t+ Checking continuous device(s) isolation")
+            LOGGER.info("\t+ Running continuous isolation check")
             self.check_continuous_isolation()
 
         # clean up options
@@ -116,6 +116,7 @@ class Backend(Generic[BackendConfigT], ABC):
                 kwargs={"isolated_pid": os.getpid()},
                 daemon=True,
             )
+            LOGGER.info(f"\t+ Starting isolation process with PID {self.isolation_process.pid}")
             self.isolation_process.start()
 
     def seed(self) -> None:
@@ -169,8 +170,8 @@ class Backend(Generic[BackendConfigT], ABC):
         shutil.rmtree(model_cache_path, ignore_errors=True)
 
     def terminate_isolation_process(self) -> None:
-        LOGGER.info("\t+ Stopping continuous device(s) isolation")
-        self.isolation_process.kill()
+        LOGGER.info("\t+ Terminating isolation process")
+        self.isolation_process.terminate()
         self.isolation_process.join()
         self.isolation_process.close()
 

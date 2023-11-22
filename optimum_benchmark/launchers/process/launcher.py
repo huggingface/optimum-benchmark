@@ -32,15 +32,25 @@ class ProcessLauncher(Launcher[ProcessConfig]):
             args=(worker, *worker_args),
         )
 
-        # Start the process
+        LOGGER.info(f"\t+ Launching process with PID {process.pid}")
         process.start()
-        # Wait to finish
         process.join()
 
         if process.exitcode is None:
-            LOGGER.warning("Process did not terminate even after getting benchmark result")
-        elif process.exitcode != 0:
+            LOGGER.warning("\t+ Process did not exit even after getting benchmark result, terminating it.")
+            process.terminate()
+            process.join()
+
+            if process.exitcode is None:
+                LOGGER.error("\t+ Process did not exit even after being terminated, killing it.")
+                process.kill()
+                process.join()
+
+        if process.exitcode != 0:
             raise RuntimeError(f"Process exited with code {process.exitcode}")
+
+        LOGGER.info("\t+ Process exited successfully, closing it.")
+        process.close()
 
 
 def target(fn, *args):

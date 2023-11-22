@@ -1,3 +1,4 @@
+import gc
 import os
 from logging import getLogger
 from typing import TYPE_CHECKING, Any, Callable, Dict, List
@@ -154,14 +155,24 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 **self.automodel_kwargs,
                 **self.hub_kwargs,
             )
-        else:
-            LOGGER.info(f"\t+ Loading model and moving it to device: {self.device}")
+        elif hasattr(self.pretrained_config, "quantization_config") or self.quantization_config is not None:
+            LOGGER.info(f"\t+ Loading quantized model and moving it to device: {self.device}")
             self.pretrained_model = self.automodel_class.from_pretrained(
                 self.model,
                 torch_dtype=self.torch_dtype,
                 **self.automodel_kwargs,
                 **self.hub_kwargs,
             ).to(self.device)
+        else:
+            LOGGER.info(f"\t+ Loading model directly on device: {self.device}")
+            with torch.device(self.device):
+                # this is extremely faster than the above method
+                self.pretrained_model = self.automodel_class.from_pretrained(
+                    self.model,
+                    torch_dtype=self.torch_dtype,
+                    **self.automodel_kwargs,
+                    **self.hub_kwargs,
+                )
 
     @property
     def automodel_kwargs(self) -> Dict[str, Any]:
@@ -303,8 +314,15 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
     def seed(self):
         super().seed()
-
         torch.manual_seed(self.config.seed)
 
         if self.device == "cuda":
             torch.cuda.manual_seed_all(self.config.seed)
+
+    def clean(self) -> None:
+        super().clean()
+
+        if self.device == "cuda":
+            torch.cuda.empty_cache()
+
+        gc.collect()
