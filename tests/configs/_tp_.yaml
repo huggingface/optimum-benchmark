@@ -7,13 +7,14 @@ hydra:
     env_set:
       CUDA_VISIBLE_DEVICES: 0,1
 
-experiment_name: ${device}_${backend.name}_${benchmark.name}_${task}_tp
-
 launcher:
   nproc_per_node: 2
+  rdzv_endpoint: "localhost:29599"
 
 backend:
   deepspeed_inference: true
   deepspeed_inference_config:
     tensor_parallel:
       tp_size: 2
+
+experiment_name: ${device}_${backend.name}_${benchmark.name}_${task}_tp

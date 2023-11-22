@@ -7,10 +7,9 @@ hydra:
     env_set:
       CUDA_VISIBLE_DEVICES: 0,1
 
-experiment_name: ${device}_${backend.name}_${benchmark.name}_${task}_ddp
-
 launcher:
   nproc_per_node: 2
+  rdzv_endpoint: "localhost:29599"
 
 benchmark:
   dataset_shapes:
@@ -18,3 +17,5 @@ benchmark:
     sequence_length: 256
   training_arguments:
     per_device_train_batch_size: 8
+
+experiment_name: ${device}_${backend.name}_${benchmark.name}_${task}_ddp

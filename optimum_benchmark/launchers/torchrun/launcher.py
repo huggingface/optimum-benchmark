@@ -1,7 +1,7 @@
 import logging.config
 import os
 from logging import getLogger
-from typing import TYPE_CHECKING, Callable
+from typing import Callable
 
 from omegaconf import OmegaConf
 from torch.distributed.elastic.multiprocessing import Std
@@ -10,10 +10,6 @@ from torch.distributed.launcher.api import LaunchConfig, launch_agent
 
 from ..base import Launcher
 from .config import TorchrunConfig
-
-if TYPE_CHECKING:
-    from ...benchmarks.base import Benchmark
-
 
 LOGGER = getLogger("torchrun")
 
@@ -29,7 +25,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
 
         LOGGER.info(f"Running {self.config.nproc_per_node} processes per node")
 
-    def launch(self, worker: Callable, *worker_args) -> "Benchmark":
+    def launch(self, worker: Callable, *worker_args):
         launch_config = LaunchConfig(
             min_nodes=self.config.min_nodes,
             max_nodes=self.config.max_nodes,

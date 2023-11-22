@@ -1,10 +1,7 @@
 from abc import ABC
 from dataclasses import dataclass
 from logging import getLogger
-from typing import TYPE_CHECKING, Callable, ClassVar, Generic, TypeVar
-
-if TYPE_CHECKING:
-    from ..benchmarks.base import Benchmark
+from typing import Callable, ClassVar, Generic, TypeVar
 
 LOGGER = getLogger("launcher")
 
@@ -30,5 +27,5 @@ class Launcher(Generic[LauncherConfigT], ABC):
         LOGGER.info(f"Configuring {self.NAME} launcher")
         self.config = config
 
-    def launch(self, worker: Callable, *worker_args) -> "Benchmark":
+    def launch(self, worker: Callable, *worker_args):
         raise NotImplementedError("Launcher must implement launch method")

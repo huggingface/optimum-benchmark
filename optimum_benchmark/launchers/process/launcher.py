@@ -2,15 +2,12 @@ import logging.config
 import multiprocessing as mp
 from logging import getLogger
 from multiprocessing import Process, Queue
-from typing import TYPE_CHECKING, Callable
+from typing import Callable
 
 from omegaconf import OmegaConf
 
 from ..base import Launcher
 from .config import ProcessConfig
-
-if TYPE_CHECKING:
-    from ...benchmarks.base import Benchmark
 
 LOGGER = getLogger("process")
 
@@ -27,7 +24,7 @@ class ProcessLauncher(Launcher[ProcessConfig]):
     def configure(self, config: ProcessConfig) -> None:
         super().configure(config)
 
-    def launch(self, worker: Callable, *worker_args) -> "Benchmark":
+    def launch(self, worker: Callable, *worker_args):
         # Set the multiprocessing start method if not already set
         if mp.get_start_method(allow_none=True) is None:
             mp.set_start_method(self.config.start_method)
