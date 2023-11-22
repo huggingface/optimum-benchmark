@@ -1,10 +1,13 @@
 import os
 import signal
 import time
+from logging import getLogger
 from typing import Dict, List
 
 from ..env_utils import is_nvidia_system, is_rocm_system
 from ..import_utils import is_amdsmi_available, is_py3nvml_available, torch_version
+
+LOGGER = getLogger("isolation")
 
 
 def check_cuda_isolation(devices_ids: List[int], isolated_pid: int) -> None:
@@ -53,6 +56,12 @@ def check_cuda_isolation(devices_ids: List[int], isolated_pid: int) -> None:
                     info = smi.amdsmi_get_gpu_process_info(device_handle, process_handle)
                     if info["memory_usage"]["vram_mem"] == 4096:
                         continue
+                    if info["pid"] == os.getpid():
+                        continue
+                    if info["pid"] != isolated_pid:
+                        LOGGER.warning(f"Found unexpected process {info['pid']} on device {device_id}.")
+                        LOGGER.warning(f"Process info: {info}")
+
                     pids[device_id].add(info["pid"])
         else:
             devices_handles = smi.amdsmi_get_device_handles()
@@ -63,6 +72,9 @@ def check_cuda_isolation(devices_ids: List[int], isolated_pid: int) -> None:
                     info = smi.amdsmi_get_process_info(device_handle, process_handle)
                     if info["memory_usage"]["vram_mem"] == 4096:
                         continue
+                    if info["pid"] == os.getpid():
+                        continue
+
                     pids[device_id].add(info["pid"])
 
         smi.amdsmi_shut_down()
@@ -79,7 +91,7 @@ def check_cuda_isolation(devices_ids: List[int], isolated_pid: int) -> None:
         raise RuntimeError(error_message)
 
 
-def check_cuda_continuous_isolation(devices_ids: List[int], isolated_pid: int) -> None:
+def check_cuda_continuous_isolation(isolated_pid: int) -> None:
     """
     Kills the benchmark process if any other process is running on the specified CUDA devices.
     """
@@ -90,7 +102,8 @@ def check_cuda_continuous_isolation(devices_ids: List[int], isolated_pid: int) -
     while True:
         try:
             check_cuda_isolation(devices_ids, isolated_pid)
-            time.sleep(0.1)
-        except Exception as exception:
-            os.kill(isolated_pid, signal.SIGTERM)
-            raise exception
+            time.sleep(1)
+        except Exception as e:
+            LOGGER.error(f"Error while checking CUDA isolation: {e}")
+            os.kill(isolated_pid, signal.SIGTERM)  # graceful kill
+            exit(1)
