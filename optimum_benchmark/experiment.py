@@ -60,7 +60,7 @@ class ExperimentConfig:
     # ADDITIONAL MODEL CONFIGURATION: Model revision, use_auth_token, trust_remote_code
     hub_kwargs: Dict = field(
         default_factory=lambda: {
-            "token": None,
+            # "token": None,
             "revision": "main",
             "cache_dir": None,
             "force_download": False,
