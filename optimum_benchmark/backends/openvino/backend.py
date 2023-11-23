@@ -23,20 +23,22 @@ class OVBackend(Backend[OVConfig]):
         self.validate_device()
         self.validate_task()
 
-        self.ovmodel_class = get_class(TASKS_TO_OVMODEL[self.task])
-        ortmodel_name = self.ovmodel_class.__name__
-        LOGGER.info(f"Inferred OVModel class {ortmodel_name} for task {self.task} and model_type {self.model_type}")
-
     def validate_task(self) -> None:
         if self.task not in TASKS_TO_OVMODEL:
             raise NotImplementedError(f"OVBackend does not support task {self.task}")
 
     def validate_device(self) -> None:
-        if self.device.type != "cpu":
-            raise ValueError(f"OVBackend only supports CPU devices, got {self.device.type}")
+        if self.device != "cpu":
+            raise ValueError(f"OVBackend only supports CPU devices, got {self.device}")
 
     def configure(self, config: OVConfig) -> None:
         super().configure(config)
+
+        self.ovmodel_class = get_class(TASKS_TO_OVMODEL[self.task])
+        ortmodel_name = self.ovmodel_class.__name__
+        LOGGER.info(
+            f"\t+ Inferred OVModel class {ortmodel_name} for task {self.task} and model_type {self.model_type}"
+        )
 
         self.openvino_config = self.config.openvino_config.copy()
         if self.config.inter_op_num_threads is not None:

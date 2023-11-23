@@ -38,7 +38,8 @@ def extract_shapes_from_diffusion_pipeline(pipeline: "Pipeline") -> Dict[str, An
 
 
 def extract_shapes_from_model_artifacts(
-    config: "PretrainedConfig", processor: Optional["PreTrainedProcessor"] = None
+    config: "PretrainedConfig",
+    processor: Optional["PreTrainedProcessor"] = None,
 ) -> Dict[str, Any]:
     shapes = {}
     artifacts_dict = {}

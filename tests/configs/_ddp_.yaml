@@ -1,5 +1,14 @@
 # Distributed Data Parallel (DDP) training
-experiment_name: ${device}_${backend.name}_${benchmark.name}_${task}_ddp
+defaults:
+  - override launcher: torchrun # for DDP training, use torchrun launcher
+
+hydra:
+  job:
+    env_set:
+      CUDA_VISIBLE_DEVICES: 0,1
+
+launcher:
+  nproc_per_node: 2
 
 benchmark:
   dataset_shapes:
@@ -8,12 +17,4 @@ benchmark:
   training_arguments:
     per_device_train_batch_size: 8
 
-backend:
-  use_ddp: true
-  ddp_config:
-    rdzv_endpoint: 127.0.0.1:29509
-
-hydra:
-  job:
-    env_set:
-      CUDA_VISIBLE_DEVICES: 0,1
+experiment_name: ${device}_${backend.name}_${benchmark.name}_${task}_ddp

@@ -6,41 +6,10 @@ from omegaconf import OmegaConf
 
 from ...import_utils import onnxruntime_version
 from ..config import BackendConfig
-from ..ddp_utils import DDP_CONFIG
 from ..peft_utils import PEFT_CONFIGS, PEFT_TASKS_TYPES
 
-
-def infer_device_id(device: str) -> int:
-    """Infer the device id from the given device string."""
-    if "cuda" in device:
-        if ":" in device:
-            # either CUDA_VISIBLE_DEVICES is set or device is set to cuda:0
-            return int(device.split(":")[1])
-        else:
-            # device is set to cuda
-            return 0
-    elif device == "cpu":
-        return -1
-    else:
-        raise ValueError(f"Unknown device: {device}")
-
-
-DEVICE_PROVIDER_MAP = {
-    "cpu": "CPUExecutionProvider",
-    "cuda": "CUDAExecutionProvider",
-}
-
-OmegaConf.register_new_resolver("onnxruntime_version", onnxruntime_version)
-OmegaConf.register_new_resolver("infer_device_id", lambda device: infer_device_id(device))
-OmegaConf.register_new_resolver("infer_provider", lambda device: DEVICE_PROVIDER_MAP[device])
-OmegaConf.register_new_resolver("is_profiling", lambda benchmark_name: benchmark_name == "profiling")
-OmegaConf.register_new_resolver(
-    "io_bind", lambda provider: provider in ["CPUExecutionProvider", "CUDAExecutionProvider"]
-)
-
-
 OPTIMIZATION_CONFIG = {
-    "optimization_level": 1,  # 0, 1, 2, 99
+    "optimization_level": 1,
     "fp16": False,
     "enable_transformers_specific_optimizations": True,
     "enable_gelu_approximation": False,
@@ -100,6 +69,14 @@ TRT_PROVIDER_OPTIONS = {
     "trt_engine_cache_path": "tmp/trt_cache",
 }
 
+DEVICE_PROVIDER_MAP = {"cpu": "CPUExecutionProvider", "cuda": "CUDAExecutionProvider"}
+IO_BINDING_PROVIDERS = ["CPUExecutionProvider", "CUDAExecutionProvider"]
+
+OmegaConf.register_new_resolver("onnxruntime_version", onnxruntime_version)
+OmegaConf.register_new_resolver("infer_provider", lambda device: DEVICE_PROVIDER_MAP[device])
+OmegaConf.register_new_resolver("is_profiling", lambda benchmark_name: benchmark_name == "profiling")
+OmegaConf.register_new_resolver("ort_io_binding", lambda provider: provider in IO_BINDING_PROVIDERS)
+
 
 @dataclass
 class ORTConfig(BackendConfig):
@@ -117,10 +94,10 @@ class ORTConfig(BackendConfig):
 
     # provider options
     provider: str = "${infer_provider:${device}}"
-    provider_options: Dict[str, Any] = field(default_factory=lambda: {"device_id": "${infer_device_id:${device}}"})
+    provider_options: Dict[str, Any] = field(default_factory=lambda: {})
 
     # inference options
-    use_io_binding: bool = "${io_bind:${device}}"
+    use_io_binding: bool = "${ort_io_binding:${device}}"
     session_options: Dict[str, Any] = field(
         default_factory=lambda: {"enable_profiling": "${is_profiling:${benchmark.name}}"}
     )
@@ -148,17 +125,11 @@ class ORTConfig(BackendConfig):
     # ort-training is basically a different package so we might need to separate these two backends in the future
     use_inference_session: bool = "${is_inference:${benchmark.name}}"
 
-    # training options
-    use_ddp: bool = False
-    ddp_config: Dict[str, Any] = field(default_factory=dict)
-
     # peft options
     peft_strategy: Optional[str] = None
     peft_config: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
-        CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", None)
-
         if not self.no_weights and not self.export and self.torch_dtype is not None:
             raise NotImplementedError("Can't convert an exported model's weights to a different dtype.")
 
@@ -195,15 +166,6 @@ class ORTConfig(BackendConfig):
 
         if self.calibration:
             self.calibration_config = OmegaConf.to_object(OmegaConf.merge(CALIBRATION_CONFIG, self.calibration_config))
-
-        if self.use_ddp:
-            if CUDA_VISIBLE_DEVICES is None:
-                raise ValueError("`use_ddp` can only be used when CUDA_VISIBLE_DEVICES is set.")
-
-            self.ddp_config = OmegaConf.to_object(OmegaConf.merge(DDP_CONFIG, self.ddp_config))
-            # TODO: check if it's not possible to use DDP with multiple nodes
-            if self.ddp_config["max_nodes"] > 1 or self.ddp_config["min_nodes"] > 1:
-                raise NotImplementedError("Currently, PyTorch DDP benchmark only supports training on a single node.")
 
         if self.peft_strategy is not None:
             if self.peft_strategy not in PEFT_CONFIGS:

@@ -27,9 +27,7 @@ if TYPE_CHECKING:
     from datasets import Dataset
     from transformers import TrainerCallback, TrainerState
 
-from ...profilers.ort_profiler import ORTProfilingWrapper
 from ..base import Backend
-from ..ddp_utils import record_if_available, training_worker
 from ..optimum_utils import main_export
 from ..pytorch.utils import randomize_weights
 from .config import ORTConfig
@@ -46,17 +44,9 @@ class ORTBackend(Backend[ORTConfig]):
         self.validate_device()
         self.validate_task()
 
-        if self.is_diffusion_pipeline():
-            self.ortmodel_class = get_class(TASKS_TO_ORTSD[self.task])
-        elif self.task in TASKS_TO_ORTMODELS:
-            self.ortmodel_class = TASKS_TO_ORTMODELS[self.task]
-
-        ortmodel_name = self.ortmodel_class.__name__
-        LOGGER.info(f"Inferred ORTModel class {ortmodel_name} for task {self.task} and model_type {self.model_type}")
-
     def validate_device(self) -> None:
-        if self.device.type not in ["cpu", "cuda"]:
-            raise ValueError(f"ORTBackend only supports CPU and CUDA devices, got {self.device.type}")
+        if self.device not in ["cpu", "cuda"]:
+            raise ValueError(f"ORTBackend only supports CPU and CUDA devices, got {self.device}")
 
     def validate_task(self) -> None:
         if self.task not in TASKS_TO_ORTMODELS and self.task not in TASKS_TO_ORTSD:
@@ -64,6 +54,14 @@ class ORTBackend(Backend[ORTConfig]):
 
     def configure(self, config: ORTConfig) -> None:
         super().configure(config)
+
+        if self.is_diffusion_pipeline():
+            self.ortmodel_class = get_class(TASKS_TO_ORTSD[self.task])
+        elif self.task in TASKS_TO_ORTMODELS:
+            self.ortmodel_class = TASKS_TO_ORTMODELS[self.task]
+
+        ortmodel_name = self.ortmodel_class.__name__
+        LOGGER.info(f"Inferred ORTModel class {ortmodel_name} for task {self.task} and model_type {self.model_type}")
 
         # Process torch dtype
         self.torch_dtype = getattr(torch, self.config.torch_dtype) if self.config.torch_dtype is not None else None
@@ -149,12 +147,11 @@ class ORTBackend(Backend[ORTConfig]):
 
     def load_automodel_from_pretrained(self) -> None:
         LOGGER.info("\t+ Loading AutoModel from pretrained")
-        with self.device:
-            self.pretrained_model = self.automodel_class.from_pretrained(
-                self.model,
-                torch_dtype=self.torch_dtype,
-                **self.hub_kwargs,
-            )
+        self.pretrained_model = self.automodel_class.from_pretrained(
+            self.model,
+            torch_dtype=self.torch_dtype,
+            **self.hub_kwargs,
+        ).to(self.device)
 
     def load_ortmodel(self) -> None:
         LOGGER.info("\t+ Loading ORTModel")
@@ -189,7 +186,7 @@ class ORTBackend(Backend[ORTConfig]):
             self.model,
             output=exported_model_dir,
             task=self.export_task,
-            device=self.device.type,
+            device=self.device,
             fp16=self.torch_dtype == torch.float16,
             **self.hub_kwargs,
             # we hijack the model instantiation and use our random weights model
@@ -213,12 +210,12 @@ class ORTBackend(Backend[ORTConfig]):
         if self.config.auto_optimization is not None:
             optimization_config = AutoOptimizationConfig.with_optimization_level(
                 optimization_level=self.config.auto_optimization,
-                for_gpu=self.device.type == "cuda",
+                for_gpu=self.device == "cuda",
                 **self.config.auto_optimization_config,
             )
         elif self.config.optimization:
             optimization_config = OptimizationConfig(
-                optimize_for_gpu=self.device.type == "cuda", **self.config.optimization_config
+                optimize_for_gpu=self.device == "cuda", **self.config.optimization_config
             )
         LOGGER.info("\t+ Creating optimizer")
         optimizer = ORTOptimizer.from_pretrained(self.model, file_names=self.onnx_files_names)
@@ -277,7 +274,7 @@ class ORTBackend(Backend[ORTConfig]):
                     dataset=calibration_dataset,
                     calibration_config=calibration_config,
                     operators_to_quantize=quantization_config.operators_to_quantize,
-                    use_gpu=self.device.type == "cuda",
+                    use_gpu=self.device == "cuda",
                     # TODO: add support for these
                     batch_size=1,
                     use_external_data_format=False,
@@ -327,44 +324,31 @@ class ORTBackend(Backend[ORTConfig]):
             self.load_ortmodel()
             self.tmpdir.cleanup()
 
-    def prepare_for_profiling(self, input_names: List[str]) -> None:
-        LOGGER.info("Preparing model for profiling")
-        LOGGER.info("\t+ Wrapping model inside profiler")
-        self.pretrained_model = ORTProfilingWrapper(self.pretrained_model)
-
-    @record_if_available
     def train(
         self,
         training_dataset: "Dataset",
         training_arguments: Dict[str, Any],
         training_callbacks: List["TrainerCallback"],
         training_data_collator: Callable,
+        dataset_format: str = "torch",
     ) -> "TrainerState":
-        worker_args = (
-            "torch",
-            LOGGER,
-            ORTTrainer,
-            ORTTrainingArguments,
-            self.config.use_ddp,
-            training_dataset,
-            training_arguments,
-            training_data_collator,
-            training_callbacks,
-            self.pretrained_model,
+        LOGGER.info(f"\t+ Setting dataset format to `{dataset_format}`.")
+        training_dataset.set_format(type=dataset_format, columns=list(training_dataset.features.keys()))
+        LOGGER.info("\t+ Wrapping training arguments with optimum.onnxruntime.ORTTrainingArguments")
+        training_arguments = ORTTrainingArguments(**training_arguments)
+        LOGGER.info("\t+ Wrapping model with optimum.onnxruntime.ORTTrainer")
+        trainer = ORTTrainer(
+            model=self.pretrained_model,
+            args=training_arguments,
+            callbacks=training_callbacks,
+            train_dataset=training_dataset,
+            data_collator=training_data_collator,
         )
+        LOGGER.info("\t+ Starting training")
+        trainer.train()
+        LOGGER.info("\t+ Training finished successfully")
 
-        if self.config.use_ddp:
-            from torch.distributed.launcher.api import LaunchConfig, elastic_launch
-
-            # For DDP, we log only the state of the first rank as transformers does.
-            # since the batch size used in measuring the throughput is the one of world size.
-            ddp_config = LaunchConfig(**self.config.ddp_config)
-            results = elastic_launch(config=ddp_config, entrypoint=training_worker)(worker_args)[0]
-        else:
-            # For DP, we can still use training_worker, simply not wrapped by the elastic_launch class.
-            results = training_worker(worker_args)
-
-        return results
+        return trainer.state
 
     def clean(self) -> None:
         super().clean()
@@ -372,6 +356,7 @@ class ORTBackend(Backend[ORTConfig]):
         if hasattr(self, "tmpdir"):
             self.tmpdir.cleanup()
 
-        if self.device.type == "cuda":
+        if self.device == "cuda":
             torch.cuda.empty_cache()
-            gc.collect()
+
+        gc.collect()

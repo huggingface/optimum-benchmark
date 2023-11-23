@@ -33,5 +33,8 @@ class Benchmark(Generic[BenchmarkConfigT], ABC):
     def run(self, backend: "Backend") -> None:
         raise NotImplementedError("Benchmark must implement run method")
 
+    def get_results_df(self) -> None:
+        raise NotImplementedError("Benchmark must implement get_results_df method")
+
     def save(self) -> None:
         raise NotImplementedError("Benchmark must implement save method")

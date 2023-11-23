@@ -31,8 +31,8 @@ class INCBackend(Backend[INCConfig]):
         )
 
     def validate_device(self) -> None:
-        if self.device.type != "cpu":
-            raise ValueError(f"INCBackend only supports CPU devices, got {self.device.type}")
+        if self.device != "cpu":
+            raise ValueError(f"INCBackend only supports CPU devices, got {self.device}")
 
     def validate_task(self) -> None:
         if self.task not in TASKS_TO_INCMODELS:

@@ -28,6 +28,7 @@ def is_rocm_system():
 
 
 def bytes_to_mega_bytes(bytes: int) -> int:
+    # MB, not MiB
     # Reference: https://en.wikipedia.org/wiki/Byte#Multiple-byte_units
     return int(bytes * 1e-6)
 

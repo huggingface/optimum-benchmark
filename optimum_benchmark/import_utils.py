@@ -68,7 +68,7 @@ def onnxruntime_version():
             try:
                 return "ort-training:" + importlib.metadata.version("onnxruntime-training")
             except importlib.metadata.PackageNotFoundError:
-                return None
+                return "ort:unknown"
 
 
 def openvino_version():

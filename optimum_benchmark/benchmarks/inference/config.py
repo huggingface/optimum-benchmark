@@ -11,10 +11,8 @@ from ..base import BenchmarkConfig
 
 LOGGER = getLogger("inference")
 
-OmegaConf.register_new_resolver("can_generate", lambda task: task in TEXT_GENERATION_TASKS)
-OmegaConf.register_new_resolver("can_diffuse", lambda task: task in DIFFUSION_TASKS)
-
 GENERATE_CONFIG = {
+    "num_return_sequences": 1,
     "max_new_tokens": 100,
     "min_new_tokens": 100,
     "do_sample": False,
@@ -26,6 +24,9 @@ GENERATE_CONFIG = {
 DIFUSION_CONFIG = {
     "num_images_per_prompt": 1,
 }
+
+OmegaConf.register_new_resolver("can_generate", lambda task: task in TEXT_GENERATION_TASKS)
+OmegaConf.register_new_resolver("can_diffuse", lambda task: task in DIFFUSION_TASKS)
 
 
 @dataclass
@@ -81,6 +82,8 @@ class InferenceConfig(BenchmarkConfig):
             if self.new_tokens is not None:
                 self.generate_kwargs["max_new_tokens"] = self.new_tokens
                 self.generate_kwargs["min_new_tokens"] = self.new_tokens
+            else:
+                self.new_tokens = self.generate_kwargs["min_new_tokens"]
 
         if self.energy and os.environ.get("CUDA_VISIBLE_DEVICES", None) and is_rocm_system():
             raise ValueError("Energy measurement through codecarbon is not available on RoCm-powered devices.")
