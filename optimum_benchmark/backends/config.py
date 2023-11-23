@@ -18,6 +18,7 @@ class BackendConfig(ABC):
 
     # device isolation options
     continuous_isolation: bool = True
+    isolation_check_interval: Optional[int] = None
 
     # clean up options
     delete_cache: bool = False
@@ -30,6 +31,9 @@ class BackendConfig(ABC):
         if self.intra_op_num_threads is not None:
             if self.intra_op_num_threads == -1:
                 self.intra_op_num_threads = cpu_count()
+
+        if self.isolation_check_interval is None:
+            self.isolation_check_interval = 1  # 1 second
 
 
 BackendConfigT = TypeVar("BackendConfigT", bound=BackendConfig)

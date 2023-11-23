@@ -58,11 +58,22 @@ def check_cuda_isolation(isolated_devices: List[int], permitted_pids: List[int])
             devices_handles = amdsmi.amdsmi_get_processor_handles()
             for device_id in isolated_devices:
                 device_handle = devices_handles[device_id]
-                processes_handles = amdsmi.amdsmi_get_gpu_process_list(device_handle)
+                try:
+                    # these functions fail a lot for no apparent reason
+                    processes_handles = amdsmi.amdsmi_get_gpu_process_list(device_handle)
+                except Exception:
+                    continue
+
                 for process_handle in processes_handles:
-                    info = amdsmi.amdsmi_get_gpu_process_info(device_handle, process_handle)
+                    try:
+                        # these functions fail a lot for no apparent reason
+                        info = amdsmi.amdsmi_get_gpu_process_info(device_handle, process_handle)
+                    except Exception:
+                        continue
+
                     if info["memory_usage"]["vram_mem"] == 4096:
                         continue
+
                     if info["pid"] not in permitted_pids:
                         LOGGER.warning(f"Found unexpected process {info['pid']} on device {device_id}.")
                         LOGGER.warning(f"Process info: {info}")
@@ -72,11 +83,22 @@ def check_cuda_isolation(isolated_devices: List[int], permitted_pids: List[int])
             devices_handles = amdsmi.amdsmi_get_device_handles()
             for device_id in isolated_devices:
                 device_handle = devices_handles[device_id]
-                processes_handles = amdsmi.amdsmi_get_process_list(device_handle)
+                try:
+                    # these functions fail a lot for no apparent reason
+                    processes_handles = amdsmi.amdsmi_get_process_list(device_handle)
+                except Exception:
+                    continue
+
                 for process_handle in processes_handles:
-                    info = amdsmi.amdsmi_get_process_info(device_handle, process_handle)
+                    try:
+                        # these functions fail a lot for no apparent reason
+                        info = amdsmi.amdsmi_get_process_info(device_handle, process_handle)
+                    except Exception:
+                        continue
+
                     if info["memory_usage"]["vram_mem"] == 4096:
                         continue
+
                     if info["pid"] not in permitted_pids:
                         LOGGER.warning(f"Found unexpected process {info['pid']} on device {device_id}.")
                         LOGGER.warning(f"Process info: {info}")
@@ -99,7 +121,7 @@ def check_cuda_isolation(isolated_devices: List[int], permitted_pids: List[int])
         raise RuntimeError(error_message)
 
 
-def check_cuda_continuous_isolation(isolated_pid: int) -> None:
+def check_cuda_continuous_isolation(isolated_pid: int, isolation_check_interval: int = 1) -> None:
     """
     Kills the isolated process if any other process than the permitted ones is running on the specified CUDA devices.
     """
@@ -138,8 +160,10 @@ def check_cuda_continuous_isolation(isolated_pid: int) -> None:
     while True:
         try:
             check_cuda_isolation(isolated_devices, permitted_pids)
-            time.sleep(0.1)
-        except Exception as e:
-            LOGGER.error(f"Error while checking CUDA isolation: {e}")
+            time.sleep(isolation_check_interval)
+        except RuntimeError as e:
+            LOGGER.error("Error while checking CUDA isolation:")
+            LOGGER.error(e)
+            LOGGER.error("Killing isolated process...")
             os.kill(isolated_pid, signal.SIGTERM)  # graceful kill, will trigger the backend cleanup
-            exit(1)
+            e.with_traceback()

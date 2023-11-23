@@ -36,8 +36,13 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         # for now we rely on this env variable to know if we're in a distributed setting
         if os.environ.get("LOCAL_WORLD_SIZE", None) is not None:
             LOGGER.info(f"\t+ Detected local world size: {os.environ['LOCAL_WORLD_SIZE']}")
-            LOGGER.info(f"\t+ Setting device to its corresponding local rank: {os.environ['LOCAL_RANK']}")
-            torch.cuda.set_device(int(os.environ.get("LOCAL_RANK", None)))
+            local_rank = int(os.environ["LOCAL_RANK"])
+            LOGGER.info(f"\t+ Detected local rank: {local_rank}")
+            available_devices = list(map(int, os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(",")))
+            LOGGER.info(f"\t+ Detected available devices: {available_devices}")
+            default_device = available_devices[local_rank]
+            LOGGER.info(f"\t+ Setting default device to: {default_device}")
+            torch.cuda.set_device(default_device)
 
         # Gradients options
         if self.config.disable_grad:

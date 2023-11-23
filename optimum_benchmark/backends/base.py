@@ -113,7 +113,10 @@ class Backend(Generic[BackendConfigT], ABC):
         if self.device == "cuda":
             self.isolation_process = Process(
                 target=check_cuda_continuous_isolation,
-                kwargs={"isolated_pid": os.getpid()},
+                kwargs={
+                    "isolated_pid": os.getpid(),
+                    "isolation_check_interval": self.config.isolation_check_interval,
+                },
                 daemon=True,
             )
             self.isolation_process.start()
