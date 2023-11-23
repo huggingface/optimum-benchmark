@@ -34,8 +34,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         LOGGER.info(f"\t+ Inferred AutoModel class {automodel} for task {self.task} and model_type {self.model_type}")
 
         # for now we rely on this env variable to know if we're in a distributed setting
-        if os.environ.get("WORLD_SIZE", None) is not None:
-            LOGGER.info(f"\t+ Detected world size: {os.environ['WORLD_SIZE']}")
+        if os.environ.get("LOCAL_WORLD_SIZE", None) is not None:
+            LOGGER.info(f"\t+ Detected local world size: {os.environ['LOCAL_WORLD_SIZE']}")
             LOGGER.info(f"\t+ Setting device to its corresponding local rank: {os.environ['LOCAL_RANK']}")
             torch.cuda.set_device(int(os.environ.get("LOCAL_RANK", None)))
 

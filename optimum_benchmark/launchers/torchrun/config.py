@@ -1,7 +1,7 @@
 import os
 from dataclasses import dataclass, field
 from logging import getLogger
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from omegaconf import OmegaConf
 
@@ -9,7 +9,7 @@ from ..base import LauncherConfig
 
 LOGGER = getLogger("torchrun")
 
-OmegaConf.register_new_resolver("available_gpus", lambda: len(os.environ.get("CUDA_VISIBLE_DEVICES", "").split(",")))
+OmegaConf.register_new_resolver("available_gpus", lambda: len(os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(",")))
 
 
 @dataclass
@@ -17,23 +17,45 @@ class TorchrunConfig(LauncherConfig):
     name: str = "torchrun"
     _target_: str = "optimum_benchmark.launchers.torchrun.launcher.TorchrunLauncher"
 
+    # Minimum amount of nodes that the user function will be launched on.
+    # Elastic agent ensures that the user function start only when the min_nodes amount enters the rendezvous.
     min_nodes: int = 1
+    # Maximum amount of nodes that the user function will be launched on.
     max_nodes: int = 1
+    # On each node the elastic agent will launch this amount of workers that will execute user defined function.
     nproc_per_node: int = "${available_gpus:}"
+    # The unique run id of the job (if not passed a unique one will be deduced from run environment - flow workflow id in flow - or auto generated).
     run_id: str = "${experiment_name}"
+    # User defined role of the worker (defaults to "trainer").
     role: str = "benchmark_worker"
+    # The interval in seconds that is used by the elastic_agent as a period of monitoring workers.
     monitor_interval: int = 30
-    rdzv_endpoint: str = "localhost:29500"
+    # The endpoint of the rdzv sync. storage.
+    rdzv_endpoint: str = "localhost:29599"
+    # rdzv_backend to use in the rendezvous (zeus-adapter, etcd).
     rdzv_backend: str = "static"
-    rdzv_timeout: int = 900
-    rdzv_configs: Dict[str, Any] = field(default_factory=lambda: {"rank": 0, "timeout": 900})
+    # Key, value pair that specifies rendezvous specific configuration.
+    rdzv_configs: Dict[str, Any] = field(
+        default_factory=lambda: {
+            "rank": 0,
+            "timeout": 900,
+        }
+    )
+    # The maximum amount of restarts that elastic agent will conduct on workers before failure.
     max_restarts: int = 0
+    # The method is used by the elastic agent to start the workers (spawn, fork, forkserver).
     start_method: str = "spawn"
-    metrics_cfg: str = ""
-    redirects: str = "0"
-    tee: str = "0"
-    local_addr: str = ""
-    log_dir: str = ""
+    # base log directory where log files are written. If not set, one is created in a tmp dir but NOT removed on exit.
+    log_dir: Optional[str] = None
+    # configuration to redirect stdout/stderr to log files.
+    # Pass a single Std enum to redirect all workers, or a mapping keyed by local_rank to selectively redirect.
+    redirects: str = "0"  # Std.NONE
+    # configuration to "tee" stdout/stderr to console + log file.
+    tee: str = "0"  # Std.NONE
+    # configuration to initialize metrics.
+    metrics_cfg: Dict[str, str] = field(default_factory=lambda: {})
+    # address of the local node if any. If not set, a lookup on the local machine's FQDN will be performed.
+    local_addr: Optional[str] = None
 
     def __post_init__(self) -> None:
         if self.start_method not in ["spawn", "fork"]:

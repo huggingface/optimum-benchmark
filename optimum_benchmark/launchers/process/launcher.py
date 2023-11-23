@@ -32,8 +32,8 @@ class ProcessLauncher(Launcher[ProcessConfig]):
             args=(worker, *worker_args),
         )
 
-        LOGGER.info(f"\t+ Launching process with PID {process.pid}")
         process.start()
+        LOGGER.info(f"\t+ Launched experiment in process with PID {process.pid}.")
         process.join()
 
         if process.exitcode is None:

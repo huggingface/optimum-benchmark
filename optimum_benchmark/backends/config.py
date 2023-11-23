@@ -16,7 +16,7 @@ class BackendConfig(ABC):
     inter_op_num_threads: Optional[int] = None
     intra_op_num_threads: Optional[int] = None
 
-    # isolation options
+    # device isolation options
     continuous_isolation: bool = True
 
     # clean up options

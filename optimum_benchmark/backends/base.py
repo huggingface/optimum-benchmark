@@ -116,8 +116,8 @@ class Backend(Generic[BackendConfigT], ABC):
                 kwargs={"isolated_pid": os.getpid()},
                 daemon=True,
             )
-            LOGGER.info(f"\t+ Starting isolation process with PID {self.isolation_process.pid}")
             self.isolation_process.start()
+            LOGGER.info(f"\t+ Started isolation process with PID {self.isolation_process.pid}")
 
     def seed(self) -> None:
         random.seed(self.config.seed)
@@ -171,7 +171,7 @@ class Backend(Generic[BackendConfigT], ABC):
 
     def terminate_isolation_process(self) -> None:
         LOGGER.info("\t+ Terminating isolation process")
-        self.isolation_process.terminate()
+        self.isolation_process.kill()
         self.isolation_process.join()
         self.isolation_process.close()
 

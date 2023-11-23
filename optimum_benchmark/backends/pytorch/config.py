@@ -72,24 +72,17 @@ class PyTorchConfig(BackendConfig):
     peft_config: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
-        CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", None)
-
         if self.torch_compile:
             self.torch_compile_config = OmegaConf.to_object(OmegaConf.merge(COMPILE_CONFIG, self.torch_compile_config))
 
-        if self.device_map is not None:
-            assert CUDA_VISIBLE_DEVICES is not None, "`device_map` can only be used when CUDA_VISIBLE_DEVICES is set."
+        if self.device_map is not None and self.device_map not in DEVICE_MAPS:
+            raise ValueError(f"`device_map` must be one of {DEVICE_MAPS}. Got {self.device_map} instead.")
 
-            if self.device_map not in DEVICE_MAPS:
-                raise ValueError(f"`device_map` must be one of {DEVICE_MAPS}. Got {self.device_map} instead.")
+        if self.torch_dtype is not None and self.torch_dtype not in TORCH_DTYPES:
+            raise ValueError(f"`torch_dtype` must be one of {TORCH_DTYPES}. Got {self.torch_dtype} instead.")
 
-        if self.torch_dtype is not None:
-            if self.torch_dtype not in TORCH_DTYPES:
-                raise ValueError(f"`torch_dtype` must be one of {TORCH_DTYPES}. Got {self.torch_dtype} instead.")
-
-        if self.amp_dtype is not None:
-            if self.amp_dtype not in AMP_DTYPES:
-                raise ValueError(f"`amp_dtype` must be one of {AMP_DTYPES}. Got {self.amp_dtype} instead.")
+        if self.amp_dtype is not None and self.amp_dtype not in AMP_DTYPES:
+            raise ValueError(f"`amp_dtype` must be one of {AMP_DTYPES}. Got {self.amp_dtype} instead.")
 
         if self.quantization_scheme is not None:
             if self.quantization_scheme not in QUANTIZATION_CONFIGS:

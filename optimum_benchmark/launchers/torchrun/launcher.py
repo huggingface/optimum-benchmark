@@ -45,11 +45,15 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             log_dir=self.config.log_dir,
         )
 
+        LOGGER.info(f"\t+ Launching {self.config.nproc_per_node} processes with torchrun")
+
         launch_agent(
             entrypoint=entrypoint,
             args=(worker, *worker_args),
             config=launch_config,
         )
+
+        LOGGER.info("\t+ Torchrun exited successfully")
 
 
 @record
@@ -58,7 +62,7 @@ def entrypoint(fn, *args):
     This a pickalable function that correctly sets up the logging configuration
     """
 
-    if os.environ.get("LOCAL_RANK", None) == "0":
+    if os.environ.get("LOCAL_RANK", "0") == "0":
         hydra_conf = OmegaConf.load(".hydra/hydra.yaml")
         logging.config.dictConfig(OmegaConf.to_container(hydra_conf.hydra.job_logging, resolve=True))
     else:

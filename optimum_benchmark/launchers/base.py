@@ -23,7 +23,7 @@ class Launcher(Generic[LauncherConfigT], ABC):
     def __init__(self) -> None:
         pass
 
-    def configure(self, config: "LauncherConfigT") -> None:
+    def configure(self, config: LauncherConfigT) -> None:
         LOGGER.info(f"Configuring {self.NAME} launcher")
         self.config = config
 
