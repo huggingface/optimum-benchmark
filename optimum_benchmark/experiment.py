@@ -29,7 +29,7 @@ from .task_utils import infer_task_from_model_name_or_path
 if TYPE_CHECKING:
     from .backends.base import Backend
     from .benchmarks.base import Benchmark
-    from .launchers.base import Launcher
+    from .launchers.base import Launcher, LauncherConfig
 
 
 LOGGER = getLogger("experiment")
@@ -49,7 +49,7 @@ class ExperimentConfig:
     benchmark: Any  # https://github.com/facebookresearch/hydra/issues/1722#issuecomment-883568386
 
     # EXPERIMENT CONFIGURATION
-    experiment_name: str = "optimum-benchmark"
+    experiment_name: str = "experiment"
     # Model name or path (bert-base-uncased, google/vit-base-patch16-224, ...)
     model: str = "bert-base-uncased"
     # Task name (text-classification, image-classification, ...)
@@ -179,6 +179,13 @@ def run(experiment: "ExperimentConfig") -> "Benchmark":
 
 
 def run_with_launcher(experiment: DictConfig):
+    # instead of emplimenting hydra/launcher plugins, we handle the launcher ourselves
+    # thsi allows us to use spawn with torchrun, to gather outputs from parallel processes,
+    # and to handle errors gracefully
+
+    # Instantiate the experiment config to trigger __post_init__
+    experiment.launcher: LauncherConfig = OmegaConf.to_object(experiment.launcher)
+
     launcher_factory: Type["Launcher"] = get_class(experiment.launcher._target_)
     launcher: "Launcher" = launcher_factory()
 
