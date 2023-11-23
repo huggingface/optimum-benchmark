@@ -23,8 +23,6 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
     def configure(self, config: "TorchrunConfig") -> None:
         super().configure(config)
 
-        LOGGER.info(f"Running {self.config.nproc_per_node} processes per node")
-
     def launch(self, worker: Callable, *worker_args):
         launch_config = LaunchConfig(
             min_nodes=self.config.min_nodes,
@@ -62,7 +60,7 @@ def entrypoint(fn, *args):
     This a pickalable function that correctly sets up the logging configuration
     """
 
-    if os.environ.get("LOCAL_RANK", "0") == "0":
+    if os.environ["LOCAL_RANK"] == "0":
         hydra_conf = OmegaConf.load(".hydra/hydra.yaml")
         logging.config.dictConfig(OmegaConf.to_container(hydra_conf.hydra.job_logging, resolve=True))
     else:
