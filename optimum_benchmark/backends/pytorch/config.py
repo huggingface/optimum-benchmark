@@ -44,8 +44,8 @@ class PyTorchConfig(BackendConfig):
     torch_dtype: Optional[str] = None
 
     # inference options
-    disable_grad: bool = "${is_inference:${benchmark.name}}"
     eval_mode: bool = "${is_inference:${benchmark.name}}"
+    disable_grad: bool = "${is_inference:${benchmark.name}}"
 
     # automatic mixed precision options
     amp_autocast: bool = False
@@ -63,7 +63,8 @@ class PyTorchConfig(BackendConfig):
     quantization_scheme: Optional[str] = None
     quantization_config: Dict[str, Any] = field(default_factory=dict)
 
-    # distributed options
+    # distributed inference options
+    data_parallel: bool = False
     deepspeed_inference: bool = False
     deepspeed_inference_config: Dict[str, Any] = field(default_factory=dict)
 
