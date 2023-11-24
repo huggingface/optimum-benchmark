@@ -72,6 +72,8 @@ class PyTorchConfig(BackendConfig):
     peft_config: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
+        super().__post_init__()
+
         if self.torch_compile:
             self.torch_compile_config = OmegaConf.to_object(OmegaConf.merge(COMPILE_CONFIG, self.torch_compile_config))
 

@@ -130,6 +130,8 @@ class ORTConfig(BackendConfig):
     peft_config: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
+        super().__post_init__()
+
         if not self.no_weights and not self.export and self.torch_dtype is not None:
             raise NotImplementedError("Can't convert an exported model's weights to a different dtype.")
 

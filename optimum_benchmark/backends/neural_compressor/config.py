@@ -72,6 +72,8 @@ class INCConfig(BackendConfig):
     calibration_config: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
+        super().__post_init__()
+
         if self.ptq_quantization:
             self.ptq_quantization_config = OmegaConf.to_object(
                 OmegaConf.merge(PTQ_QUANTIZATION_CONFIG, self.ptq_quantization_config)
