@@ -1,6 +1,6 @@
 from abc import ABC
-from logging import getLogger
 from dataclasses import dataclass
+from logging import getLogger
 from typing import Optional, TypeVar
 
 from psutil import cpu_count

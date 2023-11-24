@@ -10,7 +10,7 @@ from transformers.utils import ModelOutput
 
 from ..base import Backend
 from .config import PyTorchConfig
-from .utils import DTYPES_MAPPING, randomize_weights, TransformersDataParallel
+from .utils import DTYPES_MAPPING, TransformersDataParallel, randomize_weights
 
 # bachend logger
 LOGGER = getLogger("pytorch")
@@ -108,7 +108,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.pretrained_model = init_inference(
                 self.pretrained_model,
                 config=self.config.deepspeed_inference_config,
-                dtype=self.torch_dtype,
+                dtype=self.torch_dtype if self.torch_dtype is not None else self.pretrained_model.dtype,
             )
 
         if self.config.data_parallel:
