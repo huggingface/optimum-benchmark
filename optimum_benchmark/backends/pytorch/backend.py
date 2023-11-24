@@ -1,21 +1,16 @@
 import gc
 import os
 from logging import getLogger
-from typing import TYPE_CHECKING, Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List
 
 import torch
-
-if torch.distributed.is_available():
-    import torch.distributed
-
-if TYPE_CHECKING:
-    from datasets import Dataset
-    from transformers import TrainerCallback, TrainerState
-    from transformers.utils import ModelOutput
+from datasets import Dataset
+from transformers import TrainerCallback, TrainerState
+from transformers.utils import ModelOutput
 
 from ..base import Backend
 from .config import PyTorchConfig
-from .utils import DTYPES_MAPPING, randomize_weights, to_pow2
+from .utils import DTYPES_MAPPING, randomize_weights, TransformersDataParallel
 
 # bachend logger
 LOGGER = getLogger("pytorch")
@@ -107,12 +102,18 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.pretrained_model = get_peft_model(self.pretrained_model, peft_config=peft_config)
 
         if self.config.deepspeed_inference:
-            LOGGER.info("\t+ Using DeepSpeed Inference")
+            LOGGER.info("\t+ Using DeepSpeed-Inference")
             from deepspeed import init_inference
 
             self.pretrained_model = init_inference(
-                self.pretrained_model, config=self.config.deepspeed_inference_config
+                self.pretrained_model,
+                config=self.config.deepspeed_inference_config,
+                dtype=self.torch_dtype,
             )
+
+        if self.config.data_parallel:
+            LOGGER.info("\t+ Using TransformersDataParallel")
+            self.pretrained_model = TransformersDataParallel(self.pretrained_model)
 
     def load_model_from_pretrained(self) -> None:
         # iniline quantization or quantization config modification
@@ -160,7 +161,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 **self.automodel_kwargs,
                 **self.hub_kwargs,
             )
-        elif hasattr(self.pretrained_config, "quantization_config") or self.quantization_config is not None:
+        elif self.is_quantized():
             LOGGER.info(f"\t+ Loading quantized model and moving it to device: {self.device}")
             self.pretrained_model = self.automodel_class.from_pretrained(
                 self.model,
@@ -179,12 +180,24 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                     **self.hub_kwargs,
                 )
 
+    def is_quantized(self) -> bool:
+        return self.config.quantization_scheme is not None or hasattr(self.pretrained_config, "quantization_config")
+
+    def is_gptq_model(self) -> bool:
+        return self.config.quantization_scheme == "gptq" or (
+            hasattr(self.pretrained_config, "quantization_config")
+            and self.pretrained_config.quantization_config.get("quant_method", None) == "gptq"
+        )
+
     @property
     def automodel_kwargs(self) -> Dict[str, Any]:
         kwargs = {}
 
-        if hasattr(self.pretrained_config, "quantization_config") or self.quantization_config is not None:
-            kwargs["low_cpu_mem_usage"] = True
+        if self.is_quantized():
+            if self.is_gptq_model():
+                kwargs["device_map"] = torch.device(self.device)
+            else:
+                kwargs["low_cpu_mem_usage"] = True
 
         if self.quantization_config is not None:
             kwargs["quantization_config"] = self.quantization_config

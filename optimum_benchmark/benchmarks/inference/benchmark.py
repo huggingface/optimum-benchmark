@@ -286,6 +286,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         return DataFrame(results_dict, index=[0])
 
     def save(self) -> None:
-        LOGGER.info("Saving results")
-        results_df = self.get_results_df()
-        results_df.to_csv("inference_results.csv", index=False)
+        if os.environ.get("LOCAL_RANK", "0") == "0":
+            LOGGER.info("Saving results")
+            results_df = self.get_results_df()
+            results_df.to_csv("inference_results.csv", index=False)
