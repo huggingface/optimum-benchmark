@@ -1,5 +1,6 @@
 defaults:
   - backend: pytorch # default backend
+  - launcher: process # isolated launcher
   - benchmark: inference # default benchmark
   - experiment # inheriting from experiment config
   - _self_ # for hydra 1.1 compatibility
@@ -8,31 +9,31 @@ defaults:
 
 hydra:
   run:
-    dir: experiments/${experiment_name}
+    dir: experiments/${oc.env:HOSTNAME}/single_device/${model}/${experiment_name}
   sweep:
-    dir: experiments/${experiment_name}
+    dir: experiments/${oc.env:HOSTNAME}/single_device/${model}/${experiment_name}
   job:
     chdir: true
     env_set:
-      CUDA_VISIBLE_DEVICES: 0
+      CUDA_VISIBLE_DEVICES: 2
       CUDA_DEVICE_ORDER: PCI_BUS_ID
   sweeper:
     params:
-      benchmark.input_shapes.batch_size: 1,2,4,8,16
+      benchmark.input_shapes.batch_size: 1,2,4,8,16,32,64,128
 
-experiment_name: fp16-batch_size(${benchmark.input_shapes.batch_size})-sequence_length(${benchmark.input_shapes.sequence_length})-new_tokens(${benchmark.new_tokens})
-model: meta-llama/Llama-2-7b-hf
-device: cuda:0
+experiment_name: ???
+device: cuda
+model: ???
 
 backend:
-  initial_isolation_check: false
-  continous_isolation_check: false
+  continuous_isolation: true
+  isolation_check_interval: 0.1
   torch_dtype: float16
+  no_weights: true
 
 benchmark:
   memory: true
   warmup_runs: 10
-
   new_tokens: 512
   input_shapes:
     sequence_length: 256

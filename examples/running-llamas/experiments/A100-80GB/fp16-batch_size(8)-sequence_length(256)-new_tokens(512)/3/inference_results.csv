@@ -1,2 +1,0 @@
-forward.latency(s),forward.throughput(samples/s),forward.max_memory_used(MB),forward.max_memory_allocated(MB),forward.max_memory_reserved(MB),generate.latency(s),generate.throughput(tokens/s),generate.max_memory_used(MB),generate.max_memory_allocated(MB),generate.max_memory_reserved(MB)
-0.204,39.2,17087,15037,15701,14.1,290.0,64889,19997,63503
