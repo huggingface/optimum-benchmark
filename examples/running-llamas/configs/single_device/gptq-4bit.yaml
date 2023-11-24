@@ -1,6 +1,0 @@
-defaults:
-  - _base_
-  - _self_
-
-experiment_name: gptq-4bit
-model: TheBloke/Llama-2-7B-GPTQ

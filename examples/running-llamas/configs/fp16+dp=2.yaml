@@ -1,0 +1,8 @@
+defaults:
+  - _base_
+  - _self_
+
+experiment_name: fp16+dp=2
+
+backend:
+  data_parallel: true

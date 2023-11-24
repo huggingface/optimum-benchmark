@@ -9,17 +9,18 @@ defaults:
 
 hydra:
   run:
-    dir: experiments/${oc.env:HOSTNAME}/single_device/${model}/${experiment_name}
+    dir: experiments/${oc.env:HOSTNAME}/${model}/${experiment_name}
   sweep:
-    dir: experiments/${oc.env:HOSTNAME}/single_device/${model}/${experiment_name}
+    dir: experiments/${oc.env:HOSTNAME}/${model}/${experiment_name}
   job:
     chdir: true
     env_set:
-      CUDA_VISIBLE_DEVICES: 2
+      CUDA_VISIBLE_DEVICES: 0
       CUDA_DEVICE_ORDER: PCI_BUS_ID
   sweeper:
     params:
       benchmark.input_shapes.batch_size: 1,2,4,8,16,32,64,128
+      model: NousResearch/Llama-2-7b-hf,NousResearch/Llama-2-13b-hf
 
 experiment_name: ???
 device: cuda
@@ -27,7 +28,6 @@ model: ???
 
 backend:
   continuous_isolation: true
-  isolation_check_interval: 0.1
   torch_dtype: float16
   no_weights: true
 

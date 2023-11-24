@@ -1,0 +1,17 @@
+defaults:
+  - _base_
+  - _self_
+  - override launcher: torchrun
+
+hydra:
+  job:
+    env_set:
+      CUDA_VISIBLE_DEVICES: 0,1
+
+experiment_name: fp16+tp=2
+
+backend:
+  deepspeed_inference: true
+  deepspeed_inference_config:
+    tensor_parallel:
+      tp_size: 2
