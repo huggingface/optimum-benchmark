@@ -23,8 +23,8 @@ hydra:
       model: NousResearch/Llama-2-7b-hf,NousResearch/Llama-2-13b-hf
 
 experiment_name: ???
+model: llama-2
 device: cuda
-model: ???
 
 backend:
   continuous_isolation: true
