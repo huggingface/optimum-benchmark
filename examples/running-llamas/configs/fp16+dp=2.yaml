@@ -2,6 +2,11 @@ defaults:
   - _base_
   - _self_
 
+hydra:
+  job:
+    env_set:
+      CUDA_VISIBLE_DEVICES: 0,1
+
 experiment_name: fp16+dp=2
 
 backend:
