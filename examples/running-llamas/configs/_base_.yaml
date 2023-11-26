@@ -27,6 +27,7 @@ model: llama-2
 device: cuda
 
 backend:
+  no_weights: true
   torch_dtype: float16
   continuous_isolation: true
 

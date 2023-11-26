@@ -282,8 +282,8 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             results_dict["generate.latency(s)"] = self.generate_latency
             results_dict["generate.throughput(tokens/s)"] = self.generate_throughput
 
-            results_dict["generate.decode_latency(s)"] = self.decode_latency
-            results_dict["generate.decode_throughput(tokens/s)"] = self.decode_throughput
+            results_dict["decode.latency(s)"] = self.decode_latency
+            results_dict["decode.throughput(tokens/s)"] = self.decode_throughput
 
             if self.config.memory:
                 results_dict["generate.peak_memory(MB)"] = self.generate_max_memory_used
