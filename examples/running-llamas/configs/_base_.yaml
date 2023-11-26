@@ -27,13 +27,13 @@ model: llama-2
 device: cuda
 
 backend:
-  continuous_isolation: true
   torch_dtype: float16
-  no_weights: true
+  continuous_isolation: true
 
 benchmark:
   memory: true
   warmup_runs: 10
   new_tokens: 512
   input_shapes:
+    batch_size: null
     sequence_length: 256
