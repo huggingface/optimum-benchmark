@@ -12,6 +12,7 @@ hydra:
     dir: experiments/${oc.env:HOSTNAME}/${model}/${experiment_name}
   sweep:
     dir: experiments/${oc.env:HOSTNAME}/${model}/${experiment_name}
+    subdir: ${benchmark.input_shapes.batch_size}
   job:
     chdir: true
     env_set:
