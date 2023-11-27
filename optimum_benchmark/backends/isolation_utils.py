@@ -160,7 +160,7 @@ def check_cuda_continuous_isolation(isolated_pid: int, isolation_check_interval:
             f"Continuously checking only process(es) {permitted_pids} are running on device(s) {isolated_devices}"
         )
     else:
-        return
+        exit(0)
 
     while True:
         try:
@@ -169,8 +169,9 @@ def check_cuda_continuous_isolation(isolated_pid: int, isolation_check_interval:
         except RuntimeError as e:
             LOGGER.error("Error while checking CUDA isolation:")
             LOGGER.error(e)
-            LOGGER.error("Killing isolated process...")
+
             for isolated_pid in all_isolated_pids:
+                LOGGER.error(f"Killing isolated process {isolated_pid}...")
                 os.kill(isolated_pid, signal.SIGTERM)
             LOGGER.error("Exiting isolation process...")
             raise e
