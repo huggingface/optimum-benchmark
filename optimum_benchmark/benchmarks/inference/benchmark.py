@@ -216,7 +216,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
     @property
     @three_significant_digits_wrapper
     def forward_throughput(self) -> float:
-        return self.config.input_shapes["batch_size"] / self.forward_latency
+        return self.config.input_shapes["batch_size"] * int(os.environ.get("WORLD_SIZE", "1")) / self.forward_latency
 
     ## Generation pass metrics
     @property
@@ -231,6 +231,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             self.config.generate_kwargs["min_new_tokens"]
             * self.config.generate_kwargs["num_return_sequences"]
             * self.config.input_shapes["batch_size"]
+            * int(os.environ.get("WORLD_SIZE", "1"))
             / self.generate_latency
         )
 
@@ -246,6 +247,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             (self.config.generate_kwargs["min_new_tokens"] - 1)
             * self.config.generate_kwargs["num_return_sequences"]
             * self.config.input_shapes["batch_size"]
+            * int(os.environ.get("WORLD_SIZE", "1"))
             / self.decode_latency
         )
 
@@ -256,6 +258,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         return (
             self.config.input_shapes["batch_size"]
             * self.config.forward_kwargs["num_images_per_prompt"]
+            * int(os.environ.get("WORLD_SIZE", "1"))
             / self.forward_latency
         )
 
@@ -298,7 +301,8 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         return DataFrame(results_dict, index=[0])
 
     def save(self) -> None:
-        if os.environ.get("LOCAL_RANK", "0") == "0":
+        # TODO: handle this by merging the results of all processes instead of only saving the results of the main process
+        if os.environ.get("RANK", "0") == "0":
             LOGGER.info("Saving results")
             results_df = self.get_results_df()
             results_df.to_csv("inference_results.csv", index=False)
