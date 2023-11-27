@@ -155,7 +155,7 @@ def check_cuda_continuous_isolation(isolated_pid: int, isolation_check_interval:
 
     # TODO: make backend only run one process per local world
     if os.environ.get("LOCAL_RANK", "0") == "0":
-        isolated_devices = set([int(device) for device in os.environ["CUDA_VISIBLE_DEVICES"].split(",")])
+        isolated_devices = {int(device) for device in os.environ["CUDA_VISIBLE_DEVICES"].split(",")}
         LOGGER.info(
             f"Continuously checking only process(es) {permitted_pids} are running on device(s) {isolated_devices}"
         )

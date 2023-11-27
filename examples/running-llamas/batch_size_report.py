@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import List
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 from flatten_dict import flatten
 from omegaconf import OmegaConf
@@ -76,9 +77,6 @@ def get_short_report(full_report, report_folder: str = "artifacts"):
     short_report.to_csv(f"{report_folder}/short_report.csv")
 
     return short_report
-
-
-import numpy as np
 
 
 def get_plots(short_report, report_folder, batch="effective", plot="bar"):
@@ -203,8 +201,8 @@ def generate_report():
         report_folder=report_folder,
     )
     for plot in ["bar", "line"]:
-        for batch in ["effective", "per-process"]:
-            figs = get_plots(
+        for batch in ["effective", "per_process"]:
+            _ = get_plots(
                 short_report,
                 report_folder,
                 batch=batch,
