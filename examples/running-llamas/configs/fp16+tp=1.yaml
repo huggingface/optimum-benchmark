@@ -1,0 +1,12 @@
+defaults:
+  - _base_
+  - _self_
+  - override launcher: torchrun
+
+experiment_name: fp16+tp=1
+
+backend:
+  deepspeed_inference: true
+  deepspeed_inference_config:
+    tensor_parallel:
+      tp_size: 1
