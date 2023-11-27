@@ -1,0 +1,10 @@
+defaults:
+  - _base_
+  - _self_
+
+experiment_name: fp16+gptq
+
+backend:
+  quantization_scheme: gptq
+  quantization_config:
+    bits: 4

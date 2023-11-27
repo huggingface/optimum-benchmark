@@ -18,7 +18,7 @@ AMP_DTYPES = ["bfloat16", "float16"]
 TORCH_DTYPES = ["bfloat16", "float16", "float32", "auto"]
 
 QUANTIZATION_CONFIGS = {
-    "gptq": {"dataset": ["lorem ipsum dolor sit amet consectetur"]},
+    "gptq": {},
     "bnb": {"llm_int8_threshold": 0.0},
     "awq": {},
 }
