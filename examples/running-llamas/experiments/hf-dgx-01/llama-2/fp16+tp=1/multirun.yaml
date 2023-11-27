@@ -121,16 +121,14 @@ hydra:
   overrides:
     hydra:
     - hydra.mode=MULTIRUN
-    task:
-    - benchmark.input_shapes.batch_size=2
-    - model=NousResearch/Llama-2-7b-hf
+    task: []
   job:
     name: cli
     chdir: true
-    override_dirname: benchmark.input_shapes.batch_size=2,model=NousResearch/Llama-2-7b-hf
-    id: '2'
-    num: 2
-    config_name: fp16
+    override_dirname: ''
+    id: ???
+    num: ???
+    config_name: fp16+tp=1
     env_set:
       CUDA_VISIBLE_DEVICES: '0'
       CUDA_DEVICE_ORDER: PCI_BUS_ID
@@ -160,10 +158,10 @@ hydra:
     - path: ''
       schema: structured
       provider: schema
-    output_dir: /workspace/optimum-benchmark/examples/running-llamas/experiments/hf-dgx-01/NousResearch/Llama-2-7b-hf/fp16/2
+    output_dir: ???
     choices:
       benchmark: inference
-      launcher: process
+      launcher: torchrun
       backend: pytorch
       hydra/env: default
       hydra/callbacks: null
@@ -175,3 +173,98 @@ hydra:
       hydra/launcher: basic
       hydra/output: default
   verbose: false
+backend:
+  name: pytorch
+  version: ${pytorch_version:}
+  _target_: optimum_benchmark.backends.pytorch.backend.PyTorchBackend
+  seed: 42
+  inter_op_num_threads: null
+  intra_op_num_threads: null
+  continuous_isolation: true
+  isolation_check_interval: null
+  delete_cache: false
+  no_weights: true
+  device_map: null
+  torch_dtype: float16
+  eval_mode: ${is_inference:${benchmark.name}}
+  disable_grad: ${is_inference:${benchmark.name}}
+  amp_autocast: false
+  amp_dtype: null
+  torch_compile: false
+  torch_compile_config: {}
+  to_bettertransformer: false
+  use_flash_attention_2: false
+  quantization_scheme: null
+  quantization_config: {}
+  data_parallel: false
+  deepspeed_inference: true
+  deepspeed_inference_config:
+    tensor_parallel:
+      tp_size: 1
+  peft_strategy: null
+  peft_config: {}
+launcher:
+  name: torchrun
+  _target_: optimum_benchmark.launchers.torchrun.launcher.TorchrunLauncher
+  min_nodes: 1
+  max_nodes: 1
+  nproc_per_node: ${available_gpus:}
+  run_id: ${experiment_name}
+  role: benchmark_worker
+  monitor_interval: 30
+  rdzv_endpoint: localhost:29599
+  rdzv_backend: static
+  rdzv_configs:
+    rank: 0
+    timeout: 900
+  max_restarts: 0
+  start_method: spawn
+  log_dir: null
+  redirects: '0'
+  tee: '0'
+  metrics_cfg: {}
+  local_addr: null
+benchmark:
+  name: inference
+  _target_: optimum_benchmark.benchmarks.inference.benchmark.InferenceBenchmark
+  duration: 10
+  warmup_runs: 10
+  memory: true
+  energy: false
+  input_shapes:
+    batch_size: null
+    sequence_length: 256
+    num_choices: 1
+    feature_size: 80
+    nb_max_frames: 3000
+    audio_sequence_length: 16000
+  new_tokens: 512
+  can_diffuse: ${can_diffuse:${task}}
+  can_generate: ${can_generate:${task}}
+  forward_kwargs: {}
+  generate_kwargs: {}
+experiment_name: fp16+tp=1
+model: llama-2
+task: ${infer_task:${model}}
+device: cuda
+hub_kwargs:
+  revision: main
+  cache_dir: null
+  force_download: false
+  local_files_only: false
+environment:
+  optimum_version: 1.14.1
+  optimum_commit: null
+  transformers_version: 4.35.2
+  transformers_commit: null
+  accelerate_version: 0.24.1
+  accelerate_commit: null
+  diffusers_version: null
+  diffusers_commit: null
+  python_version: 3.10.12
+  system: Linux
+  cpu: ' AMD EPYC 7742 64-Core Processor'
+  cpu_count: 128
+  cpu_ram_mb: 540671
+  gpus:
+  - NVIDIA A100-SXM4-80GB

@@ -122,14 +122,14 @@ hydra:
     hydra:
     - hydra.mode=MULTIRUN
     task:
-    - benchmark.input_shapes.batch_size=2
-    - model=NousResearch/Llama-2-7b-hf
+    - benchmark.input_shapes.batch_size=4
+    - model=NousResearch/Llama-2-13b-hf
   job:
     name: cli
     chdir: true
-    override_dirname: benchmark.input_shapes.batch_size=2,model=NousResearch/Llama-2-7b-hf
-    id: '2'
-    num: 2
+    override_dirname: benchmark.input_shapes.batch_size=4,model=NousResearch/Llama-2-13b-hf
+    id: '5'
+    num: 5
     config_name: fp16
     env_set:
       CUDA_VISIBLE_DEVICES: '0'
@@ -160,7 +160,7 @@ hydra:
     - path: ''
       schema: structured
       provider: schema
-    output_dir: /workspace/optimum-benchmark/examples/running-llamas/experiments/hf-dgx-01/NousResearch/Llama-2-7b-hf/fp16/2
+    output_dir: /workspace/optimum-benchmark/examples/running-llamas/experiments/hf-dgx-01/NousResearch/Llama-2-13b-hf/fp16/4
     choices:
       benchmark: inference
       launcher: process

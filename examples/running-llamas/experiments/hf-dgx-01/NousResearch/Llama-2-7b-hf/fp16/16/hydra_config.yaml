@@ -1,18 +1,22 @@
+launcher:
+  name: process
+  _target_: optimum_benchmark.launchers.process.launcher.ProcessLauncher
+  start_method: spawn
 backend:
   name: pytorch
-  version: ${pytorch_version:}
+  version: 2.1.1+cu118
   _target_: optimum_benchmark.backends.pytorch.backend.PyTorchBackend
   seed: 42
   inter_op_num_threads: null
   intra_op_num_threads: null
   continuous_isolation: true
-  isolation_check_interval: null
+  isolation_check_interval: 1.0
   delete_cache: false
   no_weights: true
   device_map: null
   torch_dtype: float16
-  eval_mode: ${is_inference:${benchmark.name}}
-  disable_grad: ${is_inference:${benchmark.name}}
+  eval_mode: true
+  disable_grad: true
   amp_autocast: false
   amp_dtype: null
   torch_compile: false
@@ -26,10 +30,6 @@ backend:
   deepspeed_inference_config: {}
   peft_strategy: null
   peft_config: {}
-launcher:
-  name: process
-  _target_: optimum_benchmark.launchers.process.launcher.ProcessLauncher
-  start_method: spawn
 benchmark:
   name: inference
   _target_: optimum_benchmark.benchmarks.inference.benchmark.InferenceBenchmark
@@ -38,20 +38,27 @@ benchmark:
   memory: true
   energy: false
   input_shapes:
-    batch_size: 8
+    batch_size: 16
     sequence_length: 256
     num_choices: 1
     feature_size: 80
     nb_max_frames: 3000
     audio_sequence_length: 16000
   new_tokens: 512
-  can_diffuse: ${can_diffuse:${task}}
-  can_generate: ${can_generate:${task}}
+  can_diffuse: false
+  can_generate: true
   forward_kwargs: {}
-  generate_kwargs: {}
+  generate_kwargs:
+    num_return_sequences: 1
+    max_new_tokens: 512
+    min_new_tokens: 512
+    do_sample: false
+    use_cache: true
+    pad_token_id: 0
+    num_beams: 1
 experiment_name: fp16
 model: NousResearch/Llama-2-7b-hf
-task: ${infer_task:${model}}
+task: text-generation
 device: cuda
 hub_kwargs:
   revision: main

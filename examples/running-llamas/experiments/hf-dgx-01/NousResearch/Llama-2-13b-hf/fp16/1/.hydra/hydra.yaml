@@ -3,7 +3,7 @@ hydra:
     dir: experiments/${oc.env:HOSTNAME}/${model}/${experiment_name}
   sweep:
     dir: experiments/${oc.env:HOSTNAME}/${model}/${experiment_name}
-    subdir: ${hydra.job.num}
+    subdir: ${benchmark.input_shapes.batch_size}
   launcher:
     _target_: hydra._internal.core_plugins.basic_launcher.BasicLauncher
   sweeper:

@@ -38,7 +38,7 @@ benchmark:
   memory: true
   energy: false
   input_shapes:
-    batch_size: 16
+    batch_size: 8
     sequence_length: 256
     num_choices: 1
     feature_size: 80
