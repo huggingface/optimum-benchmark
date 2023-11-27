@@ -148,8 +148,10 @@ def check_cuda_continuous_isolation(isolated_pid: int, isolation_check_interval:
         permitted_pids = all_isolated_pids + all_isolators_pids
     else:
         isolator_pid = os.getpid()
-        permitted_pids = [isolator_pid, isolated_pid]
+        all_isolated_pids = [isolated_pid]
+        all_isolators_pids = [isolator_pid]
 
+    permitted_pids = all_isolated_pids + all_isolators_pids
     assert len(permitted_pids) == len(set(permitted_pids)), "Found duplicated pids in the non-distributed setting"
     permitted_pids = set(permitted_pids)
 
@@ -172,6 +174,9 @@ def check_cuda_continuous_isolation(isolated_pid: int, isolation_check_interval:
 
             for isolated_pid in all_isolated_pids:
                 LOGGER.error(f"Killing isolated process {isolated_pid}...")
-                os.kill(isolated_pid, signal.SIGTERM)
+                try:
+                    os.kill(isolated_pid, signal.SIGTERM)
+                except Exception:
+                    LOGGER.error(f"Failed to kill isolated process {isolated_pid}.")
             LOGGER.error("Exiting isolation process...")
             raise e
