@@ -49,27 +49,30 @@ def get_short_report(full_report, report_folder: str = "artifacts"):
         "model": "Model",
         "environment.gpus": "GPUs",
         "experiment_name": "Experiment Name",
-        "benchmark.input_shapes.batch_size": "Batch Size",
+        "benchmark.input_shapes.batch_size": "Per Process Batch Size",
         "benchmark.input_shapes.sequence_length": "Sequence Length",
         #
         "decode.latency(s)": "Decode Latency (s)",
         "forward.latency(s)": "Prefill Latency (s)",
-        "generate.latency(s)": "Generate Latency (s)",
         #
         "decode.throughput(tokens/s)": "Decode Throughput (tokens/s)",
         "forward.throughput(samples/s)": "Prefill Throughput (samples/s)",
-        "generate.throughput(tokens/s)": "Generate Throughput (tokens/s)",
+        #
+        "forward.max_memory_allocated(MB)": "Prefill Memory (MB)",
+        "generate.max_memory_allocated(MB)": "Decode Memory (MB)",
     }
     short_report = full_report[list(short_columns.keys())].rename(columns=short_columns)
 
     short_report["GPU Name"] = short_report["GPUs"].str[0]
-    short_report["Num GPUs"] = short_report["GPUs"].str.len().astype(str)
+    short_report["Num GPUs"] = short_report["GPUs"].str.len()
     short_report["GPU Name"].replace("NVIDIA A100-SXM4-80GB", "A100", inplace=True)
     short_report["GPU Name"].replace("AMD INSTINCT MI250 (MCM) OAM AC MBA", "GCD-MI250", inplace=True)
+    short_report["Effective Batch Size"] = short_report["Per Process Batch Size"] * short_report["Num GPUs"]
 
     short_report["Group"] = (
-        short_report["Num GPUs"] + "x" + short_report["GPU Name"] + "-" + short_report["Experiment Name"]
+        short_report["Num GPUs"].astype(str) + "x" + short_report["GPU Name"] + "-" + short_report["Experiment Name"]
     )
+
     short_report.to_csv(f"{report_folder}/short_report.csv")
 
     return short_report
@@ -78,123 +81,91 @@ def get_short_report(full_report, report_folder: str = "artifacts"):
 import numpy as np
 
 
-def get_plots(short_report, report_folder: str = "artifacts", plot="bar"):
+def get_plots(short_report, report_folder, batch="effective", plot="bar"):
     fig1, ax1 = plt.subplots()
     fig2, ax2 = plt.subplots()
-    fig3, ax3 = plt.subplots()
-    fig4, ax4 = plt.subplots()
+
+    batch_column = "Effective Batch Size" if batch == "effective" else "Per Process Batch Size"
 
     groups = sorted(short_report["Group"].unique().tolist())
-    x = np.arange(len(short_report["Batch Size"].unique()))
-    multiplier = 0
-    width = 0.2
+    x = np.arange(len(short_report[batch_column].unique()))
+    width = 0.8 / len(groups)
+    offset = -(width * (len(groups) - 1) / 2)
 
     for group in groups:
-        offset = width * multiplier
         mask = short_report["Group"] == group
-        group_report = short_report[mask].sort_values(by="Batch Size")
+        group_report = short_report[mask].sort_values(by=batch_column)
 
-        prefill_latency = group_report[["Batch Size", "Prefill Latency (s)"]]
-        decode_throughput = group_report[["Batch Size", "Decode Throughput (tokens/s)"]]
-        #
-        generate_latency = group_report[["Batch Size", "Generate Latency (s)"]]
-        generate_throughput = group_report[["Batch Size", "Generate Throughput (tokens/s)"]]
+        prefill_latency = group_report[[batch_column, "Prefill Latency (s)"]]
+        decode_throughput = group_report[[batch_column, "Decode Throughput (tokens/s)"]]
 
         if plot == "bar":
+            x_ = np.arange(
+                prefill_latency[batch_column].min() - 1,
+                len(prefill_latency[batch_column].unique()) + (prefill_latency[batch_column].min() - 1),
+            )
             ax1.bar(
-                (x + offset)[: len(prefill_latency["Batch Size"])],
+                x_ + offset,
                 prefill_latency["Prefill Latency (s)"],
                 label=group,
                 width=width,
+            )
+            x_ = np.arange(
+                decode_throughput[batch_column].min() - 1,
+                len(decode_throughput[batch_column].unique()) + (decode_throughput[batch_column].min() - 1),
             )
             ax2.bar(
-                (x + offset)[: len(decode_throughput["Batch Size"])],
+                x_ + offset,
                 decode_throughput["Decode Throughput (tokens/s)"],
                 label=group,
                 width=width,
             )
-            #
-            ax3.bar(
-                (x + offset)[: len(generate_latency["Batch Size"])],
-                generate_latency["Generate Latency (s)"],
-                label=group,
-                width=width,
-            )
-            ax4.bar(
-                (x + offset)[: len(generate_throughput["Batch Size"])],
-                generate_throughput["Generate Throughput (tokens/s)"],
-                label=group,
-                width=width,
-            )
+            offset += width
         elif plot == "line":
+            x_ = np.arange(
+                prefill_latency[batch_column].min() - 1,
+                len(prefill_latency[batch_column].unique()) + (prefill_latency[batch_column].min() - 1),
+            )
             ax1.plot(
-                prefill_latency["Batch Size"],
+                x_,
                 prefill_latency["Prefill Latency (s)"],
                 label=group,
                 marker="o",
             )
+            x_ = np.arange(
+                decode_throughput[batch_column].min() - 1,
+                len(decode_throughput[batch_column].unique()) + (decode_throughput[batch_column].min() - 1),
+            )
             ax2.plot(
-                decode_throughput["Batch Size"],
+                x_,
                 decode_throughput["Decode Throughput (tokens/s)"],
                 label=group,
                 marker="o",
             )
-            #
-            ax3.plot(
-                generate_latency["Batch Size"],
-                generate_latency["Generate Latency (s)"],
-                label=group,
-                marker="o",
-            )
-            ax4.plot(
-                generate_throughput["Batch Size"],
-                generate_throughput["Generate Throughput (tokens/s)"],
-                label=group,
-                marker="o",
-            )
 
-        multiplier += 1
+    ax1.set_xticks(x)
+    ax1.set_ylim(bottom=0)
+    ax1.set_xticklabels(short_report[batch_column].sort_values().unique().tolist())
 
-    if plot == "bar":
-        ax1.set_xticks(x)
-        ax1.set_xticklabels(short_report["Batch Size"].sort_values().unique().tolist())
+    ax2.set_xticks(x)
+    ax2.set_ylim(bottom=0)
+    ax2.set_xticklabels(short_report[batch_column].sort_values().unique().tolist())
 
-        ax2.set_xticks(x)
-        ax2.set_xticklabels(short_report["Batch Size"].sort_values().unique().tolist())
-
-        ax3.set_xticks(x)
-        ax3.set_xticklabels(short_report["Batch Size"].sort_values().unique().tolist())
-
-        ax4.set_xticks(x)
-        ax4.set_xticklabels(short_report["Batch Size"].sort_values().unique().tolist())
-
-    ax1.set_xlabel("Batch Size")
+    ax1.set_xlabel(batch_column)
     ax1.set_ylabel("Prefill Latency (s)")
-    ax1.set_title(f"{short_report['Model'].unique()[0]} Prefill Latency per Batch Size")
+    ax1.set_title(f"Prefill Latency per Batch Size ({short_report['Model'].unique()[0]})")
 
-    ax2.set_xlabel("Batch Size")
-    ax2.set_ylabel("Decode Throughput (tokens/s)")
-    ax2.set_title(f"{short_report['Model'].unique()[0]} Decode Throughput per Batch Size")
-
-    ax3.set_xlabel("Batch Size")
-    ax3.set_ylabel("Generate Latency (s)")
-    ax3.set_title(f"{short_report['Model'].unique()[0]} Generate Latency per Batch Size")
-
-    ax4.set_xlabel("Batch Size")
-    ax4.set_ylabel("Generate Throughput (tokens/s)")
-    ax4.set_title(f"{short_report['Model'].unique()[0]} Generate Throughput per Batch Size")
+    ax2.set_xlabel(batch_column)
+    ax2.set_ylabel("Effective Decode Throughput (tokens/s)")
+    ax2.set_title(f"Decode Throughput per Batch Size ({short_report['Model'].unique()[0]})")
 
     ax1.legend(fancybox=True, shadow=True)
     ax2.legend(fancybox=True, shadow=True)
-    ax3.legend(fancybox=True, shadow=True)
-    ax4.legend(fancybox=True, shadow=True)
 
-    fig1.savefig(f"{report_folder}/prefill_latency_plot.png")
-    fig2.savefig(f"{report_folder}/decode_throughput_plot.png")
-    # fig3.savefig(f"{report_folder}/generate_latency_plot.png")
-    # fig4.savefig(f"{report_folder}/generate_throughput_plot.png")
+    fig1.savefig(f"{report_folder}/prefill_latency_{plot}_plot_{batch}.png")
+    fig2.savefig(f"{report_folder}/decode_throughput_{plot}_plot_{batch}.png")
 
-    return fig1, fig2, fig3, fig4
+    return fig1, fig2
 
 
 def generate_report():
@@ -231,10 +202,14 @@ def generate_report():
         full_report,
         report_folder=report_folder,
     )
-    figs = get_plots(
-        short_report,
-        report_folder=report_folder,
-    )
+    for plot in ["bar", "line"]:
+        for batch in ["effective", "per-process"]:
+            figs = get_plots(
+                short_report,
+                report_folder,
+                batch=batch,
+                plot=plot,
+            )
 
 
 if __name__ == "__main__":
