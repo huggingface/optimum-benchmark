@@ -1,0 +1,8 @@
+defaults:
+  - _base_
+  - _self_
+
+experiment_name: fp16+bt
+
+backend:
+  to_bettertransformer: true

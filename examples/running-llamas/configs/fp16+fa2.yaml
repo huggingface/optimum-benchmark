@@ -1,0 +1,8 @@
+defaults:
+  - _base_
+  - _self_
+
+experiment_name: fp16+fa2
+
+backend:
+  use_flash_attention_2: true
