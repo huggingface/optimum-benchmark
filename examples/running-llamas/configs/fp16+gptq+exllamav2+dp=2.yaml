@@ -1,9 +1,13 @@
 defaults:
   - _base_
   - _self_
-  - override launcher: process
+  - override launcher: torchrun
 
-experiment_name: fp16+gptq+exllamav2
+experiment_name: fp16+gptq+exllamav2+dp=2
+
+launcher:
+  nproc_per_node: 2
+  rdzv_endpoint: localhost:29533
 
 backend:
   # for some reason core gets dumped
@@ -15,6 +19,9 @@ backend:
       version: 2
 
 hydra:
+  job:
+    env_set:
+      CUDA_VISIBLE_DEVICES: 0,1
   sweeper:
     params:
-      model: TheBloke/LLaMa-7B-GPTQ,TheBloke/LLaMa-13B-GPTQ
+      model: TheBloke/LLaMa-7B-GPTQ,TheBloke/LLaMa-13B-GPTQ,TheBloke/LLaMa-70B-GPTQ

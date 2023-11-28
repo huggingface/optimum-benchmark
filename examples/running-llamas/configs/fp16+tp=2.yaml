@@ -6,9 +6,8 @@ defaults:
 experiment_name: fp16+tp=2
 
 launcher:
-  # this is not needed since we have a resolver
-  # that takes len(cuda_devices) but just to be verbose
   nproc_per_node: 2
+  rdzv_endpoint: localhost:29544
 
 backend:
   deepspeed_inference: true

@@ -7,10 +7,7 @@ experiment_name: fp16+dp=2
 
 launcher:
   nproc_per_node: 2
-
-backend:
-  # only serves for init torch.distributed
-  deepspeed_inference: true
+  rdzv_endpoint: localhost:29511
 
 hydra:
   job:
