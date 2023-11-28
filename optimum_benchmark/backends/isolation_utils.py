@@ -171,5 +171,6 @@ def check_cuda_continuous_isolation(isolated_pid: int, isolation_check_interval:
                 if psutil.pid_exists(pid):
                     LOGGER.error(f"Terminating isolated process {pid}.")
                     os.kill(pid, signal.SIGTERM)
+            exit(1)
         else:
             time.sleep(isolation_check_interval)

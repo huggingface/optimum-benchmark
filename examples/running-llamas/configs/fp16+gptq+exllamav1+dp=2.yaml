@@ -10,6 +10,9 @@ launcher:
   rdzv_endpoint: localhost:29522
 
 backend:
+  # for some reason core gets dumped
+  # with dummy weights + exllamav1 for 65B
+  no_weights: false
   quantization_scheme: gptq
   quantization_config:
     exllama_config:
@@ -21,4 +24,4 @@ hydra:
       CUDA_VISIBLE_DEVICES: 0,1
   sweeper:
     params:
-      model: TheBloke/LLaMa-7B-GPTQ,TheBloke/LLaMa-13B-GPTQ,TheBloke/LLaMa-70B-GPTQ
+      model: TheBloke/LLaMa-7B-GPTQ,TheBloke/LLaMa-13B-GPTQ,TheBloke/LLaMa-65B-GPTQ
