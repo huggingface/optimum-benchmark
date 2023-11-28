@@ -6,6 +6,9 @@ defaults:
 experiment_name: fp16+gptq+exllamav1
 
 backend:
+  # for some reason core gets dumped
+  # with 65B + exllamav1
+  no_weights: false
   quantization_scheme: gptq
   quantization_config:
     exllama_config:
