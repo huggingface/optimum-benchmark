@@ -1,0 +1,2 @@
+- benchmark.input_shapes.batch_size=128
+- model=NousResearch/Llama-2-7b-hf
