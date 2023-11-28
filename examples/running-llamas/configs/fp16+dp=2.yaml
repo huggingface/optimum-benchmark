@@ -1,13 +1,18 @@
 defaults:
   - _base_
   - _self_
+  - override launcher: torchrun
+
+experiment_name: fp16+dp=2
+
+launcher:
+  nproc_per_node: 2
+
+backend:
+  # only serves for init torch.distributed
+  deepspeed_inference: true
 
 hydra:
   job:
     env_set:
       CUDA_VISIBLE_DEVICES: 0,1
-
-experiment_name: fp16+dp=2
-
-backend:
-  data_parallel: true

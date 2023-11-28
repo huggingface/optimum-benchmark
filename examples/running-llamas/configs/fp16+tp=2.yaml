@@ -3,15 +3,20 @@ defaults:
   - _self_
   - override launcher: torchrun
 
-hydra:
-  job:
-    env_set:
-      CUDA_VISIBLE_DEVICES: 0,1
-
 experiment_name: fp16+tp=2
+
+launcher:
+  # this is not needed since we have a resolver
+  # that takes len(cuda_devices) but just to be verbose
+  nproc_per_node: 2
 
 backend:
   deepspeed_inference: true
   deepspeed_inference_config:
     tensor_parallel:
       tp_size: 2
+
+hydra:
+  job:
+    env_set:
+      CUDA_VISIBLE_DEVICES: 0,1
