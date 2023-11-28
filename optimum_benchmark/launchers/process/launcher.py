@@ -30,6 +30,9 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         process = Process(
             target=target,
             args=(worker, *worker_args),
+            # daemon=True
+            # TODO: move isolation process to the launcher and make this daemon
+            # which is currently not possible because daemon process cannot have children
         )
 
         process.start()
@@ -47,7 +50,10 @@ class ProcessLauncher(Launcher[ProcessConfig]):
                 process.join()
 
         if process.exitcode != 0:
-            raise RuntimeError(f"Process exited with code {process.exitcode}")
+            exit_code = process.exitcode
+            LOGGER.error(f"\t+ Process exited with code {exit_code}, closing it.")
+            process.close()
+            raise RuntimeError(f"Process exited with code {exit_code}")
 
         LOGGER.info("\t+ Process exited successfully, closing it.")
         process.close()

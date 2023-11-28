@@ -5,6 +5,7 @@ import time
 from logging import getLogger
 from typing import Dict, Set
 
+import psutil
 from omegaconf import OmegaConf
 
 from ..env_utils import is_nvidia_system, is_rocm_system
@@ -15,7 +16,7 @@ LOGGER = getLogger("isolation")
 
 def check_cuda_isolation(isolated_devices: Set[int], permitted_pids: Set[int]) -> None:
     """
-    Raises a RuntimeError if any process other than the permitted ones is running on the specified CUDA devices.
+    Returns a set of pids that are running on the specified CUDA devices and are not in the permitted_pids set.
     """
     devices_pids: Dict[int, set] = {}
     for device_id in isolated_devices:
@@ -115,18 +116,13 @@ def check_cuda_isolation(isolated_devices: Set[int], permitted_pids: Set[int]) -
 
     non_permitted_pids = all_devices_pids - permitted_pids
 
-    if len(non_permitted_pids) > 0:
-        error_message = f"Expected only process(se) {permitted_pids} on device(s) {isolated_devices}, but found {non_permitted_pids}."
-        raise RuntimeError(error_message)
+    return non_permitted_pids
 
 
 def check_cuda_continuous_isolation(isolated_pid: int, isolation_check_interval: int = 1) -> None:
     """
     Kills the isolated process if any other process than the permitted ones is running on the specified CUDA devices.
     """
-
-    hydra_conf = OmegaConf.load(".hydra/hydra.yaml")
-    logging.config.dictConfig(OmegaConf.to_container(hydra_conf.hydra.job_logging, resolve=True))
 
     # distributed setting is tricky
     if os.environ.get("LOCAL_WORLD_SIZE", None) is not None:
@@ -155,28 +151,25 @@ def check_cuda_continuous_isolation(isolated_pid: int, isolation_check_interval:
     assert len(permitted_pids) == len(set(permitted_pids)), "Found duplicated pids in the non-distributed setting"
     permitted_pids = set(permitted_pids)
 
-    # TODO: make backend only run one process per local world
+    # TODO: make backend only spawn one process per local world
     if os.environ.get("LOCAL_RANK", "0") == "0":
+        hydra_conf = OmegaConf.load(".hydra/hydra.yaml")
+        logging.config.dictConfig(OmegaConf.to_container(hydra_conf.hydra.job_logging, resolve=True))
         isolated_devices = {int(device) for device in os.environ["CUDA_VISIBLE_DEVICES"].split(",")}
         LOGGER.info(
-            f"Continuously checking only process(es) {permitted_pids} are running on device(s) {isolated_devices}"
+            f"Continuously checking only permitted process(es) {permitted_pids} "
+            f"are running on isolated device(s) {isolated_devices}"
         )
     else:
-        exit(0)
+        return
 
     while True:
-        try:
-            check_cuda_isolation(isolated_devices, permitted_pids)
+        non_permitted_pids = check_cuda_isolation(isolated_devices, permitted_pids)
+        if len(non_permitted_pids) > 0:
+            LOGGER.error(f"Found non permitted process(es) {non_permitted_pids} running on isolated device(s).")
+            for pid in all_isolated_pids:
+                if psutil.pid_exists(pid):
+                    LOGGER.error(f"Terminating isolated process {pid}.")
+                    os.kill(pid, signal.SIGTERM)
+        else:
             time.sleep(isolation_check_interval)
-        except RuntimeError as e:
-            LOGGER.error("Error while checking CUDA isolation:")
-            LOGGER.error(e)
-
-            for isolated_pid in all_isolated_pids:
-                LOGGER.error(f"Killing isolated process {isolated_pid}...")
-                try:
-                    os.kill(isolated_pid, signal.SIGTERM)
-                except Exception:
-                    LOGGER.error(f"Failed to kill isolated process {isolated_pid}.")
-            LOGGER.error("Exiting isolation process...")
-            raise e
