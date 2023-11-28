@@ -22,6 +22,7 @@ from .import_utils import (
     optimum_version,
     transformers_version,
 )
+from .launchers.inline.config import InlineConfig
 from .launchers.process.config import ProcessConfig
 from .launchers.torchrun.config import TorchrunConfig
 from .task_utils import infer_task_from_model_name_or_path
@@ -29,7 +30,7 @@ from .task_utils import infer_task_from_model_name_or_path
 if TYPE_CHECKING:
     from .backends.base import Backend
     from .benchmarks.base import Benchmark
-    from .launchers.base import Launcher, LauncherConfig
+    from .launchers.base import Launcher
 
 
 LOGGER = getLogger("experiment")
@@ -122,13 +123,17 @@ class ExperimentConfig:
 # Register configurations
 cs = ConfigStore.instance()
 cs.store(name="experiment", node=ExperimentConfig)
+#
 cs.store(group="backend", name="openvino", node=OVConfig)
 cs.store(group="backend", name="pytorch", node=PyTorchConfig)
 cs.store(group="backend", name="onnxruntime", node=ORTConfig)
 cs.store(group="backend", name="neural-compressor", node=INCConfig)
 cs.store(group="backend", name="text-generation-inference", node=TGIConfig)
+#
 cs.store(group="benchmark", name="inference", node=InferenceConfig)
 cs.store(group="benchmark", name="training", node=TrainingConfig)
+#
+cs.store(group="launcher", name="inline", node=InlineConfig)
 cs.store(group="launcher", name="process", node=ProcessConfig)
 cs.store(group="launcher", name="torchrun", node=TorchrunConfig)
 
@@ -180,11 +185,11 @@ def run(experiment: "ExperimentConfig") -> "Benchmark":
 
 def run_with_launcher(experiment: DictConfig):
     # instead of emplimenting hydra/launcher plugins, we handle the launcher ourselves
-    # thsi allows us to use spawn with torchrun, to gather outputs from parallel processes,
+    # this allows us to use spawn with torchrun, to gather outputs from parallel processes,
     # and to handle errors gracefully
 
     # Instantiate the experiment config to trigger __post_init__
-    experiment.launcher: LauncherConfig = OmegaConf.to_object(experiment.launcher)
+    experiment.launcher = OmegaConf.to_object(experiment.launcher)
 
     launcher_factory: Type["Launcher"] = get_class(experiment.launcher._target_)
     launcher: "Launcher" = launcher_factory()
