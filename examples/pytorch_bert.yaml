@@ -1,10 +1,15 @@
 defaults:
   - backend: pytorch # default backend
+  - launcher: inline # default launcher
   - benchmark: inference # default benchmark
   - experiment # inheriting experiment schema
   - _self_ # for hydra 1.1 compatibility
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
+
+experiment_name: pytorch_bert
+model: bert-base-uncased
+device: cuda
 
 hydra:
   run:
@@ -14,9 +19,6 @@ hydra:
   job:
     chdir: true
     env_set:
+      OVERRIDE_BENCHMARKS: 1
       CUDA_VISIBLE_DEVICES: 0
       CUDA_DEVICE_ORDER: PCI_BUS_ID
-
-experiment_name: pytorch_bert
-model: bert-base-uncased
-device: cuda

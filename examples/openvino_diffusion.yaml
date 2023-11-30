@@ -1,20 +1,13 @@
 defaults:
   - backend: openvino # default backend
+  - launcher: inline # default launcher
   - benchmark: inference # default benchmark
   - experiment # inheriting experiment schema
   - _self_ # for hydra 1.1 compatibility
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-hydra:
-  run:
-    dir: runs/${experiment_name}
-  sweep:
-    dir: sweeps/${experiment_name}
-  job:
-    chdir: true
-
-experiment_name: openvino_sdxl
+experiment_name: openvino_diffusion
 model: stabilityai/stable-diffusion-2-1
 device: cpu
 
@@ -26,3 +19,13 @@ backend:
 benchmark:
   input_shapes:
     batch_size: 1
+
+hydra:
+  run:
+    dir: runs/${experiment_name}
+  sweep:
+    dir: sweeps/${experiment_name}
+  job:
+    chdir: true
+    env_set:
+      OVERRIDE_BENCHMARKS: 1
