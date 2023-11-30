@@ -86,9 +86,13 @@ class Backend(Generic[BackendConfigT], ABC):
                 self.pretrained_processor = None
 
         if self.is_text_generation_model():
-            self.pretrained_generation_config = GenerationConfig.from_pretrained(
-                pretrained_model_name=self.model, **self.hub_kwargs
-            )
+            try:
+                self.pretrained_generation_config = GenerationConfig.from_pretrained(
+                    pretrained_model_name=self.model, **self.hub_kwargs
+                )
+            except Exception:
+                LOGGER.warning("Could not find the model's generation config")
+                self.pretrained_generation_config = None
         else:
             self.pretrained_generation_config = None
 
