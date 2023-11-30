@@ -2,13 +2,11 @@
 defaults:
   - override launcher: torchrun # for DDP training, use torchrun launcher
 
-hydra:
-  job:
-    env_set:
-      CUDA_VISIBLE_DEVICES: 0,1
+experiment_name: ${device}_${backend.name}_${benchmark.name}_${task}_ddp
 
 launcher:
   nproc_per_node: 2
+  rdzv_endpoint: "localhost:29222"
 
 benchmark:
   dataset_shapes:
@@ -17,4 +15,7 @@ benchmark:
   training_arguments:
     per_device_train_batch_size: 8
 
-experiment_name: ${device}_${backend.name}_${benchmark.name}_${task}_ddp
+hydra:
+  job:
+    env_set:
+      CUDA_VISIBLE_DEVICES: 0,1
