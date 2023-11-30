@@ -18,17 +18,18 @@ from typing import (
 
 import numpy as np
 from optimum.exporters import TasksManager
-from transformers import AutoConfig, AutoProcessor
+from transformers import (
+    AutoConfig,
+    AutoProcessor,
+    GenerationConfig,
+    Pipeline,
+    PretrainedConfig,
+    PreTrainedModel,
+    TrainerState,
+)
+from transformers.utils import ModelOutput
 
 if TYPE_CHECKING:
-    from transformers import (
-        Pipeline,
-        PretrainedConfig,
-        PreTrainedModel,
-        TrainerState,
-    )
-    from transformers.utils import ModelOutput
-
     from .utils import PreTrainedProcessor
 
 from ..task_utils import DIFFUSION_TASKS, TEXT_GENERATION_TASKS
@@ -50,8 +51,9 @@ class Backend(Generic[BackendConfigT], ABC):
     config: BackendConfigT
     isolation_thread: Optional[Process]
     pretrained_model: Union["PreTrainedModel", "Pipeline"]
-    pretrained_processor: Optional["PreTrainedProcessor"]
     pretrained_config: Optional["PretrainedConfig"]
+    pretrained_processor: Optional["PreTrainedProcessor"]
+    pretrained_generation_config: Optional["GenerationConfig"]
     automodel_class: Callable[..., "PreTrainedModel"]
 
     def __init__(self, model: str, task: str, device: str, hub_kwargs: Dict[str, Any]):
@@ -74,7 +76,7 @@ class Backend(Generic[BackendConfigT], ABC):
 
             try:
                 # sometimes contains information about the model's
-                # input shapes that're not available in the config
+                # input shapes that are not available in the config
                 self.pretrained_processor = AutoProcessor.from_pretrained(
                     pretrained_model_name_or_path=self.model, **self.hub_kwargs
                 )
@@ -82,6 +84,17 @@ class Backend(Generic[BackendConfigT], ABC):
                 # sometimes the processor is not available or can't be determined/detected
                 LOGGER.warning("Could not find the model's preprocessor")
                 self.pretrained_processor = None
+
+        if self.is_text_generation_model():
+            try:
+                self.pretrained_generation_config = GenerationConfig.from_pretrained(
+                    pretrained_model_name=self.model, **self.hub_kwargs
+                )
+            except Exception:
+                LOGGER.warning("Could not find the model's generation config")
+                self.pretrained_generation_config = None
+        else:
+            self.pretrained_generation_config = None
 
         self.automodel_class = TasksManager.get_model_class_for_task(
             framework="pt",  # TODO: make this configurable to add support for other frameworks

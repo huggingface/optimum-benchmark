@@ -1,16 +1,16 @@
+import gc
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor
 from logging import getLogger
-from typing import TYPE_CHECKING, Any, Dict, List
+from tempfile import TemporaryDirectory
+from typing import Any, Dict, List
 
 import torch
 from accelerate import init_empty_weights
 from huggingface_hub import InferenceClient
-from transformers import GenerationConfig
-
-if TYPE_CHECKING:
-    from huggingface_hub.inference._text_generation import TextGenerationResponse
+from huggingface_hub.inference._text_generation import TextGenerationResponse
+from safetensors.torch import save_model
 
 import docker
 import docker.errors
@@ -31,37 +31,97 @@ class TGIBackend(Backend[TGIConfig]):
         super().__init__(model, task, device, hub_kwargs)
         self.validate_task()
 
-        automodel = self.automodel_class.__name__
-        LOGGER.info(f"Inferred AutoModel class {automodel} for task {self.task} and model_type {self.model_type}")
-
     def validate_task(self) -> None:
         if self.task not in ["text-generation", "text2text-generation"]:
             raise NotImplementedError(f"TGI does not support task {self.task}")
 
     def configure(self, config: TGIConfig) -> None:
         super().configure(config)
-        self.config = config
+
+        automodel = self.automodel_class.__name__
+        LOGGER.info(f"Inferred AutoModel class {automodel} for task {self.task} and model_type {self.model_type}")
 
         if self.config.no_weights:
-            # creates dummy model
-            self.load_model_from_config()
-            self.save_model_snapshot()
+            self.load_model_with_no_weights()
         else:
             self.load_model_from_pretrained()
-        self.delete_pretrained_model()
 
-        LOGGER.info("\t+ Modifying generation config")
-        self.modify_generation_config()
+    def load_model_from_pretrained(self) -> None:
+        LOGGER.info("\t+ Downloading pretrained model")
+        with init_empty_weights():
+            self.pretrained_model = self.automodel_class.from_pretrained(self.model, **self.hub_kwargs)
+        del self.pretrained_model
 
-        LOGGER.info("\t+ Starting Docker client")
+        LOGGER.info("\t+ Modifying pretrained generation config")
+        self.pretrained_generation_config.eos_token_id = -100
+        self.pretrained_generation_config.pad_token_id = -101
+
+        LOGGER.info("\t+ Saving new pretrained generation config")
+        model_cache_folder = f"models/{self.model}".replace("/", "--")
+        model_cache_path = f"{self.config.volume}/{model_cache_folder}"
+        snapshot_ref = open(f"{model_cache_path}/refs/{self.hub_kwargs.get('revision', 'main')}", "r").read().strip()
+        self.pretrained_generation_config.save_pretrained(snapshot_ref)
+
+        self.start_tgi_server()
+
+    def load_model_with_no_weights(self) -> None:
+        self.tmp_dir = TemporaryDirectory()
+
+        original_model = self.model
+        no_weights_model = os.path.join(self.tmp_dir.name, "no_weights")
+
+        LOGGER.info("\t+ Creating no weights model directory")
+        os.makedirs(no_weights_model, exist_ok=True)
+
+        LOGGER.info(f"\t+ Saving pretrained config to {no_weights_model}")
+        self.pretrained_config.save_pretrained(save_directory=no_weights_model)
+
+        LOGGER.info(f"\t+ Saving pretrained tokenizer to {no_weights_model}")
+        self.pretrained_processor.save_pretrained(save_directory=no_weights_model)
+
+        LOGGER.info(f"\t+ Saving no weights model to {no_weights_model}")
+        save_model(
+            filename=os.path.join(no_weights_model, "model.safetensors"),
+            model=torch.nn.Linear(1, 1),
+            metadata={"format": "pt"},
+        )
+
+        # unlike transformers api, TGI won't accept an empty model.safetensors
+        # so we need to materialize the model and resave it
+        LOGGER.info(f"\t+ Loading no weights model from {no_weights_model}")
+        self.pretrained_model = self.automodel_class.from_pretrained(
+            no_weights_model,
+            **self.hub_kwargs,
+            device_map="auto",
+            _fast_init=False,
+        )
+
+        LOGGER.info("\t+ Randomizing weights of no weights model")
+        randomize_weights(self.pretrained_model)
+
+        LOGGER.info(f"\t+ Saving randomized weights model to {no_weights_model}")
+        self.pretrained_model.save_pretrained(no_weights_model)
+        del self.pretrained_model
+
+        LOGGER.info(f"\t+ Saving generation config to {no_weights_model}")
+        self.pretrained_generation_config.eos_token_id = -100
+        self.pretrained_generation_config.pad_token_id = -101
+        self.pretrained_generation_config.save_pretrained(save_directory=no_weights_model)
+
+        self.model = no_weights_model
+        self.start_tgi_server()
+        self.model = original_model
+
+    def start_tgi_server(self) -> None:
+        LOGGER.info("\t+ Starting Python Docker client")
         self.docker_client = docker.from_env()
 
         try:
             LOGGER.info("\t+ Checking if TGI image exists")
-            self.docker_client.images.get(f"{self.config.image}:{self.config.version}")
+            self.docker_client.images.get(self.config.image)
         except docker.errors.ImageNotFound:
             LOGGER.info("\t+ TGI image not found, pulling it")
-            self.docker_client.images.pull(f"{self.config.image}:{self.config.version}")
+            self.docker_client.images.pull(self.config.image)
 
         env = {}
         if os.environ.get("HUGGING_FACE_HUB_TOKEN", None) is not None:
@@ -75,16 +135,21 @@ class TGIBackend(Backend[TGIConfig]):
             self.hub_kwargs["revision"],
         ]
 
+        if self.config.sharded is not None:
+            self.command.extend(["--sharded", str(self.config.sharded).lower()])
+        if self.config.num_shard is not None:
+            self.command.extend(["--num-shard", str(self.config.num_shard)])
         if self.config.quantization_scheme is not None:
             self.command.extend(["--quantize", self.config.quantization_scheme])
         if self.config.torch_dtype is not None:
             self.command.extend(["--dtype", self.config.torch_dtype])
+
         if self.hub_kwargs.get("trust_remote_code", False):
             self.command.append("--trust-remote-code")
         if self.config.disable_custom_kernels:
             self.command.append("--disable-custom-kernels")
 
-        if self.device.type == "cuda":
+        if self.device == "cuda":
             device_ids = os.environ.get("CUDA_VISIBLE_DEVICES", self.device.index or 0)
             LOGGER.info(f"\t+ Starting TGI container on CUDA device(s): {device_ids}")
             device_requests = [docker.types.DeviceRequest(device_ids=[str(device_ids)], capabilities=[["gpu"]])]
@@ -92,14 +157,21 @@ class TGIBackend(Backend[TGIConfig]):
             LOGGER.info("\t+ Starting TGI container on CPU device")
             device_requests = None
 
+        if self.config.no_weights:
+            self.volumes = {self.tmp_dir.name: {"bind": self.tmp_dir.name, "mode": "rw"}}
+        else:
+            self.volumes = {self.config.volume: {"bind": "/data", "mode": "rw"}}
+
+        ports = {"80/tcp": (self.config.address, self.config.port)}
+
         self.tgi_container = self.docker_client.containers.run(
-            image=f"{self.config.image}:{self.config.version}",
-            command=self.command,
-            shm_size=self.config.shm_size,
-            volumes={self.config.volume: {"bind": "/data", "mode": "rw"}},
-            ports={"80/tcp": (self.config.address, self.config.port)},
             device_requests=device_requests,
+            command=self.command,
+            volumes=self.volumes,
+            shm_size=self.config.shm_size,
+            image=self.config.image,
             environment=env,
+            ports=ports,
             detach=True,
         )
 
@@ -126,46 +198,6 @@ class TGIBackend(Backend[TGIConfig]):
             except Exception as e:
                 LOGGER.info(f"\t+ TGI client is not ready yet: {e}")
                 time.sleep(0.5)
-
-    def load_model_from_config(self) -> None:
-        LOGGER.info("\t+ Initializing empty weights model on device: meta")
-        with init_empty_weights():
-            self.pretrained_model = self.automodel_class.from_config(
-                config=self.pretrained_config,
-                torch_dtype=getattr(torch, self.config.torch_dtype),
-                trust_remote_code=self.hub_kwargs.get("trust_remote_code", False),
-            )
-        # could add model dispatching to accelerate saving and support bigger models
-        LOGGER.info(f"\t+ Materializing model on device: {self.device}")
-        self.pretrained_model.to_empty(device=self.device)
-        LOGGER.info("\t+ Randomizing model weights")
-        randomize_weights(self.pretrained_model)
-        LOGGER.info("\t+ Tying weights")
-        self.pretrained_model.tie_weights()
-
-    @property
-    def model_snapshot_path(self) -> str:
-        model_cache_folder = f"models/{self.model}".replace("/", "--")
-        model_cache_path = f"{self.config.volume}/{model_cache_folder}"
-        snapshot_ref = open(f"{model_cache_path}/refs/{self.hub_kwargs.get('revision', 'main')}", "r").read().strip()
-        return f"{model_cache_path}/snapshots/{snapshot_ref}"
-
-    def save_model_snapshot(self) -> None:
-        LOGGER.info("\t+ Saving pretrained model snapshot")
-        self.pretrained_model.save_pretrained(self.model_snapshot_path, safe_serialization=True)
-
-    def load_model_from_pretrained(self) -> None:
-        LOGGER.info("\t+ Downloading pretrained model")
-        with init_empty_weights():
-            self.pretrained_model = self.automodel_class.from_pretrained(self.model, **self.hub_kwargs)
-
-    def modify_generation_config(self) -> None:
-        # this should, theoretically, make the generated output's sequence length fully controlled by max_new_tokens
-        # instead of stopping at the first eos_token_id/pad_token_id
-        generation_config = GenerationConfig.from_pretrained(self.model, **self.hub_kwargs)
-        generation_config.eos_token_id = -100
-        generation_config.pad_token_id = -101
-        generation_config.save_pretrained(self.model_snapshot_path)
 
     def prepare_input(self, input: Dict[str, Any]) -> Dict[str, Any]:
         return {"prompt": self.pretrained_processor.batch_decode(input["input_ids"].tolist())}
@@ -218,3 +250,9 @@ class TGIBackend(Backend[TGIConfig]):
         if hasattr(self, "docker_client"):
             LOGGER.info("\t+ Closing docker client")
             self.docker_client.close()
+
+        if hasattr(self, "tmp_dir"):
+            LOGGER.info("\t+ Cleaning temporary directory")
+            self.tmp_dir.cleanup()
+
+        gc.collect()

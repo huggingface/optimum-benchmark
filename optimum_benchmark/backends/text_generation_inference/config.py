@@ -8,27 +8,32 @@ from ..config import BackendConfig
 @dataclass
 class TGIConfig(BackendConfig):
     name: str = "tgi"
-    version: str = "1.0.3"
+    version: str = "0.0.1"
     _target_: str = "optimum_benchmark.backends.text_generation_inference.backend.TGIBackend"
 
-    # server options
-    image: str = "ghcr.io/huggingface/text-generation-inference"
+    # docker options
+    image: str = "ghcr.io/huggingface/text-generation-inference:latest"
     volume: str = f"{os.path.expanduser('~')}/.cache/huggingface/hub"
-    shm_size: str = "1g"
     address: str = "127.0.0.1"
+    shm_size: str = "1g"
     port: int = 1111
 
     # torch options
-    no_weights: bool = False  # True, False
     torch_dtype: Optional[str] = None  # None, float32, float16, bfloat16
     # optimization options
     disable_custom_kernels: bool = False  # True, False
     # quantization options
     quantization_scheme: Optional[str] = None  # None, bitsandbytes-nf4, bitsandbytes-fp4
+    # sharding options
+    sharded: Optional[bool] = None  # None, True, False
+    num_shard: Optional[int] = None  # None, 1, 2, 4, 8, 16, 32, 64
+
+    # optimum benchmark specific
+    no_weights: bool = False  # True, False
 
     def __post_init__(self):
         super().__post_init__()
 
         if self.torch_dtype is not None:
             if self.torch_dtype not in ["float32", "float16", "bfloat16"]:
-                raise ValueError(f"Invalid value for torh_dtype: {self.torch_dtype}")
+                raise ValueError(f"Invalid value for dtype: {self.torch_dtype}")
