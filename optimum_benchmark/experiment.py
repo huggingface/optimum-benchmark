@@ -50,13 +50,17 @@ class ExperimentConfig:
     benchmark: Any  # https://github.com/facebookresearch/hydra/issues/1722#issuecomment-883568386
 
     # EXPERIMENT CONFIGURATION
-    experiment_name: str = "experiment"
-    # Model name or path (bert-base-uncased, google/vit-base-patch16-224, ...)
-    model: str = "bert-base-uncased"
+    experiment_name: str
+
+    # DEVICE CONFIGURATION: cuda, cpu, mps, xla
+    device: str
+
+    # MODEL CONFIGURATION: Model name or path
+    model: str
+
+    # TODO: move task to backend config
     # Task name (text-classification, image-classification, ...)
     task: str = "${infer_task:${model}}"
-    # Device name or path (cpu, cuda, cuda:0, ...)
-    device: str = "cuda"
 
     # ADDITIONAL MODEL CONFIGURATION: Model revision, use_auth_token, trust_remote_code
     hub_kwargs: Dict = field(
@@ -99,7 +103,7 @@ class ExperimentConfig:
         if self.device not in ["cuda", "cpu", "mps", "xla"]:
             raise ValueError("`device` must be either `cuda`, `cpu`, `mps` or `xla`.")
 
-        if "cuda" in self.device and len(self.environment["gpus"]) > 1:
+        if self.device == "cuda" and len(self.environment["gpus"]) > 1:
             if os.environ.get("CUDA_VISIBLE_DEVICES", None) is None:
                 LOGGER.warning(
                     "Multiple GPUs detected but CUDA_VISIBLE_DEVICES is not set. "
