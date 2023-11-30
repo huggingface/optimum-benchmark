@@ -129,7 +129,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.pretrained_model = init_inference(
                 self.pretrained_model,
                 config=self.config.deepspeed_inference_config,
-                dtype=self.torch_dtype if self.torch_dtype is not None else self.pretrained_model.dtype,
+                dtype=getattr(self.pretrained_model, "dtype", None),
             )
 
         if self.config.data_parallel:
