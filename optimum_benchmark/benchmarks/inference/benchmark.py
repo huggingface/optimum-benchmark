@@ -174,6 +174,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         num_generated_tokens = (
             num_generate_passes
             * self.config.generate_kwargs["min_new_tokens"]
+            * self.config.generate_kwargs["num_return_sequences"]
             * self.config.input_shapes["batch_size"]
         )
         self.generate_energy = extract_three_significant_digits(
@@ -215,7 +216,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
     @property
     @three_significant_digits_wrapper
     def forward_throughput(self) -> float:
-        return self.config.input_shapes["batch_size"] / self.forward_latency
+        return self.config.input_shapes["batch_size"] * int(os.environ.get("WORLD_SIZE", "1")) / self.forward_latency
 
     ## Generation pass metrics
     @property
@@ -228,8 +229,26 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
     def generate_throughput(self) -> float:
         return (
             self.config.generate_kwargs["min_new_tokens"]
+            * self.config.generate_kwargs["num_return_sequences"]
             * self.config.input_shapes["batch_size"]
+            * int(os.environ.get("WORLD_SIZE", "1"))
             / self.generate_latency
+        )
+
+    @property
+    @three_significant_digits_wrapper
+    def decode_latency(self) -> float:
+        return self.generate_latency - self.forward_latency
+
+    @property
+    @three_significant_digits_wrapper
+    def decode_throughput(self) -> float:
+        return (
+            (self.config.generate_kwargs["min_new_tokens"] - 1)
+            * self.config.generate_kwargs["num_return_sequences"]
+            * self.config.input_shapes["batch_size"]
+            * int(os.environ.get("WORLD_SIZE", "1"))
+            / self.decode_latency
         )
 
     ## Diffusion pass metrics
@@ -239,6 +258,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         return (
             self.config.input_shapes["batch_size"]
             * self.config.forward_kwargs["num_images_per_prompt"]
+            * int(os.environ.get("WORLD_SIZE", "1"))
             / self.forward_latency
         )
 
@@ -252,10 +272,6 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             results_dict["diffusion.throughput(images/s)"] = self.diffusion_throughput
 
         if self.config.memory:
-            LOGGER.warning(
-                "forward.peak_memory(MB) is deprecated and will be removed in a future release"
-                " please use forward.max_memory_used(MB) instead"
-            )
             results_dict["forward.peak_memory(MB)"] = self.forward_max_memory_used
             results_dict["forward.max_memory_used(MB)"] = self.forward_max_memory_used
             results_dict["forward.max_memory_allocated(MB)"] = self.forward_max_memory_allocated
@@ -269,11 +285,10 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             results_dict["generate.latency(s)"] = self.generate_latency
             results_dict["generate.throughput(tokens/s)"] = self.generate_throughput
 
+            results_dict["decode.latency(s)"] = self.decode_latency
+            results_dict["decode.throughput(tokens/s)"] = self.decode_throughput
+
             if self.config.memory:
-                LOGGER.warning(
-                    "generate.peak_memory(MB) is deprecated and will be removed in a future release"
-                    " please use generate.max_memory_used(MB) instead"
-                )
                 results_dict["generate.peak_memory(MB)"] = self.generate_max_memory_used
                 results_dict["generate.max_memory_used(MB)"] = self.generate_max_memory_used
                 results_dict["generate.max_memory_allocated(MB)"] = self.generate_max_memory_allocated
@@ -286,7 +301,8 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         return DataFrame(results_dict, index=[0])
 
     def save(self) -> None:
-        if os.environ.get("LOCAL_RANK", "0") == "0":
+        # TODO: handle this by merging the results of all processes instead of only saving the results of the main process
+        if os.environ.get("RANK", "0") == "0":
             LOGGER.info("Saving results")
             results_df = self.get_results_df()
             results_df.to_csv("inference_results.csv", index=False)

@@ -1,0 +1,22 @@
+defaults:
+  - _base_
+  - _self_
+  - override launcher: torchrun
+
+experiment_name: fp16+bt+tp=2
+
+launcher:
+  nproc_per_node: 2
+  rdzv_endpoint: localhost:29500
+
+backend:
+  to_bettertransformer: true
+  deepspeed_inference: true
+  deepspeed_inference_config:
+    tensor_parallel:
+      tp_size: 2
+
+hydra:
+  job:
+    env_set:
+      CUDA_VISIBLE_DEVICES: 0,1

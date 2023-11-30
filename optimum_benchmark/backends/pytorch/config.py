@@ -18,8 +18,8 @@ AMP_DTYPES = ["bfloat16", "float16"]
 TORCH_DTYPES = ["bfloat16", "float16", "float32", "auto"]
 
 QUANTIZATION_CONFIGS = {
-    "gptq": {"dataset": ["lorem ipsum dolor sit amet consectetur"]},
     "bnb": {"llm_int8_threshold": 0.0},
+    "gptq": {},
     "awq": {},
 }
 COMPILE_CONFIG = {
@@ -43,7 +43,7 @@ class PyTorchConfig(BackendConfig):
     device_map: Optional[str] = None
     torch_dtype: Optional[str] = None
 
-    # inference options
+    # inference/training options
     eval_mode: bool = "${is_inference:${benchmark.name}}"
     disable_grad: bool = "${is_inference:${benchmark.name}}"
 

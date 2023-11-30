@@ -29,15 +29,26 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         LOGGER.info(f"\t+ Inferred AutoModel class {automodel} for task {self.task} and model_type {self.model_type}")
 
         # for now we rely on this env variable to know if we're in a distributed setting
-        if os.environ.get("LOCAL_WORLD_SIZE", None) is not None:
-            LOGGER.info(f"\t+ Detected local world size: {os.environ['LOCAL_WORLD_SIZE']}")
+        if os.environ.get("WORLD_SIZE", None) is not None:
+            LOGGER.info("\t+ Detected distributed CUDA environment")
+
+            visible_devices = os.environ["CUDA_VISIBLE_DEVICES"].split(",")
+            LOGGER.info(f"\t+ Detected cuda visible devices: {visible_devices}")
+
+            world_size = int(os.environ["WORLD_SIZE"])
+            LOGGER.info(f"\t+ Detected world size: {world_size}")
+
+            local_world_size = int(os.environ["LOCAL_WORLD_SIZE"])
+            LOGGER.info(f"\t+ Detected local world size: {local_world_size}")
+
+            rank = int(os.environ["RANK"])
+            LOGGER.info(f"\t+ Detected rank: {rank}")
+
             local_rank = int(os.environ["LOCAL_RANK"])
             LOGGER.info(f"\t+ Detected local rank: {local_rank}")
-            available_devices = list(map(int, os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(",")))
-            LOGGER.info(f"\t+ Detected available devices: {available_devices}")
-            default_device = available_devices[local_rank]
-            LOGGER.info(f"\t+ Setting default device to: {default_device}")
-            torch.cuda.set_device(default_device)
+
+            LOGGER.info("\t+ Setting default cuda device to local rank")
+            torch.cuda.set_device(local_rank)
 
         # Gradients options
         if self.config.disable_grad:

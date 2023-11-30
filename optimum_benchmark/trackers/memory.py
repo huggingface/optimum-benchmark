@@ -95,8 +95,12 @@ class MemoryTracker:
             raise ValueError("Could not measure GPU memory usage for a system different than NVIDIA or AMD RoCm.")
 
         for device_index in self.pytorch_device_ids:
-            self.max_memory_allocated += torch.cuda.max_memory_allocated(device=device_index)
-            self.max_memory_reserved += torch.cuda.max_memory_reserved(device=device_index)
+            self.max_memory_allocated += torch.cuda.max_memory_allocated(device=device_index) * int(
+                os.environ.get("WORLD_SIZE", "1")
+            )
+            self.max_memory_reserved += torch.cuda.max_memory_reserved(device=device_index) * int(
+                os.environ.get("WORLD_SIZE", "1")
+            )
 
         LOGGER.debug(f"Pytorch max memory allocated: {self.get_max_memory_allocated()} MB")
         LOGGER.debug(f"Pytorch max memory reserved: {self.get_max_memory_reserved()} MB")
