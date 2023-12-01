@@ -1,0 +1,2 @@
+- benchmark.input_shapes.batch_size=64
+- model=TheBloke/LLaMa-7B-GPTQ
