@@ -7,8 +7,7 @@ from tempfile import TemporaryDirectory
 from typing import Any, Dict, List
 
 import torch
-from accelerate import init_empty_weights
-from huggingface_hub import InferenceClient
+from huggingface_hub import InferenceClient, snapshot_download
 from huggingface_hub.inference._text_generation import TextGenerationResponse
 from safetensors.torch import save_model
 
@@ -47,10 +46,9 @@ class TGIBackend(Backend[TGIConfig]):
             self.load_model_from_pretrained()
 
     def load_model_from_pretrained(self) -> None:
-        LOGGER.info("\t+ Downloading pretrained model")
-        with init_empty_weights():
-            self.pretrained_model = self.automodel_class.from_pretrained(self.model, **self.hub_kwargs)
-        del self.pretrained_model
+        if not self.config.no_weights:
+            LOGGER.info("\t+ Downloading pretrained model")
+            snapshot_download(self.model, **self.hub_kwargs)
 
         LOGGER.info("\t+ Modifying pretrained generation config")
         self.pretrained_generation_config.eos_token_id = -100
@@ -59,8 +57,11 @@ class TGIBackend(Backend[TGIConfig]):
         LOGGER.info("\t+ Saving new pretrained generation config")
         model_cache_folder = f"models/{self.model}".replace("/", "--")
         model_cache_path = f"{self.config.volume}/{model_cache_folder}"
+
         snapshot_ref = open(f"{model_cache_path}/refs/{self.hub_kwargs.get('revision', 'main')}", "r").read().strip()
-        self.pretrained_generation_config.save_pretrained(snapshot_ref)
+
+        model_snapshot_path = f"{model_cache_path}/snapshots/{snapshot_ref}"
+        self.pretrained_generation_config.save_pretrained(save_directory=model_snapshot_path)
 
         self.start_tgi_server()
 
