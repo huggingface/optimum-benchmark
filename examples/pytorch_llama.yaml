@@ -1,21 +1,18 @@
 defaults:
-  - backend: text-generation-inference # default backend
+  - backend: pytorch # default backend
+  - launcher: process # default launcher
   - benchmark: inference # default benchmark
-  - launcher: inline # default launcher
   - experiment # inheriting experiment schema
   - _self_ # for hydra 1.1 compatibility
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: tgi_llama
+experiment_name: pytorch_llama
 model: TheBloke/Llama-2-70B-AWQ
 device: cuda
 
 backend:
-  sharded: false
-  quantization_scheme: awq
   continuous_isolation: false
-  # no_weights: true # wok in progress
 
 benchmark:
   input_shapes:
