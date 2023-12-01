@@ -1,6 +1,0 @@
-experiment_name,Quantization Scheme,Batch Size,Training Throughput (samples/s),GPU
-llama_peft+bnb,bnb,4,14.167353782876267,NVIDIA GeForce RTX 4090
-llama_peft+bnb,bnb,2,12.228656087488323,NVIDIA GeForce RTX 4090
-llama_peft+bnb,bnb,1,9.547194773961204,NVIDIA GeForce RTX 4090
-llama_peft+gptq,gptq,2,8.320606456962729,NVIDIA GeForce RTX 4090
-llama_peft+gptq,gptq,1,5.44729354892293,NVIDIA GeForce RTX 4090

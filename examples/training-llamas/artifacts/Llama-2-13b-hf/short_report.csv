@@ -1,0 +1,15 @@
+,Model,GPUs,Experiment Name,CUDAs,Per Process Batch Size,Sequence Length,Training Throughput (samples/s),GPU Name,Num GPUs,Num CUDAs,Num Processes,Effective Batch Size,Group
+0,NousResearch/Llama-2-13b-hf,['NVIDIA A100-SXM4-80GB'],fp16+peft,0,16,256,10.0525442846563,1xA100,1,1,1,16,1xA100-fp16+peft
+1,NousResearch/Llama-2-13b-hf,['NVIDIA A100-SXM4-80GB'],fp16+peft,0,4,256,9.049662155600046,1xA100,1,1,1,4,1xA100-fp16+peft
+2,NousResearch/Llama-2-13b-hf,['NVIDIA A100-SXM4-80GB'],fp16+peft,0,1,256,7.137251046214708,1xA100,1,1,1,1,1xA100-fp16+peft
+3,NousResearch/Llama-2-13b-hf,['NVIDIA A100-SXM4-80GB'],fp16+peft,0,2,256,7.866831805643994,1xA100,1,1,1,2,1xA100-fp16+peft
+4,NousResearch/Llama-2-13b-hf,['NVIDIA A100-SXM4-80GB'],fp16+peft,0,8,256,9.926679807775873,1xA100,1,1,1,8,1xA100-fp16+peft
+5,NousResearch/Llama-2-13b-hf,['NVIDIA A100-SXM4-80GB'],fp16+peft+bnb-4bit,0,16,256,11.365145233408818,1xA100,1,1,1,16,1xA100-fp16+peft+bnb-4bit
+6,NousResearch/Llama-2-13b-hf,['NVIDIA A100-SXM4-80GB'],fp16+peft+bnb-4bit,0,4,256,8.767929955964831,1xA100,1,1,1,4,1xA100-fp16+peft+bnb-4bit
+7,NousResearch/Llama-2-13b-hf,['NVIDIA A100-SXM4-80GB'],fp16+peft+bnb-4bit,0,1,256,5.054903797955798,1xA100,1,1,1,1,1xA100-fp16+peft+bnb-4bit
+8,NousResearch/Llama-2-13b-hf,['NVIDIA A100-SXM4-80GB'],fp16+peft+bnb-4bit,0,2,256,6.765100017310723,1xA100,1,1,1,2,1xA100-fp16+peft+bnb-4bit
+9,NousResearch/Llama-2-13b-hf,['NVIDIA A100-SXM4-80GB'],fp16+peft+bnb-4bit,0,8,256,10.518658419037845,1xA100,1,1,1,8,1xA100-fp16+peft+bnb-4bit
+10,NousResearch/Llama-2-13b-hf,['NVIDIA A100-SXM4-80GB'],fp16+peft+gptq-4bit,0,4,256,6.02500204679365,1xA100,1,1,1,4,1xA100-fp16+peft+gptq-4bit
+11,NousResearch/Llama-2-13b-hf,['NVIDIA A100-SXM4-80GB'],fp16+peft+gptq-4bit,0,1,256,2.54943565153479,1xA100,1,1,1,1,1xA100-fp16+peft+gptq-4bit
+12,NousResearch/Llama-2-13b-hf,['NVIDIA A100-SXM4-80GB'],fp16+peft+gptq-4bit,0,2,256,4.036725806284275,1xA100,1,1,1,2,1xA100-fp16+peft+gptq-4bit
+13,NousResearch/Llama-2-13b-hf,['NVIDIA A100-SXM4-80GB'],fp16+peft+gptq-4bit,0,8,256,8.141971422038537,1xA100,1,1,1,8,1xA100-fp16+peft+gptq-4bit

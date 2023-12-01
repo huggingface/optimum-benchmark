@@ -1,0 +1,393 @@
+,launcher.name,launcher._target_,launcher.start_method,backend.name,backend.version,backend._target_,backend.seed,backend.inter_op_num_threads,backend.intra_op_num_threads,backend.continuous_isolation,backend.isolation_check_interval,backend.delete_cache,backend.no_weights,backend.device_map,backend.torch_dtype,backend.eval_mode,backend.disable_grad,backend.amp_autocast,backend.amp_dtype,backend.torch_compile,backend.to_bettertransformer,backend.use_flash_attention_2,backend.quantization_scheme,backend.data_parallel,backend.deepspeed_inference,backend.peft_strategy,backend.peft_config.base_model_name_or_path,backend.peft_config.revision,backend.peft_config.peft_type,backend.peft_config.task_type,backend.peft_config.inference_mode,backend.peft_config.auto_mapping,backend.peft_config.r,backend.peft_config.target_modules,backend.peft_config.lora_alpha,backend.peft_config.lora_dropout,backend.peft_config.fan_in_fan_out,backend.peft_config.bias,backend.peft_config.modules_to_save,backend.peft_config.init_lora_weights,backend.peft_config.layers_to_transform,backend.peft_config.layers_pattern,benchmark.name,benchmark._target_,benchmark.warmup_steps,benchmark.dataset_shapes.dataset_size,benchmark.dataset_shapes.sequence_length,benchmark.dataset_shapes.num_choices,benchmark.dataset_shapes.feature_size,benchmark.dataset_shapes.nb_max_frames,benchmark.dataset_shapes.audio_sequence_length,benchmark.training_arguments.skip_memory_metrics,benchmark.training_arguments.output_dir,benchmark.training_arguments.use_cpu,benchmark.training_arguments.ddp_find_unused_parameters,benchmark.training_arguments.do_train,benchmark.training_arguments.do_eval,benchmark.training_arguments.do_predict,benchmark.training_arguments.report_to,benchmark.training_arguments.max_steps,benchmark.training_arguments.per_device_train_batch_size,experiment_name,device,model,task,hub_kwargs.revision,hub_kwargs.cache_dir,hub_kwargs.force_download,hub_kwargs.local_files_only,environment.optimum_version,environment.optimum_commit,environment.transformers_version,environment.transformers_commit,environment.accelerate_version,environment.accelerate_commit,environment.diffusers_version,environment.diffusers_commit,environment.python_version,environment.system,environment.cpu,environment.cpu_count,environment.cpu_ram_mb,environment.gpus,warmup.runtime(s),warmup.throughput(samples/s),training.runtime(s),training.throughput(samples/s),overall_training.runtime(s),overall_training.throughput(samples/s),hydra.run.dir,hydra.sweep.dir,hydra.sweep.subdir,hydra.launcher._target_,hydra.sweeper._target_,hydra.sweeper.max_batch_size,hydra.sweeper.params.benchmark.training_arguments.per_device_train_batch_size,hydra.sweeper.params.model,hydra.help.app_name,hydra.help.header,hydra.help.footer,hydra.help.template,hydra.hydra_help.template,hydra.hydra_help.hydra_help,hydra.hydra_logging.version,hydra.hydra_logging.formatters.colorlog.(),hydra.hydra_logging.formatters.colorlog.format,hydra.hydra_logging.handlers.console.class,hydra.hydra_logging.handlers.console.formatter,hydra.hydra_logging.handlers.console.stream,hydra.hydra_logging.root.level,hydra.hydra_logging.root.handlers,hydra.hydra_logging.disable_existing_loggers,hydra.job_logging.version,hydra.job_logging.formatters.simple.format,hydra.job_logging.formatters.colorlog.(),hydra.job_logging.formatters.colorlog.format,hydra.job_logging.formatters.colorlog.log_colors.DEBUG,hydra.job_logging.formatters.colorlog.log_colors.INFO,hydra.job_logging.formatters.colorlog.log_colors.WARNING,hydra.job_logging.formatters.colorlog.log_colors.ERROR,hydra.job_logging.formatters.colorlog.log_colors.CRITICAL,hydra.job_logging.handlers.console.class,hydra.job_logging.handlers.console.formatter,hydra.job_logging.handlers.console.stream,hydra.job_logging.handlers.file.class,hydra.job_logging.handlers.file.formatter,hydra.job_logging.handlers.file.filename,hydra.job_logging.root.level,hydra.job_logging.root.handlers,hydra.job_logging.disable_existing_loggers,hydra.mode,hydra.searchpath,hydra.output_subdir,hydra.overrides.hydra,hydra.overrides.task,hydra.job.name,hydra.job.chdir,hydra.job.override_dirname,hydra.job.id,hydra.job.num,hydra.job.config_name,hydra.job.env_set.CUDA_VISIBLE_DEVICES,hydra.job.env_set.CUDA_DEVICE_ORDER,hydra.job.env_copy,hydra.job.config.override_dirname.kv_sep,hydra.job.config.override_dirname.item_sep,hydra.job.config.override_dirname.exclude_keys,hydra.runtime.version,hydra.runtime.version_base,hydra.runtime.cwd,hydra.runtime.config_sources,hydra.runtime.output_dir,hydra.runtime.choices.benchmark,hydra.runtime.choices.launcher,hydra.runtime.choices.backend,hydra.runtime.choices.hydra/env,hydra.runtime.choices.hydra/callbacks,hydra.runtime.choices.hydra/job_logging,hydra.runtime.choices.hydra/hydra_logging,hydra.runtime.choices.hydra/hydra_help,hydra.runtime.choices.hydra/help,hydra.runtime.choices.hydra/sweeper,hydra.runtime.choices.hydra/launcher,hydra.runtime.choices.hydra/output,hydra.verbose,backend.quantization_config.llm_int8_threshold,backend.quantization_config.load_in_4bit,backend.quantization_config.bnb_4bit_compute_dtype,backend.quantization_config.bits,backend.quantization_config.disable_exllama
+0,process,optimum_benchmark.launchers.process.launcher.ProcessLauncher,spawn,pytorch,2.1.1+cu118,optimum_benchmark.backends.pytorch.backend.PyTorchBackend,42,,,True,1.0,False,True,,float16,False,False,False,,False,False,False,,False,False,lora,,,,CAUSAL_LM,False,,8,,8,0,False,none,,True,,,training,optimum_benchmark.benchmarks.training.benchmark.TrainingBenchmark,40,160,256,1,80,3000,16000,True,./trainer_output,False,False,True,False,False,none,140,16,fp16+peft,cuda,NousResearch/Llama-2-13b-hf,text-generation,main,,False,False,1.14.1,,4.35.2,,0.24.1,,,,3.10.12,Linux, AMD EPYC 7742 64-Core Processor,128,540671,['NVIDIA A100-SXM4-80GB'],63.59784197807312,10.06323453900614,159.16368579864502,10.0525442846563,222.7615296840668,7.182568741870341,experiments/${benchmark.name}/${oc.env:HOSTNAME}/${model}/${experiment_name},experiments/${benchmark.name}/${oc.env:HOSTNAME}/${model}/${experiment_name},${benchmark.training_arguments.per_device_train_batch_size},hydra._internal.core_plugins.basic_launcher.BasicLauncher,hydra._internal.core_plugins.basic_sweeper.BasicSweeper,,"1,2,4,8,16,32,64","NousResearch/Llama-2-7b-hf,NousResearch/Llama-2-13b-hf",${hydra.job.name},"${hydra.help.app_name} is powered by Hydra.
+","Powered by Hydra (https://hydra.cc)
+Use --hydra-help to view Hydra specific help
+","${hydra.help.header}
+== Configuration groups ==
+Compose your configuration from those groups (group=option)
+
+$APP_CONFIG_GROUPS
+
+== Config ==
+Override anything in the config (foo.bar=value)
+
+$CONFIG
+
+${hydra.help.footer}
+","Hydra (${hydra.runtime.version})
+See https://hydra.cc for more info.
+
+== Flags ==
+$FLAGS_HELP
+
+== Configuration groups ==
+Compose your configuration from those groups (For example, append hydra/job_logging=disabled to command line)
+
+$HYDRA_CONFIG_GROUPS
+
+Use '--cfg hydra' to Show the Hydra config.
+",???,1,colorlog.ColoredFormatter,[%(cyan)s%(asctime)s%(reset)s][%(purple)sHYDRA%(reset)s] %(message)s,logging.StreamHandler,colorlog,ext://sys.stdout,INFO,['console'],False,1,[%(asctime)s][%(name)s][%(levelname)s] - %(message)s,colorlog.ColoredFormatter,[%(cyan)s%(asctime)s%(reset)s][%(blue)s%(name)s%(reset)s][%(log_color)s%(levelname)s%(reset)s] - %(message)s,purple,green,yellow,red,red,logging.StreamHandler,colorlog,ext://sys.stdout,logging.FileHandler,simple,${hydra.job.name}.log,INFO,"['console', 'file']",False,MULTIRUN,[],.hydra,['hydra.mode=MULTIRUN'],"['benchmark.training_arguments.per_device_train_batch_size=16', 'model=NousResearch/Llama-2-13b-hf']",cli,True,"benchmark.training_arguments.per_device_train_batch_size=16,model=NousResearch/Llama-2-13b-hf",9,9,fp16+peft,0,PCI_BUS_ID,[],=,",",[],1.3.2,1.3,/workspace/optimum-benchmark/examples/training-llamas,"[{'path': 'hydra.conf', 'schema': 'pkg', 'provider': 'hydra'}, {'path': 'optimum_benchmark', 'schema': 'pkg', 'provider': 'main'}, {'path': 'hydra_plugins.hydra_colorlog.conf', 'schema': 'pkg', 'provider': 'hydra-colorlog'}, {'path': '/workspace/optimum-benchmark/examples/training-llamas/configs', 'schema': 'file', 'provider': 'command-line'}, {'path': '', 'schema': 'structured', 'provider': 'schema'}]",/workspace/optimum-benchmark/examples/training-llamas/experiments/training/hf-dgx-01/NousResearch/Llama-2-13b-hf/fp16+peft/16,training,process,pytorch,default,,colorlog,colorlog,default,default,basic,basic,default,False,,,,,
+1,process,optimum_benchmark.launchers.process.launcher.ProcessLauncher,spawn,pytorch,2.1.1+cu118,optimum_benchmark.backends.pytorch.backend.PyTorchBackend,42,,,True,1.0,False,True,,float16,False,False,False,,False,False,False,,False,False,lora,,,,CAUSAL_LM,False,,8,,8,0,False,none,,True,,,training,optimum_benchmark.benchmarks.training.benchmark.TrainingBenchmark,40,160,256,1,80,3000,16000,True,./trainer_output,False,False,True,False,False,none,140,4,fp16+peft,cuda,NousResearch/Llama-2-13b-hf,text-generation,main,,False,False,1.14.1,,4.35.2,,0.24.1,,,,3.10.12,Linux, AMD EPYC 7742 64-Core Processor,128,540671,['NVIDIA A100-SXM4-80GB'],18.260884523391724,8.761897584700462,44.20054507255554,9.049662155600046,62.4614315032959,6.403951852734807,experiments/${benchmark.name}/${oc.env:HOSTNAME}/${model}/${experiment_name},experiments/${benchmark.name}/${oc.env:HOSTNAME}/${model}/${experiment_name},${benchmark.training_arguments.per_device_train_batch_size},hydra._internal.core_plugins.basic_launcher.BasicLauncher,hydra._internal.core_plugins.basic_sweeper.BasicSweeper,,"1,2,4,8,16,32,64","NousResearch/Llama-2-7b-hf,NousResearch/Llama-2-13b-hf",${hydra.job.name},"${hydra.help.app_name} is powered by Hydra.
+","Powered by Hydra (https://hydra.cc)
+Use --hydra-help to view Hydra specific help
+","${hydra.help.header}
+== Configuration groups ==
+Compose your configuration from those groups (group=option)
+
+$APP_CONFIG_GROUPS
+
+== Config ==
+Override anything in the config (foo.bar=value)
+
+$CONFIG
+
+${hydra.help.footer}
+","Hydra (${hydra.runtime.version})
+See https://hydra.cc for more info.
+
+== Flags ==
+$FLAGS_HELP
+
+== Configuration groups ==
+Compose your configuration from those groups (For example, append hydra/job_logging=disabled to command line)
+
+$HYDRA_CONFIG_GROUPS
+
+Use '--cfg hydra' to Show the Hydra config.
+",???,1,colorlog.ColoredFormatter,[%(cyan)s%(asctime)s%(reset)s][%(purple)sHYDRA%(reset)s] %(message)s,logging.StreamHandler,colorlog,ext://sys.stdout,INFO,['console'],False,1,[%(asctime)s][%(name)s][%(levelname)s] - %(message)s,colorlog.ColoredFormatter,[%(cyan)s%(asctime)s%(reset)s][%(blue)s%(name)s%(reset)s][%(log_color)s%(levelname)s%(reset)s] - %(message)s,purple,green,yellow,red,red,logging.StreamHandler,colorlog,ext://sys.stdout,logging.FileHandler,simple,${hydra.job.name}.log,INFO,"['console', 'file']",False,MULTIRUN,[],.hydra,['hydra.mode=MULTIRUN'],"['benchmark.training_arguments.per_device_train_batch_size=4', 'model=NousResearch/Llama-2-13b-hf']",cli,True,"benchmark.training_arguments.per_device_train_batch_size=4,model=NousResearch/Llama-2-13b-hf",5,5,fp16+peft,0,PCI_BUS_ID,[],=,",",[],1.3.2,1.3,/workspace/optimum-benchmark/examples/training-llamas,"[{'path': 'hydra.conf', 'schema': 'pkg', 'provider': 'hydra'}, {'path': 'optimum_benchmark', 'schema': 'pkg', 'provider': 'main'}, {'path': 'hydra_plugins.hydra_colorlog.conf', 'schema': 'pkg', 'provider': 'hydra-colorlog'}, {'path': '/workspace/optimum-benchmark/examples/training-llamas/configs', 'schema': 'file', 'provider': 'command-line'}, {'path': '', 'schema': 'structured', 'provider': 'schema'}]",/workspace/optimum-benchmark/examples/training-llamas/experiments/training/hf-dgx-01/NousResearch/Llama-2-13b-hf/fp16+peft/4,training,process,pytorch,default,,colorlog,colorlog,default,default,basic,basic,default,False,,,,,
+2,process,optimum_benchmark.launchers.process.launcher.ProcessLauncher,spawn,pytorch,2.1.1+cu118,optimum_benchmark.backends.pytorch.backend.PyTorchBackend,42,,,True,1.0,False,True,,float16,False,False,False,,False,False,False,,False,False,lora,,,,CAUSAL_LM,False,,8,,8,0,False,none,,True,,,training,optimum_benchmark.benchmarks.training.benchmark.TrainingBenchmark,40,160,256,1,80,3000,16000,True,./trainer_output,False,False,True,False,False,none,140,1,fp16+peft,cuda,NousResearch/Llama-2-13b-hf,text-generation,main,,False,False,1.14.1,,4.35.2,,0.24.1,,,,3.10.12,Linux, AMD EPYC 7742 64-Core Processor,128,540671,['NVIDIA A100-SXM4-80GB'],6.025439023971558,6.6385204199833945,14.0109965801239,7.137251046214708,20.036437034606934,4.990907306886948,experiments/${benchmark.name}/${oc.env:HOSTNAME}/${model}/${experiment_name},experiments/${benchmark.name}/${oc.env:HOSTNAME}/${model}/${experiment_name},${benchmark.training_arguments.per_device_train_batch_size},hydra._internal.core_plugins.basic_launcher.BasicLauncher,hydra._internal.core_plugins.basic_sweeper.BasicSweeper,,"1,2,4,8,16,32,64","NousResearch/Llama-2-7b-hf,NousResearch/Llama-2-13b-hf",${hydra.job.name},"${hydra.help.app_name} is powered by Hydra.
+","Powered by Hydra (https://hydra.cc)
+Use --hydra-help to view Hydra specific help
+","${hydra.help.header}
+== Configuration groups ==
+Compose your configuration from those groups (group=option)
+
+$APP_CONFIG_GROUPS
+
+== Config ==
+Override anything in the config (foo.bar=value)
+
+$CONFIG
+
+${hydra.help.footer}
+","Hydra (${hydra.runtime.version})
+See https://hydra.cc for more info.
+
+== Flags ==
+$FLAGS_HELP
+
+== Configuration groups ==
+Compose your configuration from those groups (For example, append hydra/job_logging=disabled to command line)
+
+$HYDRA_CONFIG_GROUPS
+
+Use '--cfg hydra' to Show the Hydra config.
+",???,1,colorlog.ColoredFormatter,[%(cyan)s%(asctime)s%(reset)s][%(purple)sHYDRA%(reset)s] %(message)s,logging.StreamHandler,colorlog,ext://sys.stdout,INFO,['console'],False,1,[%(asctime)s][%(name)s][%(levelname)s] - %(message)s,colorlog.ColoredFormatter,[%(cyan)s%(asctime)s%(reset)s][%(blue)s%(name)s%(reset)s][%(log_color)s%(levelname)s%(reset)s] - %(message)s,purple,green,yellow,red,red,logging.StreamHandler,colorlog,ext://sys.stdout,logging.FileHandler,simple,${hydra.job.name}.log,INFO,"['console', 'file']",False,MULTIRUN,[],.hydra,['hydra.mode=MULTIRUN'],"['benchmark.training_arguments.per_device_train_batch_size=1', 'model=NousResearch/Llama-2-13b-hf']",cli,True,"benchmark.training_arguments.per_device_train_batch_size=1,model=NousResearch/Llama-2-13b-hf",1,1,fp16+peft,0,PCI_BUS_ID,[],=,",",[],1.3.2,1.3,/workspace/optimum-benchmark/examples/training-llamas,"[{'path': 'hydra.conf', 'schema': 'pkg', 'provider': 'hydra'}, {'path': 'optimum_benchmark', 'schema': 'pkg', 'provider': 'main'}, {'path': 'hydra_plugins.hydra_colorlog.conf', 'schema': 'pkg', 'provider': 'hydra-colorlog'}, {'path': '/workspace/optimum-benchmark/examples/training-llamas/configs', 'schema': 'file', 'provider': 'command-line'}, {'path': '', 'schema': 'structured', 'provider': 'schema'}]",/workspace/optimum-benchmark/examples/training-llamas/experiments/training/hf-dgx-01/NousResearch/Llama-2-13b-hf/fp16+peft/1,training,process,pytorch,default,,colorlog,colorlog,default,default,basic,basic,default,False,,,,,
+3,process,optimum_benchmark.launchers.process.launcher.ProcessLauncher,spawn,pytorch,2.1.1+cu118,optimum_benchmark.backends.pytorch.backend.PyTorchBackend,42,,,True,1.0,False,True,,float16,False,False,False,,False,False,False,,False,False,lora,,,,CAUSAL_LM,False,,8,,8,0,False,none,,True,,,training,optimum_benchmark.benchmarks.training.benchmark.TrainingBenchmark,40,160,256,1,80,3000,16000,True,./trainer_output,False,False,True,False,False,none,140,2,fp16+peft,cuda,NousResearch/Llama-2-13b-hf,text-generation,main,,False,False,1.14.1,,4.35.2,,0.24.1,,,,3.10.12,Linux, AMD EPYC 7742 64-Core Processor,128,540671,['NVIDIA A100-SXM4-80GB'],10.59528875350952,7.550525696951984,25.423195123672485,7.866831805643994,36.01848530769348,5.552704348655116,experiments/${benchmark.name}/${oc.env:HOSTNAME}/${model}/${experiment_name},experiments/${benchmark.name}/${oc.env:HOSTNAME}/${model}/${experiment_name},${benchmark.training_arguments.per_device_train_batch_size},hydra._internal.core_plugins.basic_launcher.BasicLauncher,hydra._internal.core_plugins.basic_sweeper.BasicSweeper,,"1,2,4,8,16,32,64","NousResearch/Llama-2-7b-hf,NousResearch/Llama-2-13b-hf",${hydra.job.name},"${hydra.help.app_name} is powered by Hydra.
+","Powered by Hydra (https://hydra.cc)
+Use --hydra-help to view Hydra specific help
+","${hydra.help.header}
+== Configuration groups ==
+Compose your configuration from those groups (group=option)
+
+$APP_CONFIG_GROUPS
+
+== Config ==
+Override anything in the config (foo.bar=value)
+
+$CONFIG
+
+${hydra.help.footer}
+","Hydra (${hydra.runtime.version})
+See https://hydra.cc for more info.
+
+== Flags ==
+$FLAGS_HELP
+
+== Configuration groups ==
+Compose your configuration from those groups (For example, append hydra/job_logging=disabled to command line)
+
+$HYDRA_CONFIG_GROUPS
+
+Use '--cfg hydra' to Show the Hydra config.
+",???,1,colorlog.ColoredFormatter,[%(cyan)s%(asctime)s%(reset)s][%(purple)sHYDRA%(reset)s] %(message)s,logging.StreamHandler,colorlog,ext://sys.stdout,INFO,['console'],False,1,[%(asctime)s][%(name)s][%(levelname)s] - %(message)s,colorlog.ColoredFormatter,[%(cyan)s%(asctime)s%(reset)s][%(blue)s%(name)s%(reset)s][%(log_color)s%(levelname)s%(reset)s] - %(message)s,purple,green,yellow,red,red,logging.StreamHandler,colorlog,ext://sys.stdout,logging.FileHandler,simple,${hydra.job.name}.log,INFO,"['console', 'file']",False,MULTIRUN,[],.hydra,['hydra.mode=MULTIRUN'],"['benchmark.training_arguments.per_device_train_batch_size=2', 'model=NousResearch/Llama-2-13b-hf']",cli,True,"benchmark.training_arguments.per_device_train_batch_size=2,model=NousResearch/Llama-2-13b-hf",3,3,fp16+peft,0,PCI_BUS_ID,[],=,",",[],1.3.2,1.3,/workspace/optimum-benchmark/examples/training-llamas,"[{'path': 'hydra.conf', 'schema': 'pkg', 'provider': 'hydra'}, {'path': 'optimum_benchmark', 'schema': 'pkg', 'provider': 'main'}, {'path': 'hydra_plugins.hydra_colorlog.conf', 'schema': 'pkg', 'provider': 'hydra-colorlog'}, {'path': '/workspace/optimum-benchmark/examples/training-llamas/configs', 'schema': 'file', 'provider': 'command-line'}, {'path': '', 'schema': 'structured', 'provider': 'schema'}]",/workspace/optimum-benchmark/examples/training-llamas/experiments/training/hf-dgx-01/NousResearch/Llama-2-13b-hf/fp16+peft/2,training,process,pytorch,default,,colorlog,colorlog,default,default,basic,basic,default,False,,,,,
+4,process,optimum_benchmark.launchers.process.launcher.ProcessLauncher,spawn,pytorch,2.1.1+cu118,optimum_benchmark.backends.pytorch.backend.PyTorchBackend,42,,,True,1.0,False,True,,float16,False,False,False,,False,False,False,,False,False,lora,,,,CAUSAL_LM,False,,8,,8,0,False,none,,True,,,training,optimum_benchmark.benchmarks.training.benchmark.TrainingBenchmark,40,160,256,1,80,3000,16000,True,./trainer_output,False,False,True,False,False,none,140,8,fp16+peft,cuda,NousResearch/Llama-2-13b-hf,text-generation,main,,False,False,1.14.1,,4.35.2,,0.24.1,,,,3.10.12,Linux, AMD EPYC 7742 64-Core Processor,128,540671,['NVIDIA A100-SXM4-80GB'],32.72411274909973,9.77872196118758,80.59089398384094,9.926679807775873,113.31500816345216,7.059965074052975,experiments/${benchmark.name}/${oc.env:HOSTNAME}/${model}/${experiment_name},experiments/${benchmark.name}/${oc.env:HOSTNAME}/${model}/${experiment_name},${benchmark.training_arguments.per_device_train_batch_size},hydra._internal.core_plugins.basic_launcher.BasicLauncher,hydra._internal.core_plugins.basic_sweeper.BasicSweeper,,"1,2,4,8,16,32,64","NousResearch/Llama-2-7b-hf,NousResearch/Llama-2-13b-hf",${hydra.job.name},"${hydra.help.app_name} is powered by Hydra.
+","Powered by Hydra (https://hydra.cc)
+Use --hydra-help to view Hydra specific help
+","${hydra.help.header}
+== Configuration groups ==
+Compose your configuration from those groups (group=option)
+
+$APP_CONFIG_GROUPS
+
+== Config ==
+Override anything in the config (foo.bar=value)
+
+$CONFIG
+
+${hydra.help.footer}
+","Hydra (${hydra.runtime.version})
+See https://hydra.cc for more info.
+
+== Flags ==
+$FLAGS_HELP
+
+== Configuration groups ==
+Compose your configuration from those groups (For example, append hydra/job_logging=disabled to command line)
+
+$HYDRA_CONFIG_GROUPS
+
+Use '--cfg hydra' to Show the Hydra config.
+",???,1,colorlog.ColoredFormatter,[%(cyan)s%(asctime)s%(reset)s][%(purple)sHYDRA%(reset)s] %(message)s,logging.StreamHandler,colorlog,ext://sys.stdout,INFO,['console'],False,1,[%(asctime)s][%(name)s][%(levelname)s] - %(message)s,colorlog.ColoredFormatter,[%(cyan)s%(asctime)s%(reset)s][%(blue)s%(name)s%(reset)s][%(log_color)s%(levelname)s%(reset)s] - %(message)s,purple,green,yellow,red,red,logging.StreamHandler,colorlog,ext://sys.stdout,logging.FileHandler,simple,${hydra.job.name}.log,INFO,"['console', 'file']",False,MULTIRUN,[],.hydra,['hydra.mode=MULTIRUN'],"['benchmark.training_arguments.per_device_train_batch_size=8', 'model=NousResearch/Llama-2-13b-hf']",cli,True,"benchmark.training_arguments.per_device_train_batch_size=8,model=NousResearch/Llama-2-13b-hf",7,7,fp16+peft,0,PCI_BUS_ID,[],=,",",[],1.3.2,1.3,/workspace/optimum-benchmark/examples/training-llamas,"[{'path': 'hydra.conf', 'schema': 'pkg', 'provider': 'hydra'}, {'path': 'optimum_benchmark', 'schema': 'pkg', 'provider': 'main'}, {'path': 'hydra_plugins.hydra_colorlog.conf', 'schema': 'pkg', 'provider': 'hydra-colorlog'}, {'path': '/workspace/optimum-benchmark/examples/training-llamas/configs', 'schema': 'file', 'provider': 'command-line'}, {'path': '', 'schema': 'structured', 'provider': 'schema'}]",/workspace/optimum-benchmark/examples/training-llamas/experiments/training/hf-dgx-01/NousResearch/Llama-2-13b-hf/fp16+peft/8,training,process,pytorch,default,,colorlog,colorlog,default,default,basic,basic,default,False,,,,,
+5,process,optimum_benchmark.launchers.process.launcher.ProcessLauncher,spawn,pytorch,2.1.1+cu118,optimum_benchmark.backends.pytorch.backend.PyTorchBackend,42,,,True,1.0,False,True,,float16,False,False,False,,False,False,False,bnb,False,False,lora,,,,CAUSAL_LM,False,,8,,8,0,False,none,,True,,,training,optimum_benchmark.benchmarks.training.benchmark.TrainingBenchmark,40,160,256,1,80,3000,16000,True,./trainer_output,False,False,True,False,False,none,140,16,fp16+peft+bnb-4bit,cuda,NousResearch/Llama-2-13b-hf,text-generation,main,,False,False,1.14.1,,4.35.2,,0.24.1,,,,3.10.12,Linux, AMD EPYC 7742 64-Core Processor,128,540671,['NVIDIA A100-SXM4-80GB'],56.82151055335999,11.263340128893413,140.7813069820404,11.365145233408818,197.6028189659119,8.097050479204011,experiments/${benchmark.name}/${oc.env:HOSTNAME}/${model}/${experiment_name},experiments/${benchmark.name}/${oc.env:HOSTNAME}/${model}/${experiment_name},${benchmark.training_arguments.per_device_train_batch_size},hydra._internal.core_plugins.basic_launcher.BasicLauncher,hydra._internal.core_plugins.basic_sweeper.BasicSweeper,,"1,2,4,8,16,32,64,128","NousResearch/Llama-2-7b-hf,NousResearch/Llama-2-13b-hf",${hydra.job.name},"${hydra.help.app_name} is powered by Hydra.
+","Powered by Hydra (https://hydra.cc)
+Use --hydra-help to view Hydra specific help
+","${hydra.help.header}
+== Configuration groups ==
+Compose your configuration from those groups (group=option)
+
+$APP_CONFIG_GROUPS
+
+== Config ==
+Override anything in the config (foo.bar=value)
+
+$CONFIG
+
+${hydra.help.footer}
+","Hydra (${hydra.runtime.version})
+See https://hydra.cc for more info.
+
+== Flags ==
+$FLAGS_HELP
+
+== Configuration groups ==
+Compose your configuration from those groups (For example, append hydra/job_logging=disabled to command line)
+
+$HYDRA_CONFIG_GROUPS
+
+Use '--cfg hydra' to Show the Hydra config.
+",???,1,colorlog.ColoredFormatter,[%(cyan)s%(asctime)s%(reset)s][%(purple)sHYDRA%(reset)s] %(message)s,logging.StreamHandler,colorlog,ext://sys.stdout,INFO,['console'],False,1,[%(asctime)s][%(name)s][%(levelname)s] - %(message)s,colorlog.ColoredFormatter,[%(cyan)s%(asctime)s%(reset)s][%(blue)s%(name)s%(reset)s][%(log_color)s%(levelname)s%(reset)s] - %(message)s,purple,green,yellow,red,red,logging.StreamHandler,colorlog,ext://sys.stdout,logging.FileHandler,simple,${hydra.job.name}.log,INFO,"['console', 'file']",False,MULTIRUN,[],.hydra,['hydra.mode=MULTIRUN'],"['benchmark.training_arguments.per_device_train_batch_size=16', 'model=NousResearch/Llama-2-13b-hf']",cli,True,"benchmark.training_arguments.per_device_train_batch_size=16,model=NousResearch/Llama-2-13b-hf",9,9,fp16+peft+bnb-4bit,0,PCI_BUS_ID,[],=,",",[],1.3.2,1.3,/workspace/optimum-benchmark/examples/training-llamas,"[{'path': 'hydra.conf', 'schema': 'pkg', 'provider': 'hydra'}, {'path': 'optimum_benchmark', 'schema': 'pkg', 'provider': 'main'}, {'path': 'hydra_plugins.hydra_colorlog.conf', 'schema': 'pkg', 'provider': 'hydra-colorlog'}, {'path': '/workspace/optimum-benchmark/examples/training-llamas/configs', 'schema': 'file', 'provider': 'command-line'}, {'path': '', 'schema': 'structured', 'provider': 'schema'}]",/workspace/optimum-benchmark/examples/training-llamas/experiments/training/hf-dgx-01/NousResearch/Llama-2-13b-hf/fp16+peft+bnb-4bit/16,training,process,pytorch,default,,colorlog,colorlog,default,default,basic,basic,default,False,0.0,True,float16,,
+6,process,optimum_benchmark.launchers.process.launcher.ProcessLauncher,spawn,pytorch,2.1.1+cu118,optimum_benchmark.backends.pytorch.backend.PyTorchBackend,42,,,True,1.0,False,True,,float16,False,False,False,,False,False,False,bnb,False,False,lora,,,,CAUSAL_LM,False,,8,,8,0,False,none,,True,,,training,optimum_benchmark.benchmarks.training.benchmark.TrainingBenchmark,40,160,256,1,80,3000,16000,True,./trainer_output,False,False,True,False,False,none,140,4,fp16+peft+bnb-4bit,cuda,NousResearch/Llama-2-13b-hf,text-generation,main,,False,False,1.14.1,,4.35.2,,0.24.1,,,,3.10.12,Linux, AMD EPYC 7742 64-Core Processor,128,540671,['NVIDIA A100-SXM4-80GB'],18.608861923217773,8.59805401642388,45.62080240249634,8.767929955964831,64.22966575622559,6.227651900262757,experiments/${benchmark.name}/${oc.env:HOSTNAME}/${model}/${experiment_name},experiments/${benchmark.name}/${oc.env:HOSTNAME}/${model}/${experiment_name},${benchmark.training_arguments.per_device_train_batch_size},hydra._internal.core_plugins.basic_launcher.BasicLauncher,hydra._internal.core_plugins.basic_sweeper.BasicSweeper,,"1,2,4,8,16,32,64,128","NousResearch/Llama-2-7b-hf,NousResearch/Llama-2-13b-hf",${hydra.job.name},"${hydra.help.app_name} is powered by Hydra.
+","Powered by Hydra (https://hydra.cc)
+Use --hydra-help to view Hydra specific help
+","${hydra.help.header}
+== Configuration groups ==
+Compose your configuration from those groups (group=option)
+
+$APP_CONFIG_GROUPS
+
+== Config ==
+Override anything in the config (foo.bar=value)
+
+$CONFIG
+
+${hydra.help.footer}
+","Hydra (${hydra.runtime.version})
+See https://hydra.cc for more info.
+
+== Flags ==
+$FLAGS_HELP
+
+== Configuration groups ==
+Compose your configuration from those groups (For example, append hydra/job_logging=disabled to command line)
+
+$HYDRA_CONFIG_GROUPS
+
+Use '--cfg hydra' to Show the Hydra config.
+",???,1,colorlog.ColoredFormatter,[%(cyan)s%(asctime)s%(reset)s][%(purple)sHYDRA%(reset)s] %(message)s,logging.StreamHandler,colorlog,ext://sys.stdout,INFO,['console'],False,1,[%(asctime)s][%(name)s][%(levelname)s] - %(message)s,colorlog.ColoredFormatter,[%(cyan)s%(asctime)s%(reset)s][%(blue)s%(name)s%(reset)s][%(log_color)s%(levelname)s%(reset)s] - %(message)s,purple,green,yellow,red,red,logging.StreamHandler,colorlog,ext://sys.stdout,logging.FileHandler,simple,${hydra.job.name}.log,INFO,"['console', 'file']",False,MULTIRUN,[],.hydra,['hydra.mode=MULTIRUN'],"['benchmark.training_arguments.per_device_train_batch_size=4', 'model=NousResearch/Llama-2-13b-hf']",cli,True,"benchmark.training_arguments.per_device_train_batch_size=4,model=NousResearch/Llama-2-13b-hf",5,5,fp16+peft+bnb-4bit,0,PCI_BUS_ID,[],=,",",[],1.3.2,1.3,/workspace/optimum-benchmark/examples/training-llamas,"[{'path': 'hydra.conf', 'schema': 'pkg', 'provider': 'hydra'}, {'path': 'optimum_benchmark', 'schema': 'pkg', 'provider': 'main'}, {'path': 'hydra_plugins.hydra_colorlog.conf', 'schema': 'pkg', 'provider': 'hydra-colorlog'}, {'path': '/workspace/optimum-benchmark/examples/training-llamas/configs', 'schema': 'file', 'provider': 'command-line'}, {'path': '', 'schema': 'structured', 'provider': 'schema'}]",/workspace/optimum-benchmark/examples/training-llamas/experiments/training/hf-dgx-01/NousResearch/Llama-2-13b-hf/fp16+peft+bnb-4bit/4,training,process,pytorch,default,,colorlog,colorlog,default,default,basic,basic,default,False,0.0,True,float16,,
+7,process,optimum_benchmark.launchers.process.launcher.ProcessLauncher,spawn,pytorch,2.1.1+cu118,optimum_benchmark.backends.pytorch.backend.PyTorchBackend,42,,,True,1.0,False,True,,float16,False,False,False,,False,False,False,bnb,False,False,lora,,,,CAUSAL_LM,False,,8,,8,0,False,none,,True,,,training,optimum_benchmark.benchmarks.training.benchmark.TrainingBenchmark,40,160,256,1,80,3000,16000,True,./trainer_output,False,False,True,False,False,none,140,1,fp16+peft+bnb-4bit,cuda,NousResearch/Llama-2-13b-hf,text-generation,main,,False,False,1.14.1,,4.35.2,,0.24.1,,,,3.10.12,Linux, AMD EPYC 7742 64-Core Processor,128,540671,['NVIDIA A100-SXM4-80GB'],8.35726809501648,4.78625306083604,19.78277015686035,5.054903797955798,28.140039443969727,3.553655288902927,experiments/${benchmark.name}/${oc.env:HOSTNAME}/${model}/${experiment_name},experiments/${benchmark.name}/${oc.env:HOSTNAME}/${model}/${experiment_name},${benchmark.training_arguments.per_device_train_batch_size},hydra._internal.core_plugins.basic_launcher.BasicLauncher,hydra._internal.core_plugins.basic_sweeper.BasicSweeper,,"1,2,4,8,16,32,64,128","NousResearch/Llama-2-7b-hf,NousResearch/Llama-2-13b-hf",${hydra.job.name},"${hydra.help.app_name} is powered by Hydra.
+","Powered by Hydra (https://hydra.cc)
+Use --hydra-help to view Hydra specific help
+","${hydra.help.header}
+== Configuration groups ==
+Compose your configuration from those groups (group=option)
+
+$APP_CONFIG_GROUPS
+
+== Config ==
+Override anything in the config (foo.bar=value)
+
+$CONFIG
+
+${hydra.help.footer}
+","Hydra (${hydra.runtime.version})
+See https://hydra.cc for more info.
+
+== Flags ==
+$FLAGS_HELP
+
+== Configuration groups ==
+Compose your configuration from those groups (For example, append hydra/job_logging=disabled to command line)
+
+$HYDRA_CONFIG_GROUPS
+
+Use '--cfg hydra' to Show the Hydra config.
+",???,1,colorlog.ColoredFormatter,[%(cyan)s%(asctime)s%(reset)s][%(purple)sHYDRA%(reset)s] %(message)s,logging.StreamHandler,colorlog,ext://sys.stdout,INFO,['console'],False,1,[%(asctime)s][%(name)s][%(levelname)s] - %(message)s,colorlog.ColoredFormatter,[%(cyan)s%(asctime)s%(reset)s][%(blue)s%(name)s%(reset)s][%(log_color)s%(levelname)s%(reset)s] - %(message)s,purple,green,yellow,red,red,logging.StreamHandler,colorlog,ext://sys.stdout,logging.FileHandler,simple,${hydra.job.name}.log,INFO,"['console', 'file']",False,MULTIRUN,[],.hydra,['hydra.mode=MULTIRUN'],"['benchmark.training_arguments.per_device_train_batch_size=1', 'model=NousResearch/Llama-2-13b-hf']",cli,True,"benchmark.training_arguments.per_device_train_batch_size=1,model=NousResearch/Llama-2-13b-hf",1,1,fp16+peft+bnb-4bit,0,PCI_BUS_ID,[],=,",",[],1.3.2,1.3,/workspace/optimum-benchmark/examples/training-llamas,"[{'path': 'hydra.conf', 'schema': 'pkg', 'provider': 'hydra'}, {'path': 'optimum_benchmark', 'schema': 'pkg', 'provider': 'main'}, {'path': 'hydra_plugins.hydra_colorlog.conf', 'schema': 'pkg', 'provider': 'hydra-colorlog'}, {'path': '/workspace/optimum-benchmark/examples/training-llamas/configs', 'schema': 'file', 'provider': 'command-line'}, {'path': '', 'schema': 'structured', 'provider': 'schema'}]",/workspace/optimum-benchmark/examples/training-llamas/experiments/training/hf-dgx-01/NousResearch/Llama-2-13b-hf/fp16+peft+bnb-4bit/1,training,process,pytorch,default,,colorlog,colorlog,default,default,basic,basic,default,False,0.0,True,float16,,
+8,process,optimum_benchmark.launchers.process.launcher.ProcessLauncher,spawn,pytorch,2.1.1+cu118,optimum_benchmark.backends.pytorch.backend.PyTorchBackend,42,,,True,1.0,False,True,,float16,False,False,False,,False,False,False,bnb,False,False,lora,,,,CAUSAL_LM,False,,8,,8,0,False,none,,True,,,training,optimum_benchmark.benchmarks.training.benchmark.TrainingBenchmark,40,160,256,1,80,3000,16000,True,./trainer_output,False,False,True,False,False,none,140,2,fp16+peft+bnb-4bit,cuda,NousResearch/Llama-2-13b-hf,text-generation,main,,False,False,1.14.1,,4.35.2,,0.24.1,,,,3.10.12,Linux, AMD EPYC 7742 64-Core Processor,128,540671,['NVIDIA A100-SXM4-80GB'],12.181357860565186,6.567412345628946,29.56349492073059,6.765100017310723,41.74485445022583,4.791009637809817,experiments/${benchmark.name}/${oc.env:HOSTNAME}/${model}/${experiment_name},experiments/${benchmark.name}/${oc.env:HOSTNAME}/${model}/${experiment_name},${benchmark.training_arguments.per_device_train_batch_size},hydra._internal.core_plugins.basic_launcher.BasicLauncher,hydra._internal.core_plugins.basic_sweeper.BasicSweeper,,"1,2,4,8,16,32,64,128","NousResearch/Llama-2-7b-hf,NousResearch/Llama-2-13b-hf",${hydra.job.name},"${hydra.help.app_name} is powered by Hydra.
+","Powered by Hydra (https://hydra.cc)
+Use --hydra-help to view Hydra specific help
+","${hydra.help.header}
+== Configuration groups ==
+Compose your configuration from those groups (group=option)
+
+$APP_CONFIG_GROUPS
+
+== Config ==
+Override anything in the config (foo.bar=value)
+
+$CONFIG
+
+${hydra.help.footer}
+","Hydra (${hydra.runtime.version})
+See https://hydra.cc for more info.
+
+== Flags ==
+$FLAGS_HELP
+
+== Configuration groups ==
+Compose your configuration from those groups (For example, append hydra/job_logging=disabled to command line)
+
+$HYDRA_CONFIG_GROUPS
+
+Use '--cfg hydra' to Show the Hydra config.
+",???,1,colorlog.ColoredFormatter,[%(cyan)s%(asctime)s%(reset)s][%(purple)sHYDRA%(reset)s] %(message)s,logging.StreamHandler,colorlog,ext://sys.stdout,INFO,['console'],False,1,[%(asctime)s][%(name)s][%(levelname)s] - %(message)s,colorlog.ColoredFormatter,[%(cyan)s%(asctime)s%(reset)s][%(blue)s%(name)s%(reset)s][%(log_color)s%(levelname)s%(reset)s] - %(message)s,purple,green,yellow,red,red,logging.StreamHandler,colorlog,ext://sys.stdout,logging.FileHandler,simple,${hydra.job.name}.log,INFO,"['console', 'file']",False,MULTIRUN,[],.hydra,['hydra.mode=MULTIRUN'],"['benchmark.training_arguments.per_device_train_batch_size=2', 'model=NousResearch/Llama-2-13b-hf']",cli,True,"benchmark.training_arguments.per_device_train_batch_size=2,model=NousResearch/Llama-2-13b-hf",3,3,fp16+peft+bnb-4bit,0,PCI_BUS_ID,[],=,",",[],1.3.2,1.3,/workspace/optimum-benchmark/examples/training-llamas,"[{'path': 'hydra.conf', 'schema': 'pkg', 'provider': 'hydra'}, {'path': 'optimum_benchmark', 'schema': 'pkg', 'provider': 'main'}, {'path': 'hydra_plugins.hydra_colorlog.conf', 'schema': 'pkg', 'provider': 'hydra-colorlog'}, {'path': '/workspace/optimum-benchmark/examples/training-llamas/configs', 'schema': 'file', 'provider': 'command-line'}, {'path': '', 'schema': 'structured', 'provider': 'schema'}]",/workspace/optimum-benchmark/examples/training-llamas/experiments/training/hf-dgx-01/NousResearch/Llama-2-13b-hf/fp16+peft+bnb-4bit/2,training,process,pytorch,default,,colorlog,colorlog,default,default,basic,basic,default,False,0.0,True,float16,,
+9,process,optimum_benchmark.launchers.process.launcher.ProcessLauncher,spawn,pytorch,2.1.1+cu118,optimum_benchmark.backends.pytorch.backend.PyTorchBackend,42,,,True,1.0,False,True,,float16,False,False,False,,False,False,False,bnb,False,False,lora,,,,CAUSAL_LM,False,,8,,8,0,False,none,,True,,,training,optimum_benchmark.benchmarks.training.benchmark.TrainingBenchmark,40,160,256,1,80,3000,16000,True,./trainer_output,False,False,True,False,False,none,140,8,fp16+peft+bnb-4bit,cuda,NousResearch/Llama-2-13b-hf,text-generation,main,,False,False,1.14.1,,4.35.2,,0.24.1,,,,3.10.12,Linux, AMD EPYC 7742 64-Core Processor,128,540671,['NVIDIA A100-SXM4-80GB'],30.924877405166622,10.34765621889054,76.05532646179199,10.518658419037845,106.98020553588869,7.4780189100648515,experiments/${benchmark.name}/${oc.env:HOSTNAME}/${model}/${experiment_name},experiments/${benchmark.name}/${oc.env:HOSTNAME}/${model}/${experiment_name},${benchmark.training_arguments.per_device_train_batch_size},hydra._internal.core_plugins.basic_launcher.BasicLauncher,hydra._internal.core_plugins.basic_sweeper.BasicSweeper,,"1,2,4,8,16,32,64,128","NousResearch/Llama-2-7b-hf,NousResearch/Llama-2-13b-hf",${hydra.job.name},"${hydra.help.app_name} is powered by Hydra.
+","Powered by Hydra (https://hydra.cc)
+Use --hydra-help to view Hydra specific help
+","${hydra.help.header}
+== Configuration groups ==
+Compose your configuration from those groups (group=option)
+
+$APP_CONFIG_GROUPS
+
+== Config ==
+Override anything in the config (foo.bar=value)
+
+$CONFIG
+
+${hydra.help.footer}
+","Hydra (${hydra.runtime.version})
+See https://hydra.cc for more info.
+
+== Flags ==
+$FLAGS_HELP
+
+== Configuration groups ==
+Compose your configuration from those groups (For example, append hydra/job_logging=disabled to command line)
+
+$HYDRA_CONFIG_GROUPS
+
+Use '--cfg hydra' to Show the Hydra config.
+",???,1,colorlog.ColoredFormatter,[%(cyan)s%(asctime)s%(reset)s][%(purple)sHYDRA%(reset)s] %(message)s,logging.StreamHandler,colorlog,ext://sys.stdout,INFO,['console'],False,1,[%(asctime)s][%(name)s][%(levelname)s] - %(message)s,colorlog.ColoredFormatter,[%(cyan)s%(asctime)s%(reset)s][%(blue)s%(name)s%(reset)s][%(log_color)s%(levelname)s%(reset)s] - %(message)s,purple,green,yellow,red,red,logging.StreamHandler,colorlog,ext://sys.stdout,logging.FileHandler,simple,${hydra.job.name}.log,INFO,"['console', 'file']",False,MULTIRUN,[],.hydra,['hydra.mode=MULTIRUN'],"['benchmark.training_arguments.per_device_train_batch_size=8', 'model=NousResearch/Llama-2-13b-hf']",cli,True,"benchmark.training_arguments.per_device_train_batch_size=8,model=NousResearch/Llama-2-13b-hf",7,7,fp16+peft+bnb-4bit,0,PCI_BUS_ID,[],=,",",[],1.3.2,1.3,/workspace/optimum-benchmark/examples/training-llamas,"[{'path': 'hydra.conf', 'schema': 'pkg', 'provider': 'hydra'}, {'path': 'optimum_benchmark', 'schema': 'pkg', 'provider': 'main'}, {'path': 'hydra_plugins.hydra_colorlog.conf', 'schema': 'pkg', 'provider': 'hydra-colorlog'}, {'path': '/workspace/optimum-benchmark/examples/training-llamas/configs', 'schema': 'file', 'provider': 'command-line'}, {'path': '', 'schema': 'structured', 'provider': 'schema'}]",/workspace/optimum-benchmark/examples/training-llamas/experiments/training/hf-dgx-01/NousResearch/Llama-2-13b-hf/fp16+peft+bnb-4bit/8,training,process,pytorch,default,,colorlog,colorlog,default,default,basic,basic,default,False,0.0,True,float16,,
+10,process,optimum_benchmark.launchers.process.launcher.ProcessLauncher,spawn,pytorch,2.1.1+cu118,optimum_benchmark.backends.pytorch.backend.PyTorchBackend,42,,,True,1.0,False,True,,float16,False,False,False,,False,False,False,gptq,False,False,lora,,,,CAUSAL_LM,False,,8,,8,0,False,none,,True,,,training,optimum_benchmark.benchmarks.training.benchmark.TrainingBenchmark,40,160,256,1,80,3000,16000,True,./trainer_output,False,False,True,False,False,none,140,4,fp16+peft+gptq-4bit,cuda,NousResearch/Llama-2-13b-hf,text-generation,main,,False,False,1.14.1,,4.35.2,,0.24.1,,,,3.10.12,Linux, AMD EPYC 7742 64-Core Processor,128,540671,['NVIDIA A100-SXM4-80GB'],27.047818660736084,5.915449301361359,66.39001893997192,6.02500204679365,93.4378387928009,4.280920932760473,experiments/${oc.env:HOSTNAME}/${model}/${experiment_name},experiments/${oc.env:HOSTNAME}/${model}/${experiment_name},${benchmark.training_arguments.per_device_train_batch_size},hydra._internal.core_plugins.basic_launcher.BasicLauncher,hydra._internal.core_plugins.basic_sweeper.BasicSweeper,,"1,2,4,8,16,32,64,128","NousResearch/Llama-2-7b-hf,NousResearch/Llama-2-13b-hf,NousResearch/Llama-2-70b-hf",${hydra.job.name},"${hydra.help.app_name} is powered by Hydra.
+","Powered by Hydra (https://hydra.cc)
+Use --hydra-help to view Hydra specific help
+","${hydra.help.header}
+== Configuration groups ==
+Compose your configuration from those groups (group=option)
+
+$APP_CONFIG_GROUPS
+
+== Config ==
+Override anything in the config (foo.bar=value)
+
+$CONFIG
+
+${hydra.help.footer}
+","Hydra (${hydra.runtime.version})
+See https://hydra.cc for more info.
+
+== Flags ==
+$FLAGS_HELP
+
+== Configuration groups ==
+Compose your configuration from those groups (For example, append hydra/job_logging=disabled to command line)
+
+$HYDRA_CONFIG_GROUPS
+
+Use '--cfg hydra' to Show the Hydra config.
+",???,1,colorlog.ColoredFormatter,[%(cyan)s%(asctime)s%(reset)s][%(purple)sHYDRA%(reset)s] %(message)s,logging.StreamHandler,colorlog,ext://sys.stdout,INFO,['console'],False,1,[%(asctime)s][%(name)s][%(levelname)s] - %(message)s,colorlog.ColoredFormatter,[%(cyan)s%(asctime)s%(reset)s][%(blue)s%(name)s%(reset)s][%(log_color)s%(levelname)s%(reset)s] - %(message)s,purple,green,yellow,red,red,logging.StreamHandler,colorlog,ext://sys.stdout,logging.FileHandler,simple,${hydra.job.name}.log,INFO,"['console', 'file']",False,MULTIRUN,[],.hydra,['hydra.mode=MULTIRUN'],"['benchmark.training_arguments.per_device_train_batch_size=4', 'model=NousResearch/Llama-2-13b-hf']",cli,True,"benchmark.training_arguments.per_device_train_batch_size=4,model=NousResearch/Llama-2-13b-hf",7,7,fp16+peft+gptq-4bit,0,PCI_BUS_ID,[],=,",",[],1.3.2,1.3,/workspace/optimum-benchmark/examples/training-llamas,"[{'path': 'hydra.conf', 'schema': 'pkg', 'provider': 'hydra'}, {'path': 'optimum_benchmark', 'schema': 'pkg', 'provider': 'main'}, {'path': 'hydra_plugins.hydra_colorlog.conf', 'schema': 'pkg', 'provider': 'hydra-colorlog'}, {'path': '/workspace/optimum-benchmark/examples/training-llamas/configs', 'schema': 'file', 'provider': 'command-line'}, {'path': '', 'schema': 'structured', 'provider': 'schema'}]",/workspace/optimum-benchmark/examples/training-llamas/experiments/hf-dgx-01/NousResearch/Llama-2-13b-hf/fp16+peft+gptq-4bit/4,training,process,pytorch,default,,colorlog,colorlog,default,default,basic,basic,default,False,,,,4,True
+11,process,optimum_benchmark.launchers.process.launcher.ProcessLauncher,spawn,pytorch,2.1.1+cu118,optimum_benchmark.backends.pytorch.backend.PyTorchBackend,42,,,True,1.0,False,True,,float16,False,False,False,,False,False,False,gptq,False,False,lora,,,,CAUSAL_LM,False,,8,,8,0,False,none,,True,,,training,optimum_benchmark.benchmarks.training.benchmark.TrainingBenchmark,40,160,256,1,80,3000,16000,True,./trainer_output,False,False,True,False,False,none,140,1,fp16+peft+gptq-4bit,cuda,NousResearch/Llama-2-13b-hf,text-generation,main,,False,False,1.14.1,,4.35.2,,0.24.1,,,,3.10.12,Linux, AMD EPYC 7742 64-Core Processor,128,540671,['NVIDIA A100-SXM4-80GB'],16.171680450439453,2.473459707702364,39.22436714172363,2.54943565153479,55.39604926109314,1.805182884589461,experiments/${oc.env:HOSTNAME}/${model}/${experiment_name},experiments/${oc.env:HOSTNAME}/${model}/${experiment_name},${benchmark.training_arguments.per_device_train_batch_size},hydra._internal.core_plugins.basic_launcher.BasicLauncher,hydra._internal.core_plugins.basic_sweeper.BasicSweeper,,"1,2,4,8,16,32,64,128","NousResearch/Llama-2-7b-hf,NousResearch/Llama-2-13b-hf,NousResearch/Llama-2-70b-hf",${hydra.job.name},"${hydra.help.app_name} is powered by Hydra.
+","Powered by Hydra (https://hydra.cc)
+Use --hydra-help to view Hydra specific help
+","${hydra.help.header}
+== Configuration groups ==
+Compose your configuration from those groups (group=option)
+
+$APP_CONFIG_GROUPS
+
+== Config ==
+Override anything in the config (foo.bar=value)
+
+$CONFIG
+
+${hydra.help.footer}
+","Hydra (${hydra.runtime.version})
+See https://hydra.cc for more info.
+
+== Flags ==
+$FLAGS_HELP
+
+== Configuration groups ==
+Compose your configuration from those groups (For example, append hydra/job_logging=disabled to command line)
+
+$HYDRA_CONFIG_GROUPS
+
+Use '--cfg hydra' to Show the Hydra config.
+",???,1,colorlog.ColoredFormatter,[%(cyan)s%(asctime)s%(reset)s][%(purple)sHYDRA%(reset)s] %(message)s,logging.StreamHandler,colorlog,ext://sys.stdout,INFO,['console'],False,1,[%(asctime)s][%(name)s][%(levelname)s] - %(message)s,colorlog.ColoredFormatter,[%(cyan)s%(asctime)s%(reset)s][%(blue)s%(name)s%(reset)s][%(log_color)s%(levelname)s%(reset)s] - %(message)s,purple,green,yellow,red,red,logging.StreamHandler,colorlog,ext://sys.stdout,logging.FileHandler,simple,${hydra.job.name}.log,INFO,"['console', 'file']",False,MULTIRUN,[],.hydra,['hydra.mode=MULTIRUN'],"['benchmark.training_arguments.per_device_train_batch_size=1', 'model=NousResearch/Llama-2-13b-hf']",cli,True,"benchmark.training_arguments.per_device_train_batch_size=1,model=NousResearch/Llama-2-13b-hf",1,1,fp16+peft+gptq-4bit,0,PCI_BUS_ID,[],=,",",[],1.3.2,1.3,/workspace/optimum-benchmark/examples/training-llamas,"[{'path': 'hydra.conf', 'schema': 'pkg', 'provider': 'hydra'}, {'path': 'optimum_benchmark', 'schema': 'pkg', 'provider': 'main'}, {'path': 'hydra_plugins.hydra_colorlog.conf', 'schema': 'pkg', 'provider': 'hydra-colorlog'}, {'path': '/workspace/optimum-benchmark/examples/training-llamas/configs', 'schema': 'file', 'provider': 'command-line'}, {'path': '', 'schema': 'structured', 'provider': 'schema'}]",/workspace/optimum-benchmark/examples/training-llamas/experiments/hf-dgx-01/NousResearch/Llama-2-13b-hf/fp16+peft+gptq-4bit/1,training,process,pytorch,default,,colorlog,colorlog,default,default,basic,basic,default,False,,,,4,True
+12,process,optimum_benchmark.launchers.process.launcher.ProcessLauncher,spawn,pytorch,2.1.1+cu118,optimum_benchmark.backends.pytorch.backend.PyTorchBackend,42,,,True,1.0,False,True,,float16,False,False,False,,False,False,False,gptq,False,False,lora,,,,CAUSAL_LM,False,,8,,8,0,False,none,,True,,,training,optimum_benchmark.benchmarks.training.benchmark.TrainingBenchmark,40,160,256,1,80,3000,16000,True,./trainer_output,False,False,True,False,False,none,140,2,fp16+peft+gptq-4bit,cuda,NousResearch/Llama-2-13b-hf,text-generation,main,,False,False,1.14.1,,4.35.2,,0.24.1,,,,3.10.12,Linux, AMD EPYC 7742 64-Core Processor,128,540671,['NVIDIA A100-SXM4-80GB'],20.308139324188232,3.939307226670201,49.545104026794434,4.036725806284275,69.85324501991272,2.863145440744907,experiments/${oc.env:HOSTNAME}/${model}/${experiment_name},experiments/${oc.env:HOSTNAME}/${model}/${experiment_name},${benchmark.training_arguments.per_device_train_batch_size},hydra._internal.core_plugins.basic_launcher.BasicLauncher,hydra._internal.core_plugins.basic_sweeper.BasicSweeper,,"1,2,4,8,16,32,64,128","NousResearch/Llama-2-7b-hf,NousResearch/Llama-2-13b-hf,NousResearch/Llama-2-70b-hf",${hydra.job.name},"${hydra.help.app_name} is powered by Hydra.
+","Powered by Hydra (https://hydra.cc)
+Use --hydra-help to view Hydra specific help
+","${hydra.help.header}
+== Configuration groups ==
+Compose your configuration from those groups (group=option)
+
+$APP_CONFIG_GROUPS
+
+== Config ==
+Override anything in the config (foo.bar=value)
+
+$CONFIG
+
+${hydra.help.footer}
+","Hydra (${hydra.runtime.version})
+See https://hydra.cc for more info.
+
+== Flags ==
+$FLAGS_HELP
+
+== Configuration groups ==
+Compose your configuration from those groups (For example, append hydra/job_logging=disabled to command line)
+
+$HYDRA_CONFIG_GROUPS
+
+Use '--cfg hydra' to Show the Hydra config.
+",???,1,colorlog.ColoredFormatter,[%(cyan)s%(asctime)s%(reset)s][%(purple)sHYDRA%(reset)s] %(message)s,logging.StreamHandler,colorlog,ext://sys.stdout,INFO,['console'],False,1,[%(asctime)s][%(name)s][%(levelname)s] - %(message)s,colorlog.ColoredFormatter,[%(cyan)s%(asctime)s%(reset)s][%(blue)s%(name)s%(reset)s][%(log_color)s%(levelname)s%(reset)s] - %(message)s,purple,green,yellow,red,red,logging.StreamHandler,colorlog,ext://sys.stdout,logging.FileHandler,simple,${hydra.job.name}.log,INFO,"['console', 'file']",False,MULTIRUN,[],.hydra,['hydra.mode=MULTIRUN'],"['benchmark.training_arguments.per_device_train_batch_size=2', 'model=NousResearch/Llama-2-13b-hf']",cli,True,"benchmark.training_arguments.per_device_train_batch_size=2,model=NousResearch/Llama-2-13b-hf",4,4,fp16+peft+gptq-4bit,0,PCI_BUS_ID,[],=,",",[],1.3.2,1.3,/workspace/optimum-benchmark/examples/training-llamas,"[{'path': 'hydra.conf', 'schema': 'pkg', 'provider': 'hydra'}, {'path': 'optimum_benchmark', 'schema': 'pkg', 'provider': 'main'}, {'path': 'hydra_plugins.hydra_colorlog.conf', 'schema': 'pkg', 'provider': 'hydra-colorlog'}, {'path': '/workspace/optimum-benchmark/examples/training-llamas/configs', 'schema': 'file', 'provider': 'command-line'}, {'path': '', 'schema': 'structured', 'provider': 'schema'}]",/workspace/optimum-benchmark/examples/training-llamas/experiments/hf-dgx-01/NousResearch/Llama-2-13b-hf/fp16+peft+gptq-4bit/2,training,process,pytorch,default,,colorlog,colorlog,default,default,basic,basic,default,False,,,,4,True
+13,process,optimum_benchmark.launchers.process.launcher.ProcessLauncher,spawn,pytorch,2.1.1+cu118,optimum_benchmark.backends.pytorch.backend.PyTorchBackend,42,,,True,1.0,False,True,,float16,False,False,False,,False,False,False,gptq,False,False,lora,,,,CAUSAL_LM,False,,8,,8,0,False,none,,True,,,training,optimum_benchmark.benchmarks.training.benchmark.TrainingBenchmark,40,160,256,1,80,3000,16000,True,./trainer_output,False,False,True,False,False,none,140,8,fp16+peft+gptq-4bit,cuda,NousResearch/Llama-2-13b-hf,text-generation,main,,False,False,1.14.1,,4.35.2,,0.24.1,,,,3.10.12,Linux, AMD EPYC 7742 64-Core Processor,128,540671,['NVIDIA A100-SXM4-80GB'],39.81309175491333,8.037557142507247,98.25630164146423,8.141971422038537,138.06939482688904,5.794187777841986,experiments/${benchmark.name}/${oc.env:HOSTNAME}/${model}/${experiment_name},experiments/${benchmark.name}/${oc.env:HOSTNAME}/${model}/${experiment_name},${benchmark.training_arguments.per_device_train_batch_size},hydra._internal.core_plugins.basic_launcher.BasicLauncher,hydra._internal.core_plugins.basic_sweeper.BasicSweeper,,"1,2,4,8,16,32,64,128","NousResearch/Llama-2-7b-hf,NousResearch/Llama-2-13b-hf",${hydra.job.name},"${hydra.help.app_name} is powered by Hydra.
+","Powered by Hydra (https://hydra.cc)
+Use --hydra-help to view Hydra specific help
+","${hydra.help.header}
+== Configuration groups ==
+Compose your configuration from those groups (group=option)
+
+$APP_CONFIG_GROUPS
+
+== Config ==
+Override anything in the config (foo.bar=value)
+
+$CONFIG
+
+${hydra.help.footer}
+","Hydra (${hydra.runtime.version})
+See https://hydra.cc for more info.
+
+== Flags ==
+$FLAGS_HELP
+
+== Configuration groups ==
+Compose your configuration from those groups (For example, append hydra/job_logging=disabled to command line)
+
+$HYDRA_CONFIG_GROUPS
+
+Use '--cfg hydra' to Show the Hydra config.
+",???,1,colorlog.ColoredFormatter,[%(cyan)s%(asctime)s%(reset)s][%(purple)sHYDRA%(reset)s] %(message)s,logging.StreamHandler,colorlog,ext://sys.stdout,INFO,['console'],False,1,[%(asctime)s][%(name)s][%(levelname)s] - %(message)s,colorlog.ColoredFormatter,[%(cyan)s%(asctime)s%(reset)s][%(blue)s%(name)s%(reset)s][%(log_color)s%(levelname)s%(reset)s] - %(message)s,purple,green,yellow,red,red,logging.StreamHandler,colorlog,ext://sys.stdout,logging.FileHandler,simple,${hydra.job.name}.log,INFO,"['console', 'file']",False,MULTIRUN,[],.hydra,['hydra.mode=MULTIRUN'],"['benchmark.training_arguments.per_device_train_batch_size=8', 'model=NousResearch/Llama-2-13b-hf']",cli,True,"benchmark.training_arguments.per_device_train_batch_size=8,model=NousResearch/Llama-2-13b-hf",7,7,fp16+peft+gptq-4bit,0,PCI_BUS_ID,[],=,",",[],1.3.2,1.3,/workspace/optimum-benchmark/examples/training-llamas,"[{'path': 'hydra.conf', 'schema': 'pkg', 'provider': 'hydra'}, {'path': 'optimum_benchmark', 'schema': 'pkg', 'provider': 'main'}, {'path': 'hydra_plugins.hydra_colorlog.conf', 'schema': 'pkg', 'provider': 'hydra-colorlog'}, {'path': '/workspace/optimum-benchmark/examples/training-llamas/configs', 'schema': 'file', 'provider': 'command-line'}, {'path': '', 'schema': 'structured', 'provider': 'schema'}]",/workspace/optimum-benchmark/examples/training-llamas/experiments/training/hf-dgx-01/NousResearch/Llama-2-13b-hf/fp16+peft+gptq-4bit/8,training,process,pytorch,default,,colorlog,colorlog,default,default,basic,basic,default,False,,,,4,True
