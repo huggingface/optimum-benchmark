@@ -152,7 +152,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             LOGGER.info("\t+ Loading quantized model")
             self.pretrained_model = self.automodel_class.from_pretrained(
                 pretrained_model_name_or_path=self.model,
-                quantization_config=self.quantization_config,
                 # for gptq, we need to specify the device_map to avoid any modules being assigned to cpu
                 device_map=self.config.device_map or torch.device(self.device),
                 # when no_weights=True, the state_dict is empty so from_pretrained will try to randomly
@@ -237,11 +236,11 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             )
         elif self.is_awq_quantized():
             LOGGER.info("\t+ Processing AWQ config")
-            from transformers import AwqConfig
-
-            self.quantization_config = AwqConfig(
-                **dict(getattr(self.pretrained_config, "quantization_config", {}), **self.config.quantization_config)
+            assert self.config.quantization_scheme is None, (
+                "AWQ quantization configuration can't be overriden."
+                "Please remove the quantization_scheme key from the config."
             )
+            self.quantization_config = None
         elif self.is_bnb_quantized():
             LOGGER.info("\t+ Processing BitsAndBytes config")
             from transformers import BitsAndBytesConfig
@@ -285,6 +284,9 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         if self.config.use_flash_attention_2:
             kwargs["use_flash_attention_2"] = True
+
+        if self.quantization_config is not None:
+            kwargs["quantization_config"] = self.quantization_config
 
         return kwargs
 
