@@ -74,6 +74,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             # iniline quantization or quantization config modification
             LOGGER.info("\t+ Processing quantization config")
             self.process_quantization_config()
+        else:
+            self.quantization_config = None
 
         # Load model
         if self.config.no_weights:
