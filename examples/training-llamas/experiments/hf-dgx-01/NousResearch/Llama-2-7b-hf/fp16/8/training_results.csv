@@ -1,0 +1,2 @@
+warmup.runtime(s),warmup.throughput(samples/s),training.runtime(s),training.throughput(samples/s),overall_training.runtime(s),overall_training.throughput(samples/s)
+27.57860779762268,11.603196301576343,67.7247965335846,11.812512417121571,95.30340623855591,8.394243517356594

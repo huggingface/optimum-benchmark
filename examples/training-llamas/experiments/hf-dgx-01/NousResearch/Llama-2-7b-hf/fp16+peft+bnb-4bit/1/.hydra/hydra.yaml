@@ -1,8 +1,8 @@
 hydra:
   run:
-    dir: experiments/${benchmark.name}/${oc.env:HOSTNAME}/${model}/${experiment_name}
+    dir: experiments/${oc.env:HOSTNAME}/${model}/${experiment_name}
   sweep:
-    dir: experiments/${benchmark.name}/${oc.env:HOSTNAME}/${model}/${experiment_name}
+    dir: experiments/${oc.env:HOSTNAME}/${model}/${experiment_name}
     subdir: ${benchmark.training_arguments.per_device_train_batch_size}
   launcher:
     _target_: hydra._internal.core_plugins.basic_launcher.BasicLauncher
@@ -11,7 +11,7 @@ hydra:
     max_batch_size: null
     params:
       benchmark.training_arguments.per_device_train_batch_size: 1,2,4,8,16,32,64,128
-      model: NousResearch/Llama-2-7b-hf,NousResearch/Llama-2-13b-hf
+      model: NousResearch/Llama-2-7b-hf
   help:
     app_name: ${hydra.job.name}
     header: '${hydra.help.app_name} is powered by Hydra.
@@ -160,7 +160,7 @@ hydra:
     - path: ''
       schema: structured
       provider: schema
-    output_dir: /workspace/optimum-benchmark/examples/training-llamas/experiments/training/hf-dgx-01/NousResearch/Llama-2-7b-hf/fp16+peft+bnb-4bit/1
+    output_dir: /workspace/optimum-benchmark/examples/training-llamas/experiments/hf-dgx-01/NousResearch/Llama-2-7b-hf/fp16+peft+bnb-4bit/1
     choices:
       benchmark: training
       launcher: process

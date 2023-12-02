@@ -85,7 +85,7 @@ environment:
   optimum_commit: null
   transformers_version: 4.35.2
   transformers_commit: null
-  accelerate_version: 0.24.1
+  accelerate_version: 0.25.0
   accelerate_commit: null
   diffusers_version: null
   diffusers_commit: null

@@ -1,5 +1,5 @@
 defaults:
-  - _base_
+  - _base_ # we can also extend fp16 as a base here
   - _self_
   - override launcher: process
 
