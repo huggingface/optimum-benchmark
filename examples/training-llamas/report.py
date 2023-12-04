@@ -69,18 +69,20 @@ def get_short_report(full_report, report_folder: str = "artifacts"):
         "model": "Model",
         "environment.gpus": "GPUs",
         "experiment_name": "Experiment Name",
-        "hydra.job.env_set.CUDA_VISIBLE_DEVICES": "CUDAs",
-        "benchmark.training_arguments.per_device_train_batch_size": "Per Process Batch Size",
+        "launcher.name": "Launcher",
+        "launcher.nproc_per_node": "Processes per Node",
         "benchmark.dataset_shapes.sequence_length": "Sequence Length",
+        "benchmark.training_arguments.per_device_train_batch_size": "Per Process Batch Size",
         #
         "training.throughput(samples/s)": "Training Throughput (samples/s)",
     }
     short_report = full_report[list(short_columns.keys())].rename(columns=short_columns)
 
     short_report["GPU Name"] = short_report["GPUs"].str[0]
-    short_report["Num GPUs"] = short_report["GPUs"].str.len()
-    short_report["Num CUDAs"] = short_report["CUDAs"].str.split(",").str.len()
-    short_report["Num Processes"] = short_report[["Num GPUs", "Num CUDAs"]].min(axis=1)
+    short_report["Num Processes"] = short_report[["Launcher", "Processes per Node"]].apply(
+        lambda x: x["Processes per Node"] if x["Launcher"] == "torchrun" else 1,
+        axis=1,
+    )
 
     short_report["GPU Name"].replace("NVIDIA A100-SXM4-80GB", "1xA100", inplace=True)
     short_report["GPU Name"].replace("AMD INSTINCT MI250 (MCM) OAM AC MBA", "1xMI250", inplace=True)
