@@ -6,7 +6,7 @@ A set of benchmarks on Meta's LLaMA2's training.
 
 You will need to install any necessary third-party libraries like `deepspeed` or `auto-gptq` depending on the hardware and benchmarks you want to run.
 
-For example running PEFT on two devices with Model Parallelism (i.e. `fp16+peft+mp=2`) will require: `peft` and `deepspeed`
+For example running PEFT on two devices with Model Parallelism (i.e. `fp16+peft+dp=2+zero3`) will require: `peft` and `deepspeed`
 
 ## Running
 
@@ -14,7 +14,7 @@ Then run the benchmarks from this directory with:
 
 ```bash
 optimum-benchmark --config-dir configs/ --config-name fp16 --multirun
-optimum-benchmark --config-dir configs/ --config-name fp16+peft+mp=2+zero3 --multirun
+optimum-benchmark --config-dir configs/ --config-name fp16+peft+dp=2+zero3 --multirun
 [...]
 ```
 
