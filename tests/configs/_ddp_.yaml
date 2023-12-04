@@ -6,7 +6,6 @@ experiment_name: ${device}_${backend.name}_${benchmark.name}_${task}_ddp
 
 launcher:
   nproc_per_node: 2
-  rdzv_endpoint: "localhost:29222"
 
 benchmark:
   dataset_shapes:

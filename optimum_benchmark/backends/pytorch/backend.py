@@ -147,26 +147,31 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 **self.automodel_kwargs,
                 **self.hub_kwargs,
             )
-            if self.config.device_map is None and self.device != "cpu":
+            if self.config.device_map is None:
                 LOGGER.info(f"\t+ Moving pipeline to device: {self.device}")
                 self.pretrained_model.to(self.device)
-        elif self.is_quantized():
-            LOGGER.info("\t+ Loading quantized model")
+        elif self.is_bnb_quantized():
+            LOGGER.info("\t+ Loading BnB quantized model")
             self.pretrained_model = self.automodel_class.from_pretrained(
                 pretrained_model_name_or_path=self.model,
-                # for gptq, we need to specify the device_map to avoid any modules being assigned to cpu
-                device_map=self.config.device_map or torch.device(self.device),
-                # when no_weights=True, the state_dict is empty so from_pretrained will try to randomly
-                # initialize every missing weights, we don't want that, so we set fast_init to False
-                _fast_init=not self.config.no_weights,
+                device_map=self.config.device_map,
                 # this avoids unnecessary memory usage when loading quantized models
                 low_cpu_mem_usage=True,
                 **self.automodel_kwargs,
                 **self.hub_kwargs,
             )
-            if self.config.device_map is None and self.device != "cpu":
-                LOGGER.info(f"\t+ Moving quantized model to device: {self.device}")
-                self.pretrained_model.to(self.device)
+        elif self.is_gptq_quantized() or self.is_awq_quantized():
+            LOGGER.info("\t+ Loading GPTQ quantized model")
+            self.pretrained_model = self.automodel_class.from_pretrained(
+                pretrained_model_name_or_path=self.model,
+                # for gptq, we need to specify the device_map to either auto
+                # or a cuda adevice to avoid any modules being assigned to cpu
+                device_map=self.config.device_map or torch.device(self.device),
+                # this avoids unnecessary memory usage when loading quantized models
+                low_cpu_mem_usage=True,
+                **self.automodel_kwargs,
+                **self.hub_kwargs,
+            )
         elif self.config.device_map is not None:
             LOGGER.info(f"\t+ Loading model with device map: {self.config.device_map}")
             self.pretrained_model = self.automodel_class.from_pretrained(
@@ -199,7 +204,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         if self.is_quantized():
             # so that from_pretrained acts as if the model is quantized
-            self.pretrained_config.quantization_config = self.quantization_config
+            self.pretrained_config.quantization_config = self.quantization_config.to_dict()
 
         LOGGER.info(f"\t+ Saving pretrained config to {no_weights_model}")
         self.pretrained_config.save_pretrained(save_directory=no_weights_model)
@@ -238,11 +243,11 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             )
         elif self.is_awq_quantized():
             LOGGER.info("\t+ Processing AWQ config")
-            assert self.config.quantization_scheme is None, (
-                "AWQ quantization configuration can't be overriden."
-                "Please remove the quantization_scheme key from the config."
+            from transformers import AwqConfig
+
+            self.quantization_config = AwqConfig(
+                **dict(getattr(self.pretrained_config, "quantization_config", {}), **self.config.quantization_config)
             )
-            self.quantization_config = None
         elif self.is_bnb_quantized():
             LOGGER.info("\t+ Processing BitsAndBytes config")
             from transformers import BitsAndBytesConfig
@@ -287,8 +292,15 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         if self.config.use_flash_attention_2:
             kwargs["use_flash_attention_2"] = True
 
-        if self.quantization_config is not None:
+        if self.is_gptq_quantized() or self.is_bnb_quantized():
+            # awq quantization doesn't support overriding the quantization
+            # config by passing quantization_config to from_pretrained
             kwargs["quantization_config"] = self.quantization_config
+
+        if self.config.no_weights:
+            # when no_weights=True, the state_dict is empty so from_pretrained will try to randomly
+            # initialize every missing weights, we don't want that, so we set fast_init to False
+            kwargs["_fast_init"] = False
 
         return kwargs
 

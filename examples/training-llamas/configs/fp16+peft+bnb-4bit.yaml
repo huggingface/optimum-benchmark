@@ -1,0 +1,15 @@
+defaults:
+  - _base_ # we can extend fp16+peft as a base here
+  - _self_
+  - override launcher: process
+
+experiment_name: fp16+peft+bnb-4bit
+
+backend:
+  quantization_scheme: bnb
+  quantization_config:
+    load_in_4bit: true
+    bnb_4bit_compute_dtype: float16
+  peft_strategy: lora
+  peft_config:
+    task_type: CAUSAL_LM

@@ -6,7 +6,6 @@ experiment_name: ${device}_${backend.name}_${benchmark.name}_${task}_tp
 
 launcher:
   nproc_per_node: 2
-  rdzv_endpoint: "localhost:29666"
 
 backend:
   deepspeed_inference: true
