@@ -1,4 +1,5 @@
 import os
+import uuid
 from dataclasses import dataclass, field
 from logging import getLogger
 from typing import Any, Dict, Optional
@@ -24,16 +25,17 @@ class TorchrunConfig(LauncherConfig):
     max_nodes: int = 1
     # On each node the elastic agent will launch this amount of workers that will execute user defined function.
     nproc_per_node: int = "${available_gpus:}"
-    # The unique run id of the job (if not passed a unique one will be deduced from run environment - flow workflow id in flow - or auto generated).
-    run_id: str = "${experiment_name}"
+
     # User defined role of the worker (defaults to "trainer").
     role: str = "benchmark_worker"
     # The interval in seconds that is used by the elastic_agent as a period of monitoring workers.
     monitor_interval: int = 30
+    # The name of the rdzv store.
+    rdzv_id: str = str(uuid.uuid4())
+    # rdzv_backend to use in the rendezvous (etcd).
+    rdzv_backend: str = "c10d"
     # The endpoint of the rdzv sync. storage.
-    rdzv_endpoint: str = "localhost:29599"
-    # rdzv_backend to use in the rendezvous (zeus-adapter, etcd).
-    rdzv_backend: str = "static"
+    rdzv_endpoint: str = "localhost:0"
     # Key, value pair that specifies rendezvous specific configuration.
     rdzv_configs: Dict[str, Any] = field(
         default_factory=lambda: {

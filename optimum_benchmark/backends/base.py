@@ -179,7 +179,7 @@ class Backend(Generic[BackendConfigT], ABC):
         del self.pretrained_model
         gc.collect()
 
-    def delete_model_cache(self) -> None:
+    def delete_hf_model_cache(self) -> None:
         LOGGER.info("\t+ Deleting model cache")
         model_cache_folder = f"models/{self.model}".replace("/", "--")
         model_cache_path = os.path.join(os.path.expanduser("~/.cache/huggingface/hub"), model_cache_folder)
@@ -201,6 +201,6 @@ class Backend(Generic[BackendConfigT], ABC):
             self.delete_pretrained_model()
 
         if self.config.delete_cache:
-            self.delete_model_cache()
+            self.delete_hf_model_cache()
 
         gc.collect()
