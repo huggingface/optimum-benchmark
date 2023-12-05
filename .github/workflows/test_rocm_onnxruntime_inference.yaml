@@ -1,0 +1,54 @@
+name: ROCm OnnxRuntime Inference Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build_image_and_run_gpu_tests:
+    runs-on: hf-amd-mi210-dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Check if image exists
+        id: check_image
+        run: |
+          if [[ "$(docker images -q opt-bench-rocm-ort:5.7 2> /dev/null)" == "" ]]; then
+            echo "::set-output name=exists::false"
+          else
+            echo "::set-output name=exists::true"
+          fi
+
+      - name: Build image if image does not exist
+        if: steps.check_image.outputs.exists == 'false'
+        run: docker build
+          --file docker/rocm-ort.dockerfile
+          --build-arg USER_ID=$(id -u)
+          --build-arg GROUP_ID=$(id -g)
+          --build-arg ROCM_VERSION=5.7
+          --tag opt-bench-rocm-ort:5.7
+          .
+
+      - name: Run tests
+        run: docker run
+          --rm
+          --net host
+          --pid host
+          --shm-size 64G
+          --env USE_ROCM="1"
+          --volume $(pwd):/workspace/optimum-benchmark
+          --workdir /workspace/optimum-benchmark
+          --device /dev/kfd
+          --device /dev/dri/renderD128
+          --device /dev/dri/renderD129
+          --entrypoint /bin/bash
+          opt-bench-rocm-ort:5.7
+          -c "pip install -e .[test,diffusers] && pytest -k 'rocm and onnxruntime and inference' -x"

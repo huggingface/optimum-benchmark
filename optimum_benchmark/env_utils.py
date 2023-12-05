@@ -1,14 +1,11 @@
 import platform
 import re
 import subprocess
-from logging import getLogger
 from typing import Optional
 
 import psutil
 
 from .import_utils import is_py3nvml_available, is_pyrsmi_available
-
-LOGGER = getLogger("utils")
 
 
 def is_nvidia_system():
@@ -100,8 +97,5 @@ def get_git_revision_hash(path: Optional[str]) -> str:
     else:
         try:
             return subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=path).decode("ascii").strip()
-        except Exception as e:
-            LOGGER.warning(
-                f"Asked to log the git commit SHA for {path}, but it does not appear to be a git repository: {e}"
-            )
+        except Exception:
             return None
