@@ -3,12 +3,9 @@ from typing import Dict
 
 from datasets import Dataset
 
-from optimum_benchmark.generators.task_generator import (
-    TASKS_TO_GENERATORS,
-    TaskGenerator,
-)
+from .task_generator import TASKS_TO_GENERATORS, TaskGenerator
 
-LOGGER = getLogger("dataset_generator")
+LOGGER = getLogger("dataset-generator")
 
 
 class DatasetGenerator:
@@ -34,9 +31,4 @@ class DatasetGenerator:
     def generate(self) -> Dataset:
         task_dataset = self.task_generator.generate()
         task_dataset = Dataset.from_dict(task_dataset)
-        task_dataset.set_format(
-            type="torch",  # for now we're using pytorch tensors
-            columns=list(task_dataset.features.keys()),
-        )
-
         return task_dataset

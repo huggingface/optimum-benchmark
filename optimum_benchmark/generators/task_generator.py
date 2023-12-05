@@ -1,10 +1,13 @@
+import random
+import string
 from abc import ABC
 from logging import getLogger
 from typing import Tuple
 
+# TODO: drop torch dependency and use numpy instead ?
 import torch
 
-LOGGER = getLogger("task_generator")
+LOGGER = getLogger("task-generator")
 
 
 class TaskGenerator(ABC):
@@ -19,6 +22,13 @@ class TaskGenerator(ABC):
     @staticmethod
     def generate_random_floats(min_value: float, max_value: float, shape: Tuple[int]):
         return torch.rand(shape) * (max_value - min_value) + min_value
+
+    @staticmethod
+    def generate_random_strings(shape: Tuple[int]):
+        return [
+            "".join(random.choice(string.ascii_letters + string.digits) for _ in range(shape[1]))
+            for _ in range(shape[0])
+        ]
 
     def generate(self):
         raise NotImplementedError("Generator must implement generate method")
@@ -35,6 +45,16 @@ class TextGenerator(TaskGenerator):
             ),
         )
 
+    def attention_mask(self):
+        return self.generate_random_integers(
+            min_value=1,  # avoid sparse attention
+            max_value=2,
+            shape=(
+                self.shapes["batch_size"],
+                self.shapes["sequence_length"],
+            ),
+        )
+
     def token_type_ids(self):
         return self.generate_random_integers(
             min_value=0,
@@ -45,10 +65,10 @@ class TextGenerator(TaskGenerator):
             ),
         )
 
-    def attention_mask(self):
+    def position_ids(self):
         return self.generate_random_integers(
-            min_value=1,
-            max_value=2,
+            min_value=0,
+            max_value=self.shapes["max_position_embeddings"],
             shape=(
                 self.shapes["batch_size"],
                 self.shapes["sequence_length"],
@@ -107,6 +127,7 @@ class TextClassificationGenerator(TextGenerator):
         dummy["input_ids"] = self.input_ids()
         dummy["attention_mask"] = self.attention_mask()
         dummy["token_type_ids"] = self.token_type_ids()
+        dummy["position_ids"] = self.position_ids()
 
         if self.with_labels:
             dummy["labels"] = self.labels()
@@ -130,6 +151,8 @@ class TokenClassificationGenerator(TextGenerator):
 
         dummy["input_ids"] = self.input_ids()
         dummy["attention_mask"] = self.attention_mask()
+        dummy["token_type_ids"] = self.token_type_ids()
+        dummy["position_ids"] = self.position_ids()
 
         if self.with_labels:
             dummy["labels"] = self.labels()
@@ -142,6 +165,8 @@ class TextGenerationGenerator(TextGenerator):
         dummy = {}
         dummy["input_ids"] = self.input_ids()
         dummy["attention_mask"] = self.attention_mask()
+        dummy["token_type_ids"] = self.token_type_ids()
+        dummy["position_ids"] = self.position_ids()
 
         if self.with_labels:
             dummy["labels"] = self.input_ids()
@@ -169,6 +194,7 @@ class QuestionAnsweringGenerator(TextGenerator):
 
         dummy["input_ids"] = self.input_ids()
         dummy["attention_mask"] = self.attention_mask()
+        dummy["token_type_ids"] = self.token_type_ids()
 
         if self.with_labels:
             dummy["start_positions"] = self.start_positions()
@@ -183,6 +209,8 @@ class MaskedLanguageModelingGenerator(TextGenerator):
 
         dummy["input_ids"] = self.input_ids()
         dummy["attention_mask"] = self.attention_mask()
+        dummy["token_type_ids"] = self.token_type_ids()
+        dummy["position_ids"] = self.position_ids()
 
         if self.with_labels:
             dummy["labels"] = self.input_ids()
@@ -191,39 +219,6 @@ class MaskedLanguageModelingGenerator(TextGenerator):
 
 
 class MultipleChoiceGenerator(TextGenerator):
-    def input_ids(self):
-        return self.generate_random_integers(
-            min_value=0,
-            max_value=self.shapes["vocab_size"],
-            shape=(
-                self.shapes["batch_size"],
-                self.shapes["num_choices"],
-                self.shapes["sequence_length"],
-            ),
-        )
-
-    def token_type_ids(self):
-        return self.generate_random_integers(
-            min_value=0,
-            max_value=self.shapes["type_vocab_size"],
-            shape=(
-                self.shapes["batch_size"],
-                self.shapes["num_choices"],
-                self.shapes["sequence_length"],
-            ),
-        )
-
-    def attention_mask(self):
-        return self.generate_random_integers(
-            min_value=1,
-            max_value=2,
-            shape=(
-                self.shapes["batch_size"],
-                self.shapes["num_choices"],
-                self.shapes["sequence_length"],
-            ),
-        )
-
     def labels(self):
         return self.generate_random_integers(
             min_value=0,
@@ -234,9 +229,22 @@ class MultipleChoiceGenerator(TextGenerator):
     def generate(self):
         dummy = {}
 
-        dummy["input_ids"] = self.input_ids()
-        dummy["token_type_ids"] = self.token_type_ids()
-        dummy["attention_mask"] = self.attention_mask()
+        dummy["input_ids"] = (
+            self.input_ids()
+            .reshape(self.shapes["batch_size"], 1, self.shapes["sequence_length"])
+            .repeat(1, self.shapes["num_choices"], 1)
+        )
+        dummy["token_type_ids"] = (
+            self.token_type_ids()
+            .reshape(self.shapes["batch_size"], 1, self.shapes["sequence_length"])
+            .repeat(1, self.shapes["num_choices"], 1)
+        )
+
+        dummy["attention_mask"] = (
+            self.attention_mask()
+            .reshape(self.shapes["batch_size"], 1, self.shapes["sequence_length"])
+            .repeat(1, self.shapes["num_choices"], 1)
+        )
 
         if self.with_labels:
             dummy["label"] = self.labels()
@@ -352,10 +360,12 @@ class AutomaticSpeechRecognitionGenerator(AudioGenerator):
 
 
 class PromptGenerator(TaskGenerator):
+    def prompt(self):
+        return self.generate_random_strings(shape=(self.shapes["batch_size"], 10))
+
     def generate(self):
         dummy = {}
-
-        dummy["prompt"] = ["prompt"] * self.shapes["batch_size"]
+        dummy["prompt"] = self.prompt()
 
         return dummy
 

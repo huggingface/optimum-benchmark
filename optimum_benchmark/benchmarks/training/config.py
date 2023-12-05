@@ -18,7 +18,8 @@ class TrainingConfig(BenchmarkConfig):
     _target_: str = "optimum_benchmark.benchmarks.training.benchmark.TrainingBenchmark"
 
     # training options
-    warmup_steps: int = 40  # still thinks this too high
+    max_steps: int = 140
+    warmup_steps: int = 40
 
     # dataset options
     dataset_shapes: Dict[str, Any] = field(
@@ -40,16 +41,37 @@ class TrainingConfig(BenchmarkConfig):
     # training options
     training_arguments: Dict[str, Any] = field(
         default_factory=lambda: {
-            # these are arguments that we set by default
-            # but can be overwritten by the user
-            "skip_memory_metrics": True,
-            # memory metrics are wrong when using multiple processes
+            "per_device_train_batch_size": 2,
+            "max_steps": "${benchmark.max_steps}",
+            # saving trainer output in the experiment directory
             "output_dir": "./trainer_output",
+            # infered from the device
             "use_cpu": "${is_cpu:${device}}",
-            "ddp_find_unused_parameters": False,
+            # we only benchmark training
             "do_train": True,
             "do_eval": False,
             "do_predict": False,
+            # by default it reports to "all", so we disable it
             "report_to": "none",
+            # memory metrics are wrong when using multiple processes
+            "skip_memory_metrics": True,
         }
     )
+
+    def __post_init__(self):
+        super().__post_init__()
+
+        if self.warmup_steps > self.max_steps:
+            raise ValueError(
+                f"`benchmark.warmup_steps` ({self.warmup_steps}) must be smaller than `benchmark.max_steps` ({self.max_steps})"
+            )
+
+        if self.max_steps != self.training_arguments["max_steps"]:
+            # normally user will set `benchmark.max_steps` and `benchmark.training_arguments.max_steps` is infered from it
+            # but in some cases user might set `benchmark.training_arguments.max_steps` directly
+            # so we need to make sure they are the same
+            LOGGER.warning(
+                f"`benchmark.max_steps` ({self.max_steps}) and `benchmark.training_arguments.max_steps` ({self.training_arguments['max_steps']}) are different. "
+                "Using `benchmark.training_arguments.max_steps`."
+            )
+            self.max_steps = self.training_arguments["max_steps"]
