@@ -40,7 +40,7 @@ jobs:
       - name: Build image if image does not exist
         if: steps.check_image.outputs.exists == 'false'
         run: docker build
-          --file docker/rocm-ep.dockerfile
+          --file docker/rocm-ort.dockerfile
           --build-arg USER_ID=$(id -u)
           --build-arg GROUP_ID=$(id -g)
           --build-arg ROCM_VERSION=5.7
