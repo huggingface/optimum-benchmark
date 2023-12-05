@@ -13,20 +13,10 @@ concurrency:
 
 jobs:
   build_image_and_run_gpu_tests:
-    runs-on: hf-dgx-01
+    runs-on: hf-amd-mi210-dev
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-
-      # takes too long to build image
-      # - name: Build image
-      #   run: docker build
-      #     --file docker/rocm-ep.dockerfile
-      #     --build-arg USER_ID=$(id -u)
-      #     --build-arg GROUP_ID=$(id -g)
-      #     --build-arg ROCM_VERSION=5.7
-      #     --tag opt-bench-rocm-ort:5.7
-      #     .
 
       - name: Check if image exists
         id: check_image
