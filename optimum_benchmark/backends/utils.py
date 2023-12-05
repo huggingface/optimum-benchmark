@@ -1,24 +1,23 @@
-from typing import TYPE_CHECKING, Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union
 
-if TYPE_CHECKING:
-    from transformers import (
-        FeatureExtractionMixin,
-        ImageProcessingMixin,
-        Pipeline,
-        PretrainedConfig,
-        PreTrainedTokenizer,
-        ProcessorMixin,
-    )
+from transformers import (
+    FeatureExtractionMixin,
+    ImageProcessingMixin,
+    Pipeline,
+    PretrainedConfig,
+    PreTrainedTokenizer,
+    ProcessorMixin,
+)
 
-    PreTrainedProcessor = Union[
-        PreTrainedTokenizer,
-        ImageProcessingMixin,
-        FeatureExtractionMixin,
-        ProcessorMixin,
-    ]
+PreTrainedProcessor = Union[
+    PreTrainedTokenizer,
+    ImageProcessingMixin,
+    FeatureExtractionMixin,
+    ProcessorMixin,
+]
 
 
-def extract_shapes_from_diffusion_pipeline(pipeline: "Pipeline") -> Dict[str, Any]:
+def extract_shapes_from_diffusion_pipeline(pipeline: Pipeline) -> Dict[str, Any]:
     # this is the only way I found to extract a diffusion pipeline's "input" shapes
     shapes = {}
     if hasattr(pipeline, "vae_encoder") and hasattr(pipeline.vae_encoder, "config"):
@@ -59,6 +58,10 @@ def extract_shapes_from_model_artifacts(
     shapes["type_vocab_size"] = artifacts_dict.get("type_vocab_size", 2)
     if shapes["type_vocab_size"] == 0:
         shapes["type_vocab_size"] = 2
+
+    shapes["max_position_embeddings"] = artifacts_dict.get("max_position_embeddings", 2)
+    if shapes["max_position_embeddings"] == 0:
+        shapes["max_position_embeddings"] = 2
 
     # image input
     shapes["num_channels"] = artifacts_dict.get("num_channels", None)
