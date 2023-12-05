@@ -35,9 +35,9 @@ jobs:
           --pid host
           --shm-size 64G
           --env USE_CUDA="1"
-          --entrypoint /bin/bash
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
           --gpus '"device=0,1"'
+          --entrypoint /bin/bash
           opt-bench-tensorrt:22.12
           -c "pip install -e .[test,onnxruntime-gpu,diffusers] && pytest -k 'tensorrt and onnxruntime and inference' -x"
