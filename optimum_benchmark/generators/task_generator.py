@@ -370,8 +370,24 @@ class PromptGenerator(TaskGenerator):
         return dummy
 
 
+class FeatureExtractionGenerator(TextGenerator, ImageGenerator):
+    def generate(self):
+        dummy = {}
+
+        if self.shapes["num_channels"] is not None and self.shapes["height"] is not None:
+            dummy["pixel_values"] = self.pixel_values()
+        else:
+            dummy["input_ids"] = self.input_ids()
+            dummy["attention_mask"] = self.attention_mask()
+            dummy["token_type_ids"] = self.token_type_ids()
+            dummy["position_ids"] = self.position_ids()
+
+        return dummy
+
+
 TASKS_TO_GENERATORS = {
     # model tasks
+    "feature-extraction": FeatureExtractionGenerator,
     "text-classification": TextClassificationGenerator,
     "token-classification": TokenClassificationGenerator,
     "text-generation": TextGenerationGenerator,
