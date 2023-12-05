@@ -165,7 +165,6 @@ class TextGenerationGenerator(TextGenerator):
         dummy = {}
         dummy["input_ids"] = self.input_ids()
         dummy["attention_mask"] = self.attention_mask()
-        dummy["token_type_ids"] = self.token_type_ids()
         dummy["position_ids"] = self.position_ids()
 
         if self.with_labels:
