@@ -127,6 +127,12 @@ class ORTBackend(Backend[ORTConfig]):
         if not (self.config.provider == "TensorrtExecutionProvider" and self.is_text_generation_model()):
             self.load_ortmodel()
 
+        if self.config.provider == "TensorrtExecutionProvider":
+            assert self.pretrained_model.providers == ["TensorrtExecutionProvider", "CPUExecutionProvider"]
+
+        if self.config.provider == "ROCMExecutionProvider":
+            assert self.pretrained_model.providers == ["ROCMExecutionProvider", "CPUExecutionProvider"]
+
     def load_automodel_from_config(self) -> None:
         from accelerate import init_empty_weights
 
