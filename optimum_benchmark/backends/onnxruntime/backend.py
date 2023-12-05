@@ -2,9 +2,10 @@ import gc
 import os
 from logging import getLogger
 from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING, Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List
 
 import torch
+from datasets import Dataset
 from hydra.utils import get_class
 from onnxruntime import SessionOptions
 from optimum.onnxruntime import (
@@ -12,8 +13,6 @@ from optimum.onnxruntime import (
     ONNX_DECODER_WITH_PAST_NAME,
     ORTOptimizer,
     ORTQuantizer,
-    ORTTrainer,
-    ORTTrainingArguments,
 )
 from optimum.onnxruntime.configuration import (
     AutoCalibrationConfig,
@@ -22,10 +21,7 @@ from optimum.onnxruntime.configuration import (
     OptimizationConfig,
     QuantizationConfig,
 )
-
-if TYPE_CHECKING:
-    from datasets import Dataset
-    from transformers import TrainerCallback, TrainerState
+from transformers import TrainerCallback, TrainerState
 
 from ..base import Backend
 from ..optimum_utils import main_export
@@ -130,7 +126,6 @@ class ORTBackend(Backend[ORTConfig]):
 
         if not (self.config.provider == "TensorrtExecutionProvider" and self.is_text_generation_model()):
             self.load_ortmodel()
-            self.tmpdir.cleanup()
 
     def load_automodel_from_config(self) -> None:
         from accelerate import init_empty_weights
@@ -322,18 +317,18 @@ class ORTBackend(Backend[ORTConfig]):
             }
 
             self.load_ortmodel()
-            self.tmpdir.cleanup()
 
     def train(
         self,
-        training_dataset: "Dataset",
+        training_dataset: Dataset,
         training_arguments: Dict[str, Any],
-        training_callbacks: List["TrainerCallback"],
-        training_data_collator: Callable,
-        dataset_format: str = "torch",
-    ) -> "TrainerState":
-        LOGGER.info(f"\t+ Setting dataset format to `{dataset_format}`.")
-        training_dataset.set_format(type=dataset_format, columns=list(training_dataset.features.keys()))
+        training_callbacks: List[TrainerCallback],
+        training_data_collator: Callable[[List[Dict[str, Any]]], Dict[str, Any]],
+    ) -> TrainerState:
+        from optimum.onnxruntime import ORTTrainer, ORTTrainingArguments
+
+        LOGGER.info("\t+ Setting dataset format to `torch`")
+        training_dataset.set_format(type="torch", columns=list(training_dataset.features.keys()))
         LOGGER.info("\t+ Wrapping training arguments with optimum.onnxruntime.ORTTrainingArguments")
         training_arguments = ORTTrainingArguments(**training_arguments)
         LOGGER.info("\t+ Wrapping model with optimum.onnxruntime.ORTTrainer")
@@ -353,10 +348,12 @@ class ORTBackend(Backend[ORTConfig]):
     def clean(self) -> None:
         super().clean()
 
-        if hasattr(self, "tmpdir"):
-            self.tmpdir.cleanup()
-
         if self.device == "cuda":
+            LOGGER.info("\t+ Emptying CUDA cache")
             torch.cuda.empty_cache()
+
+        if hasattr(self, "tmpdir"):
+            LOGGER.info("\t+ Cleaning temporary directory")
+            self.tmpdir.cleanup()
 
         gc.collect()

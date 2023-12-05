@@ -5,16 +5,7 @@ import shutil
 from abc import ABC
 from logging import getLogger
 from multiprocessing import Process
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Dict,
-    Generic,
-    Optional,
-    Union,
-)
+from typing import Any, Callable, ClassVar, Dict, Generic, Optional, Union
 
 import numpy as np
 from optimum.exporters import TasksManager
@@ -29,13 +20,11 @@ from transformers import (
 )
 from transformers.utils import ModelOutput
 
-if TYPE_CHECKING:
-    from .utils import PreTrainedProcessor
-
 from ..task_utils import DIFFUSION_TASKS, TEXT_GENERATION_TASKS
 from .config import BackendConfigT
 from .isolation_utils import check_cuda_continuous_isolation
 from .utils import (
+    PreTrainedProcessor,
     extract_shapes_from_diffusion_pipeline,
     extract_shapes_from_model_artifacts,
 )
@@ -50,11 +39,11 @@ class Backend(Generic[BackendConfigT], ABC):
     model_type: str
     config: BackendConfigT
     isolation_thread: Optional[Process]
-    pretrained_model: Union["PreTrainedModel", "Pipeline"]
-    pretrained_config: Optional["PretrainedConfig"]
-    pretrained_processor: Optional["PreTrainedProcessor"]
-    pretrained_generation_config: Optional["GenerationConfig"]
-    automodel_class: Callable[..., "PreTrainedModel"]
+    pretrained_model: Union[PreTrainedModel, Pipeline]
+    pretrained_config: Optional[PretrainedConfig]
+    pretrained_processor: Optional[PreTrainedProcessor]
+    pretrained_generation_config: Optional[GenerationConfig]
+    automodel_class: Callable[..., PreTrainedModel]
 
     def __init__(self, model: str, task: str, device: str, hub_kwargs: Dict[str, Any]):
         self.task = task
@@ -134,6 +123,8 @@ class Backend(Generic[BackendConfigT], ABC):
             )
             self.isolation_process.start()
             LOGGER.info(f"\t+ Started isolation process with PID {self.isolation_process.pid}")
+        else:
+            raise ValueError("Continuous isolation is only supported for CUDA devices")
 
     def seed(self) -> None:
         random.seed(self.config.seed)
@@ -151,10 +142,10 @@ class Backend(Generic[BackendConfigT], ABC):
     def prepare_for_inference(self, **kwargs) -> None:
         pass
 
-    def forward(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> "ModelOutput":
+    def forward(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:
         return self.pretrained_model(**input, **kwargs)
 
-    def generate(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> "ModelOutput":
+    def generate(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:
         return self.pretrained_model.generate(**input, **kwargs)
 
     def train(self, **kwargs) -> "TrainerState":

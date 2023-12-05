@@ -1,0 +1,11 @@
+defaults:
+  - backend: pytorch
+  - launcher: process
+  # order of inheritance, last one overrides previous ones
+  - _base_ # inherits from base config
+  - _training_ # inherits from training config
+  - _bert_sweep_ # inherits from bert sweep config
+  - _self_ # for hydra 1.1 compatibility
+
+experiment_name: cuda_training_pytorch_bert_sweep
+device: cuda

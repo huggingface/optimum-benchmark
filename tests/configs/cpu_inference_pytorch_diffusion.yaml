@@ -1,0 +1,16 @@
+defaults:
+  - launcher: process
+  - backend: pytorch
+  # order of inheritance, last one overrides previous ones
+  - _base_ # inherits from base config
+  - _inference_ # inherits from inference config
+  - _self_ # for hydra 1.1 compatibility
+
+experiment_name: cpu_inference_pytorch_diffusion
+model: hf-internal-testing/tiny-stable-diffusion-torch
+task: stable-diffusion
+device: cpu
+
+benchmark:
+  forward_kwargs:
+    num_inference_steps: 2

@@ -18,6 +18,7 @@ GENERATE_CONFIG = {
     "do_sample": False,
     "use_cache": True,
     "pad_token_id": 0,
+    "temperature": 1.0,
     "num_beams": 1,
 }
 

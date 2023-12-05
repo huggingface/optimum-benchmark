@@ -1,0 +1,9 @@
+defaults:
+  - benchmark: inference
+
+benchmark:
+  duration: 1
+  warmup_runs: 1
+  generate_kwargs:
+    max_new_tokens: 2
+  memory: true

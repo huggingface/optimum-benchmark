@@ -1,28 +1,26 @@
-# This is a base config file that can potentially be used for all tests
 defaults:
-  - launcher: inline # we use process launcher for tests
   - experiment # inheriting experiment schema
   - _self_ # for hydra 1.1 compatibility
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: ${device}_${backend.name}_${benchmark.name}_${task}
+experiment_name: ${device}_${benchmark.name}_${backend.name}_${task}
 
 backend:
-  # we turn off isolation checks because tests run on shared resources
   continuous_isolation: false
 
 # hydra behavior configuration
 hydra:
   run:
-    dir: tests/experiments/${experiment_name} # where to save a run's output
+    dir: tests/experiments/${experiment_name}
   sweep:
-    dir: tests/experiments/${experiment_name} # where to save a sweep's output
+    dir: tests/experiments/${experiment_name}
   job:
     # we change the working directory during the run/sweep directory
     # this is useful for saving outputs in a separate directory
     chdir: true
     env_set:
+      OVERRIDE_BENCHMARKS: 1 # to not skip benchmarks
       CUDA_VISIBLE_DEVICES: 0 # by default we only use one GPU
       CUDA_DEVICE_ORDER: PCI_BUS_ID # laking we use the right GPU
-      OVERRIDE_BENCHMARKS: 1 # to not skip benchmarks
+

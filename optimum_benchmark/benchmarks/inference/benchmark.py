@@ -1,10 +1,11 @@
 import os
 import statistics
 from logging import getLogger
-from typing import TYPE_CHECKING, List
+from typing import List
 
 from pandas import DataFrame
 
+from ...backends.base import Backend
 from ...generators.input_generator import InputGenerator
 from ...trackers.energy import EnergyTracker
 from ...trackers.latency import LatencyTracker
@@ -12,9 +13,6 @@ from ...trackers.memory import MemoryTracker
 from ..base import Benchmark
 from ..utils import extract_three_significant_digits, three_significant_digits_wrapper
 from .config import InferenceConfig
-
-if TYPE_CHECKING:
-    from ...backends.base import Backend
 
 LOGGER = getLogger("inference")
 
@@ -38,27 +36,21 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         self.generate_max_memory_reserved: int = 0
         self.generate_latencies: List[float] = []
 
-    def configure(self, config: "InferenceConfig"):
+    def configure(self, config: InferenceConfig):
         super().configure(config)
 
-    def run(self, backend: "Backend") -> None:
+    def run(self, backend: Backend) -> None:
         LOGGER.info("Running inference benchmark")
 
         LOGGER.info("\t+ Updating input shapes with model shapes")
         self.config.input_shapes.update(backend.model_shapes)
 
-        LOGGER.info("\t+ Creating input generator")
-        self.input_generator = InputGenerator(
-            task=backend.task,
-            pretrained_config=backend.pretrained_config,
-            input_shapes=self.config.input_shapes,
-        )
-
         # compile with static shapes if needed
         LOGGER.info("\t+ Preparing backend for inference")
-        backend.prepare_for_inference(
-            input_shapes=self.config.input_shapes, new_tokens=self.config.generate_kwargs.get("min_new_tokens", 0)
-        )
+        backend.prepare_for_inference(input_shapes=self.config.input_shapes, new_tokens=self.config.new_tokens)
+
+        LOGGER.info("\t+ Creating input generator")
+        self.input_generator = InputGenerator(task=backend.task, input_shapes=self.config.input_shapes)
 
         # run memory tracking
         # we do this first to measure the memory on the first call to forward/generate

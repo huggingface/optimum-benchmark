@@ -1,0 +1,12 @@
+defaults:
+  - backend: pytorch
+  # order of inheritance, last one overrides previous ones
+  - _base_ # inherits from base config
+  - _inference_ # inherits from inference config
+  - _ds_tp_ # inherits from deepspeed tensor parallel config
+  - _self_ # for hydra 1.1 compatibility
+
+experiment_name: cuda_inference_pytorch_bert_ds_tp
+task: text-classification
+model: bert-base-uncased
+device: cuda

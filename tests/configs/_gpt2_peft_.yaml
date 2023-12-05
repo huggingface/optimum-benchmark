@@ -1,0 +1,8 @@
+# Parameters Effecient Fine Tuning (PEFT) training
+model: hf-internal-testing/tiny-random-gpt2
+task: text-generation
+
+backend:
+  peft_strategy: lora
+  peft_config:
+    task_type: CAUSAL_LM

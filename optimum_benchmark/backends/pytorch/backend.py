@@ -325,15 +325,14 @@ class PyTorchBackend(Backend[PyTorchConfig]):
     def train(
         self,
         training_dataset: Dataset,
-        training_data_collator: Callable,
         training_arguments: Dict[str, Any],
         training_callbacks: List[TrainerCallback],
-        dataset_format: str = "torch",
+        training_data_collator: Callable[[List[Dict[str, Any]]], Dict[str, Any]],
     ) -> TrainerState:
-        from transformers import Trainer, TrainingArguments  # requires scipy
+        from transformers import Trainer, TrainingArguments
 
-        LOGGER.info(f"\t+ Setting dataset format to {dataset_format}.")
-        training_dataset.set_format(type=dataset_format, columns=list(training_dataset.features.keys()))
+        LOGGER.info("\t+ Setting dataset format to `torch`")
+        training_dataset.set_format(type="torch", columns=list(training_dataset.features.keys()))
         LOGGER.info("\t+ Wrapping training arguments with transformers.TrainingArguments")
         training_arguments = TrainingArguments(**training_arguments)
         LOGGER.info("\t+ Wrapping model with transformers.Trainer")
@@ -361,6 +360,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         super().clean()
 
         if self.device == "cuda":
+            LOGGER.info("\t+ Emptying CUDA cache")
             torch.cuda.empty_cache()
 
         if hasattr(self, "tmp_dir"):

@@ -1,0 +1,6 @@
+defaults:
+  - benchmark: training
+
+benchmark:
+  max_steps: 5
+  warmup_steps: 2

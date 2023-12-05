@@ -1,0 +1,17 @@
+# DeepSpeed Tensor Parallelism (DS-TP)
+defaults:
+  - launcher: torchrun
+
+launcher:
+  nproc_per_node: 2
+
+backend:
+  deepspeed_inference: true
+  deepspeed_inference_config:
+    tensor_parallel:
+      tp_size: 2
+
+hydra:
+  job:
+    env_set:
+      CUDA_VISIBLE_DEVICES: 0,1

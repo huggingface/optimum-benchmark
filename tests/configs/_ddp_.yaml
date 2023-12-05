@@ -1,18 +1,9 @@
 # Distributed Data Parallel (DDP) training
 defaults:
-  - override launcher: torchrun # for DDP training, use torchrun launcher
-
-experiment_name: ${device}_${backend.name}_${benchmark.name}_${task}_ddp
+  - launcher: torchrun
 
 launcher:
   nproc_per_node: 2
-
-benchmark:
-  dataset_shapes:
-    dataset_size: 1600
-    sequence_length: 256
-  training_arguments:
-    per_device_train_batch_size: 8
 
 hydra:
   job:

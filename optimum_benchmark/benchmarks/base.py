@@ -14,6 +14,9 @@ class BenchmarkConfig(ABC):
     name: str
     _target_: str
 
+    def __post_init__(self):
+        pass
+
 
 BenchmarkConfigT = TypeVar("BenchmarkConfigT", bound=BenchmarkConfig)
 
