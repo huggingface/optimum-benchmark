@@ -128,10 +128,17 @@ class ORTBackend(Backend[ORTConfig]):
             self.load_ortmodel()
 
         if self.config.provider == "TensorrtExecutionProvider":
-            assert self.pretrained_model.providers == ["TensorrtExecutionProvider", "CPUExecutionProvider"]
+            assert self.pretrained_model.providers == [
+                "TensorrtExecutionProvider",
+                "CUDAExecutionProvider",
+                "CPUExecutionProvider",
+            ], f"TensorrtExecutionProvider is not first in providers list: {self.pretrained_model.providers}"
 
         if self.config.provider == "ROCMExecutionProvider":
-            assert self.pretrained_model.providers == ["ROCMExecutionProvider", "CPUExecutionProvider"]
+            assert self.pretrained_model.providers == [
+                "ROCMExecutionProvider",
+                "CPUExecutionProvider",
+            ], f"ROCMExecutionProvider is not first in providers list: {self.pretrained_model.providers}"
 
     def load_automodel_from_config(self) -> None:
         from accelerate import init_empty_weights
