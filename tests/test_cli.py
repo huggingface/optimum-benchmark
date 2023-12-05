@@ -1,5 +1,4 @@
 import os
-import subprocess
 from logging import getLogger
 from subprocess import PIPE, STDOUT, Popen
 
@@ -8,58 +7,52 @@ import pytest
 LOGGER = getLogger("test")
 
 
-SINGLERUNS = [
-    config
+CONFIG_NAMES = [
+    config.split(".")[0]
     for config in os.listdir("tests/configs")
-    if config.endswith(".yaml")
-    and not config.startswith("multirun")
-    and not (config.startswith("_") or config.endswith("_"))
-]
-
-MULTIRUNS = [
-    config
-    for config in os.listdir("tests/configs")
-    if config.endswith(".yaml")
-    and config.startswith("multirun")
-    and not (config.startswith("_") or config.endswith("_"))
+    if config.endswith(".yaml") and not (config.startswith("_") or config.endswith("_"))
 ]
 
 
-@pytest.mark.parametrize("config_file", SINGLERUNS)
-def test_single_run(config_file):
-    config_name = config_file.split(".")[0]
+@pytest.mark.parametrize("config_name", CONFIG_NAMES)
+def test_config(config_name):
+    args = [
+        "optimum-benchmark",
+        "--config-dir",
+        "tests/configs",
+        "--config-name",
+        config_name,
+        "--multirun",
+    ]
 
-    process = Popen(
-        [
-            "optimum-benchmark",
-            "--config-dir",
-            "tests/configs",
-            "--config-name",
-            config_name,
-        ],
-        stdout=PIPE,
-        stderr=STDOUT,
-    )
+    popen = Popen(args, stdout=PIPE, stderr=STDOUT)
 
-    for line in iter(process.stdout.readline, b""):
+    for line in iter(popen.stdout.readline, b""):
         if line is not None:
             LOGGER.info(line.decode("utf-8").rstrip())
 
-    process.wait()
+    popen.wait()
 
-    assert process.returncode == 0, process.stderr
+    assert popen.returncode == 0, popen.stderr
 
 
 def test_exit_code():
-    result = subprocess.run(
-        [
-            "optimum-benchmark",
-            "--config-dir",
-            "tests/configs",
-            "--config-name",
-            "cpu_pytorch_inference_bert",
-            "model=inexistent_model",
-        ],
-    )
+    args = [
+        "optimum-benchmark",
+        "--config-dir",
+        "tests/configs",
+        "--config-name",
+        "cpu_training_pytorch_gpt2",
+        # inadequate task to trigger error
+        "task=image-classification",
+    ]
 
-    assert result.returncode == 1, result.stderr.decode("utf-8")
+    popen = Popen(args, stdout=PIPE, stderr=STDOUT)
+
+    for line in iter(popen.stdout.readline, b""):
+        if line is not None:
+            LOGGER.info(line.decode("utf-8").rstrip())
+
+    popen.wait()
+
+    assert popen.returncode == 1, popen.stderr.decode("utf-8")

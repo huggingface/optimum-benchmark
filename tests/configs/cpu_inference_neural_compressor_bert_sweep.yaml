@@ -1,0 +1,11 @@
+defaults:
+  - launcher: process
+  - backend: neural-compressor
+  # order of inheritance, last one overrides previous ones
+  - _base_ # inherits from base config
+  - _inference_ # inherits from inference config
+  - _bert_sweep_ # inherits from bert sweep config
+  - _self_ # for hydra 1.1 compatibility
+
+experiment_name: cpu_inference_neural_compressor_bert_sweep
+device: cpu

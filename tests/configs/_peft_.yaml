@@ -1,8 +1,0 @@
-# Parameters Effecient Fine Tuning
-
-backend:
-  peft_strategy: lora
-  peft_config:
-    task_type: CAUSAL_LM
-
-experiment_name: ${device}_${backend.name}_${benchmark.name}_${task}_peft

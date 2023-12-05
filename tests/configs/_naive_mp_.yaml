@@ -1,0 +1,8 @@
+# Naive Model Parallelism (MP) config
+backend:
+  device_map: auto
+
+hydra:
+  job:
+    env_set:
+      CUDA_VISIBLE_DEVICES: 0,1

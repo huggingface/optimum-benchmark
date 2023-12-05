@@ -1,0 +1,12 @@
+defaults:
+  - launcher: process
+  - backend: openvino
+  # order of inheritance, last one overrides previous ones
+  - _base_ # inherits from base config
+  - _inference_ # inherits from inference config
+  - _self_ # for hydra 1.1 compatibility
+
+experiment_name: cpu_inference_openvino_gpt2
+model: hf-internal-testing/tiy-random-gpt2
+task: text-generation
+device: cpu

@@ -1,0 +1,12 @@
+defaults:
+  - launcher: process
+  - backend: onnxruntime
+  # order of inheritance, last one overrides previous ones
+  - _base_ # inherits from base config
+  - _inference_ # inherits from inference config
+  - _self_ # for hydra 1.1 compatibility
+
+experiment_name: cuda_inference_onnxruntime_gpt2
+model: hf-internal-testing/tiny-random-gpt2
+task: text-generation
+device: cuda
