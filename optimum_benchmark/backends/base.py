@@ -134,8 +134,10 @@ class Backend(Generic[BackendConfigT], ABC):
         if self.is_diffusion_pipeline():
             return input  # diffusion pipelines takes a list of strings
         else:
+            LOGGER.info(f"\t+ Moving input tensors to device {self.device}")
             for key, value in input.items():
-                input[key] = value.to(self.device)  # models expect tensors on the target device
+                # models expect tensors on the target device
+                input[key] = value.to(self.device)
 
         return input
 
@@ -148,7 +150,7 @@ class Backend(Generic[BackendConfigT], ABC):
     def generate(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:
         return self.pretrained_model.generate(**input, **kwargs)
 
-    def train(self, **kwargs) -> "TrainerState":
+    def train(self, **kwargs) -> TrainerState:
         raise NotImplementedError("Backend must implement train method")
 
     @property
