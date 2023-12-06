@@ -8,7 +8,6 @@ from multiprocessing import Process
 from typing import Any, Callable, ClassVar, Dict, Generic, Optional, Union
 
 import numpy as np
-from optimum.exporters import TasksManager
 from transformers import (
     AutoConfig,
     AutoProcessor,
@@ -20,7 +19,11 @@ from transformers import (
 )
 from transformers.utils import ModelOutput
 
-from ..task_utils import DIFFUSION_TASKS, TEXT_GENERATION_TASKS
+from ..task_utils import (
+    DIFFUSION_TASKS,
+    TEXT_GENERATION_TASKS,
+    get_model_class_for_task,
+)
 from .config import BackendConfigT
 from .isolation_utils import check_cuda_continuous_isolation
 from .utils import (
@@ -85,7 +88,7 @@ class Backend(Generic[BackendConfigT], ABC):
         else:
             self.pretrained_generation_config = None
 
-        self.automodel_class = TasksManager.get_model_class_for_task(
+        self.automodel_class = get_model_class_for_task(
             framework="pt",  # TODO: make this configurable to add support for other frameworks
             task=self.task,
             library=self.library,

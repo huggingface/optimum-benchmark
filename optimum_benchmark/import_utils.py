@@ -7,6 +7,7 @@ _diffusers_available = importlib.util.find_spec("diffusers") is not None
 _optimum_available = importlib.util.find_spec("optimum") is not None
 _torch_available = importlib.util.find_spec("torch") is not None
 _onnx_available = importlib.util.find_spec("onnx") is not None
+_tensorrt_available = importlib.util.find_spec("tensorrt") is not None
 _py3nvml_available = importlib.util.find_spec("py3nvml") is not None
 _torch_distributed_available = importlib.util.find_spec("torch.distributed") is not None
 _onnxruntime_available = importlib.util.find_spec("onnxruntime") is not None
@@ -15,6 +16,10 @@ _neural_compressor_available = importlib.util.find_spec("neural_compressor") is 
 _pyrsmi_available = importlib.util.find_spec("pyrsmi") is not None
 _codecarbon_available = importlib.util.find_spec("codecarbon") is not None
 _amdsmi_available = importlib.util.find_spec("amdsmi") is not None
+
+
+def is_tensorrt_available():
+    return _tensorrt_available
 
 
 def is_onnx_available():
@@ -56,6 +61,11 @@ def is_codecarbon_available():
 def torch_version():
     if is_torch_available():
         return importlib.metadata.version("torch")
+
+
+def tesnorrt_version():
+    if is_tensorrt_available():
+        return importlib.metadata.version("tensorrt")
 
 
 def onnxruntime_version():

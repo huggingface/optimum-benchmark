@@ -12,6 +12,7 @@ from .backends.neural_compressor.config import INCConfig
 from .backends.onnxruntime.config import ORTConfig
 from .backends.openvino.config import OVConfig
 from .backends.pytorch.config import PyTorchConfig
+from .backends.tensorrt.config import TRTConfig
 from .backends.text_generation_inference.config import TGIConfig
 from .benchmarks.inference.config import InferenceConfig
 from .benchmarks.training.config import TrainingConfig
@@ -129,6 +130,7 @@ cs = ConfigStore.instance()
 cs.store(name="experiment", node=ExperimentConfig)
 #
 cs.store(group="backend", name="openvino", node=OVConfig)
+cs.store(group="backend", name="tensorrt", node=TRTConfig)
 cs.store(group="backend", name="pytorch", node=PyTorchConfig)
 cs.store(group="backend", name="onnxruntime", node=ORTConfig)
 cs.store(group="backend", name="neural-compressor", node=INCConfig)
@@ -142,14 +144,14 @@ cs.store(group="launcher", name="process", node=ProcessConfig)
 cs.store(group="launcher", name="torchrun", node=TorchrunConfig)
 
 
-def run(experiment: "ExperimentConfig") -> "Benchmark":
+def run(experiment: ExperimentConfig):
     # Instantiate the experiment config to trigger __post_init__
     experiment: ExperimentConfig = OmegaConf.to_object(experiment)
     OmegaConf.save(experiment, "hydra_config.yaml", resolve=True)
 
     # Allocate requested backend
-    backend_factory: Type["Backend"] = get_class(experiment.backend._target_)
-    backend: "Backend" = backend_factory(
+    backend_factory: Type[Backend] = get_class(experiment.backend._target_)
+    backend: Backend = backend_factory(
         task=experiment.task,
         model=experiment.model,
         device=experiment.device,
@@ -165,8 +167,8 @@ def run(experiment: "ExperimentConfig") -> "Benchmark":
         raise e
 
     # Allocate requested benchmark
-    benchmark_factory: Type["Benchmark"] = get_class(experiment.benchmark._target_)
-    benchmark: "Benchmark" = benchmark_factory()
+    benchmark_factory: Type[Benchmark] = get_class(experiment.benchmark._target_)
+    benchmark: Benchmark = benchmark_factory()
 
     try:
         # Configure the benchmark
@@ -195,8 +197,8 @@ def run_with_launcher(experiment: DictConfig):
     # Instantiate the experiment config to trigger __post_init__
     experiment.launcher = OmegaConf.to_object(experiment.launcher)
 
-    launcher_factory: Type["Launcher"] = get_class(experiment.launcher._target_)
-    launcher: "Launcher" = launcher_factory()
+    launcher_factory: Type[Launcher] = get_class(experiment.launcher._target_)
+    launcher: Launcher = launcher_factory()
 
     try:
         launcher.configure(experiment.launcher)
