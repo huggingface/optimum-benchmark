@@ -108,11 +108,10 @@ class OVBackend(Backend[OVConfig]):
         self.model = quantized_model_path
 
     def prepare_for_inference(self, **kwargs) -> None:
-        input_shapes = kwargs["input_shapes"]
         if self.config.reshape:
             static_shapes = {
                 key: value
-                for key, value in input_shapes.items()
+                for key, value in kwargs.items()
                 if key in inspect.getfullargspec(self.pretrained_model.reshape).args
             }
             LOGGER.info(f"\t+ Reshaping model with static shapes: {static_shapes}")
