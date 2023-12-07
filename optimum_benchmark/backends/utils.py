@@ -37,8 +37,7 @@ def extract_shapes_from_diffusion_pipeline(pipeline: Pipeline) -> Dict[str, Any]
 
 
 def extract_shapes_from_model_artifacts(
-    config: "PretrainedConfig",
-    processor: Optional["PreTrainedProcessor"] = None,
+    config: PretrainedConfig, processor: Optional[PreTrainedProcessor] = None
 ) -> Dict[str, Any]:
     shapes = {}
     artifacts_dict = {}
@@ -52,20 +51,16 @@ def extract_shapes_from_model_artifacts(
 
     # text input
     shapes["vocab_size"] = artifacts_dict.get("vocab_size", None)
-    if shapes["vocab_size"] is None or shapes["vocab_size"] == 0:
-        shapes["vocab_size"] = 2
 
     shapes["type_vocab_size"] = artifacts_dict.get("type_vocab_size", None)
-    if shapes["type_vocab_size"] is None or shapes["type_vocab_size"] == 0:
-        shapes["type_vocab_size"] = 2
 
     shapes["max_position_embeddings"] = artifacts_dict.get("max_position_embeddings", None)
-    if shapes["max_position_embeddings"] is None or shapes["max_position_embeddings"] == 0:
-        shapes["max_position_embeddings"] = 2
+    if shapes["max_position_embeddings"] is None:
+        shapes["max_position_embeddings"] = artifacts_dict.get("n_positions", None)  # gpt2
 
     # image input
     shapes["num_channels"] = artifacts_dict.get("num_channels", None)
-    if shapes["num_channels"] is None or shapes["num_channels"] == 0:
+    if shapes["num_channels"] is None:
         # processors have different names for the number of channels
         shapes["num_channels"] = artifacts_dict.get("channels", None)
 
