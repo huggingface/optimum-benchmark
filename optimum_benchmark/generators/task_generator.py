@@ -80,7 +80,7 @@ class TextGenerator(TaskGenerator):
         )
 
     def requires_token_type_ids(self):
-        return self.shapes["type_vocab_size"] is not None
+        return self.shapes["type_vocab_size"] is not None and self.shapes["type_vocab_size"] > 1
 
     def requires_position_ids(self):
         return self.shapes["max_position_embeddings"] is not None
