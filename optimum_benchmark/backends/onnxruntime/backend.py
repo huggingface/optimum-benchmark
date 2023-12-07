@@ -124,15 +124,18 @@ class ORTBackend(Backend[ORTConfig]):
         if self.config.auto_quantization or self.config.quantization:
             self.quantize_onnx_files()
 
-        if not (self.config.provider == "TensorrtExecutionProvider" and self.is_text_generation_model()):
-            self.load_ortmodel()
-
         if self.config.provider == "TensorrtExecutionProvider":
             assert self.pretrained_model.providers == [
                 "TensorrtExecutionProvider",
                 "CUDAExecutionProvider",
                 "CPUExecutionProvider",
             ], f"TensorrtExecutionProvider is not first in providers list: {self.pretrained_model.providers}"
+
+            if self.is_text_generation_model():
+                # deferred loading for text generation models
+                return
+            else:
+                self.load_ortmodel()
 
         if self.config.provider == "ROCMExecutionProvider":
             assert self.pretrained_model.providers == [
@@ -314,6 +317,16 @@ class ORTBackend(Backend[ORTConfig]):
                     preprocessor=None,
                 )
         self.model = quantized_model_path
+
+    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        inputs = super().prepare_input(input)
+
+        for key in list(inputs.keys()):
+            # sometimes optimum onnx exported models don't have inputs that their pytorch counterparts have
+            if key not in self.pretrained_model.inputs_names:
+                inputs.pop(key)
+
+        return inputs
 
     def prepare_for_inference(self, **kwargs) -> None:
         if self.config.provider == "TensorrtExecutionProvider" and self.is_text_generation_model():
