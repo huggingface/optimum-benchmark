@@ -124,9 +124,14 @@ class ORTBackend(Backend[ORTConfig]):
         if self.config.auto_quantization or self.config.quantization:
             self.quantize_onnx_files()
 
-        if not (self.config.provider == "TensorrtExecutionProvider" and self.is_text_generation_model()):
-            self.load_ortmodel()
+        if self.config.provider == "TensorrtExecutionProvider" and self.is_text_generation_model():
+            # deferred loading for trt text generation models
+            return
 
+        self.load_ortmodel()
+        self.validate_provider()
+
+    def validate_provider(self) -> None:
         if self.config.provider == "TensorrtExecutionProvider":
             assert self.pretrained_model.providers == [
                 "TensorrtExecutionProvider",
@@ -315,6 +320,28 @@ class ORTBackend(Backend[ORTConfig]):
                 )
         self.model = quantized_model_path
 
+    @property
+    def inputs_names(self) -> List[str]:
+        if hasattr(self.pretrained_model, "inputs_names"):
+            return self.pretrained_model.inputs_names
+        elif hasattr(self.pretrained_model, "input_names"):
+            return self.pretrained_model.input_names
+        else:
+            return {}
+
+    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        inputs = super().prepare_inputs(inputs)
+
+        if self.is_diffusion_pipeline():
+            return inputs
+
+        for key in list(inputs.keys()):
+            # sometimes optimum onnx exported models don't have inputs that their pytorch counterparts have
+            if key not in self.inputs_names:
+                inputs.pop(key)
+
+        return inputs
+
     def prepare_for_inference(self, **kwargs) -> None:
         if self.config.provider == "TensorrtExecutionProvider" and self.is_text_generation_model():
             max_new_tokens = kwargs["max_new_tokens"]
@@ -328,8 +355,8 @@ class ORTBackend(Backend[ORTConfig]):
                 "trt_profile_max_shapes": f"input_ids:{batch_size}x{sequence_length + max_new_tokens},attention_mask:{batch_size}x{sequence_length + max_new_tokens}",
                 "trt_profile_opt_shapes": f"input_ids:{batch_size}x{sequence_length + max_new_tokens},attention_mask:{batch_size}x{sequence_length + max_new_tokens}",
             }
-
             self.load_ortmodel()
+            self.validate_provider()
 
     def train(
         self,

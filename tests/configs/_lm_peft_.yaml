@@ -1,5 +1,5 @@
 # Parameters Effecient Fine Tuning (PEFT) training
-model: hf-internal-testing/tiny-random-gpt2
+model: gpt2
 task: text-generation
 
 backend:

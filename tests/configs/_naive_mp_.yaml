@@ -1,4 +1,6 @@
 # Naive Model Parallelism (MP) config
+model: gpt2
+
 backend:
   device_map: auto
 

@@ -74,7 +74,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         forward_input = self.input_generator.generate(mode="forward")
 
         LOGGER.info("\t+ Preparing input for the forward pass")
-        forward_input = backend.prepare_input(forward_input)
+        forward_input = backend.prepare_inputs(forward_input)
 
         LOGGER.info("\t+ Warming up the forward pass")
         for _ in range(self.config.warmup_runs):
@@ -94,7 +94,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         forward_input = self.input_generator.generate(mode="forward")
 
         LOGGER.info("\t+ Preparing input for the forward pass")
-        forward_input = backend.prepare_input(forward_input)
+        forward_input = backend.prepare_inputs(forward_input)
 
         LOGGER.info("\t+ Tracking forward pass energy consumption")
         num_forward_passes = 0
@@ -117,7 +117,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         forward_input = self.input_generator.generate(mode="forward")
 
         LOGGER.info("\t+ Preparing input for the forward pass")
-        forward_input = backend.prepare_input(forward_input)
+        forward_input = backend.prepare_inputs(forward_input)
 
         LOGGER.info("\t+ Tracking forward pass peak memory")
         memory_tracker = MemoryTracker(device=backend.device)
@@ -135,7 +135,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         generate_input = self.input_generator.generate(mode="generate")
 
         LOGGER.info("\t+ Preparing input for the generation pass")
-        generate_input = backend.prepare_input(generate_input)
+        generate_input = backend.prepare_inputs(generate_input)
 
         LOGGER.info("\t+ Warming up the generation pass")
         _ = backend.generate(generate_input, self.config.generate_kwargs)
@@ -154,7 +154,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         generate_input = self.input_generator.generate(mode="generate")
 
         LOGGER.info("\t+ Preparing input for the generation pass")
-        generate_input = backend.prepare_input(generate_input)
+        generate_input = backend.prepare_inputs(generate_input)
 
         LOGGER.info("\t+ Tracking generation pass energy consumption")
         num_generate_passes = 0
@@ -184,7 +184,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         generate_input = self.input_generator.generate(mode="generate")
 
         LOGGER.info("\t+ Preparing input for the generation pass")
-        generate_input = backend.prepare_input(generate_input)
+        generate_input = backend.prepare_inputs(generate_input)
 
         LOGGER.info("\t+ Tracking generation pass peak memory")
         memory_tracker = MemoryTracker(device=backend.device)

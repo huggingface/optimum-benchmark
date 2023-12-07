@@ -130,16 +130,16 @@ class Backend(Generic[BackendConfigT], ABC):
         random.seed(self.config.seed)
         np.random.seed(self.config.seed)
 
-    def prepare_input(self, input: Dict[str, Any]) -> Dict[str, Any]:
+    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        # TODO: move this to only backends that need it (non cpu backends)
         if self.is_diffusion_pipeline():
-            return input  # diffusion pipelines takes a list of strings
+            return inputs  # diffusion pipelines takes a list of strings
         else:
-            LOGGER.info(f"\t+ Moving input tensors to device {self.device}")
-            for key, value in input.items():
-                # models expect tensors on the target device
-                input[key] = value.to(self.device)
+            LOGGER.info(f"\t+ Moving inputs tensors to device {self.device}")
+            for key, value in inputs.items():
+                inputs[key] = value.to(self.device)
 
-        return input
+        return inputs
 
     def prepare_for_inference(self, **kwargs) -> None:
         pass

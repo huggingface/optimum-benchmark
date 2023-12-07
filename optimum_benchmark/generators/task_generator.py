@@ -24,6 +24,10 @@ class TaskGenerator(ABC):
         return torch.rand(shape) * (max_value - min_value) + min_value
 
     @staticmethod
+    def generate_ranges(start: int, stop: int, shape: Tuple[int]):
+        return torch.arange(start, stop).repeat(shape[0], 1)
+
+    @staticmethod
     def generate_random_strings(shape: Tuple[int]):
         return [
             "".join(random.choice(string.ascii_letters + string.digits) for _ in range(shape[1]))
@@ -66,14 +70,20 @@ class TextGenerator(TaskGenerator):
         )
 
     def position_ids(self):
-        return self.generate_random_integers(
-            min_value=0,
-            max_value=self.shapes["max_position_embeddings"],
+        return self.generate_ranges(
+            start=0,
+            stop=self.shapes["sequence_length"],
             shape=(
                 self.shapes["batch_size"],
                 self.shapes["sequence_length"],
             ),
         )
+
+    def requires_token_type_ids(self):
+        return self.shapes["type_vocab_size"] is not None and self.shapes["type_vocab_size"] > 1
+
+    def requires_position_ids(self):
+        return self.shapes["max_position_embeddings"] is not None
 
 
 class ImageGenerator(TaskGenerator):
@@ -126,8 +136,12 @@ class TextClassificationGenerator(TextGenerator):
 
         dummy["input_ids"] = self.input_ids()
         dummy["attention_mask"] = self.attention_mask()
-        dummy["token_type_ids"] = self.token_type_ids()
-        dummy["position_ids"] = self.position_ids()
+
+        if self.requires_token_type_ids():
+            dummy["token_type_ids"] = self.token_type_ids()
+
+        if self.requires_position_ids():
+            dummy["position_ids"] = self.position_ids()
 
         if self.with_labels:
             dummy["labels"] = self.labels()
@@ -151,8 +165,12 @@ class TokenClassificationGenerator(TextGenerator):
 
         dummy["input_ids"] = self.input_ids()
         dummy["attention_mask"] = self.attention_mask()
-        dummy["token_type_ids"] = self.token_type_ids()
-        dummy["position_ids"] = self.position_ids()
+
+        if self.requires_token_type_ids():
+            dummy["token_type_ids"] = self.token_type_ids()
+
+        if self.requires_position_ids():
+            dummy["position_ids"] = self.position_ids()
 
         if self.with_labels:
             dummy["labels"] = self.labels()
@@ -165,7 +183,12 @@ class TextGenerationGenerator(TextGenerator):
         dummy = {}
         dummy["input_ids"] = self.input_ids()
         dummy["attention_mask"] = self.attention_mask()
-        dummy["position_ids"] = self.position_ids()
+
+        if self.requires_token_type_ids():
+            dummy["token_type_ids"] = self.token_type_ids()
+
+        if self.requires_position_ids():
+            dummy["position_ids"] = self.position_ids()
 
         if self.with_labels:
             dummy["labels"] = self.input_ids()
@@ -208,8 +231,12 @@ class MaskedLanguageModelingGenerator(TextGenerator):
 
         dummy["input_ids"] = self.input_ids()
         dummy["attention_mask"] = self.attention_mask()
-        dummy["token_type_ids"] = self.token_type_ids()
-        dummy["position_ids"] = self.position_ids()
+
+        if self.requires_token_type_ids():
+            dummy["token_type_ids"] = self.token_type_ids()
+
+        if self.requires_position_ids():
+            dummy["position_ids"] = self.position_ids()
 
         if self.with_labels:
             dummy["labels"] = self.input_ids()
@@ -233,17 +260,19 @@ class MultipleChoiceGenerator(TextGenerator):
             .reshape(self.shapes["batch_size"], 1, self.shapes["sequence_length"])
             .repeat(1, self.shapes["num_choices"], 1)
         )
-        dummy["token_type_ids"] = (
-            self.token_type_ids()
-            .reshape(self.shapes["batch_size"], 1, self.shapes["sequence_length"])
-            .repeat(1, self.shapes["num_choices"], 1)
-        )
 
         dummy["attention_mask"] = (
             self.attention_mask()
             .reshape(self.shapes["batch_size"], 1, self.shapes["sequence_length"])
             .repeat(1, self.shapes["num_choices"], 1)
         )
+
+        if self.requires_token_type_ids():
+            dummy["token_type_ids"] = (
+                self.token_type_ids()
+                .reshape(self.shapes["batch_size"], 1, self.shapes["sequence_length"])
+                .repeat(1, self.shapes["num_choices"], 1)
+            )
 
         if self.with_labels:
             dummy["label"] = self.labels()
@@ -378,8 +407,12 @@ class FeatureExtractionGenerator(TextGenerator, ImageGenerator):
         else:
             dummy["input_ids"] = self.input_ids()
             dummy["attention_mask"] = self.attention_mask()
-            dummy["token_type_ids"] = self.token_type_ids()
-            dummy["position_ids"] = self.position_ids()
+
+            if self.requires_token_type_ids():
+                dummy["token_type_ids"] = self.token_type_ids()
+
+            if self.requires_position_ids():
+                dummy["position_ids"] = self.position_ids()
 
         return dummy
 

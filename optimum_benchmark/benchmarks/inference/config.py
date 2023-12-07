@@ -84,11 +84,7 @@ class InferenceConfig(BenchmarkConfig):
                 self.generate_kwargs["max_new_tokens"] = self.new_tokens
                 self.generate_kwargs["min_new_tokens"] = self.new_tokens
             else:
-                LOGGER.warning(
-                    "No `new_tokens` value provided. Using `min_new_tokens` as `new_tokens` value. "
-                    "This may lead to unexpected results."
-                )
                 self.new_tokens = self.generate_kwargs["min_new_tokens"]
 
         if self.energy and os.environ.get("CUDA_VISIBLE_DEVICES", None) and is_rocm_system():
-            raise ValueError("Energy measurement through codecarbon is not available on RoCm-powered devices.")
+            raise ValueError("Energy measurement through codecarbon is not yet available on ROCm-powered devices.")

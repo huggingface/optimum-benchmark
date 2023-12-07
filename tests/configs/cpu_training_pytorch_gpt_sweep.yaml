@@ -1,0 +1,11 @@
+defaults:
+  - launcher: process
+  - backend: pytorch
+  # order of inheritance, last one overrides previous ones
+  - _base_ # inherits from base config
+  - _training_ # inherits from training config
+  - _gpt_sweep_ # inherits from gpt_sweep config
+  - _self_ # for hydra 1.1 compatibility
+
+experiment_name: cpu_training_pytorch_gpt_sweep
+device: cpu
