@@ -352,9 +352,21 @@ class ORTBackend(Backend[ORTConfig]):
             LOGGER.info("\t+ Creating dynamic shapes for Tensorrt engine, loading will take a while")
             self.provider_options = {
                 **self.provider_options,
-                "trt_profile_min_shapes": f"input_ids:{batch_size}x{sequence_length},attention_mask:{batch_size}x{sequence_length}",
-                "trt_profile_max_shapes": f"input_ids:{batch_size}x{sequence_length + max_new_tokens},attention_mask:{batch_size}x{sequence_length + max_new_tokens}",
-                "trt_profile_opt_shapes": f"input_ids:{batch_size}x{sequence_length + max_new_tokens},attention_mask:{batch_size}x{sequence_length + max_new_tokens}",
+                "trt_profile_min_shapes": (
+                    f"input_ids:{batch_size}x{sequence_length},"
+                    f"attention_mask:{batch_size}x{sequence_length},"
+                    f"position_ids:{batch_size}x{sequence_length}"
+                ),
+                "trt_profile_max_shapes": (
+                    f"input_ids:{batch_size}x{sequence_length + max_new_tokens},"
+                    f"attention_mask:{batch_size}x{sequence_length + max_new_tokens},"
+                    f"position_ids:{batch_size}x{sequence_length + max_new_tokens}"
+                ),
+                "trt_profile_opt_shapes": (
+                    f"input_ids:{batch_size}x{sequence_length + max_new_tokens},"
+                    f"attention_mask:{batch_size}x{sequence_length + max_new_tokens},"
+                    f"position_ids:{batch_size}x{sequence_length + max_new_tokens}"
+                ),
             }
             self.load_ortmodel()
             self.validate_provider()
