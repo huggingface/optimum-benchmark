@@ -336,7 +336,7 @@ class ORTBackend(Backend[ORTConfig]):
             return inputs
 
         for key in list(inputs.keys()):
-            # sometimes optimum onnx exported models don't have inputs 
+            # sometimes optimum onnx exported models don't have inputs
             # that their pytorch counterparts have, for instance token_type_ids
             if key not in self.inputs_names:
                 inputs.pop(key)

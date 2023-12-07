@@ -1,4 +1,5 @@
 import logging.config
+import multiprocessing as mp
 import os
 from logging import getLogger
 from typing import Callable
@@ -20,8 +21,12 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
     def __init__(self) -> None:
         super().__init__()
 
-    def configure(self, config: "TorchrunConfig") -> None:
+    def configure(self, config: TorchrunConfig) -> None:
         super().configure(config)
+
+        if mp.get_start_method(allow_none=True) != self.config.start_method:
+            LOGGER.info(f"Setting multiprocessing start method to {self.config.start_method}.")
+            mp.set_start_method(self.config.start_method, force=True)
 
     def launch(self, worker: Callable, *worker_args):
         launch_config = LaunchConfig(
@@ -43,7 +48,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             log_dir=self.config.log_dir,
         )
 
-        LOGGER.info(f"\t+ Launching {self.config.nproc_per_node} processes with torchrun")
+        LOGGER.info(f"\t+ Launching {self.config.nproc_per_node} processes with Torchrun")
 
         launch_agent(
             entrypoint=entrypoint,

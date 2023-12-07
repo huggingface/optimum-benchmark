@@ -21,11 +21,11 @@ class ProcessLauncher(Launcher[ProcessConfig]):
     def configure(self, config: ProcessConfig) -> None:
         super().configure(config)
 
-    def launch(self, worker: Callable, *worker_args):
-        # Set the multiprocessing start method if needed
         if mp.get_start_method(allow_none=True) != self.config.start_method:
+            LOGGER.info(f"Setting multiprocessing start method to {self.config.start_method}.")
             mp.set_start_method(self.config.start_method, force=True)
 
+    def launch(self, worker: Callable, *worker_args):
         # Create the process
         process = Process(
             target=target,
