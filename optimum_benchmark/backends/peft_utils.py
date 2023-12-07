@@ -1,7 +1,18 @@
-from typing import TYPE_CHECKING, Type
+from typing import Type
 
-if TYPE_CHECKING:
-    from peft import PeftConfig
+from ..import_utils import is_peft_available
+
+if is_peft_available():
+    from peft import (
+        PeftConfig,
+        AdaLoraConfig,
+        IA3Config,
+        LoraConfig,
+        PrefixTuningConfig,
+        PromptEncoderConfig,
+        PromptLearningConfig,
+    )
+
 
 PEFT_TASKS_TYPES = ["SEQ_CLS", "SEQ_2_SEQ_LM", "CAUSAL_LM", "TOKEN_CLS", "QUESTION_ANS", "FEATURE_EXTRACTION"]
 
@@ -78,15 +89,6 @@ PEFT_CONFIGS = {
 
 
 def get_peft_config_class(peft_strategy: str) -> Type["PeftConfig"]:
-    from peft import (
-        AdaLoraConfig,
-        IA3Config,
-        LoraConfig,
-        PrefixTuningConfig,
-        PromptEncoderConfig,
-        PromptLearningConfig,
-    )
-
     if peft_strategy == "lora":
         return LoraConfig
     elif peft_strategy == "ada_lora":

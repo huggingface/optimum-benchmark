@@ -7,6 +7,7 @@ _diffusers_available = importlib.util.find_spec("diffusers") is not None
 _optimum_available = importlib.util.find_spec("optimum") is not None
 _torch_available = importlib.util.find_spec("torch") is not None
 _onnx_available = importlib.util.find_spec("onnx") is not None
+_peft_available = importlib.util.find_spec("peft") is not None
 _py3nvml_available = importlib.util.find_spec("py3nvml") is not None
 _torch_distributed_available = importlib.util.find_spec("torch.distributed") is not None
 _onnxruntime_available = importlib.util.find_spec("onnxruntime") is not None
@@ -15,6 +16,10 @@ _neural_compressor_available = importlib.util.find_spec("neural_compressor") is 
 _pyrsmi_available = importlib.util.find_spec("pyrsmi") is not None
 _codecarbon_available = importlib.util.find_spec("codecarbon") is not None
 _amdsmi_available = importlib.util.find_spec("amdsmi") is not None
+
+
+def is_peft_available():
+    return _peft_available
 
 
 def is_onnx_available():

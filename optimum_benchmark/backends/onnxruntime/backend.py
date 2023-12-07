@@ -124,18 +124,20 @@ class ORTBackend(Backend[ORTConfig]):
         if self.config.auto_quantization or self.config.quantization:
             self.quantize_onnx_files()
 
+        if self.config.provider == "TensorrtExecutionProvider" and self.is_text_generation_model():
+            # deferred loading for trt text generation models
+            return
+
+        self.load_ortmodel()
+        self.validate_provider()
+
+    def validate_provider(self) -> None:
         if self.config.provider == "TensorrtExecutionProvider":
             assert self.pretrained_model.providers == [
                 "TensorrtExecutionProvider",
                 "CUDAExecutionProvider",
                 "CPUExecutionProvider",
             ], f"TensorrtExecutionProvider is not first in providers list: {self.pretrained_model.providers}"
-
-            if self.is_text_generation_model():
-                # deferred loading for text generation models
-                return
-            else:
-                self.load_ortmodel()
 
         if self.config.provider == "ROCMExecutionProvider":
             assert self.pretrained_model.providers == [
@@ -319,7 +321,7 @@ class ORTBackend(Backend[ORTConfig]):
         self.model = quantized_model_path
 
     def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        inputs = super().prepare_input(input)
+        inputs = super().prepare_inputs(inputs)
 
         for key in list(inputs.keys()):
             # sometimes optimum onnx exported models don't have inputs that their pytorch counterparts have
@@ -341,8 +343,8 @@ class ORTBackend(Backend[ORTConfig]):
                 "trt_profile_max_shapes": f"input_ids:{batch_size}x{sequence_length + max_new_tokens},attention_mask:{batch_size}x{sequence_length + max_new_tokens}",
                 "trt_profile_opt_shapes": f"input_ids:{batch_size}x{sequence_length + max_new_tokens},attention_mask:{batch_size}x{sequence_length + max_new_tokens}",
             }
-
             self.load_ortmodel()
+            self.validate_provider()
 
     def train(
         self,
