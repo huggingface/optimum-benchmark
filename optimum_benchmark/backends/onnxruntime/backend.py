@@ -332,6 +332,9 @@ class ORTBackend(Backend[ORTConfig]):
     def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         inputs = super().prepare_inputs(inputs)
 
+        if self.is_diffusion_pipeline():
+            return inputs
+
         for key in list(inputs.keys()):
             # sometimes optimum onnx exported models don't have inputs that their pytorch counterparts have
             if key not in self.inputs_names:
