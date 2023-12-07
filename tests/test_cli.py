@@ -42,9 +42,11 @@ def test_exit_code():
         "--config-dir",
         "tests/configs",
         "--config-name",
-        "cpu_training_pytorch_gpt2",
-        # inadequate task to trigger error
+        "cpu_inference_pytorch_bert_sweep",
+        # incompatible task and model to trigger error
         "task=image-classification",
+        "model=bert-base-uncased",
+        # not using multirun to not sweep
     ]
 
     popen = Popen(args, stdout=PIPE, stderr=STDOUT)

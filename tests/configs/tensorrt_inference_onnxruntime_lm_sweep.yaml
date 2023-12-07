@@ -10,4 +10,5 @@ experiment_name: tensorrt_inference_onnxruntime_lm_sweep
 device: cuda
 
 backend:
+  use_cache: false
   provider: TensorrtExecutionProvider
