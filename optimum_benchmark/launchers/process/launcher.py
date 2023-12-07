@@ -22,17 +22,17 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         super().configure(config)
 
     def launch(self, worker: Callable, *worker_args):
-        # Set the multiprocessing start method if not already set
-        if mp.get_start_method(allow_none=True) is None:
-            mp.set_start_method(self.config.start_method)
+        # Set the multiprocessing start method if needed
+        if mp.get_start_method(allow_none=True) != self.config.start_method:
+            mp.set_start_method(self.config.start_method, force=True)
 
         # Create the process
         process = Process(
             target=target,
             args=(worker, *worker_args),
             # daemon=True
-            # TODO: move isolation process to the launcher and make this daemon
-            # which is currently not possible because daemon process cannot have children
+            # TODO: move isolation process to the launcher and make this process daemon
+            # which is currently not possible because daemon process cannot have children (the isolation process)
         )
 
         process.start()

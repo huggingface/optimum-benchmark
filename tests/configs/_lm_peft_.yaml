@@ -1,4 +1,4 @@
-# Parameters Effecient Fine Tuning (PEFT) training
+# Language Modeling Parameters Effecient Fine Tuning (PEFT)
 model: gpt2
 task: text-generation
 

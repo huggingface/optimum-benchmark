@@ -1,6 +1,6 @@
 # Distributed Data Parallel (DDP) training
 defaults:
-  - launcher: torchrun
+  - override launcher: torchrun
 
 launcher:
   nproc_per_node: 2

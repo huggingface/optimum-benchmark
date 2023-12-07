@@ -1,11 +1,10 @@
 defaults:
   - backend: pytorch
-  - launcher: process
   # order of inheritance, last one overrides previous ones
   - _base_ # inherits from base config
-  - _inference_ # inherits from inference config
-  - _gpt_sweep_ # inherits from gpt_sweep config
+  - _training_ # inherits from training config
+  - _lm_naive_mp_ # inherits from lm naive mp config
   - _self_ # for hydra 1.1 compatibility
 
-experiment_name: cpu_inference_pytorch_gpt_sweep
+experiment_name: cuda_training_pytorch_lm_naive_mp
 device: cuda
