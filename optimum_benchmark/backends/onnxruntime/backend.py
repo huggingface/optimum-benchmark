@@ -320,12 +320,21 @@ class ORTBackend(Backend[ORTConfig]):
                 )
         self.model = quantized_model_path
 
+    @property
+    def inputs_names(self) -> List[str]:
+        if hasattr(self.pretrained_model, "inputs_names"):
+            return self.pretrained_model.inputs_names
+        elif hasattr(self.pretrained_model, "input_names"):
+            return self.pretrained_model.input_names
+        else:
+            return {}
+
     def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         inputs = super().prepare_inputs(inputs)
 
         for key in list(inputs.keys()):
             # sometimes optimum onnx exported models don't have inputs that their pytorch counterparts have
-            if key not in self.pretrained_model.inputs_names:
+            if key not in self.inputs_names:
                 inputs.pop(key)
 
         return inputs
