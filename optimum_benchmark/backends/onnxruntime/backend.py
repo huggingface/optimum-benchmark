@@ -336,7 +336,8 @@ class ORTBackend(Backend[ORTConfig]):
             return inputs
 
         for key in list(inputs.keys()):
-            # sometimes optimum onnx exported models don't have inputs that their pytorch counterparts have
+            # sometimes optimum onnx exported models don't have inputs
+            # that their pytorch counterparts have, for instance token_type_ids
             if key not in self.inputs_names:
                 inputs.pop(key)
 
@@ -344,16 +345,28 @@ class ORTBackend(Backend[ORTConfig]):
 
     def prepare_for_inference(self, **kwargs) -> None:
         if self.config.provider == "TensorrtExecutionProvider" and self.is_text_generation_model():
+            batch_size = kwargs["batch_size"]
             max_new_tokens = kwargs["max_new_tokens"]
-            batch_size = kwargs["input_shapes"]["batch_size"]
-            sequence_length = kwargs["input_shapes"]["sequence_length"]
+            sequence_length = kwargs["sequence_length"]
 
             LOGGER.info("\t+ Creating dynamic shapes for Tensorrt engine, loading will take a while")
             self.provider_options = {
                 **self.provider_options,
-                "trt_profile_min_shapes": f"input_ids:{batch_size}x{sequence_length},attention_mask:{batch_size}x{sequence_length}",
-                "trt_profile_max_shapes": f"input_ids:{batch_size}x{sequence_length + max_new_tokens},attention_mask:{batch_size}x{sequence_length + max_new_tokens}",
-                "trt_profile_opt_shapes": f"input_ids:{batch_size}x{sequence_length + max_new_tokens},attention_mask:{batch_size}x{sequence_length + max_new_tokens}",
+                "trt_profile_min_shapes": (
+                    f"input_ids:{batch_size}x{sequence_length},"
+                    f"attention_mask:{batch_size}x{sequence_length},"
+                    f"position_ids:{batch_size}x{sequence_length}"
+                ),
+                "trt_profile_max_shapes": (
+                    f"input_ids:{batch_size}x{sequence_length + max_new_tokens},"
+                    f"attention_mask:{batch_size}x{sequence_length + max_new_tokens},"
+                    f"position_ids:{batch_size}x{sequence_length + max_new_tokens}"
+                ),
+                "trt_profile_opt_shapes": (
+                    f"input_ids:{batch_size}x{sequence_length + max_new_tokens},"
+                    f"attention_mask:{batch_size}x{sequence_length + max_new_tokens},"
+                    f"position_ids:{batch_size}x{sequence_length + max_new_tokens}"
+                ),
             }
             self.load_ortmodel()
             self.validate_provider()

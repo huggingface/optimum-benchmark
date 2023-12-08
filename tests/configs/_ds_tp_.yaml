@@ -1,6 +1,6 @@
-# DeepSpeed Tensor Parallelism (DS-TP)
+# DeepSpeed-Inference Tensor Parallelism (DS-TP)
 defaults:
-  - launcher: torchrun
+  - override launcher: torchrun
 
 launcher:
   nproc_per_node: 2

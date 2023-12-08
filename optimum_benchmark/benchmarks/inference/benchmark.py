@@ -47,7 +47,11 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
 
         # compile with static shapes if needed
         LOGGER.info("\t+ Preparing backend for inference")
-        backend.prepare_for_inference(input_shapes=self.config.input_shapes, new_tokens=self.config.new_tokens)
+        backend.prepare_for_inference(
+            **self.config.input_shapes,
+            **self.config.forward_kwargs,
+            **self.config.generate_kwargs,
+        )
 
         LOGGER.info("\t+ Creating input generator")
         self.input_generator = InputGenerator(task=backend.task, input_shapes=self.config.input_shapes)

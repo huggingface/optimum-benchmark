@@ -1,11 +1,10 @@
 defaults:
-  - launcher: process
   - backend: onnxruntime
   # order of inheritance, last one overrides previous ones
   - _base_ # inherits from base config
   - _inference_ # inherits from inference config
-  - _gpt_sweep_ # inherits from gpt_sweep config
+  - _lm_sweep_ # inherits from gpt_sweep config
   - _self_ # for hydra 1.1 compatibility
 
-experiment_name: cpu_inference_onnxruntime_gpt_sweep
+experiment_name: cpu_inference_onnxruntime_lm_sweep
 device: cpu
