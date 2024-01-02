@@ -28,9 +28,11 @@ jobs:
           --pid host
           --shm-size 64G
           --env USE_CUDA="1"
+          --env USER_ID=$(id -u)
+          --env GROUP_ID=$(id -g)
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
           --gpus '"device=0,1"'
           --entrypoint /bin/bash
           huggingface/optimum-nvidia:latest
-          -c "pip install -e .[test] && pytest -k 'tensorrt_llm' -x && sudo chown -R $(id -u):$(id -g) ."
+          -c "pip install -e .[test] && pytest -k 'tensorrt_llm' -x && chown -R $USER_ID:$GROUP_ID ."
