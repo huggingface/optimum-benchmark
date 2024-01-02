@@ -1,4 +1,7 @@
-# Naive Model Parallelism (MP) config
+# Language Modeling Naive Model Parallelism
+model: gpt2
+task: text-generation
+
 backend:
   device_map: auto
 

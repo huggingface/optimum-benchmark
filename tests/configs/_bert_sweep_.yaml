@@ -1,6 +1,5 @@
-model: hf-internal-testing/tiny-random-bert
-
 hydra:
   sweeper:
     params:
       task: fill-mask,text-classification,token-classification,question-answering
+      model: hf-internal-testing/tiny-random-bert,hf-internal-testing/tiny-random-roberta

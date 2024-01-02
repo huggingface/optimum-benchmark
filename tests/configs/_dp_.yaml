@@ -1,7 +1,4 @@
 # Data Parallel (DP) training
-defaults:
-  - launcher: process
-
 hydra:
   job:
     env_set:

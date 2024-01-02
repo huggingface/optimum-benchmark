@@ -1,12 +1,10 @@
 defaults:
-  - launcher: process
   - backend: pytorch
   # order of inheritance, last one overrides previous ones
   - _base_ # inherits from base config
   - _training_ # inherits from training config
+  - _lm_peft_ # inherits from language modeling peft config
   - _self_ # for hydra 1.1 compatibility
 
-experiment_name: cpu_training_pytorch_gpt2
-model: hf-internal-testing/tiny-random-gpt2
-task: text-generation
-device: cpu
+experiment_name: cuda_training_pytorch_lm_peft
+device: cuda

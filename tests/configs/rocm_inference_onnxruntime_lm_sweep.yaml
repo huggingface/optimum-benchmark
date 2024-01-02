@@ -1,12 +1,13 @@
 defaults:
-  - backend: pytorch
-  - launcher: process
+  - backend: onnxruntime
   # order of inheritance, last one overrides previous ones
   - _base_ # inherits from base config
   - _inference_ # inherits from inference config
-  - _naive_mp_ # inherits from naive mp config
+  - _lm_sweep_ # inherits from gpt sweep config
   - _self_ # for hydra 1.1 compatibility
 
-experiment_name: cuda_inference_pytorch_gpt2_naive_mp
-model: gpt2
+experiment_name: rocm_inference_onnxruntime_lm_sweep
 device: cuda
+
+backend:
+  provider: ROCMExecutionProvider

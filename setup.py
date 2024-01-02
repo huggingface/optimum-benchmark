@@ -43,8 +43,8 @@ if use_rocm == "1":
     INSTALL_REQUIRES.append("pyrsmi@git+https://github.com/RadeonOpenCompute/pyrsmi.git")
 
 EXTRAS_REQUIRE = {
-    "test": ["pytest"],
     "quality": ["black", "ruff"],
+    "test": ["pytest", "hydra-joblib-launcher"],
     "report": ["matplotlib", "rich", "tabulate", "flatten_dict"],
     # cpu backends
     "openvino": [f"optimum[openvino,nncf]>={OPTIMUM_VERSION}"],

@@ -53,6 +53,9 @@ class TrainingConfig(BenchmarkConfig):
             "do_predict": False,
             # by default it reports to "all", so we disable it
             "report_to": "none",
+            # from pytorch warning: "this flag results in an extra traversal of the autograd graph every iteration
+            # which can adversely affect performance."
+            "ddp_find_unused_parameters": False,
             # memory metrics are wrong when using multiple processes
             "skip_memory_metrics": True,
         }

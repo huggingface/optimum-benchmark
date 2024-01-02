@@ -8,6 +8,7 @@ _optimum_available = importlib.util.find_spec("optimum") is not None
 _torch_available = importlib.util.find_spec("torch") is not None
 _onnx_available = importlib.util.find_spec("onnx") is not None
 _tensorrt_available = importlib.util.find_spec("tensorrt") is not None
+_peft_available = importlib.util.find_spec("peft") is not None
 _py3nvml_available = importlib.util.find_spec("py3nvml") is not None
 _torch_distributed_available = importlib.util.find_spec("torch.distributed") is not None
 _onnxruntime_available = importlib.util.find_spec("onnxruntime") is not None
@@ -20,6 +21,10 @@ _amdsmi_available = importlib.util.find_spec("amdsmi") is not None
 
 def is_tensorrt_available():
     return _tensorrt_available
+
+
+def is_peft_available():
+    return _peft_available
 
 
 def is_onnx_available():
