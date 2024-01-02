@@ -1,0 +1,36 @@
+name: TensorRT-LLM Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pull_image_and_run_gpu_tests:
+    runs-on: hf-dgx-01
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Pull image
+        run: docker pull huggingface/optimum-nvidia:latest
+
+      - name: Run tests
+        run: docker run
+          --rm
+          --net host
+          --pid host
+          --shm-size 64G
+          --env USE_CUDA="1"
+          --volume $(pwd):/workspace/optimum-benchmark
+          --workdir /workspace/optimum-benchmark
+          --gpus '"device=0,1"'
+          --entrypoint /bin/bash
+          huggingface/optimum-nvidia:latest
+          -c "pip install -e .[test] && pytest -k 'tensorrt_llm' -x"

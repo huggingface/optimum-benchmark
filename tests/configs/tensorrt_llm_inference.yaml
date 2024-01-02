@@ -1,0 +1,14 @@
+defaults:
+  - backend: tensorrt # default backend
+  # order of inheritance, last one overrides previous ones
+  - _base_ # inherits from base config
+  - _inference_ # inherits from inference config
+  - _self_ # for hydra 1.1 compatibility
+
+experiment_name: tensorrt_llm_inference
+model: TinyLlama/TinyLlama-1.1B-step-50K-105b
+device: cuda
+
+benchmark:
+  input_shapes:
+    batch_size: 1
