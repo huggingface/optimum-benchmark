@@ -33,4 +33,4 @@ jobs:
           --gpus '"device=0,1"'
           --entrypoint /bin/bash
           huggingface/optimum-nvidia:latest
-          -c "pip install -e .[test] && pytest -k 'tensorrt_llm' -x"
+          -c "pip install -e .[test] && pytest -k 'tensorrt_llm' -x && sudo chown -R $(id -u):$(id -g) ."
