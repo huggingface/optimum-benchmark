@@ -174,7 +174,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 **self.automodel_kwargs,
                 **self.hub_kwargs,
             )
-            print(torch.cuda.max_memory_allocated())
         elif self.config.device_map is not None:
             LOGGER.info(f"\t+ Loading model with device map: {self.config.device_map}")
             self.pretrained_model = self.automodel_class.from_pretrained(
