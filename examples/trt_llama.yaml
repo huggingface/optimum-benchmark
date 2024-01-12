@@ -11,9 +11,6 @@ experiment_name: trt_llama
 model: NousResearch/Llama-2-7b-hf
 device: cuda
 
-backend:
-  continuous_isolation: false
-
 benchmark:
   input_shapes:
     batch_size: 1

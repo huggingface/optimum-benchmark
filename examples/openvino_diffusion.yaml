@@ -11,6 +11,9 @@ experiment_name: openvino_diffusion
 model: stabilityai/stable-diffusion-2-1
 device: cpu
 
+launcher:
+  device_isolation: true
+
 backend:
   export: true
   reshape: true
