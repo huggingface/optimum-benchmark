@@ -11,7 +11,7 @@ from torch.distributed.elastic.multiprocessing.errors import record
 from torch.distributed.launcher.api import LaunchConfig, launch_agent
 
 from ..base import Launcher
-from ..isolation_utils import devices_isolation
+from ..isolation_utils import device_isolation
 from .config import TorchrunConfig
 
 LOGGER = getLogger("torchrun")
@@ -50,8 +50,8 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             log_dir=self.config.log_dir,
         )
 
-        with devices_isolation(
-            enabled=self.config.devices_isolation,
+        with device_isolation(
+            enabled=self.config.device_isolation,
             permitted_pids={os.getpid()},
         ):
             LOGGER.info(f"\t+ Launching torchrun/torchelastic agent with {self.config.nproc_per_node} processes")

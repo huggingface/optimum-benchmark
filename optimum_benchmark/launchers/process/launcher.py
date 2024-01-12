@@ -8,7 +8,7 @@ from typing import Callable
 from omegaconf import OmegaConf
 
 from ..base import Launcher
-from ..isolation_utils import devices_isolation
+from ..isolation_utils import device_isolation
 from .config import ProcessConfig
 
 LOGGER = getLogger("process")
@@ -33,8 +33,8 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         worker_process.start()
         LOGGER.info(f"\t+ Launched worker process with PID {worker_process.pid}.")
 
-        with devices_isolation(
-            enabled=self.config.devices_isolation,
+        with device_isolation(
+            enabled=self.config.device_isolation,
             permitted_pids={os.getpid(), worker_process.pid},
         ):
             worker_process.join()

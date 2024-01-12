@@ -1,6 +1,6 @@
 defaults:
   - backend: pytorch # default backend
-  - launcher: inline # default launcher
+  - launcher: torchrun # default launcher
   - benchmark: inference # default benchmark
   - experiment # inheriting experiment schema
   - _self_ # for hydra 1.1 compatibility
@@ -10,6 +10,9 @@ defaults:
 experiment_name: pytorch_bert
 model: bert-base-uncased
 device: cuda
+
+launcher:
+  device_isolation: true
 
 hydra:
   run:

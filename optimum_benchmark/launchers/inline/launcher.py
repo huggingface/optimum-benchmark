@@ -3,7 +3,7 @@ from logging import getLogger
 from typing import Callable
 
 from ..base import Launcher
-from ..isolation_utils import devices_isolation
+from ..isolation_utils import device_isolation
 from .config import InlineConfig
 
 LOGGER = getLogger("inline")
@@ -19,8 +19,8 @@ class InlineLauncher(Launcher[InlineConfig]):
         super().configure(config)
 
     def launch(self, worker: Callable, *worker_args):
-        with devices_isolation(
-            enabled=self.config.devices_isolation,
+        with device_isolation(
+            enabled=self.config.device_isolation,
             permitted_pids={os.getpid()},
         ):
             LOGGER.info("\t+ Launching inline experiment (no process isolation)")

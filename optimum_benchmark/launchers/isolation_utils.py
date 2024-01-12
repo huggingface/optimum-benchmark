@@ -31,15 +31,12 @@ if is_amdsmi_available():
 LOGGER = getLogger("isolation")
 
 
-def get_nvidia_devices_pids() -> Dict[int, set]:
+def get_nvidia_device_pids() -> Dict[int, set]:
     devices_pids: Dict[int, set] = {}
     devices_ids = [int(device_id) for device_id in os.environ["CUDA_VISIBLE_DEVICES"].split(",")]
 
     if not is_py3nvml_available():
-        raise ValueError(
-            "check_no_process_is_running_on_cuda_device requires py3nvml. "
-            "Please install it with `pip install py3nvml`."
-        )
+        raise ValueError("get_nvidia_device_pids requires py3nvml. " "Please install it with `pip install py3nvml`.")
 
     nvml.nvmlInit()
     for device_id in devices_ids:
@@ -56,7 +53,7 @@ def get_nvidia_devices_pids() -> Dict[int, set]:
     return devices_pids
 
 
-def get_amd_devices_pids() -> None:
+def get_amd_device_pids() -> None:
     devices_pids: Dict[int, list] = {}
     rocm_version = torch_version().split("rocm")[-1]
     devices_ids = [int(device_id) for device_id in os.environ["CUDA_VISIBLE_DEVICES"].split(",")]
@@ -124,24 +121,22 @@ def get_amd_devices_pids() -> None:
     return devices_pids
 
 
-def get_pids_running_on_system_devices() -> Set[int]:
-    """
-    Returns the set of pids running on the system devices
-    """
+def get_pids_running_on_system_device() -> Set[int]:
+    """Returns the set of pids running on the system device(s)."""
 
     if is_nvidia_system():
-        devices_pids = get_nvidia_devices_pids()
+        devices_pids = get_nvidia_device_pids()
     elif is_rocm_system():
-        devices_pids = get_amd_devices_pids()
+        devices_pids = get_amd_device_pids()
     else:
-        raise ValueError("get_pids_running_on_system_devices is only supported on NVIDIA and AMD GPUs")
+        raise ValueError("get_pids_running_on_system_device is only supported on NVIDIA and AMD GPUs")
 
     all_devices_pids = set(sum(devices_pids.values(), []))
 
     return all_devices_pids
 
 
-def assert_system_devices_isolation(permitted_pids: Set[int], world_size: Optional[int] = None) -> None:
+def assert_system_device_isolation(permitted_pids: Set[int], world_size: Optional[int] = None) -> None:
     hydra_conf = OmegaConf.load(".hydra/hydra.yaml")
     logging.config.dictConfig(OmegaConf.to_container(hydra_conf.hydra.job_logging, resolve=True))
 
@@ -157,7 +152,7 @@ def assert_system_devices_isolation(permitted_pids: Set[int], world_size: Option
         permitted_pids.update(perimitted_workers_pids)
 
     while True:
-        all_devices_pids = get_pids_running_on_system_devices()
+        all_devices_pids = get_pids_running_on_system_device()
         non_permitted_pids = all_devices_pids - permitted_pids
 
         if len(non_permitted_pids) > 0:
@@ -178,12 +173,12 @@ def assert_system_devices_isolation(permitted_pids: Set[int], world_size: Option
 
 
 @contextmanager
-def devices_isolation(enabled: bool, permitted_pids: Set[int], world_size: Optional[int] = None) -> None:
+def device_isolation(enabled: bool, permitted_pids: Set[int], world_size: Optional[int] = None) -> None:
     if not enabled:
         yield
     else:
         isolation_process = Process(
-            target=assert_system_devices_isolation,
+            target=assert_system_device_isolation,
             kwargs={"permitted_pids": permitted_pids, "world_size": world_size},
             daemon=True,
         )
