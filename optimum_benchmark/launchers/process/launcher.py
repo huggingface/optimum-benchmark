@@ -28,7 +28,8 @@ class ProcessLauncher(Launcher[ProcessConfig]):
             mp.set_start_method(self.config.start_method, force=True)
 
     def launch(self, worker: Callable, *worker_args):
-        worker_process = Process(target=target, args=(worker, *worker_args), daemon=True)
+        # worker process can't be daemon since it spawns its own processes
+        worker_process = Process(target=target, args=(worker, *worker_args), daemon=False)
         worker_process.start()
         LOGGER.info(f"\t+ Launched worker process with PID {worker_process.pid}.")
 
