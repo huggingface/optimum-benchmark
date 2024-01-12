@@ -24,12 +24,16 @@ from optimum.onnxruntime.configuration import (
 from safetensors.torch import save_file
 from transformers import TrainerCallback, TrainerState
 from transformers.modeling_utils import no_init_weights
+from transformers.utils.logging import set_verbosity_error
 
 from ..base import Backend
 from ..peft_utils import get_peft_config_class
 from ..pytorch.utils import randomize_weights
 from .config import ORTConfig
 from .utils import TASKS_TO_ORTMODELS, TASKS_TO_ORTSD, format_quantization_config
+
+# disable transformers logging
+set_verbosity_error()
 
 LOGGER = getLogger("onnxruntime")
 
@@ -61,8 +65,7 @@ class ORTBackend(Backend[ORTConfig]):
         ortmodel_name = self.ortmodel_class.__name__
         LOGGER.info(f"Inferred ORTModel class {ortmodel_name} for task {self.task} and model_type {self.model_type}")
 
-        ###### Training with ORTModule ######
-        # ort-training is basically a different package so we might need to separate these two backends in the future
+        ######## Training with ORTModule ########
         if not self.config.use_inference_session:
             if self.config.no_weights:
                 self.load_automodel_with_no_weights()
@@ -79,17 +82,14 @@ class ORTBackend(Backend[ORTConfig]):
 
             return  # early exit because nothing of the following can be applied to training
 
-        ###### Inference with ORTModelForxxx ######
-        # Inference Session options
+        ######## Inference with ORTModelForxxx ########
+        self.export = self.config.export
+        self.tmpdir = TemporaryDirectory()
         self.session_options = SessionOptions()
+        self.provider_options = self.config.provider_options
+
         for key, value in self.config.session_options.items():
             setattr(self.session_options, key, value)
-
-        # Export
-        self.export = self.config.export
-
-        # Temporary directory
-        self.tmpdir = TemporaryDirectory()
 
         if self.config.no_weights:
             self.load_ortmodel_with_no_weights()
@@ -120,15 +120,9 @@ class ORTBackend(Backend[ORTConfig]):
         self.validate_provider()
 
     def validate_provider(self) -> None:
-        if self.config.provider == "TensorrtExecutionProvider":
-            assert self.pretrained_model.providers[0] == [
-                "TensorrtExecutionProvider",
-            ], f"TensorrtExecutionProvider is not first in providers list: {self.pretrained_model.providers}"
-
-        if self.config.provider == "ROCMExecutionProvider":
-            assert self.pretrained_model.providers[0] == [
-                "ROCMExecutionProvider"
-            ], f"ROCMExecutionProvider is not first in providers list: {self.pretrained_model.providers}"
+        assert (
+            self.pretrained_model.providers[0] == self.config.provider
+        ), f"{self.config.provider} is not first in providers list: {self.pretrained_model.providers}"
 
     def load_automodel_with_no_weights(self) -> None:
         original_model = self.model
@@ -159,6 +153,8 @@ class ORTBackend(Backend[ORTConfig]):
 
         LOGGER.info("\t+ Randomizing weights")
         randomize_weights(self.pretrained_model)
+        LOGGER.info("\t+ Tying model weights after randomization")
+        self.pretrained_model.tie_weights()
 
     def load_automodel_from_pretrained(self) -> None:
         LOGGER.info("\t+ Loading AutoModel from pretrained")
@@ -169,7 +165,6 @@ class ORTBackend(Backend[ORTConfig]):
         ).to(self.device)
 
     def load_ortmodel_with_no_weights(self) -> None:
-        original_model = self.model
         no_weights_model = os.path.join(self.tmpdir.name, "no_weights")
 
         LOGGER.info("\t+ Loading AutoModel with no weights")
@@ -178,6 +173,7 @@ class ORTBackend(Backend[ORTConfig]):
 
         LOGGER.info("\t+ Loading ORTModel with no weights")
         with no_init_weights():
+            original_model = self.model
             self.model = no_weights_model
             self.load_ortmodel_from_pretrained()
             self.model = original_model
@@ -187,7 +183,7 @@ class ORTBackend(Backend[ORTConfig]):
             self.model,
             export=self.export,
             session_options=self.session_options,
-            provider_options=self.config.provider_options,
+            provider_options=self.provider_options,
             use_io_binding=self.config.use_io_binding,
             provider=self.config.provider,
             **self.ortmodel_kwargs,
