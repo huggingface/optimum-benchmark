@@ -36,6 +36,12 @@ Everything else is either optional or inferred from the model's name or path.
 - [x] Intel Neural Compressor backend for CPU
 - [x] OpenVINO backend for CPU
 
+### Launcher features
+
+- [x] Process isolation between consecutive runs (`launcher=process`)
+- [x] Assert devices (NVIDIA & AMD GPUs) isolation (`launcher.device_isolation=true`)
+- [x] Distributed inference/training (`launcher=torchrun`, `launcher.n_proc_per_node=2`, etc)
+
 ### Benchmark features
 
 - [x] Memory tracking (`benchmark.memory=true`)
@@ -58,7 +64,6 @@ Everything else is either optional or inferred from the model's name or path.
 - [x] BitsAndBytes quantization scheme (`backend.quantization_scheme=bnb`, `backend.quantization_config.load_in_4bit`, etc)
 - [x] GPTQ quantization scheme (`backend.quantization_scheme=gptq`, `backend.quantization_config.bits=4`, etc)
 - [x] PEFT training (`backend.peft_strategy=lora`, `backend.peft_config.task_type=CAUSAL_LM`, etc)
-- [x] Distributed inference/training (`launcher=torchrun`, `launcher.n_proc_per_node=2`, etc)
 - [x] Transformers' Flash Attention V2 (`backend.use_flash_attention_v2=true`)
 - [x] Optimum's BetterTransformer (`backend.to_bettertransformer=true`)
 - [x] DeepSpeed-Inference support (`backend.deepspeed_inference=true`)
