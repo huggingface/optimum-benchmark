@@ -14,7 +14,6 @@ device: cuda
 backend:
   sharded: false
   quantization_scheme: awq
-  continuous_isolation: false
   # no_weights: true # wok in progress
 
 benchmark:

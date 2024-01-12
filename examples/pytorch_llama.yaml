@@ -11,9 +11,6 @@ experiment_name: pytorch_llama
 model: TheBloke/Llama-2-70B-AWQ
 device: cuda
 
-backend:
-  continuous_isolation: false
-
 benchmark:
   input_shapes:
     batch_size: 1
