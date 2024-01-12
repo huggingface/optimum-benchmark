@@ -52,7 +52,12 @@ EXTRAS_REQUIRE = {
     "neural-compressor": [f"optimum[neural-compressor]>={OPTIMUM_VERSION}"],
     # gpu backends
     "onnxruntime-gpu": [f"optimum[onnxruntime-gpu]>={OPTIMUM_VERSION}"],
-    "onnxruntime-training": ["torch-ort", "onnxruntime-training"],
+    "onnxruntime-training": [
+        "torch-ort",
+        "onnxruntime-training",
+        # # we use optimum from source, until the next release
+        "optimum@git+https://github.com/huggingface/optimum.git",
+    ],
     # docker-based backends
     "text-generation-inference": ["docker"],
     # specific settings

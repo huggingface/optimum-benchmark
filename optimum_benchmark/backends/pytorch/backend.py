@@ -8,18 +8,20 @@ import torch
 from datasets import Dataset
 from safetensors.torch import save_file
 from transformers import TrainerCallback, TrainerState
+from transformers.modeling_utils import no_init_weights
 from transformers.utils import ModelOutput
 from transformers.utils.logging import set_verbosity_error
 
 from ..base import Backend
+from ..peft_utils import get_peft_config_class
 from .config import PyTorchConfig
 from .utils import TransformersDataParallel, randomize_weights
 
-# bachend logger
-LOGGER = getLogger("pytorch")
-
 # disable transformers logging
 set_verbosity_error()
+
+# bachend logger
+LOGGER = getLogger("pytorch")
 
 
 class PyTorchBackend(Backend[PyTorchConfig]):
@@ -88,12 +90,9 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.load_model_from_pretrained()
 
         # Eval mode
-        if self.config.eval_mode:
-            if self.is_diffusion_pipeline():
-                LOGGER.info("\t+ Diffusion pipeline is in eval mode")
-            else:
-                LOGGER.info("\t+ Turning on model's eval mode")
-                self.pretrained_model.eval()
+        if self.config.eval_mode and not self.is_diffusion_pipeline():
+            LOGGER.info("\t+ Turning on model's eval mode")
+            self.pretrained_model.eval()
 
         # BetterTransformer
         if self.config.to_bettertransformer:
@@ -117,11 +116,9 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 )
 
         if self.config.peft_strategy is not None:
-            LOGGER.info("\t+ Applying PEFT")
             from peft import get_peft_model
 
-            from ..peft_utils import get_peft_config_class
-
+            LOGGER.info("\t+ Using PEFT")
             peft_config_class = get_peft_config_class(self.config.peft_strategy)
             peft_config = peft_config_class(**self.config.peft_config)
             self.pretrained_model = get_peft_model(self.pretrained_model, peft_config=peft_config)
@@ -153,7 +150,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 LOGGER.info(f"\t+ Moving pipeline to device: {self.device}")
                 self.pretrained_model.to(self.device)
         elif self.is_bnb_quantized():
-            LOGGER.info("\t+ Loading BnB quantized model")
+            LOGGER.info("\t+ Loading quantized model")
             self.pretrained_model = self.automodel_class.from_pretrained(
                 pretrained_model_name_or_path=self.model,
                 device_map=self.config.device_map,
@@ -193,38 +190,33 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 )
 
     def load_model_with_no_weights(self) -> None:
-        self.tmp_dir = TemporaryDirectory()
+        self.tmpdir = TemporaryDirectory()
+        no_weights_model = os.path.join(self.tmpdir.name, "no_weights")
 
-        original_model = self.model
-        no_weights_model = os.path.join(self.tmp_dir.name, "no_weights")
-
-        LOGGER.info("\t+ Creating no weights model directory")
         if not os.path.exists(no_weights_model):
+            LOGGER.info("\t+ Creating no weights model directory")
             os.makedirs(no_weights_model)
 
         if self.is_quantized():
             # tricking from_pretrained to load the model as if it was quantized
             self.pretrained_config.quantization_config = self.quantization_config.to_dict()
 
-        LOGGER.info(f"\t+ Saving pretrained config to {no_weights_model}")
+        LOGGER.info("\t+ Saving pretrained config")
         self.pretrained_config.save_pretrained(save_directory=no_weights_model)
 
-        LOGGER.info(f"\t+ Creating no weights model to {no_weights_model}")
+        LOGGER.info("\t+ Creating no weights model")
         state_dict = torch.nn.Linear(1, 1).state_dict()
 
         if self.is_exllamav2():
             # for exllamav2 we need to add g_idx to the state_dict
-            LOGGER.info("\t+ Loading meta model")
             with torch.device("meta"):
                 meta_model = self.automodel_class.from_config(self.pretrained_config)
 
-            LOGGER.info("\t+ Setting g_idx for ExllamaV2")
             for name, module in meta_model.named_modules():
-                # loading to exllama v2's QuantLinear creates g_idx with bad values
                 if hasattr(module, "in_features"):
                     state_dict[name + ".g_idx"] = torch.ones((module.in_features,), dtype=torch.int32)
 
-        LOGGER.info(f"\t+ Saving no weights model to {no_weights_model}")
+        LOGGER.info("\t+ Saving no weights model")
         save_file(
             filename=os.path.join(no_weights_model, "model.safetensors"),
             metadata={"format": "pt"},
@@ -232,13 +224,14 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         )
 
         LOGGER.info("\t+ Loading no weights model")
-        self.model = no_weights_model
-        self.load_model_from_pretrained()
-        self.model = original_model
+        with no_init_weights():
+            original_model = self.model
+            self.model = no_weights_model
+            self.load_model_from_pretrained()
+            self.model = original_model
 
         if not self.is_quantized():
             # TODO: verify if this can be extended to quantized models
-            # (not sure how torch.Tensor.normal_ works on quantized tensors)
             LOGGER.info("\t+ Randomizing model weights")
             randomize_weights(self.pretrained_model)
             LOGGER.info("\t+ Tying model weights after randomization")
@@ -316,11 +309,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             # config by passing quantization_config to from_pretrained
             kwargs["quantization_config"] = self.quantization_config
 
-        if self.config.no_weights:
-            # when no_weights=True, the state_dict is empty so from_pretrained will try to randomly
-            # initialize every missing weights, we don't want that, so we set fast_init to False
-            kwargs["_fast_init"] = False
-
         return kwargs
 
     def forward(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> "ModelOutput":
@@ -382,8 +370,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             LOGGER.info("\t+ Emptying CUDA cache")
             torch.cuda.empty_cache()
 
-        if hasattr(self, "tmp_dir"):
+        if hasattr(self, "tmpdir"):
             LOGGER.info("\t+ Cleaning temporary directory")
-            self.tmp_dir.cleanup()
+            self.tmpdir.cleanup()
 
         gc.collect()
