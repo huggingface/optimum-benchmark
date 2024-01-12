@@ -21,10 +21,12 @@ from optimum.onnxruntime.configuration import (
     OptimizationConfig,
     QuantizationConfig,
 )
+from safetensors.torch import save_file
 from transformers import TrainerCallback, TrainerState
+from transformers.modeling_utils import no_init_weights
 
 from ..base import Backend
-from ..optimum_utils import main_export
+from ..peft_utils import get_peft_config_class
 from ..pytorch.utils import randomize_weights
 from .config import ORTConfig
 from .utils import TASKS_TO_ORTMODELS, TASKS_TO_ORTSD, format_quantization_config
@@ -59,14 +61,11 @@ class ORTBackend(Backend[ORTConfig]):
         ortmodel_name = self.ortmodel_class.__name__
         LOGGER.info(f"Inferred ORTModel class {ortmodel_name} for task {self.task} and model_type {self.model_type}")
 
-        # Process torch dtype
-        self.torch_dtype = getattr(torch, self.config.torch_dtype) if self.config.torch_dtype is not None else None
-
         ###### Training with ORTModule ######
         # ort-training is basically a different package so we might need to separate these two backends in the future
         if not self.config.use_inference_session:
             if self.config.no_weights:
-                self.load_automodel_from_config()
+                self.load_automodel_with_no_weights()
             else:
                 self.load_automodel_from_pretrained()
 
@@ -74,174 +73,160 @@ class ORTBackend(Backend[ORTConfig]):
                 LOGGER.info("\t+ Applying PEFT")
                 from peft import get_peft_model
 
-                from ..peft_utils import get_peft_config_class
-
                 peft_config_class = get_peft_config_class(self.config.peft_strategy)
                 peft_config = peft_config_class(**self.config.peft_config)
                 self.pretrained_model = get_peft_model(self.pretrained_model, peft_config=peft_config)
-            # early exit because nothing of the following can be applied to training
-            return
+
+            return  # early exit because nothing of the following can be applied to training
 
         ###### Inference with ORTModelForxxx ######
-        # Inference session options
+        # Inference Session options
         self.session_options = SessionOptions()
         for key, value in self.config.session_options.items():
             setattr(self.session_options, key, value)
 
-        # Exporting, optimizing, post-processing and quantizing with ORTModelForxxx
+        # Export
+        self.export = self.config.export
+
+        # Temporary directory
         self.tmpdir = TemporaryDirectory()
 
-        # Some statefullness to handle the different combinations of options
-        self.export = self.config.export
-        self.use_merged = self.config.use_merged
-        self.provider_options = self.config.provider_options.copy()
-
-        if self.is_diffusion_pipeline():
-            self.load_ortmodel()
-            # early exit because nothing of the following can be applied to diffusion pipelines
-            return
-
         if self.config.no_weights:
-            self.load_automodel_from_config()  # creates dummy automodel
-            self.export_automodel()  # exports automodel
-            self.export = False
+            self.load_ortmodel_with_no_weights()
         else:
-            if self.config.export:
-                self.use_merged = False  # merging is handled separately
-                self.load_automodel_from_pretrained()  # creates automodel from pretrained
-                self.export_automodel()  # exports automodel
-                self.export = False
-
-        self.delete_pretrained_model()  # deletes automodel
-
-        if self.config.auto_optimization or self.config.optimization:
-            self.optimize_onnx_files()
-
-        if self.config.use_merged:
-            self.merge_onnx_files()
-            self.use_merged = True
-
-        if self.config.auto_quantization or self.config.quantization:
-            self.quantize_onnx_files()
+            self.load_ortmodel_from_pretrained()
 
         if self.config.provider == "TensorrtExecutionProvider" and self.is_text_generation_model():
-            # deferred loading for trt text generation models
-            return
+            return  # deferred loading for trt text generation models
 
-        self.load_ortmodel()
+        if self.is_optimized or self.is_quantized:
+            original_model = self.model
+            original_export = self.export
+
+            self.model = self.pretrained_model.model_save_dir  # self.model will point to a directory from here on
+            self.export = False  # we disable export because we want to load the optimized/quantized onnx files
+
+        if self.is_optimized:
+            self.optimize_onnx_files()
+
+        if self.is_quantized:
+            self.quantize_onnx_files()
+
+        if self.is_optimized or self.is_quantized:
+            self.load_ortmodel_from_pretrained()  # load optimized/quantized model
+            self.export = original_export
+            self.model = original_model
+
         self.validate_provider()
 
     def validate_provider(self) -> None:
         if self.config.provider == "TensorrtExecutionProvider":
-            assert self.pretrained_model.providers == [
+            assert self.pretrained_model.providers[0] == [
                 "TensorrtExecutionProvider",
-                "CUDAExecutionProvider",
-                "CPUExecutionProvider",
             ], f"TensorrtExecutionProvider is not first in providers list: {self.pretrained_model.providers}"
 
         if self.config.provider == "ROCMExecutionProvider":
-            assert self.pretrained_model.providers == [
-                "ROCMExecutionProvider",
-                "CPUExecutionProvider",
+            assert self.pretrained_model.providers[0] == [
+                "ROCMExecutionProvider"
             ], f"ROCMExecutionProvider is not first in providers list: {self.pretrained_model.providers}"
 
-    def load_automodel_from_config(self) -> None:
-        from accelerate import init_empty_weights
+    def load_automodel_with_no_weights(self) -> None:
+        original_model = self.model
+        no_weights_model = os.path.join(self.tmpdir.name, "no_weights")
 
-        LOGGER.info("\t+ Loading AutoModel from config")
-        with init_empty_weights():
-            self.pretrained_model = self.automodel_class.from_config(
-                self.pretrained_config,
-                torch_dtype=self.torch_dtype,
-                trust_remote_code=self.hub_kwargs.get("trust_remote_code", False),
-            )
-        self.pretrained_model.to_empty(device=self.device)
+        if not os.path.exists(no_weights_model):
+            LOGGER.info("\t+ Creating no weights model directory")
+            os.makedirs(no_weights_model)
+
+        LOGGER.info("\t+ Saving pretrained config")
+        self.pretrained_config.save_pretrained(save_directory=no_weights_model)
+
+        LOGGER.info("\t+ Creating no weights model")
+        state_dict = torch.nn.Linear(1, 1).state_dict()
+
+        LOGGER.info("\t+ Saving no weights model")
+        save_file(
+            filename=os.path.join(no_weights_model, "model.safetensors"),
+            metadata={"format": "pt"},
+            tensors=state_dict,
+        )
+
+        LOGGER.info("\t+ Loading no weights model")
+        with no_init_weights():
+            self.model = no_weights_model
+            self.load_automodel_from_pretrained()
+            self.model = original_model
+
+        LOGGER.info("\t+ Randomizing weights")
         randomize_weights(self.pretrained_model)
 
     def load_automodel_from_pretrained(self) -> None:
         LOGGER.info("\t+ Loading AutoModel from pretrained")
         self.pretrained_model = self.automodel_class.from_pretrained(
             self.model,
-            torch_dtype=self.torch_dtype,
+            **self.automodel_kwargs,
             **self.hub_kwargs,
         ).to(self.device)
 
-    def load_ortmodel(self) -> None:
-        LOGGER.info("\t+ Loading ORTModel")
+    def load_ortmodel_with_no_weights(self) -> None:
+        original_model = self.model
+        no_weights_model = os.path.join(self.tmpdir.name, "no_weights")
+
+        LOGGER.info("\t+ Loading AutoModel with no weights")
+        self.load_automodel_with_no_weights()
+        self.delete_pretrained_model()
+
+        LOGGER.info("\t+ Loading ORTModel with no weights")
+        with no_init_weights():
+            self.model = no_weights_model
+            self.load_ortmodel_from_pretrained()
+            self.model = original_model
+
+    def load_ortmodel_from_pretrained(self) -> None:
         self.pretrained_model = self.ortmodel_class.from_pretrained(
             self.model,
             export=self.export,
-            provider=self.config.provider,
             session_options=self.session_options,
-            provider_options=self.provider_options,
+            provider_options=self.config.provider_options,
             use_io_binding=self.config.use_io_binding,
+            provider=self.config.provider,
             **self.ortmodel_kwargs,
             **self.hub_kwargs,
         )
-        # exported or not, the onnx model is/was here
-        self.model = self.pretrained_model.model_save_dir
+
+    @property
+    def is_optimized(self) -> bool:
+        return self.config.auto_optimization or self.config.optimization
+
+    @property
+    def is_quantized(self) -> bool:
+        return self.config.auto_quantization or self.config.quantization
+
+    @property
+    def automodel_kwargs(self) -> Dict[str, Any]:
+        kwargs = {}
+
+        if self.config.torch_dtype is not None and hasattr(torch, self.config.torch_dtype):
+            kwargs["torch_dtype"] = getattr(torch, self.config.torch_dtype)
+        else:
+            kwargs["torch_dtype"] = self.config.torch_dtype
+
+        return kwargs
 
     @property
     def ortmodel_kwargs(self) -> Dict[str, Any]:
+        kwargs = {}
+
         if self.is_text_generation_model():
-            return {"use_cache": self.config.use_cache, "use_merged": self.use_merged}
-        else:
-            return {}
+            kwargs["use_cache"] = self.config.use_cache
+            kwargs["use_merged"] = self.config.use_merged
 
-    @property
-    def export_task(self) -> str:
-        return self.task + "-with-past" if self.config.use_cache and self.is_text_generation_model() else self.task
-
-    def export_automodel(self) -> None:
-        LOGGER.info("\t+ Exporting AutoModel to ONNX")
-        exported_model_dir = f"{self.tmpdir.name}/exported_model"
-        self.merging_config, self.models_and_onnx_configs = main_export(
-            self.model,
-            output=exported_model_dir,
-            task=self.export_task,
-            device=self.device,
-            fp16=self.torch_dtype == torch.float16,
-            **self.hub_kwargs,
-            # we hijack the model instantiation and use our random weights model
-            model=self.pretrained_model,
-        )
-        self.model = exported_model_dir
-
-    def merge_onnx_files(self) -> None:
-        LOGGER.info("\t+ Post-processing the exported model")
-        self.merging_config.post_process_exported_models(self.model, self.models_and_onnx_configs, None)
+        return kwargs
 
     @property
     def onnx_files_names(self):
         assert os.path.isdir(self.model), f"{self.model} is not a directory"
         return [file for file in os.listdir(self.model) if file.endswith(".onnx")]
-
-    def optimize_onnx_files(self) -> None:
-        LOGGER.info("\t+ Attempting optimization")
-        optimized_model_path = f"{self.tmpdir.name}/optimized"
-        LOGGER.info("\t+ Processing optimization config")
-        if self.config.auto_optimization is not None:
-            optimization_config = AutoOptimizationConfig.with_optimization_level(
-                optimization_level=self.config.auto_optimization,
-                for_gpu=self.device == "cuda",
-                **self.config.auto_optimization_config,
-            )
-        elif self.config.optimization:
-            optimization_config = OptimizationConfig(
-                optimize_for_gpu=self.device == "cuda", **self.config.optimization_config
-            )
-        LOGGER.info("\t+ Creating optimizer")
-        optimizer = ORTOptimizer.from_pretrained(self.model, file_names=self.onnx_files_names)
-        LOGGER.info("\t+ Optimizing ORTModel")
-        optimizer.optimize(
-            optimization_config,
-            save_dir=optimized_model_path,
-            file_suffix="",
-            # TODO: add support for these
-            use_external_data_format=None,
-            one_external_file=True,
-        )
-        self.model = optimized_model_path
 
     @property
     def onnx_files_names_to_quantize(self):
@@ -257,12 +242,52 @@ class ORTBackend(Backend[ORTConfig]):
         else:
             return self.onnx_files_names
 
+    def optimize_onnx_files(self) -> None:
+        LOGGER.info("\t+ Attempting optimization")
+        optimized_model_path = os.path.join(self.tmpdir.name, "optimized")
+        LOGGER.info("\t+ Processing optimization config")
+        if self.config.auto_optimization is not None:
+            optimization_config = AutoOptimizationConfig.with_optimization_level(
+                optimization_level=self.config.auto_optimization,
+                for_gpu=(self.device == "cuda"),
+                **self.config.auto_optimization_config,
+            )
+        elif self.config.optimization:
+            optimization_config = OptimizationConfig(
+                optimize_for_gpu=(self.device == "cuda"),
+                **self.config.optimization_config,
+            )
+        LOGGER.info("\t+ Creating optimizer")
+        optimizer = ORTOptimizer.from_pretrained(self.model, file_names=self.onnx_files_names)
+        LOGGER.info("\t+ Optimizing ORTModel")
+        optimizer.optimize(
+            optimization_config,
+            save_dir=optimized_model_path,
+            file_suffix="",
+            # TODO: add support for these
+            use_external_data_format=None,
+            one_external_file=True,
+        )
+
+        if self.pretrained_processor is not None:
+            self.pretrained_processor.save_pretrained(optimized_model_path)
+
+        if self.pretrained_config is not None:
+            self.pretrained_config.save_pretrained(optimized_model_path)
+
+        self.model = optimized_model_path
+
     def quantize_onnx_files(self) -> None:
         LOGGER.info("\t+ Attempting quantization")
         quantized_model_path = f"{self.tmpdir.name}/quantized"
-        LOGGER.info("\t+ Processing quantization config")
+
         if self.config.calibration and len(self.onnx_files_names_to_quantize) > 1:
-            raise NotImplementedError("Calibration is not supported for models with multiple components")
+            raise NotImplementedError(
+                "Calibration is not supported for models with multiple components. "
+                f"Found {len(self.onnx_files_names_to_quantize)} components."
+            )
+
+        LOGGER.info("\t+ Processing quantization config")
         if self.config.auto_quantization is not None:
             self.config.auto_quantization_config = format_quantization_config(self.config.auto_quantization_config)
             auto_quantization_config_class = getattr(AutoQuantizationConfig, self.config.auto_quantization)
@@ -270,10 +295,10 @@ class ORTBackend(Backend[ORTConfig]):
         elif self.config.quantization:
             self.config.quantization_config = format_quantization_config(self.config.quantization_config)
             quantization_config = QuantizationConfig(**self.config.quantization_config)
-        LOGGER.info(f"\t+ Model has {len(self.onnx_files_names_to_quantize)} components to quantize")
-        if len(self.onnx_files_names_to_quantize) == 1:
-            LOGGER.info("\t+ Creating quantizer")
-            quantizer = ORTQuantizer.from_pretrained(self.model, file_name=self.onnx_files_names_to_quantize[0])
+
+        for onnx_file_name_to_quantize in self.onnx_files_names_to_quantize:
+            LOGGER.info(f"\t+ Creating quantizer for {onnx_file_name_to_quantize}")
+            quantizer = ORTQuantizer.from_pretrained(self.model, file_name=onnx_file_name_to_quantize)
             if self.config.calibration:
                 LOGGER.info("\t+ Processing calibration config")
                 preprocess_class = get_class(self.config.calibration_config.pop("preprocess_class"))
@@ -295,6 +320,7 @@ class ORTBackend(Backend[ORTConfig]):
                 )
             else:
                 calibration_tensors_range = None
+
             LOGGER.info("\t+ Quantizing model")
             quantizer.quantize(
                 save_dir=quantized_model_path,
@@ -304,20 +330,13 @@ class ORTBackend(Backend[ORTConfig]):
                 use_external_data_format=False,
                 preprocessor=None,
             )
-        else:
-            for onnx_file_name_to_quantize in self.onnx_files_names_to_quantize:
-                LOGGER.info(f"\t+ Creating quantizer for {onnx_file_name_to_quantize}")
-                quantizer = ORTQuantizer.from_pretrained(self.model, file_name=onnx_file_name_to_quantize)
-                LOGGER.info(f"\t+ Quantizing {onnx_file_name_to_quantize}")
-                quantizer.quantize(
-                    save_dir=quantized_model_path,
-                    quantization_config=quantization_config,
-                    calibration_tensors_range=None,
-                    file_suffix="",
-                    # TODO: add support for these
-                    use_external_data_format=False,
-                    preprocessor=None,
-                )
+
+        if self.pretrained_processor is not None:
+            self.pretrained_processor.save_pretrained(quantized_model_path)
+
+        if self.pretrained_config is not None:
+            self.pretrained_config.save_pretrained(quantized_model_path)
+
         self.model = quantized_model_path
 
     @property
@@ -327,7 +346,7 @@ class ORTBackend(Backend[ORTConfig]):
         elif hasattr(self.pretrained_model, "input_names"):
             return self.pretrained_model.input_names
         else:
-            return {}
+            return []
 
     def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         inputs = super().prepare_inputs(inputs)
@@ -368,7 +387,7 @@ class ORTBackend(Backend[ORTConfig]):
                     f"position_ids:{batch_size}x{sequence_length + max_new_tokens}"
                 ),
             }
-            self.load_ortmodel()
+            self.load_ortmodel_from_pretrained()
             self.validate_provider()
 
     def train(
