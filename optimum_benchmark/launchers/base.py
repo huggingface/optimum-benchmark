@@ -11,6 +11,8 @@ class LauncherConfig(ABC):
     name: str
     _target_: str
 
+    devices_isolation: bool = False
+
 
 LauncherConfigT = TypeVar("LauncherConfigT", bound=LauncherConfig)
 

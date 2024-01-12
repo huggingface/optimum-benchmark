@@ -8,9 +8,6 @@ defaults:
 
 experiment_name: ${device}_${benchmark.name}_${backend.name}_${task}
 
-backend:
-  continuous_isolation: false
-
 hydra:
   run:
     dir: tests/experiments/${experiment_name}

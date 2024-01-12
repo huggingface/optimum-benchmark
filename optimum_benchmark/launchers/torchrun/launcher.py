@@ -5,11 +5,13 @@ from logging import getLogger
 from typing import Callable
 
 from omegaconf import OmegaConf
+from torch.distributed import FileStore
 from torch.distributed.elastic.multiprocessing import Std
 from torch.distributed.elastic.multiprocessing.errors import record
 from torch.distributed.launcher.api import LaunchConfig, launch_agent
 
 from ..base import Launcher
+from ..isolation_utils import devices_isolation
 from .config import TorchrunConfig
 
 LOGGER = getLogger("torchrun")
@@ -48,15 +50,16 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             log_dir=self.config.log_dir,
         )
 
-        LOGGER.info(f"\t+ Launching {self.config.nproc_per_node} processes with Torchrun")
-
-        launch_agent(
-            entrypoint=entrypoint,
-            args=(worker, *worker_args),
-            config=launch_config,
-        )
-
-        LOGGER.info("\t+ Torchrun exited successfully")
+        with devices_isolation(
+            enabled=self.config.devices_isolation,
+            permitted_pids={os.getpid()},
+        ):
+            LOGGER.info(f"\t+ Launching torchrun/torchelastic agent with {self.config.nproc_per_node} processes")
+            launch_agent(
+                entrypoint=entrypoint,
+                args=(worker, *worker_args),
+                config=launch_config,
+            )
 
 
 @record
@@ -64,8 +67,10 @@ def entrypoint(fn, *args):
     """
     This a pickalable function that correctly sets up the logging configuration
     """
+    store = FileStore("torchrun_filestore")
+    store.set(f"rank_{os.environ['RANK']}", str(os.getpid()))
 
-    if os.environ["LOCAL_RANK"] == "0":
+    if os.environ["RANK"] == "0":
         hydra_conf = OmegaConf.load(".hydra/hydra.yaml")
         logging.config.dictConfig(OmegaConf.to_container(hydra_conf.hydra.job_logging, resolve=True))
     else:

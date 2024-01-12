@@ -1,5 +1,6 @@
 import logging.config
 import multiprocessing as mp
+import os
 from logging import getLogger
 from multiprocessing import Process
 from typing import Callable
@@ -7,6 +8,7 @@ from typing import Callable
 from omegaconf import OmegaConf
 
 from ..base import Launcher
+from ..isolation_utils import devices_isolation
 from .config import ProcessConfig
 
 LOGGER = getLogger("process")
@@ -26,43 +28,23 @@ class ProcessLauncher(Launcher[ProcessConfig]):
             mp.set_start_method(self.config.start_method, force=True)
 
     def launch(self, worker: Callable, *worker_args):
-        # Create the process
-        process = Process(
-            target=target,
-            args=(worker, *worker_args),
-            # daemon=True
-            # TODO: move isolation process to the launcher and make this process daemon
-            # which is currently not possible because daemon process cannot have children (the isolation process)
-        )
+        worker_process = Process(target=target, args=(worker, *worker_args), daemon=True)
+        worker_process.start()
+        LOGGER.info(f"\t+ Launched worker process with PID {worker_process.pid}.")
 
-        process.start()
-        LOGGER.info(f"\t+ Launched experiment in process with PID {process.pid}.")
-        process.join()
+        with devices_isolation(
+            enabled=self.config.devices_isolation,
+            permitted_pids={os.getpid(), worker_process.pid},
+        ):
+            worker_process.join()
 
-        if process.exitcode is None:
-            LOGGER.warning("\t+ Process did not exit even after getting benchmark result, terminating it.")
-            process.terminate()
-            process.join()
-
-            if process.exitcode is None:
-                LOGGER.error("\t+ Process did not exit even after being terminated, killing it.")
-                process.kill()
-                process.join()
-
-        if process.exitcode != 0:
-            exit_code = process.exitcode
-            LOGGER.error(f"\t+ Process exited with code {exit_code}, closing it.")
-            process.close()
-            raise RuntimeError(f"Process exited with code {exit_code}")
-
-        LOGGER.info("\t+ Process exited successfully, closing it.")
-        process.close()
+        if worker_process.exitcode != 0:
+            LOGGER.error(f"Worker process exited with code {worker_process.exitcode}, forwarding...")
+            exit(worker_process.exitcode)
 
 
 def target(fn, *args):
-    """
-    This a pickalable function that correctly sets up the logging configuration
-    """
+    """This a pickalable function that correctly sets up the logging configuration for the worker process."""
     hydra_conf = OmegaConf.load(".hydra/hydra.yaml")
     logging.config.dictConfig(OmegaConf.to_container(hydra_conf.hydra.job_logging, resolve=True))
 
