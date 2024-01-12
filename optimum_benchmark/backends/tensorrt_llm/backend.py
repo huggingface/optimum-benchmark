@@ -5,14 +5,14 @@ from hydra.utils import get_class
 from transformers.utils import ModelOutput
 
 from ..base import Backend
-from .config import TRTConfig
-from .utils import MODEL_TYPE_TO_TRTMODEL
+from .config import TRTLLMConfig
+from .utils import MODEL_TYPE_TO_TRTLLMMODEL
 
-LOGGER = getLogger("tensorrt")
+LOGGER = getLogger("tensorrt-llm")
 
 
-class TRTBackend(Backend):
-    NAME: str = "tensorrt"
+class TRTLLMBackend(Backend):
+    NAME: str = "tensorrt-llm"
 
     def __init__(self, model: str, task: str, device: str, hub_kwargs: Dict[str, Any]) -> None:
         super().__init__(model, task, device, hub_kwargs)
@@ -20,20 +20,20 @@ class TRTBackend(Backend):
         self.validate_model_type()
 
     def validate_model_type(self) -> None:
-        if self.model_type not in MODEL_TYPE_TO_TRTMODEL:
-            raise NotImplementedError(f"TRTBackend does not support model_type {self.model_type}")
+        if self.model_type not in MODEL_TYPE_TO_TRTLLMMODEL:
+            raise NotImplementedError(f"TRTLLMBackend does not support model_type {self.model_type}")
 
     def validate_device(self) -> None:
         if self.device != "cuda":
-            raise NotImplementedError(f"TRTBackend only supports device cuda, got {self.device}")
+            raise NotImplementedError(f"TRTLLMBackend only supports device cuda, got {self.device}")
 
-    def configure(self, config: TRTConfig) -> None:
+    def configure(self, config: TRTLLMConfig) -> None:
         super().configure(config)
 
-        self.trtmodel_class = get_class(MODEL_TYPE_TO_TRTMODEL[self.model_type])
+        self.trtmodel_class = get_class(MODEL_TYPE_TO_TRTLLMMODEL[self.model_type])
         ortmodel_name = self.trtmodel_class.__name__
         LOGGER.info(
-            f"\t+ Inferred TRTModel class {ortmodel_name} for task {self.task} and model_type {self.model_type}"
+            f"\t+ Inferred TRTLLMModel class {ortmodel_name} for task {self.task} and model_type {self.model_type}"
         )
 
         # TODO: save engine path for reuse, then maybe re build with max_prompt_size

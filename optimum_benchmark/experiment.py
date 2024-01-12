@@ -12,7 +12,7 @@ from .backends.neural_compressor.config import INCConfig
 from .backends.onnxruntime.config import ORTConfig
 from .backends.openvino.config import OVConfig
 from .backends.pytorch.config import PyTorchConfig
-from .backends.tensorrt.config import TRTConfig
+from .backends.tensorrt_llm.config import TRTLLMConfig
 from .backends.text_generation_inference.config import TGIConfig
 from .benchmarks.inference.config import InferenceConfig
 from .benchmarks.training.config import TrainingConfig
@@ -130,7 +130,7 @@ cs = ConfigStore.instance()
 cs.store(name="experiment", node=ExperimentConfig)
 #
 cs.store(group="backend", name="openvino", node=OVConfig)
-cs.store(group="backend", name="tensorrt", node=TRTConfig)
+cs.store(group="backend", name="tensorrt", node=TRTLLMConfig)
 cs.store(group="backend", name="pytorch", node=PyTorchConfig)
 cs.store(group="backend", name="onnxruntime", node=ORTConfig)
 cs.store(group="backend", name="neural-compressor", node=INCConfig)
