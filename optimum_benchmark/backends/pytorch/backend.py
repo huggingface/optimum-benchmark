@@ -27,14 +27,20 @@ LOGGER = getLogger("pytorch")
 class PyTorchBackend(Backend[PyTorchConfig]):
     NAME: str = "pytorch"
 
-    def __init__(self, model: str, task: str, device: str, hub_kwargs: Dict[str, Any]):
-        super().__init__(model, task, device, hub_kwargs)
+    def __init__(self, model: str, task: str, library: str, device: str, hub_kwargs: Dict[str, Any]):
+        super().__init__(model, task, library, device, hub_kwargs)
 
     def configure(self, config: PyTorchConfig) -> None:
         super().configure(config)
 
-        automodel = self.automodel_class.__name__
-        LOGGER.info(f"\t+ Inferred AutoModel class {automodel} for task {self.task} and model_type {self.model_type}")
+        if self.library == "timm":
+            LOGGER.info(f"\t+ Using timm.create_model for task {self.task}")
+        else:
+            automodel = self.automodel_class.__name__
+            if self.library == "diffusers":
+                LOGGER.info(f"\t+ Inferred class {automodel} for task {self.task}")
+            else:
+                LOGGER.info(f"\t+ Inferred class {automodel} for task {self.task} and model_type {self.model_type}")
 
         # for now we rely on this env variable to know if we're in a distributed setting
         if self.is_distributed():
@@ -73,16 +79,15 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         self.amp_dtype = getattr(torch, self.config.amp_dtype) if self.config.amp_dtype is not None else None
 
         if self.is_quantized():
-            # iniline quantization or quantization config modification
             LOGGER.info("\t+ Processing quantization config")
             self.process_quantization_config()
         else:
             self.quantization_config = None
 
         # Load model
-        if self.config.no_weights and self.is_diffusion_pipeline():
-            raise ValueError("Diffusion Pipelines are not supported with no_weights=True")
-        if self.config.no_weights:
+        if self.config.no_weights and self.library == "diffusers":
+            raise ValueError("Diffusion pipelines are not supported with no_weights=True")
+        elif self.config.no_weights:
             LOGGER.info("\t+ Loading model with no weights")
             self.load_model_with_no_weights()
         else:
@@ -90,7 +95,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.load_model_from_pretrained()
 
         # Eval mode
-        if self.config.eval_mode and not self.is_diffusion_pipeline():
+        if self.config.eval_mode and not self.library == "diffusers":
             LOGGER.info("\t+ Turning on model's eval mode")
             self.pretrained_model.eval()
 
@@ -101,7 +106,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         # Compile model
         if self.config.torch_compile:
-            if self.is_diffusion_pipeline():
+            if self.library == "diffusers":
                 LOGGER.info("\t+ Using torch.compile on unet forward pass")
                 # TODO: should we compile vae and/or clip as well ?
                 self.pretrained_model.unet.forward = torch.compile(
@@ -138,8 +143,12 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.pretrained_model = TransformersDataParallel(self.pretrained_model)
 
     def load_model_from_pretrained(self) -> None:
-        if self.is_diffusion_pipeline():
-            LOGGER.info("\t+ Loading pipeline")
+        if self.library == "timm":
+            LOGGER.info("\t+ Loading Timm model")
+            self.pretrained_model = self.automodel_class(self.model)
+            self.pretrained_model.to(self.device)
+        elif self.library == "diffusers":
+            LOGGER.info("\t+ Loading Diffusion pipeline")
             self.pretrained_model = self.automodel_class.from_pretrained(
                 pretrained_model_name_or_path=self.model,
                 device_map=self.config.device_map,
@@ -311,23 +320,35 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         return kwargs
 
-    def forward(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> "ModelOutput":
-        if self.is_diffusion_pipeline():
-            return super().forward(input, kwargs)
-        elif self.config.amp_autocast:
-            with torch.autocast(device_type=self.device.type, dtype=self.amp_dtype):
-                return super().forward(input, kwargs)
-        else:
-            return super().forward(input, kwargs)
+    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        if self.library == "diffusers":
+            return {"prompt": inputs["prompt"]}
 
-    def generate(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> "ModelOutput":
-        if self.is_diffusion_pipeline():
-            return super().generate(input, kwargs)
-        elif self.config.amp_autocast:
-            with torch.autocast(device_type=self.device.type, dtype=self.amp_dtype):
-                return super().generate(input, kwargs)
+        LOGGER.info(f"\t+ Moving inputs tensors to device {self.device}")
+        for key, value in inputs.items():
+            inputs[key] = value.to(self.device)
+
+        if self.library == "timm":
+            return {"x": inputs["pixel_values"]}
+
+        return inputs
+
+    def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> "ModelOutput":
+        if self.library == "diffusers":
+            return self.pretrained_model(**inputs, **kwargs)
+
+        if self.config.amp_autocast:
+            with torch.autocast(device_type=self.device, dtype=self.amp_dtype):
+                return self.pretrained_model(**inputs, **kwargs)
         else:
-            return super().generate(input, kwargs)
+            return self.pretrained_model(**inputs, **kwargs)
+
+    def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> "ModelOutput":
+        if self.config.amp_autocast:
+            with torch.autocast(device_type=self.device, dtype=self.amp_dtype):
+                return self.pretrained_model.generate(**inputs, **kwargs)
+        else:
+            return self.pretrained_model.generate(**inputs, **kwargs)
 
     def train(
         self,
@@ -366,12 +387,12 @@ class PyTorchBackend(Backend[PyTorchConfig]):
     def clean(self) -> None:
         super().clean()
 
-        if self.device == "cuda":
-            LOGGER.info("\t+ Emptying CUDA cache")
-            torch.cuda.empty_cache()
-
         if hasattr(self, "tmpdir"):
             LOGGER.info("\t+ Cleaning temporary directory")
             self.tmpdir.cleanup()
+
+        if self.device == "cuda":
+            LOGGER.info("\t+ Emptying CUDA cache")
+            torch.cuda.empty_cache()
 
         gc.collect()

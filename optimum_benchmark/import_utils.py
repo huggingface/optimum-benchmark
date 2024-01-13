@@ -18,6 +18,11 @@ _pyrsmi_available = importlib.util.find_spec("pyrsmi") is not None
 _codecarbon_available = importlib.util.find_spec("codecarbon") is not None
 _amdsmi_available = importlib.util.find_spec("amdsmi") is not None
 _tensorflow_available = importlib.util.find_spec("tensorflow") is not None
+_timm_available = importlib.util.find_spec("timm") is not None
+
+
+def is_timm_available():
+    return _timm_available
 
 
 def is_tensorflow_available():

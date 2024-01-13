@@ -41,8 +41,8 @@ LOGGER = getLogger("onnxruntime")
 class ORTBackend(Backend[ORTConfig]):
     NAME: str = "onnxruntime"
 
-    def __init__(self, model: str, task: str, device: str, hub_kwargs: Dict[str, Any]) -> None:
-        super().__init__(model, task, device, hub_kwargs)
+    def __init__(self, model: str, task: str, library: str, device: str, hub_kwargs: Dict[str, Any]) -> None:
+        super().__init__(model, task, library, device, hub_kwargs)
         self.validate_device()
         self.validate_task()
 
@@ -57,7 +57,7 @@ class ORTBackend(Backend[ORTConfig]):
     def configure(self, config: ORTConfig) -> None:
         super().configure(config)
 
-        if self.is_diffusion_pipeline():
+        if self.library == "diffusers":
             self.ortmodel_class = get_class(TASKS_TO_ORTSD[self.task])
         elif self.task in TASKS_TO_ORTMODELS:
             self.ortmodel_class = TASKS_TO_ORTMODELS[self.task]
@@ -345,16 +345,18 @@ class ORTBackend(Backend[ORTConfig]):
             return []
 
     def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        inputs = super().prepare_inputs(inputs)
-
-        if self.is_diffusion_pipeline():
-            return inputs
+        if self.library == "diffusers":
+            return {"prompt": inputs["prompt"]}
 
         for key in list(inputs.keys()):
             # sometimes optimum onnx exported models don't have inputs
             # that their pytorch counterparts have, for instance token_type_ids
             if key not in self.inputs_names:
                 inputs.pop(key)
+
+        LOGGER.info(f"\t+ Moving inputs tensors to device {self.device}")
+        for key, value in inputs.items():
+            inputs[key] = value.to(self.device)
 
         return inputs
 
@@ -416,12 +418,12 @@ class ORTBackend(Backend[ORTConfig]):
     def clean(self) -> None:
         super().clean()
 
-        if self.device == "cuda":
-            LOGGER.info("\t+ Emptying CUDA cache")
-            torch.cuda.empty_cache()
-
         if hasattr(self, "tmpdir"):
             LOGGER.info("\t+ Cleaning temporary directory")
             self.tmpdir.cleanup()
+
+        if self.device == "cuda":
+            LOGGER.info("\t+ Emptying CUDA cache")
+            torch.cuda.empty_cache()
 
         gc.collect()

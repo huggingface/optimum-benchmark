@@ -28,7 +28,6 @@ from .utils import (
     PreTrainedProcessor,
     extract_shapes_from_diffusion_pipeline,
     extract_shapes_from_model_artifacts,
-    extract_shapes_from_timm_model,
 )
 
 LOGGER = getLogger("backend")
@@ -58,8 +57,10 @@ class Backend(Generic[BackendConfigT], ABC):
             self.pretrained_config = None
             self.pretrained_processor = None
         elif self.library == "timm":
-            self.model_type = self.task
-            self.pretrained_config = None
+            from .timm_utils import get_pretrained_config
+
+            self.pretrained_config = get_pretrained_config(self.model)
+            self.model_type = self.pretrained_config.architecture
             self.pretrained_processor = None
         else:
             self.pretrained_config = AutoConfig.from_pretrained(self.model, **self.hub_kwargs)
@@ -125,10 +126,6 @@ class Backend(Generic[BackendConfigT], ABC):
         if self.library == "diffusers":
             model_shapes = extract_shapes_from_diffusion_pipeline(
                 pipeline=self.pretrained_model,
-            )
-        elif self.library == "timm":
-            model_shapes = extract_shapes_from_timm_model(
-                model=self.pretrained_model,
             )
         else:
             model_shapes = extract_shapes_from_model_artifacts(

@@ -17,25 +17,6 @@ PreTrainedProcessor = Union[
 ]
 
 
-def extract_shapes_from_timm_model(model: Any) -> Dict[str, Any]:
-    shapes = {}
-
-    if hasattr(model, "config"):
-        config = model.config.pretrained_cfg
-    else:
-        config = model.pretrained_cfg
-
-    if "input_size" in config:
-        shapes["width"] = config["input_size"][2]
-        shapes["height"] = config["input_size"][1]
-        shapes["num_channels"] = config["input_size"][0]
-
-    if "num_classes" in config:
-        shapes["num_labels"] = config["num_classes"]
-
-    return shapes
-
-
 def extract_shapes_from_diffusion_pipeline(pipeline: Pipeline) -> Dict[str, Any]:
     # this is the only way I found to extract a diffusion pipeline's "input" shapes
     shapes = {}
@@ -104,11 +85,20 @@ def extract_shapes_from_model_artifacts(
         shapes["height"] = None
         shapes["width"] = None
 
+    input_size = artifacts_dict.get("input_size", None)
+    if input_size is not None:
+        shapes["num_channels"] = input_size[0]
+        shapes["height"] = input_size[1]
+        shapes["width"] = input_size[2]
+
     # classification labels
-    id2label = artifacts_dict.get("id2label", {"0": "LABEL_0", "1": "LABEL_1"})
-    shapes["num_labels"] = len(id2label)
-    if shapes["num_labels"] == 0:
-        shapes["num_labels"] = 2
+    id2label = artifacts_dict.get("id2label", None)
+    if id2label is not None:
+        shapes["num_labels"] = len(id2label)
+
+    num_classes = artifacts_dict.get("num_classes", None)
+    if num_classes is not None:
+        shapes["num_labels"] = num_classes
 
     # object detection labels
     shapes["num_queries"] = artifacts_dict.get("num_queries", None)

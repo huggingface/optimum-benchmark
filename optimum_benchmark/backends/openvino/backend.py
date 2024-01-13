@@ -1,3 +1,4 @@
+import gc
 import inspect
 from logging import getLogger
 from tempfile import TemporaryDirectory
@@ -18,8 +19,8 @@ LOGGER = getLogger("openvino")
 class OVBackend(Backend[OVConfig]):
     NAME: str = "openvino"
 
-    def __init__(self, model: str, task: str, device: str, hub_kwargs: Dict[str, Any]) -> None:
-        super().__init__(model, task, device, hub_kwargs)
+    def __init__(self, model: str, task: str, library: str, device: str, hub_kwargs: Dict[str, Any]) -> None:
+        super().__init__(model, task, library, device, hub_kwargs)
         self.validate_device()
         self.validate_task()
 
@@ -107,6 +108,12 @@ class OVBackend(Backend[OVConfig]):
         )
         self.model = quantized_model_path
 
+    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        if self.library == "diffusers":
+            return {"prompt": inputs["prompt"]}
+
+        return inputs
+
     def prepare_for_inference(self, **kwargs) -> None:
         if self.config.reshape:
             static_shapes = {
@@ -127,5 +134,8 @@ class OVBackend(Backend[OVConfig]):
 
     def clean(self) -> None:
         super().clean()
+
         if hasattr(self, "tmpdir"):
             self.tmpdir.cleanup()
+
+        gc.collect()
