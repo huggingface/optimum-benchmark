@@ -1,0 +1,6 @@
+model: hf-internal-testing/tiny-stable-diffusion-torch
+task: stable-diffusion
+
+benchmark:
+  forward_kwargs:
+    num_inference_steps: 2
