@@ -1,7 +1,7 @@
 defaults:
-  - backend: tensorrt # default backend
-  - launcher: process # default launcher
-  - benchmark: inference # default benchmark
+  - launcher: process
+  - benchmark: inference
+  - backend: tensorrt-llm
   - experiment # inheriting experiment schema
   - _self_ # for hydra 1.1 compatibility
   - override hydra/job_logging: colorlog # colorful logging
