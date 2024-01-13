@@ -28,6 +28,7 @@ from .utils import (
     PreTrainedProcessor,
     extract_shapes_from_diffusion_pipeline,
     extract_shapes_from_model_artifacts,
+    extract_shapes_from_timm_model,
 )
 
 LOGGER = getLogger("backend")
@@ -45,52 +46,45 @@ class Backend(Generic[BackendConfigT], ABC):
     pretrained_generation_config: Optional[GenerationConfig]
     automodel_class: Callable[..., PreTrainedModel]
 
-    def __init__(self, model: str, task: str, device: str, hub_kwargs: Dict[str, Any]):
+    def __init__(self, model: str, task: str, library: str, device: str, hub_kwargs: Dict[str, Any]):
         self.task = task
         self.model = model
         self.device = device
+        self.library = library
         self.hub_kwargs = hub_kwargs
 
-        if self.is_diffusion_pipeline():
-            self.library = "diffusers"
+        if self.library == "diffusers":
+            self.model_type = self.task
+            self.pretrained_config = None
+            self.pretrained_processor = None
+        elif self.library == "timm":
             self.model_type = self.task
             self.pretrained_config = None
             self.pretrained_processor = None
         else:
-            self.library = "transformers"
-            self.pretrained_config = AutoConfig.from_pretrained(
-                pretrained_model_name_or_path=self.model, **self.hub_kwargs
-            )
+            self.pretrained_config = AutoConfig.from_pretrained(self.model, **self.hub_kwargs)
             self.model_type = self.pretrained_config.model_type
 
             try:
-                # sometimes contains information about the model's
-                # input shapes that are not available in the config
-                self.pretrained_processor = AutoProcessor.from_pretrained(
-                    pretrained_model_name_or_path=self.model, **self.hub_kwargs
-                )
+                # sometimes contains information about the model's input shapes that are not available in the config
+                self.pretrained_processor = AutoProcessor.from_pretrained(self.model, **self.hub_kwargs)
             except ValueError:
                 # sometimes the processor is not available or can't be determined/detected
                 LOGGER.warning("Could not find the model's preprocessor")
                 self.pretrained_processor = None
 
-        if self.is_text_generation_model():
-            try:
-                self.pretrained_generation_config = GenerationConfig.from_pretrained(
-                    pretrained_model_name=self.model, **self.hub_kwargs
-                )
-            except Exception:
-                LOGGER.warning("Could not find the model's generation config")
-                self.pretrained_generation_config = None
-        else:
+        try:
+            self.pretrained_generation_config = GenerationConfig.from_pretrained(
+                pretrained_model_name=self.model, **self.hub_kwargs
+            )
+        except Exception:
             self.pretrained_generation_config = None
 
         self.automodel_class = get_model_class_for_task(
-            # TODO: make this configurable to add support for other frameworks
-            framework="pt",
-            task=self.task,
-            library=self.library,
             model_type=self.model_type,
+            library=self.library,
+            task=self.task,
+            framework="pt",
         )
 
     def is_text_generation_model(self) -> bool:
@@ -115,14 +109,6 @@ class Backend(Generic[BackendConfigT], ABC):
         pass
 
     def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        # TODO: move this to only backends that need it (non cpu backends)
-        if self.is_diffusion_pipeline():
-            return inputs  # diffusion pipelines takes a list of strings
-        else:
-            LOGGER.info(f"\t+ Moving inputs tensors to device {self.device}")
-            for key, value in inputs.items():
-                inputs[key] = value.to(self.device)
-
         return inputs
 
     def forward(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:
@@ -136,9 +122,13 @@ class Backend(Generic[BackendConfigT], ABC):
 
     @property
     def model_shapes(self) -> Dict[str, int]:
-        if self.is_diffusion_pipeline():
+        if self.library == "diffusers":
             model_shapes = extract_shapes_from_diffusion_pipeline(
                 pipeline=self.pretrained_model,
+            )
+        elif self.library == "timm":
+            model_shapes = extract_shapes_from_timm_model(
+                model=self.pretrained_model,
             )
         else:
             model_shapes = extract_shapes_from_model_artifacts(
@@ -167,3 +157,5 @@ class Backend(Generic[BackendConfigT], ABC):
 
         if self.config.delete_cache:
             self.delete_hf_model_cache()
+
+        gc.collect()

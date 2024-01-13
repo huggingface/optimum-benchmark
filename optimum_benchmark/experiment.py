@@ -2,18 +2,20 @@ import os
 import platform
 from dataclasses import dataclass, field
 from logging import getLogger
-from typing import TYPE_CHECKING, Any, Dict, Type
+from typing import Any, Dict, Type
 
 from hydra.core.config_store import ConfigStore
 from hydra.utils import get_class
 from omegaconf import DictConfig, OmegaConf
 
+from .backends.base import Backend
 from .backends.neural_compressor.config import INCConfig
 from .backends.onnxruntime.config import ORTConfig
 from .backends.openvino.config import OVConfig
 from .backends.pytorch.config import PyTorchConfig
 from .backends.tensorrt.config import TRTConfig
 from .backends.text_generation_inference.config import TGIConfig
+from .benchmarks.base import Benchmark
 from .benchmarks.inference.config import InferenceConfig
 from .benchmarks.training.config import TrainingConfig
 from .env_utils import get_cpu, get_cpu_ram_mb, get_git_revision_hash, get_gpus
@@ -23,20 +25,19 @@ from .import_utils import (
     optimum_version,
     transformers_version,
 )
+from .launchers.base import Launcher
 from .launchers.inline.config import InlineConfig
 from .launchers.process.config import ProcessConfig
 from .launchers.torchrun.config import TorchrunConfig
-from .task_utils import infer_task_from_model_name_or_path
-
-if TYPE_CHECKING:
-    from .backends.base import Backend
-    from .benchmarks.base import Benchmark
-    from .launchers.base import Launcher
-
+from .task_utils import (
+    infer_library_from_model_name_or_path,
+    infer_task_from_model_name_or_path,
+)
 
 LOGGER = getLogger("experiment")
 
 OmegaConf.register_new_resolver("infer_task", lambda model: infer_task_from_model_name_or_path(model))
+OmegaConf.register_new_resolver("infer_library", lambda model: infer_library_from_model_name_or_path(model))
 
 
 @dataclass
@@ -50,18 +51,20 @@ class ExperimentConfig:
     # BENCHMARK CONFIGURATION
     benchmark: Any  # https://github.com/facebookresearch/hydra/issues/1722#issuecomment-883568386
 
-    # EXPERIMENT CONFIGURATION
+    # Experiment name
     experiment_name: str
 
-    # DEVICE CONFIGURATION: cuda, cpu, mps, xla
+    # Device type (cpu, cuda, mps, xla)
     device: str
 
-    # MODEL CONFIGURATION: Model name or path
+    # Model name or path
     model: str
 
-    # TODO: move task to backend config
     # Task name (text-classification, image-classification, ...)
     task: str = "${infer_task:${model}}"
+
+    # Library name (transformers, diffusers, ...)
+    library: str = "${infer_library:${model}}"
 
     # ADDITIONAL MODEL CONFIGURATION: Model revision, use_auth_token, trust_remote_code
     hub_kwargs: Dict = field(
@@ -155,6 +158,7 @@ def run(experiment: ExperimentConfig):
         task=experiment.task,
         model=experiment.model,
         device=experiment.device,
+        library=experiment.library,
         hub_kwargs=experiment.hub_kwargs,
     )
 

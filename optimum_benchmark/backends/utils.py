@@ -17,6 +17,25 @@ PreTrainedProcessor = Union[
 ]
 
 
+def extract_shapes_from_timm_model(model: Any) -> Dict[str, Any]:
+    shapes = {}
+
+    if hasattr(model, "config"):
+        config = model.config.pretrained_cfg
+    else:
+        config = model.pretrained_cfg
+
+    if "input_size" in config:
+        shapes["width"] = config["input_size"][2]
+        shapes["height"] = config["input_size"][1]
+        shapes["num_channels"] = config["input_size"][0]
+
+    if "num_classes" in config:
+        shapes["num_labels"] = config["num_classes"]
+
+    return shapes
+
+
 def extract_shapes_from_diffusion_pipeline(pipeline: Pipeline) -> Dict[str, Any]:
     # this is the only way I found to extract a diffusion pipeline's "input" shapes
     shapes = {}

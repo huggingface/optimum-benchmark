@@ -17,6 +17,11 @@ _neural_compressor_available = importlib.util.find_spec("neural_compressor") is 
 _pyrsmi_available = importlib.util.find_spec("pyrsmi") is not None
 _codecarbon_available = importlib.util.find_spec("codecarbon") is not None
 _amdsmi_available = importlib.util.find_spec("amdsmi") is not None
+_tensorflow_available = importlib.util.find_spec("tensorflow") is not None
+
+
+def is_tensorflow_available():
+    return _tensorflow_available
 
 
 def is_tensorrt_available():
