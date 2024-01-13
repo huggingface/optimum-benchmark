@@ -26,12 +26,13 @@ Everything else is either optional or inferred from the model's name or path.
 
 ### Supported Backends/Devices
 
+- [x] TensorRT-LLM backend for CUDA (NVIDIA GPUs)
 - [x] Pytorch backend for CPU (Intel, AMD, ARM, etc)
 - [x] Pytorch backend for CUDA (NVIDIA and AMD GPUs)
 - [ ] Pytorch backend for Habana Gaudi Processor (HPU)
 - [x] OnnxRuntime backend for CPUExecutionProvider
 - [x] OnnxRuntime backend for CUDAExecutionProvider
-- [ ] OnnxRuntime backend for ROCMExecutionProvider
+- [x] OnnxRuntime backend for ROCMExecutionProvider
 - [x] OnnxRuntime backend for TensorrtExecutionProvider
 - [x] Intel Neural Compressor backend for CPU
 - [x] OpenVINO backend for CPU

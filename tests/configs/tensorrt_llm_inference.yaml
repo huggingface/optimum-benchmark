@@ -1,5 +1,5 @@
 defaults:
-  - backend: tensorrt # default backend
+  - backend: tensorrt-llm # default backend
   # order of inheritance, last one overrides previous ones
   - _base_ # inherits from base config
   - _inference_ # inherits from inference config
