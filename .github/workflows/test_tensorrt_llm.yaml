@@ -18,8 +18,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Pull image
-        run: docker pull huggingface/optimum-nvidia:latest
+      - name: Build image
+        run: docker build
+          --file docker/tensorrt_llm.dockerfile
+          --build-arg USER_ID=$(id -u)
+          --build-arg GROUP_ID=$(id -g)
+          --tag opt-bench-tensorrt-llm:latest
+          .
 
       - name: Run tests
         run: docker run
@@ -34,5 +39,5 @@ jobs:
           --workdir /workspace/optimum-benchmark
           --gpus '"device=0,1"'
           --entrypoint /bin/bash
-          huggingface/optimum-nvidia:latest
-          -c "pip install -e .[test] && pytest -k 'tensorrt_llm' -x && chown -R $USER_ID:$GROUP_ID ."
+          opt-bench-tensorrt-llm:latest
+          -c "pip install -e .[test] && pytest -k 'tensorrt_llm' -x"
