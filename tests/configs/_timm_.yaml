@@ -1,2 +1,2 @@
 model: timm/tiny_vit_21m_224.in1k
-task: image_classification
+task: image-classification
