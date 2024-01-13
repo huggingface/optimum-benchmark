@@ -290,7 +290,7 @@ class ImageClassificationGenerator(ImageGenerator):
 
     def generate(self):
         dummy = {}
-        dummy["pixel_value"] = self.pixel_values()
+        dummy["pixel_values"] = self.pixel_values()
 
         if self.with_labels:
             dummy["labels"] = self.labels()
@@ -318,7 +318,7 @@ class ObjectDetectionGenerator(ImageGenerator):
 
     def generate(self):
         dummy = {}
-        dummy["pixel_value"] = self.pixel_values()
+        dummy["pixel_values"] = self.pixel_values()
 
         if self.with_labels:
             dummy["labels"] = self.labels()
