@@ -130,9 +130,9 @@ cs = ConfigStore.instance()
 cs.store(name="experiment", node=ExperimentConfig)
 #
 cs.store(group="backend", name="openvino", node=OVConfig)
-cs.store(group="backend", name="tensorrt", node=TRTLLMConfig)
 cs.store(group="backend", name="pytorch", node=PyTorchConfig)
 cs.store(group="backend", name="onnxruntime", node=ORTConfig)
+cs.store(group="backend", name="tensorrt-llm", node=TRTLLMConfig)
 cs.store(group="backend", name="neural-compressor", node=INCConfig)
 cs.store(group="backend", name="text-generation-inference", node=TGIConfig)
 #
