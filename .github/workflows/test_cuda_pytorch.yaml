@@ -50,4 +50,4 @@ jobs:
           --gpus '"device=0,1"'
           --entrypoint /bin/bash
           opt-bench-cuda:${{ matrix.image.cuda_version }}
-          -c "pip install -e .[test,peft,diffusers,deepspeed] && pytest -k 'cuda and pytorch' -x"
+          -c "pip install -e .[test,peft,deepspeed] && pytest -k 'cuda and pytorch' -x"

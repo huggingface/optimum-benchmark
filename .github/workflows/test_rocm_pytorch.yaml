@@ -53,4 +53,4 @@ jobs:
           --device /dev/dri/renderD129
           --entrypoint /bin/bash
           opt-bench-rocm:${{ matrix.image.rocm_version }}
-          -c "pip install -e .[test,peft,diffusers,deepspeed] && pytest -k 'cuda and pytorch' -x"
+          -c "pip install -e .[test,peft,deepspeed] && pytest -k 'cuda and pytorch' -x"

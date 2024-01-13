@@ -63,6 +63,7 @@ EXTRAS_REQUIRE = {
     # specific settings
     "deepspeed": ["deepspeed"],
     "diffusers": ["diffusers"],
+    "timm": ["timm"],
     "peft": ["peft"],
 }
 
