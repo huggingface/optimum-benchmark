@@ -189,7 +189,7 @@ class OVBackend(Backend[OVConfig]):
                 for key, value in kwargs.items()
                 if key in inspect.getfullargspec(self.pretrained_model.reshape).args
             }
-            if ("height" in static_shapes or "width" in static_shapes) and ("sequence_length" in static_shapes):
+            if (static_shapes.get("height", None) is not None) and ("sequence_length" in static_shapes):
                 static_shapes["sequence_length"] = kwargs.get("num_channels", 3)
 
             LOGGER.info(f"\t+ Reshaping model with static shapes: {static_shapes}")
