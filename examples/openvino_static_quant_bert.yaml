@@ -7,14 +7,16 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-model: stabilityai/stable-diffusion-2-1
-experiment_name: openvino_diffusion
+experiment_name: openvino_static_quant_bert
+model: bert-base-uncased
 device: cpu
 
 backend:
-  reshape: true
   export: true
-  half: true
+  no_weights: true
+  quantization: true
+  calibration: true
+  reshape: true
 
 benchmark:
   input_shapes:

@@ -105,7 +105,7 @@ class ORTBackend(Backend[ORTConfig]):
             original_export = self.export
 
             self.model = self.pretrained_model.model_save_dir  # self.model will point to a directory from here on
-            self.export = False  # we disable export because we want to load the optimized/quantized onnx files
+            self.export = False  # we disable export because we'll load the optimized/quantized model now
 
         if self.is_optimized:
             self.optimize_onnx_files()
