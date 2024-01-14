@@ -1,15 +1,23 @@
 defaults:
-  - backend: pytorch
   - launcher: process
   - benchmark: inference
+  - backend: onnxruntime
   - experiment # inheriting experiment schema
   - _self_ # for hydra 1.1 compatibility
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: pytorch_bert
-model: bert-base-uncased
+experiment_name: onnxruntime_static_quant_vit
+model: google/vit-base-patch16-224
 device: cuda
+
+backend:
+  auto_quantization: avx2
+  auto_quantization_config:
+    is_static: true
+    per_channel: false
+
+  auto_calibration: minmax
 
 launcher:
   device_isolation: true
