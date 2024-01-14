@@ -26,7 +26,7 @@ jobs:
       - name: Install requirements
         run: |
           pip install --upgrade pip
-          pip install -e .[test,onnxruntime,diffusers]
+          pip install -e .[test,onnxruntime,diffusers,timm]
 
       - name: Run tests
         run: |

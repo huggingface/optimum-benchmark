@@ -4,6 +4,8 @@ from typing import Optional
 
 import huggingface_hub
 
+from .import_utils import is_tensorflow_available
+
 _TRANSFORMERS_TASKS_TO_MODEL_LOADERS = {
     "audio-classification": "AutoModelForAudioClassification",
     "audio-frame-classification": "AutoModelForAudioFrameClassification",
@@ -31,14 +33,39 @@ _TRANSFORMERS_TASKS_TO_MODEL_LOADERS = {
     "zero-shot-image-classification": "AutoModelForZeroShotImageClassification",
     "zero-shot-object-detection": "AutoModelForZeroShotObjectDetection",
 }
-
+_TRANSFORMERS_TASKS_TO_TF_MODEL_LOADERS = {
+    "conversational": ("TFAutoModelForCausalLM", "TFAutoModelForSeq2SeqLM"),
+    "document-question-answering": "TFAutoModelForDocumentQuestionAnswering",
+    "feature-extraction": "TFAutoModel",
+    "fill-mask": "TFAutoModelForMaskedLM",
+    "text-generation": "TFAutoModelForCausalLM",
+    "image-classification": "TFAutoModelForImageClassification",
+    "text2text-generation": "TFAutoModelForSeq2SeqLM",
+    "text-classification": "TFAutoModelForSequenceClassification",
+    "token-classification": "TFAutoModelForTokenClassification",
+    "multiple-choice": "TFAutoModelForMultipleChoice",
+    "object-detection": "TFAutoModelForObjectDetection",
+    "question-answering": "TFAutoModelForQuestionAnswering",
+    "image-segmentation": "TFAutoModelForImageSegmentation",
+    "masked-im": "TFAutoModelForMaskedImageModeling",
+    "semantic-segmentation": "TFAutoModelForSemanticSegmentation",
+    "automatic-speech-recognition": "TFAutoModelForSpeechSeq2Seq",
+    "audio-classification": "TFAutoModelForAudioClassification",
+    "audio-frame-classification": "TFAutoModelForAudioFrameClassification",
+    "audio-xvector": "TFAutoModelForAudioXVector",
+    "image-to-text": "TFAutoModelForVision2Seq",
+    "zero-shot-image-classification": "TFAutoModelForZeroShotImageClassification",
+    "zero-shot-object-detection": "TFAutoModelForZeroShotObjectDetection",
+}
 _DIFFUSERS_TASKS_TO_MODEL_LOADERS = {
     "stable-diffusion": "StableDiffusionPipeline",
     "stable-diffusion-xl": "StableDiffusionXLImg2ImgPipeline",
 }
-
 _TIMM_TASKS_TO_MODEL_LOADERS = {
     "image-classification": "create_model",
+}
+_LIBRARY_TO_TF_TASKS_TO_MODEL_LOADER_MAP = {
+    "transformers": _TRANSFORMERS_TASKS_TO_TF_MODEL_LOADERS,
 }
 _LIBRARY_TO_TASKS_TO_MODEL_LOADER_MAP = {
     "transformers": _TRANSFORMERS_TASKS_TO_MODEL_LOADERS,
@@ -91,34 +118,40 @@ def map_from_synonym(task: str) -> str:
     return task
 
 
-# adapted from https://github.com/huggingface/optimum/blob/main/optimum/exporters/tasks.py without torch dependency
-def infer_task_from_model_name_or_path(
-    model_name_or_path: str, subfolder: str = "", revision: Optional[str] = None
-) -> str:
-    inferred_task_name = None
-    is_local = os.path.isdir(os.path.join(model_name_or_path, subfolder))
+def infer_library_from_model_name_or_path(model_name_or_path: str, revision: Optional[str] = None) -> str:
+    inferred_library_name = None
+    is_local = os.path.isdir(model_name_or_path)
 
     if is_local:
-        # TODO: maybe implement that.
+        raise RuntimeError("Cannot infer the library from a local directory yet, please specify the library manually.")
+    else:
+        model_info = huggingface_hub.model_info(model_name_or_path, revision=revision)
+        inferred_library_name = model_info.library_name
+
+    if inferred_library_name is None:
+        raise KeyError(f"Could not find the proper library name for {model_name_or_path}.")
+
+    return inferred_library_name
+
+
+# adapted from https://github.com/huggingface/optimum/blob/main/optimum/exporters/tasks.py without torch dependency
+def infer_task_from_model_name_or_path(model_name_or_path: str, revision: Optional[str] = None) -> str:
+    inferred_task_name = None
+    is_local = os.path.isdir(model_name_or_path)
+
+    if is_local:
         raise RuntimeError("Cannot infer the task from a local directory yet, please specify the task manually.")
     else:
-        if subfolder != "":
-            raise RuntimeError(
-                "Cannot infer the task from a model repo with a subfolder yet, please specify the task manually."
-            )
-
         model_info = huggingface_hub.model_info(model_name_or_path, revision=revision)
-        if model_info.library_name == "diffusers":
-            # TODO : getattr(model_info, "model_index") defining auto_model_class_name currently set to None
-            for task in ("stable-diffusion-xl", "stable-diffusion"):
-                if task in model_info.tags:
-                    inferred_task_name = task
-                    break
+        if getattr(model_info, "library_name", None) == "diffusers":
+            class_name = model_info.config["diffusers"]["class_name"]
+            inferred_task_name = "stable-diffusion-xl" if "StableDiffusionXL" in class_name else "stable-diffusion"
+        elif getattr(model_info, "library_name", None) == "timm":
+            inferred_task_name = "image-classification"
         else:
             pipeline_tag = getattr(model_info, "pipeline_tag", None)
-            # conversational is not a supported task per se, just an alias that may map to
-            # text-generaton or text2text-generation
-            if pipeline_tag is not None and pipeline_tag != "conversational":
+            # conversational is not a supported task per se, just an alias that may map to text-generaton or text2text-generation
+            if pipeline_tag is not None and pipeline_tag not in ["conversational", "object-detection"]:
                 inferred_task_name = map_from_synonym(model_info.pipeline_tag)
             else:
                 transformers_info = model_info.transformersInfo
@@ -126,8 +159,17 @@ def infer_task_from_model_name_or_path(
                     inferred_task_name = map_from_synonym(transformers_info["pipeline_tag"])
                 else:
                     # transformersInfo does not always have a pipeline_tag attribute
+                    class_name_prefix = ""
+                    if is_tensorflow_available():
+                        tasks_to_automodels = _LIBRARY_TO_TF_TASKS_TO_MODEL_LOADER_MAP[model_info.library_name]
+                        class_name_prefix = "TF"
+                    else:
+                        tasks_to_automodels = _LIBRARY_TO_TASKS_TO_MODEL_LOADER_MAP[model_info.library_name]
+
                     auto_model_class_name = transformers_info["auto_model"]
-                    for task_name, class_name_for_task in _TRANSFORMERS_TASKS_TO_MODEL_LOADERS.items():
+                    if not auto_model_class_name.startswith("TF"):
+                        auto_model_class_name = f"{class_name_prefix}{auto_model_class_name}"
+                    for task_name, class_name_for_task in tasks_to_automodels.items():
                         if class_name_for_task == auto_model_class_name:
                             inferred_task_name = task_name
                             break
@@ -138,38 +180,16 @@ def infer_task_from_model_name_or_path(
     return inferred_task_name
 
 
+# adapted from https://github.com/huggingface/optimum/blob/main/optimum/exporters/tasks.py without torch dependency
 def get_model_class_for_task(
     task: str,
-    framework: str = "pt",
-    model_type: Optional[str] = None,
     model_class_name: Optional[str] = None,
+    model_type: Optional[str] = None,
     library: str = "transformers",
+    framework: str = "pt",
 ):
-    """
-    Attempts to retrieve an AutoModel class from a task name.
-
-    Args:
-        task (`str`):
-            The task required.
-        framework (`str`, defaults to `"pt"`):
-            The framework to use for the export.
-        model_type (`Optional[str]`, defaults to `None`):
-            The model type to retrieve the model class for. Some architectures need a custom class to be loaded,
-            and can not be loaded from auto class.
-        model_class_name (`Optional[str]`, defaults to `None`):
-            A model class name, allowing to override the default class that would be detected for the task. This
-            parameter is useful for example for "automatic-speech-recognition", that may map to
-            AutoModelForSpeechSeq2Seq or to AutoModelForCTC.
-        library (`str`, defaults to `transformers`):
-                The library name of the model.
-
-    Returns:
-        The AutoModel class corresponding to the task.
-    """
     task = task.replace("-with-past", "")
     task = map_from_synonym(task)
-
-    # _validate_framework_choice(framework)
 
     if (framework, model_type, task) in _CUSTOM_CLASSES:
         library, class_name = _CUSTOM_CLASSES[(framework, model_type, task)]
@@ -197,16 +217,10 @@ def get_model_class_for_task(
                 # automatic-speech-recognition case, which may map to several auto class
                 if library == "transformers":
                     if model_type is None:
-                        # logger.warning(
-                        #     f"No model type passed for the task {task}, that may be mapped to several loading"
-                        #     f" classes ({tasks_to_model_loader[task]}). Defaulting to {tasks_to_model_loader[task][0]}"
-                        #     " to load the model."
-                        # )
                         model_class_name = tasks_to_model_loader[task][0]
                     else:
                         for autoclass_name in tasks_to_model_loader[task]:
                             module = getattr(loaded_library, autoclass_name)
-                            # TODO: we must really get rid of this - and _ mess
                             if (
                                 model_type in module._model_mapping._model_mapping
                                 or model_type.replace("-", "_") in module._model_mapping._model_mapping

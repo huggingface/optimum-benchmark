@@ -40,4 +40,4 @@ jobs:
           --gpus '"device=0,1"'
           --entrypoint /bin/bash
           opt-bench-tensorrt:22.12
-          -c "pip install -e .[test,onnxruntime-gpu,diffusers] && pytest -k 'tensorrt and onnxruntime and inference' -x"
+          -c "pip install -e .[test,onnxruntime-gpu] && pytest -k 'tensorrt and onnxruntime and inference' -x"
