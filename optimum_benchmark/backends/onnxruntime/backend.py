@@ -18,6 +18,7 @@ from optimum.onnxruntime.configuration import (
     AutoCalibrationConfig,
     AutoOptimizationConfig,
     AutoQuantizationConfig,
+    CalibrationConfig,
     OptimizationConfig,
     QuantizationConfig,
 )
@@ -31,7 +32,12 @@ from ..base import Backend
 from ..peft_utils import get_peft_config_class
 from ..pytorch.utils import randomize_weights
 from .config import ORTConfig
-from .utils import TASKS_TO_ORTMODELS, TASKS_TO_ORTSD, format_quantization_config
+from .utils import (
+    TASKS_TO_ORTMODELS,
+    TASKS_TO_ORTSD,
+    format_calibration_config,
+    format_quantization_config,
+)
 
 # disable transformers logging
 set_verbosity_error()
@@ -201,7 +207,7 @@ class ORTBackend(Backend[ORTConfig]):
 
     @property
     def is_calibrated(self) -> bool:
-        return self.config.auto_calibration is not None
+        return (self.config.auto_calibration is not None) or self.config.calibration
 
     @property
     def automodel_kwargs(self) -> Dict[str, Any]:
@@ -290,12 +296,12 @@ class ORTBackend(Backend[ORTConfig]):
 
         LOGGER.info("\t+ Processing quantization config")
         if self.config.auto_quantization is not None:
-            self.config.auto_quantization_config = format_quantization_config(self.config.auto_quantization_config)
-            auto_quantization_config_class = getattr(AutoQuantizationConfig, self.config.auto_quantization)
-            quantization_config = auto_quantization_config_class(**self.config.auto_quantization_config)
+            auto_quantization_config = format_quantization_config(self.config.auto_quantization_config)
+            auto_quantization_class = getattr(AutoQuantizationConfig, self.config.auto_quantization)
+            quantization_config = auto_quantization_class(**auto_quantization_config)
         elif self.config.quantization:
-            self.config.quantization_config = format_quantization_config(self.config.quantization_config)
-            quantization_config = QuantizationConfig(**self.config.quantization_config)
+            quantization_config = format_quantization_config(self.config.quantization_config)
+            quantization_config = QuantizationConfig(**quantization_config)
 
         if self.is_calibrated:
             LOGGER.info("\t+ Generating calibration dataset")
@@ -303,9 +309,25 @@ class ORTBackend(Backend[ORTConfig]):
             calibration_dataset = DatasetGenerator(task=self.task, dataset_shapes=dataset_shapes).generate()
             columns_to_be_removed = list(set(calibration_dataset.column_names) - set(self.inputs_names))
             calibration_dataset = calibration_dataset.remove_columns(columns_to_be_removed)
+
             LOGGER.info("\t+ Processing calibration config")
-            calibration_config_method = getattr(AutoCalibrationConfig, self.config.auto_calibration)
-            calibration_config = calibration_config_method(calibration_dataset, **self.config.auto_calibration_config)
+            if self.config.auto_calibration is not None:
+                LOGGER.info("\t+ Processing calibration config")
+                auto_calibration_method = getattr(AutoCalibrationConfig, self.config.auto_calibration)
+                calibration_config = auto_calibration_method(
+                    calibration_dataset,
+                    **self.config.auto_calibration_config,
+                )
+            elif self.config.calibration:
+                LOGGER.info("\t+ Processing calibration config")
+                calibration_config = format_calibration_config(self.config.calibration_config)
+                calibration_config = CalibrationConfig(
+                    dataset_name="calibration_dataset",
+                    dataset_split=calibration_dataset.split,
+                    dataset_num_samples=calibration_dataset.num_rows,
+                    dataset_config_name=calibration_dataset.config_name,
+                    **self.config.calibration_config,
+                )
 
         for onnx_file_name_to_quantize in self.onnx_files_names_to_quantize:
             LOGGER.info(f"\t+ Creating quantizer for {onnx_file_name_to_quantize}")
@@ -358,15 +380,12 @@ class ORTBackend(Backend[ORTConfig]):
         if self.library == "diffusers":
             return {"prompt": inputs["prompt"]}
 
-        for key in list(inputs.keys()):
-            # sometimes optimum onnx exported models don't have inputs
-            # that their pytorch counterparts have, for instance token_type_ids
-            if key not in self.inputs_names:
-                inputs.pop(key)
-
         LOGGER.info(f"\t+ Moving inputs tensors to device {self.device}")
         for key, value in inputs.items():
-            inputs[key] = value.to(self.device)
+            if key not in self.inputs_names:
+                inputs.pop(key)
+            else:
+                inputs[key] = value.to(self.device)
 
         return inputs
 

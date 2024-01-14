@@ -1,6 +1,11 @@
 from typing import Any, Dict
 
-from onnxruntime.quantization import QuantFormat, QuantizationMode, QuantType
+from onnxruntime.quantization import (
+    CalibrationMethod,
+    QuantFormat,
+    QuantizationMode,
+    QuantType,
+)
 from optimum.pipelines import ORT_SUPPORTED_TASKS
 
 TASKS_TO_ORTSD = {
@@ -9,6 +14,13 @@ TASKS_TO_ORTSD = {
 }
 
 TASKS_TO_ORTMODELS = {task: task_dict["class"][0] for task, task_dict in ORT_SUPPORTED_TASKS.items()}
+
+
+def format_calibration_config(calibration_config: Dict[str, Any]) -> None:
+    if calibration_config.get("method", None) is not None:
+        calibration_config["method"] = CalibrationMethod[calibration_config["method"]]
+
+    return calibration_config
 
 
 def format_quantization_config(quantization_config: Dict[str, Any]) -> None:

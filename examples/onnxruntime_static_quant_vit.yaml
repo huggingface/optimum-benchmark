@@ -9,18 +9,15 @@ defaults:
 
 experiment_name: onnxruntime_static_quant_vit
 model: google/vit-base-patch16-224
-device: cuda
+device: cpu
 
 backend:
-  auto_quantization: avx2
-  auto_quantization_config:
+  quantization: true
+  quantization_config:
     is_static: true
     per_channel: false
 
-  auto_calibration: minmax
-
-launcher:
-  device_isolation: true
+  calibration: true
 
 hydra:
   run:

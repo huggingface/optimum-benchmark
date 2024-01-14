@@ -10,13 +10,17 @@ from ..peft_utils import PEFT_CONFIGS, PEFT_TASKS_TYPES
 
 QUANTIZATION_CONFIG = {
     "is_static": False,
-    "format": "QOperator",  # QOperator, QDQ
+    "format": "QOperator",
     # is_static and format are mandatory
+}
+
+CALIBRATION_CONFIG = {
+    "method": "MinMax"
+    # method is mandatory
 }
 
 AUTO_QUANTIZATION_CONFIG = {
     "is_static": False,
-    # full auto quantization config depends on the hardware but
     # is_static is mandatory
 }
 
@@ -78,6 +82,10 @@ class ORTConfig(BackendConfig):
     quantization: bool = False
     quantization_config: Dict[str, Any] = field(default_factory=dict)
 
+    # manual calibration options
+    calibration: bool = False
+    calibration_config: Dict[str, Any] = field(default_factory=dict)
+
     # ort-training is basically a different package so we might need to separate these two backends in the future
     use_inference_session: bool = "${is_inference:${benchmark.name}}"
 
@@ -100,21 +108,24 @@ class ORTConfig(BackendConfig):
                 OmegaConf.merge(QUANTIZATION_CONFIG, self.quantization_config)
             )
             # raise ValueError if the quantization is static but calibration is not enabled
-            if self.quantization_config["is_static"] and self.auto_calibration is None:
+            if self.quantization_config["is_static"] and self.auto_calibration is None and not self.calibration:
                 raise ValueError(
-                    "Quantization is static but auto calibration is not enabled. "
-                    "Please enable auto calibration or disable static quantization."
+                    "Quantization is static but calibration is not enabled. "
+                    "Please enable calibration or disable static quantization."
                 )
 
         if self.auto_quantization is not None:
             self.auto_quantization_config = OmegaConf.to_object(
                 OmegaConf.merge(AUTO_QUANTIZATION_CONFIG, self.auto_quantization_config)
             )
-            if self.auto_quantization_config["is_static"] and self.auto_calibration is None:
+            if self.auto_quantization_config["is_static"] and self.auto_calibration is None and not self.calibration:
                 raise ValueError(
-                    "Quantization is static but auto calibration is not enabled. "
-                    "Please enable auto calibration or disable static quantization."
+                    "Quantization is static but calibration is not enabled. "
+                    "Please enable calibration or disable static quantization."
                 )
+
+        if self.calibration:
+            self.calibration_config = OmegaConf.to_object(OmegaConf.merge(CALIBRATION_CONFIG, self.calibration_config))
 
         if self.peft_strategy is not None:
             if self.peft_strategy not in PEFT_CONFIGS:
