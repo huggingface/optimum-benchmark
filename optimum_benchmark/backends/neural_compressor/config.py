@@ -47,21 +47,14 @@ PTQ_QUANTIZATION_CONFIG = {
 }
 
 
-CALIBRATION_CONFIG = {
-    "dataset_name": "glue",
-    "num_samples": 300,
-    "dataset_config_name": "sst2",
-    "dataset_split": "train",
-    "preprocess_batch": True,
-    "preprocess_class": "optimum_benchmark.preprocessors.glue.GluePreprocessor",
-}
-
-
 @dataclass
 class INCConfig(BackendConfig):
     name: str = "neural_compressor"
     version: str = "${neural_compressor_version:}"
     _target_: str = "optimum_benchmark.backends.neural_compressor.backend.INCBackend"
+
+    # load options
+    no_weights: bool = False
 
     # post-training quantization options
     ptq_quantization: bool = False
@@ -80,6 +73,3 @@ class INCConfig(BackendConfig):
             )
             if self.ptq_quantization_config["approach"] == "static" and not self.calibration:
                 raise ValueError("Calibration must be enabled when using static quantization.")
-
-        if self.calibration:
-            self.calibration_config = OmegaConf.to_object(OmegaConf.merge(CALIBRATION_CONFIG, self.calibration_config))

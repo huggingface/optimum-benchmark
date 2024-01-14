@@ -161,6 +161,8 @@ class OVBackend(Backend[OVConfig]):
             calibration_dataset = DatasetGenerator(task=self.task, dataset_shapes=dataset_shapes).generate()
             columns_to_be_removed = list(set(calibration_dataset.column_names) - set(quantizer._export_input_names))
             calibration_dataset = calibration_dataset.remove_columns(columns_to_be_removed)
+        else:
+            calibration_dataset = None
 
         LOGGER.info("\t+ Quantizing model")
         quantizer.quantize(
