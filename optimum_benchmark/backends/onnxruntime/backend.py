@@ -381,11 +381,11 @@ class ORTBackend(Backend[ORTConfig]):
             return {"prompt": inputs["prompt"]}
 
         LOGGER.info(f"\t+ Moving inputs tensors to device {self.device}")
-        for key, value in inputs.items():
-            if key not in self.inputs_names:
-                inputs.pop(key)
-            else:
+        for key, value in list(inputs.items()):
+            if key in self.inputs_names:
                 inputs[key] = value.to(self.device)
+            else:
+                inputs.pop(key)
 
         return inputs
 
