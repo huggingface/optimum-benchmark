@@ -19,9 +19,6 @@ class InlineLauncher(Launcher[InlineConfig]):
         super().configure(config)
 
     def launch(self, worker: Callable, *worker_args):
-        with device_isolation(
-            enabled=self.config.device_isolation,
-            permitted_pids={os.getpid()},
-        ):
+        with device_isolation(enabled=self.config.device_isolation, benchmark_pid=os.getpid()):
             LOGGER.info("\t+ Launching inline experiment (no process isolation)")
             worker(*worker_args)

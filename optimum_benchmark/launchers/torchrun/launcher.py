@@ -50,11 +50,8 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             log_dir=self.config.log_dir,
         )
 
-        with device_isolation(
-            enabled=self.config.device_isolation,
-            permitted_pids={os.getpid()},
-        ):
-            LOGGER.info(f"\t+ Launching torchrun/torchelastic agent with {self.config.nproc_per_node} processes")
+        with device_isolation(enabled=self.config.device_isolation, benchmark_pid=os.getpid()):
+            LOGGER.info(f"\t+ Launching torchrun agent with {self.config.nproc_per_node} workers processes")
             launch_agent(
                 entrypoint=entrypoint,
                 args=(worker, *worker_args),
