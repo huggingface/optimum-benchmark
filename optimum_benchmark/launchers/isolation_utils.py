@@ -28,36 +28,37 @@ if is_amdsmi_available():
 LOGGER = getLogger("isolation")
 
 
-def get_nvidia_devices_pids() -> Dict[int, set]:
-    devices_pids: Dict[int, set] = {}
+def get_nvidia_devices_pids() -> Dict[int, list]:
+    devices_pids: Dict[int, list] = {}
     devices_ids = [int(device_id) for device_id in os.environ["CUDA_VISIBLE_DEVICES"].split(",")]
 
     if not is_py3nvml_available():
-        raise ValueError("get_nvidia_device_pids requires py3nvml. " "Please install it with `pip install py3nvml`.")
+        raise ValueError("get_nvidia_device_pids requires py3nvml. Please install it with `pip install py3nvml`.")
 
     nvml.nvmlInit()
+
     for device_id in devices_ids:
         device_handle = nvml.nvmlDeviceGetHandleByIndex(device_id)
         device_processes = nvml.nvmlDeviceGetComputeRunningProcesses(device_handle)
         for device_process in device_processes:
             if device_id not in devices_pids:
                 devices_pids[device_id] = []
-            else:
-                devices_pids[device_id].append(device_process.pid)
+
+            devices_pids[device_id].append(device_process.pid)
 
     nvml.nvmlShutdown()
 
     return devices_pids
 
 
-def get_amd_devices_pids() -> None:
+def get_amd_devices_pids() -> Dict[int, list]:
     devices_pids: Dict[int, list] = {}
     rocm_version = torch_version().split("rocm")[-1]
     devices_ids = [int(device_id) for device_id in os.environ["CUDA_VISIBLE_DEVICES"].split(",")]
 
     if not is_amdsmi_available():
         raise ValueError(
-            "check_no_process_is_running_on_cuda_device requires amdsmi. "
+            "get_amd_devices_pids requires amdsmi. "
             "Please follow the instructions at https://github.com/RadeonOpenCompute/amdsmi/tree/master"
         )
 
@@ -86,8 +87,8 @@ def get_amd_devices_pids() -> None:
 
                 if device_id not in devices_pids:
                     devices_pids[device_id] = []
-                else:
-                    devices_pids[device_id].append(info["pid"])
+
+                devices_pids[device_id].append(info["pid"])
     else:
         devices_handles = amdsmi.amdsmi_get_device_handles()
         for device_id in devices_ids:
@@ -110,8 +111,8 @@ def get_amd_devices_pids() -> None:
 
                 if device_id not in devices_pids:
                     devices_pids[device_id] = []
-                else:
-                    devices_pids[device_id].append(info["pid"])
+
+                devices_pids[device_id].append(info["pid"])
 
     amdsmi.amdsmi_shut_down()
 
@@ -140,7 +141,7 @@ def assert_system_devices_isolation(benchmark_pid: int) -> None:
     logging.config.dictConfig(OmegaConf.to_container(hydra_conf.hydra.job_logging, resolve=True))
 
     while psutil.pid_exists(benchmark_pid):
-        permitted_pids = set()
+        child_processes = set()
         non_permitted_pids = set()
 
         all_devices_pids = get_pids_running_on_system_device()
@@ -151,19 +152,19 @@ def assert_system_devices_isolation(benchmark_pid: int) -> None:
 
             try:
                 info = psutil.Process(pid)
-                prent_pid = info.ppid()
+                parent_pid = info.ppid()
             except Exception as e:
                 LOGGER.error(f"Failed to get info for process {pid} with error {e}")
-                continue
+                parent_pid = None
 
-            if prent_pid == benchmark_pid or prent_pid == isolation_pid:
-                permitted_pids.add(pid)
+            if parent_pid == benchmark_pid or parent_pid == isolation_pid:
+                child_processes.add(pid)
             else:
                 non_permitted_pids.add(pid)
 
         if len(non_permitted_pids) > 0:
             LOGGER.error(f"Found non-permitted process(es) running on system device(s): {non_permitted_pids}")
-            for pid in permitted_pids:
+            for pid in child_processes:
                 try:
                     LOGGER.error(f"Terminating child process {pid}")
                     os.kill(pid, signal.SIGTERM)
