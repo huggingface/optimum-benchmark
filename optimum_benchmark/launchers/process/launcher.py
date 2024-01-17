@@ -28,15 +28,12 @@ class ProcessLauncher(Launcher[ProcessConfig]):
             mp.set_start_method(self.config.start_method, force=True)
 
     def launch(self, worker: Callable, *worker_args):
-        # worker process can't be daemon since it spawns its own processes
+        # worker process can't be daemon since it might spawn its own processes
         worker_process = Process(target=target, args=(worker, *worker_args), daemon=False)
         worker_process.start()
         LOGGER.info(f"\t+ Launched worker process with PID {worker_process.pid}.")
 
-        with device_isolation(
-            enabled=self.config.device_isolation,
-            permitted_pids={os.getpid(), worker_process.pid},
-        ):
+        with device_isolation(enabled=self.config.device_isolation, benchmark_pid=os.getpid()):
             worker_process.join()
 
         if worker_process.exitcode != 0:
