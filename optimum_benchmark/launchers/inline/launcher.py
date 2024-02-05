@@ -1,10 +1,10 @@
 import os
 from logging import getLogger
-from typing import Callable
+from typing import Callable, Dict, Any
 
 from ..base import Launcher
-from ..isolation_utils import device_isolation
 from .config import InlineConfig
+from ..isolation_utils import device_isolation
 
 LOGGER = getLogger("inline")
 
@@ -12,13 +12,15 @@ LOGGER = getLogger("inline")
 class InlineLauncher(Launcher[InlineConfig]):
     NAME = "inline"
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, config: InlineConfig):
+        super().__init__(config)
 
-    def configure(self, config: InlineConfig) -> None:
-        super().configure(config)
-
-    def launch(self, worker: Callable, *worker_args):
-        with device_isolation(enabled=self.config.device_isolation, benchmark_pid=os.getpid()):
+    def launch(self, worker: Callable, *worker_args) -> Dict[str, Any]:
+        with device_isolation(
+            benchmark_pid=os.getpid(),
+            enabled=self.config.device_isolation,
+        ):
             LOGGER.info("\t+ Launching inline experiment (no process isolation)")
-            worker(*worker_args)
+            report: Dict[str, Any] = worker(*worker_args)
+
+        return report

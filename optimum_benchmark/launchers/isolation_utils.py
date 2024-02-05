@@ -1,23 +1,18 @@
-# import logging.config
-import logging.config
 import os
-import signal
 import time
-from contextlib import contextmanager
+import signal
+import logging.config
+from typing import Dict, Set
 from logging import getLogger
 from multiprocessing import Process
-from typing import Dict, Set
+from contextlib import contextmanager
 
 import psutil
 from omegaconf import OmegaConf
 
-# from omegaconf import OmegaConf
 from ..env_utils import is_nvidia_system, is_rocm_system
-from ..import_utils import (
-    is_amdsmi_available,
-    is_py3nvml_available,
-    torch_version,
-)
+from ..import_utils import is_amdsmi_available, is_py3nvml_available, torch_version
+
 
 if is_py3nvml_available():
     import py3nvml.py3nvml as nvml  # type: ignore
@@ -179,7 +174,7 @@ def assert_system_devices_isolation(benchmark_pid: int) -> None:
 
 
 @contextmanager
-def device_isolation(enabled: bool, benchmark_pid: int) -> None:
+def device_isolation(benchmark_pid: int, enabled: bool) -> None:
     if not enabled:
         yield
         return

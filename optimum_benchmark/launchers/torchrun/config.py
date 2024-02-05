@@ -1,16 +1,12 @@
 import os
 import uuid
-from dataclasses import dataclass, field
 from logging import getLogger
 from typing import Any, Dict, Optional
+from dataclasses import dataclass, field
 
-from omegaconf import OmegaConf
-
-from ..base import LauncherConfig
+from ..config import LauncherConfig
 
 LOGGER = getLogger("torchrun")
-
-OmegaConf.register_new_resolver("available_gpus", lambda: len(os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(",")))
 
 
 @dataclass
@@ -24,7 +20,7 @@ class TorchrunConfig(LauncherConfig):
     # Maximum amount of nodes that the user function will be launched on.
     max_nodes: int = 1
     # On each node the elastic agent will launch this amount of workers that will execute user defined function.
-    nproc_per_node: int = "${available_gpus:}"
+    nproc_per_node: int = len(os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(","))
 
     # User defined role of the worker (defaults to "trainer").
     role: str = "benchmark_worker"
@@ -38,10 +34,7 @@ class TorchrunConfig(LauncherConfig):
     rdzv_endpoint: str = "localhost:0"
     # Key, value pair that specifies rendezvous specific configuration.
     rdzv_configs: Dict[str, Any] = field(
-        default_factory=lambda: {
-            "rank": 0,
-            "timeout": 900,
-        }
+        default_factory=lambda: {"rank": 0, "timeout": 900}
     )
     # The maximum amount of restarts that elastic agent will conduct on workers before failure.
     max_restarts: int = 0
@@ -61,7 +54,9 @@ class TorchrunConfig(LauncherConfig):
 
     def __post_init__(self) -> None:
         if self.start_method not in ["spawn", "fork"]:
-            raise ValueError(f"start_method must be one of ['spawn', 'fork'], got {self.start_method}")
+            raise ValueError(
+                f"start_method must be one of ['spawn', 'fork'], got {self.start_method}"
+            )
 
         if self.min_nodes != self.max_nodes:
             raise ValueError(
@@ -69,5 +64,9 @@ class TorchrunConfig(LauncherConfig):
             )
 
         if self.min_nodes != 1:
-            LOGGER.info("For multi-node benchmarks, run the benchmark on each node separately.")
-            LOGGER.info(f"Waiting for the other nodes to be avaialable at {self.rdzv_endpoint}...")
+            LOGGER.info(
+                "For multi-node benchmarks, run the benchmark on each node separately."
+            )
+            LOGGER.info(
+                f"Waiting for the other nodes to be avaialable at {self.rdzv_endpoint}..."
+            )
