@@ -8,14 +8,14 @@ defaults:
   - override hydra/hydra_logging: colorlog # colorful logging
 
 experiment_name: onnxruntime_static_quant_vit
-model: google/vit-base-patch16-224
-device: cpu
 
 backend:
+  model: google/vit-base-patch16-224
   quantization: true
   quantization_config:
     is_static: true
     per_channel: false
+  device: cpu
 
   calibration: true
 

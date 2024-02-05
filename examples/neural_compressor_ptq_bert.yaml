@@ -8,13 +8,14 @@ defaults:
   - override hydra/hydra_logging: colorlog # colorful logging
 
 experiment_name: openvino_static_quant_bert
-model: bert-base-uncased
-device: cpu
 
 backend:
+  model: bert-base-uncased
+
   no_weights: true
   ptq_quantization: true
   calibration: true
+  device: cpu
 
 benchmark:
   input_shapes:

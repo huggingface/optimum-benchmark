@@ -8,8 +8,10 @@ defaults:
   - override hydra/hydra_logging: colorlog # colorful logging
 
 experiment_name: pytorch_llama
-model: TheBloke/Llama-2-70B-AWQ
-device: cuda
+
+backend:
+  model: TheBloke/Llama-2-70B-AWQ
+  device: cuda
 
 launcher:
   device_isolation: true

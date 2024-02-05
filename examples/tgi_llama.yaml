@@ -8,13 +8,12 @@ defaults:
   - override hydra/hydra_logging: colorlog # colorful logging
 
 experiment_name: tgi_llama
-model: TheBloke/Llama-2-70B-AWQ
-device: cuda
 
 backend:
-  sharded: false
+  model: TheBloke/Llama-2-7B-AWQ
   quantization_scheme: awq
-  # no_weights: true # wok in progress
+  sharded: false
+  device: cuda
 
 benchmark:
   input_shapes:

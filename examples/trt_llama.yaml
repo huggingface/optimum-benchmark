@@ -8,8 +8,10 @@ defaults:
   - override hydra/hydra_logging: colorlog # colorful logging
 
 experiment_name: trt_llama
-model: NousResearch/Llama-2-7b-hf
-device: cuda
+
+backend:
+  model: NousResearch/Llama-2-7b-hf
+  device: cuda
 
 benchmark:
   input_shapes:
