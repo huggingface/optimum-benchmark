@@ -1,6 +1,7 @@
-import platform
 import re
+import platform
 import subprocess
+import importlib.util
 from typing import Optional
 
 import psutil
@@ -58,7 +59,8 @@ def get_gpus():
     if is_nvidia_system():
         if not is_py3nvml_available():
             raise ValueError(
-                "The library py3nvml is required to collect information on NVIDIA GPUs, but is not installed. Please install it through `pip install py3nvml`."
+                "The library py3nvml is required to collect information on NVIDIA GPUs, but is not installed. "
+                "Please install it through `pip install py3nvml`."
             )
         import py3nvml.py3nvml as nvml
 
@@ -72,7 +74,8 @@ def get_gpus():
     elif is_rocm_system():
         if not is_pyrsmi_available():
             raise ValueError(
-                "The library pyrsmi is required to collect information on RoCm-powered GPUs, but is not installed. Please install it following the instructions https://github.com/RadeonOpenCompute/pyrsmi."
+                "The library pyrsmi is required to collect information on ROCm-powered GPUs, but is not installed. "
+                "Please install it following the instructions https://github.com/RadeonOpenCompute/pyrsmi."
             )
         from pyrsmi import rocml
 
@@ -83,19 +86,25 @@ def get_gpus():
         gpus = [rocml.smi_get_device_name(index) for index in range(device_count)]
         rocml.smi_shutdown()
     else:
-        gpus = ["GPUs not available"]
+        gpus = []
 
     return gpus
 
 
-def get_git_revision_hash(path: Optional[str]) -> str:
+def get_git_revision_hash(package_name: str, path: Optional[str] = None) -> Optional[str]:
     """
-    Returns the git commit SHA for the git repository in `path`.
+    Returns the git commit SHA of a package installed from a git repository.
     """
+
     if path is None:
-        return None
-    else:
         try:
-            return subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=path).decode("ascii").strip()
+            path = importlib.util.find_spec(package_name).origin
         except Exception:
             return None
+
+    try:
+        git_hash = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=path).decode().strip()
+    except Exception:
+        git_hash = None
+
+    return git_hash
