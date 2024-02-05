@@ -1,4 +1,3 @@
-# Data Parallel (DP) training
 hydra:
   job:
     env_set:

@@ -4,7 +4,7 @@ from subprocess import PIPE, STDOUT, Popen
 
 import pytest
 
-LOGGER = getLogger("test")
+LOGGER = getLogger("test-cli")
 
 
 CONFIG_NAMES = [
@@ -12,16 +12,6 @@ CONFIG_NAMES = [
     for config in os.listdir("tests/configs")
     if config.endswith(".yaml") and not (config.startswith("_") or config.endswith("_"))
 ]
-
-
-def run_and_stream(args):
-    popen = Popen(args, stdout=PIPE, stderr=STDOUT)
-    for line in iter(popen.stdout.readline, b""):
-        if line is not None:
-            LOGGER.info(line.decode("utf-8").rstrip())
-
-    popen.wait()
-    return popen
 
 
 @pytest.mark.parametrize("config_name", CONFIG_NAMES)
@@ -35,7 +25,7 @@ def test_configs(config_name):
         "--multirun",
     ]
 
-    popen = run_and_stream(args)
+    popen = run_process_and_stream_output(args)
     assert popen.returncode == 0, popen.stderr
 
 
@@ -49,10 +39,9 @@ def test_exit_code():
         # compatible task and model
         "task=text-classification",
         "model=bert-base-uncased",
-        # not using multirun to not sweep
     ]
 
-    popen_0 = run_and_stream(args_0)
+    popen_0 = run_process_and_stream_output(args_0)
     assert popen_0.returncode == 0, popen_0.stderr.decode("utf-8")
 
     args_1 = [
@@ -64,8 +53,17 @@ def test_exit_code():
         # incompatible task and model to trigger error
         "task=image-classification",
         "model=bert-base-uncased",
-        # not using multirun to not sweep
     ]
 
-    popen_1 = run_and_stream(args_1)
+    popen_1 = run_process_and_stream_output(args_1)
     assert popen_1.returncode == 1, popen_1.stderr.decode("utf-8")
+
+
+def run_process_and_stream_output(args):
+    popen = Popen(args, stdout=PIPE, stderr=STDOUT)
+    for line in iter(popen.stdout.readline, b""):
+        if line is not None:
+            LOGGER.info(line.decode("utf-8").rstrip())
+
+    popen.wait()
+    return popen

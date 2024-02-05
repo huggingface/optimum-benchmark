@@ -1,4 +1,3 @@
-# DeepSpeed-Inference Tensor Parallelism (DS-TP)
 defaults:
   - override launcher: torchrun
 

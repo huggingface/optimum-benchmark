@@ -1,4 +1,3 @@
-# Distributed Data Parallel (DDP) training
 defaults:
   - override launcher: torchrun
 

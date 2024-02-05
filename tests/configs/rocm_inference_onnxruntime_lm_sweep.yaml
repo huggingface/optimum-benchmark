@@ -4,10 +4,7 @@ defaults:
   - _base_ # inherits from base config
   - _inference_ # inherits from inference config
   - _lm_sweep_ # inherits from gpt sweep config
-  - _self_ # for hydra 1.1 compatibility
+  - _rocm_ # inherits from rocm config
+  - _self_ # hydra 1.1 compatibility
 
 experiment_name: rocm_inference_onnxruntime_lm_sweep
-device: cuda
-
-backend:
-  provider: ROCMExecutionProvider

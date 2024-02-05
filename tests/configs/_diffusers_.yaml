@@ -1,5 +1,7 @@
-model: hf-internal-testing/tiny-stable-diffusion-torch
-task: stable-diffusion
+backend:
+  library: diffusers
+  task: stable-diffusion
+  model: hf-internal-testing/tiny-stable-diffusion-torch
 
 benchmark:
   forward_kwargs:
