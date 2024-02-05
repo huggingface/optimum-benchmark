@@ -1,7 +1,7 @@
 import os
 import multiprocessing as mp
 from logging import getLogger
-from typing import Callable, Dict, Any, List
+from typing import Callable, Dict, Any, List, Union
 
 import torch.distributed
 from torch.distributed import FileStore
@@ -31,7 +31,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             )
             mp.set_start_method(self.config.start_method, force=True)
 
-    def launch(self, worker: Callable, *worker_args) -> None:
+    def launch(self, worker: Callable, *worker_args) -> Dict[str, Any]:
         launch_config = LaunchConfig(
             min_nodes=self.config.min_nodes,
             max_nodes=self.config.max_nodes,
@@ -57,7 +57,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             LOGGER.info(
                 f"\t+ Launching torchrun agent with {self.config.nproc_per_node} workers processes"
             )
-            report: List[Dict[str, Any]] = launch_agent(
+            report: Union[Dict[str, Any], List[Dict[str, Any]]] = launch_agent(
                 config=launch_config,
                 entrypoint=entrypoint,
                 args=(worker, *worker_args),
