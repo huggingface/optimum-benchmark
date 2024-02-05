@@ -1,12 +1,10 @@
+from typing import Any, Dict, Optional
 from dataclasses import dataclass, field
-from typing import Any, Dict
 
 from omegaconf import OmegaConf
 
-from ...import_utils import neural_compressor_version
 from ..config import BackendConfig
-
-OmegaConf.register_new_resolver("neural_compressor_version", neural_compressor_version)
+from ...import_utils import neural_compressor_version
 
 # https://github.com/intel/neural-compressor/blob/master/neural_compressor/config.py#L490
 ACCURACY_CRITERION_CONFIG = {
@@ -50,7 +48,7 @@ PTQ_QUANTIZATION_CONFIG = {
 @dataclass
 class INCConfig(BackendConfig):
     name: str = "neural_compressor"
-    version: str = "${neural_compressor_version:}"
+    version: Optional[str] = neural_compressor_version()
     _target_: str = "optimum_benchmark.backends.neural_compressor.backend.INCBackend"
 
     # load options
@@ -67,9 +65,17 @@ class INCConfig(BackendConfig):
     def __post_init__(self):
         super().__post_init__()
 
+        if self.device != "cpu":
+            raise ValueError(f"INCBackend only supports CPU devices, got {self.device}")
+
         if self.ptq_quantization:
             self.ptq_quantization_config = OmegaConf.to_object(
                 OmegaConf.merge(PTQ_QUANTIZATION_CONFIG, self.ptq_quantization_config)
             )
-            if self.ptq_quantization_config["approach"] == "static" and not self.calibration:
-                raise ValueError("Calibration must be enabled when using static quantization.")
+            if (
+                self.ptq_quantization_config["approach"] == "static"
+                and not self.calibration
+            ):
+                raise ValueError(
+                    "Calibration must be enabled when using static quantization."
+                )

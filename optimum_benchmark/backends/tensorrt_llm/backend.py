@@ -11,36 +11,27 @@ from .utils import MODEL_TYPE_TO_TRTLLMMODEL
 LOGGER = getLogger("tensorrt-llm")
 
 
-class TRTLLMBackend(Backend):
+class TRTLLMBackend(Backend[TRTLLMConfig]):
     NAME = "tensorrt-llm"
 
-    def __init__(self, model: str, task: str, library: str, device: str, hub_kwargs: Dict[str, Any]):
-        super().__init__(model, task, library, device, hub_kwargs)
-        self.validate_device()
+    def __init__(self, config: TRTLLMConfig):
+        super().__init__(config)
         self.validate_model_type()
 
-    def validate_model_type(self) -> None:
-        if self.model_type not in MODEL_TYPE_TO_TRTLLMMODEL:
-            raise NotImplementedError(f"TRTLLMBackend does not support model_type {self.model_type}")
-
-    def validate_device(self) -> None:
-        if self.device != "cuda":
-            raise NotImplementedError(f"TRTLLMBackend only supports device cuda, got {self.device}")
-
-    def configure(self, config: TRTLLMConfig) -> None:
-        super().configure(config)
-
         self.trtmodel_class = get_class(MODEL_TYPE_TO_TRTLLMMODEL[self.model_type])
-        ortmodel_name = self.trtmodel_class.__name__
-        LOGGER.info(
-            f"\t+ Inferred TRTLLMModel class {ortmodel_name} for task {self.task} and model_type {self.model_type}"
-        )
+        LOGGER.info(f"\t+ Using TRTLLMModel class {self.trtmodel_class.__name__}")
 
         self.load_trtmodel_from_pretrained()
 
+    def validate_model_type(self) -> None:
+        if self.model_type not in MODEL_TYPE_TO_TRTLLMMODEL:
+            raise NotImplementedError(
+                f"TRTLLMBackend does not support model_type {self.model_type}"
+            )
+
     def load_trtmodel_from_pretrained(self) -> None:
         self.pretrained_model = self.trtmodel_class.from_pretrained(
-            self.model,
+            self.config.model,
             tp=self.config.tp,
             pp=self.config.pp,
             dtype=self.config.dtype,
@@ -52,20 +43,21 @@ class TRTLLMBackend(Backend):
             max_prompt_length=self.config.max_prompt_length,
             max_batch_size=self.config.max_batch_size,
             max_new_tokens=self.config.max_new_tokens,
-            **self.hub_kwargs,
+            max_beam_width=self.config.max_beam_width,
+            **self.config.hub_kwargs,
         )
 
-    def forward(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:
+    def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:
         return self.pretrained_model.generate(
-            input_ids=input.get("input_ids", None),
-            attention_mask=input.get("attention_mask", None),
+            input_ids=inputs.get("input_ids", None),
+            attention_mask=inputs.get("attention_mask", None),
             max_new_tokens=1,
         )
 
-    def generate(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:
+    def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:
         return self.pretrained_model.generate(
-            input_ids=input.get("inputs", None),  # diff names
-            attention_mask=input.get("attention_mask", None),
+            input_ids=inputs.get("inputs", None),  # diff names
+            attention_mask=inputs.get("attention_mask", None),
             # important for benchmarking
             max_new_tokens=kwargs.get("max_new_tokens", -1),
             min_length=kwargs.get("min_new_tokens", -1),  # why different ?
