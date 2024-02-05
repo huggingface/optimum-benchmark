@@ -59,9 +59,7 @@ class ORTBackend(Backend[ORTConfig]):
             self.ortmodel_class = get_class(TASKS_TO_ORTMODELS[self.config.task])
             LOGGER.info(f"Using ORTModel class {self.ortmodel_class.__name__}")
         else:
-            raise NotImplementedError(
-                f"ORTBackend does not support task {self.config.task}"
-            )
+            raise NotImplementedError(f"ORTBackend does not support task {self.config.task}")
 
         self.set_session_options()
         self.tmpdir = TemporaryDirectory()
@@ -94,9 +92,7 @@ class ORTBackend(Backend[ORTConfig]):
 
     def validate_task(self) -> None:
         if self.config.task not in {**TASKS_TO_ORTMODELS, **TASKS_TO_ORTSD}:
-            raise NotImplementedError(
-                f"ORTBackend does not support task {self.config.task}"
-            )
+            raise NotImplementedError(f"ORTBackend does not support task {self.config.task}")
 
     def validate_provider(self) -> None:
         assert (
@@ -104,10 +100,7 @@ class ORTBackend(Backend[ORTConfig]):
         ), f"{self.config.provider} is not first in providers list: {self.pretrained_model.providers}"
 
     def is_deferred_trt_loading(self) -> bool:
-        return (
-            self.config.provider == "TensorrtExecutionProvider"
-            and self.config.task in TEXT_GENERATION_TASKS
-        )
+        return self.config.provider == "TensorrtExecutionProvider" and self.config.task in TEXT_GENERATION_TASKS
 
     def set_session_options(self) -> None:
         self.session_options = SessionOptions()
@@ -175,20 +168,15 @@ class ORTBackend(Backend[ORTConfig]):
 
     @property
     def onnx_files_names(self):
-        assert os.path.isdir(
-            self.config.model
-        ), f"{self.config.model} is not a directory"
+        assert os.path.isdir(self.config.model), f"{self.config.model} is not a directory"
         if self.config.use_merged:
             return [
                 model
                 for model in os.listdir(self.config.model)
-                if model not in [ONNX_DECODER_NAME, ONNX_DECODER_WITH_PAST_NAME]
-                and model.endswith(".onnx")
+                if model not in [ONNX_DECODER_NAME, ONNX_DECODER_WITH_PAST_NAME] and model.endswith(".onnx")
             ]
         else:
-            return [
-                file for file in os.listdir(self.config.model) if file.endswith(".onnx")
-            ]
+            return [file for file in os.listdir(self.config.model) if file.endswith(".onnx")]
 
     @property
     def inputs_names(self) -> List[str]:
@@ -215,9 +203,7 @@ class ORTBackend(Backend[ORTConfig]):
                 **self.config.optimization_config,
             )
         LOGGER.info("\t+ Creating optimizer")
-        optimizer = ORTOptimizer.from_pretrained(
-            self.config.model, file_names=self.onnx_files_names
-        )
+        optimizer = ORTOptimizer.from_pretrained(self.config.model, file_names=self.onnx_files_names)
         LOGGER.info("\t+ Optimizing ORTModel")
         optimizer.optimize(
             optimization_config,
@@ -248,17 +234,11 @@ class ORTBackend(Backend[ORTConfig]):
 
         LOGGER.info("\t+ Processing quantization config")
         if self.config.auto_quantization is not None:
-            auto_quantization_config = format_quantization_config(
-                self.config.auto_quantization_config
-            )
-            auto_quantization_class = getattr(
-                AutoQuantizationConfig, self.config.auto_quantization
-            )
+            auto_quantization_config = format_quantization_config(self.config.auto_quantization_config)
+            auto_quantization_class = getattr(AutoQuantizationConfig, self.config.auto_quantization)
             quantization_config = auto_quantization_class(**auto_quantization_config)
         elif self.config.quantization:
-            quantization_config = format_quantization_config(
-                self.config.quantization_config
-            )
+            quantization_config = format_quantization_config(self.config.quantization_config)
             quantization_config = QuantizationConfig(**quantization_config)
 
         if self.is_calibrated:
@@ -268,31 +248,21 @@ class ORTBackend(Backend[ORTConfig]):
                 "sequence_length": 1,
                 **self.model_shapes,
             }
-            calibration_dataset = DatasetGenerator(
-                task=self.config.task, dataset_shapes=dataset_shapes
-            ).generate()
-            columns_to_be_removed = list(
-                set(calibration_dataset.column_names) - set(self.inputs_names)
-            )
-            calibration_dataset = calibration_dataset.remove_columns(
-                columns_to_be_removed
-            )
+            calibration_dataset = DatasetGenerator(task=self.config.task, dataset_shapes=dataset_shapes).generate()
+            columns_to_be_removed = list(set(calibration_dataset.column_names) - set(self.inputs_names))
+            calibration_dataset = calibration_dataset.remove_columns(columns_to_be_removed)
 
             LOGGER.info("\t+ Processing calibration config")
             if self.config.auto_calibration is not None:
                 LOGGER.info("\t+ Processing calibration config")
-                auto_calibration_method = getattr(
-                    AutoCalibrationConfig, self.config.auto_calibration
-                )
+                auto_calibration_method = getattr(AutoCalibrationConfig, self.config.auto_calibration)
                 calibration_config = auto_calibration_method(
                     calibration_dataset,
                     **self.config.auto_calibration_config,
                 )
             elif self.config.calibration:
                 LOGGER.info("\t+ Processing calibration config")
-                calibration_config = format_calibration_config(
-                    self.config.calibration_config
-                )
+                calibration_config = format_calibration_config(self.config.calibration_config)
                 calibration_config = CalibrationConfig(
                     dataset_name="calibration_dataset",
                     dataset_split=calibration_dataset.split,
@@ -303,9 +273,7 @@ class ORTBackend(Backend[ORTConfig]):
 
         for onnx_file_name in self.onnx_files_names:
             LOGGER.info(f"\t+ Creating quantizer for {onnx_file_name}")
-            quantizer = ORTQuantizer.from_pretrained(
-                self.config.model, file_name=onnx_file_name
-            )
+            quantizer = ORTQuantizer.from_pretrained(self.config.model, file_name=onnx_file_name)
 
             if self.is_calibrated:
                 LOGGER.info("\t+ Fitting calibration tensors range")
@@ -343,9 +311,7 @@ class ORTBackend(Backend[ORTConfig]):
 
     def prepare_for_inference(self, **kwargs) -> None:
         if self.is_deferred_trt_loading():
-            LOGGER.info(
-                "\t+ Creating dynamic shapes for Tensorrt engine. Engine creation might take a while."
-            )
+            LOGGER.info("\t+ Creating dynamic shapes for Tensorrt engine. Engine creation might take a while.")
             batch_size = kwargs["batch_size"]
             max_new_tokens = kwargs["max_new_tokens"]
             sequence_length = kwargs["sequence_length"]
@@ -399,12 +365,8 @@ class ORTBackend(Backend[ORTConfig]):
         from optimum.onnxruntime import ORTTrainer, ORTTrainingArguments
 
         LOGGER.info("\t+ Setting dataset format to `torch`")
-        training_dataset.set_format(
-            type="torch", columns=list(training_dataset.features.keys())
-        )
-        LOGGER.info(
-            "\t+ Wrapping training arguments with optimum.onnxruntime.ORTTrainingArguments"
-        )
+        training_dataset.set_format(type="torch", columns=list(training_dataset.features.keys()))
+        LOGGER.info("\t+ Wrapping training arguments with optimum.onnxruntime.ORTTrainingArguments")
         training_arguments = ORTTrainingArguments(**training_arguments)
         LOGGER.info("\t+ Wrapping model with optimum.onnxruntime.ORTTrainer")
         trainer = ORTTrainer(

@@ -48,7 +48,6 @@ class TGIBackend(Backend[TGIConfig]):
         snapshot_download(self.config.model, **self.config.hub_kwargs)
 
     def load_model_from_pretrained(self) -> None:
-
         LOGGER.info("\t+ Modifying pretrained generation config")
         self.pretrained_generation_config.eos_token_id = -100
         self.pretrained_generation_config.pad_token_id = -101
@@ -67,14 +66,11 @@ class TGIBackend(Backend[TGIConfig]):
         )
 
         model_snapshot_path = f"{model_cache_path}/snapshots/{snapshot_ref}"
-        self.pretrained_generation_config.save_pretrained(
-            save_directory=model_snapshot_path
-        )
+        self.pretrained_generation_config.save_pretrained(save_directory=model_snapshot_path)
 
         self.start_tgi_server()
 
     def create_no_weights_model(self) -> None:
-
         LOGGER.info("\t+ Creating no weights model directory")
         self.no_weights_model = os.path.join(self.tmp_dir.name, "no_weights")
         os.makedirs(self.no_weights_model, exist_ok=True)
@@ -107,12 +103,10 @@ class TGIBackend(Backend[TGIConfig]):
         self.pretrained_model.save_pretrained(save_directory=self.no_weights_model)
         self.delete_pretrained_model()
 
-        LOGGER.info(f"\t+ Saving generation config")
+        LOGGER.info("\t+ Saving generation config")
         self.pretrained_generation_config.eos_token_id = -100
         self.pretrained_generation_config.pad_token_id = -101
-        self.pretrained_generation_config.save_pretrained(
-            save_directory=self.no_weights_model
-        )
+        self.pretrained_generation_config.save_pretrained(save_directory=self.no_weights_model)
 
     def load_model_with_no_weights(self) -> None:
         self.create_no_weights_model()
@@ -161,19 +155,13 @@ class TGIBackend(Backend[TGIConfig]):
         if self.config.device == "cuda":
             device_ids = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
             LOGGER.info(f"\t+ Starting TGI container on CUDA device(s): {device_ids}")
-            device_requests = [
-                docker.types.DeviceRequest(
-                    device_ids=[device_ids], capabilities=[["gpu"]]
-                )
-            ]
+            device_requests = [docker.types.DeviceRequest(device_ids=[device_ids], capabilities=[["gpu"]])]
         else:
             LOGGER.info("\t+ Starting TGI container on CPU device")
             device_requests = None
 
         if self.config.no_weights:
-            self.volumes = {
-                self.tmp_dir.name: {"bind": self.tmp_dir.name, "mode": "rw"}
-            }
+            self.volumes = {self.tmp_dir.name: {"bind": self.tmp_dir.name, "mode": "rw"}}
         else:
             self.volumes = {self.config.volume: {"bind": "/data", "mode": "rw"}}
 
@@ -202,9 +190,7 @@ class TGIBackend(Backend[TGIConfig]):
                 LOGGER.info(f"\t {tgi_log}")
 
         LOGGER.info("\t+ Creating InferenceClient")
-        self.client = InferenceClient(
-            model=f"http://{self.config.address}:{self.config.port}"
-        )
+        self.client = InferenceClient(model=f"http://{self.config.address}:{self.config.port}")
 
         while True:
             try:
@@ -218,23 +204,13 @@ class TGIBackend(Backend[TGIConfig]):
 
     def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         if "input_ids" in inputs:
-            return {
-                "prompt": self.pretrained_processor.batch_decode(
-                    inputs["input_ids"].tolist()
-                )
-            }
+            return {"prompt": self.pretrained_processor.batch_decode(inputs["input_ids"].tolist())}
         elif "inputs" in inputs:
-            return {
-                "prompt": self.pretrained_processor.batch_decode(
-                    inputs["inputs"].tolist()
-                )
-            }
+            return {"prompt": self.pretrained_processor.batch_decode(inputs["inputs"].tolist())}
         else:
             raise ValueError("inputs must contain either input_ids or inputs")
 
-    def forward(
-        self, inputs: Dict[str, Any], kwargs: Dict[str, Any]
-    ) -> List[TextGenerationResponse]:
+    def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> List[TextGenerationResponse]:
         output = []
         with ThreadPoolExecutor(max_workers=len(inputs["prompt"])) as executor:
             futures = [
@@ -252,9 +228,7 @@ class TGIBackend(Backend[TGIConfig]):
 
         return output
 
-    def generate(
-        self, inputs: Dict[str, Any], kwargs: Dict[str, Any]
-    ) -> List[TextGenerationResponse]:
+    def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> List[TextGenerationResponse]:
         output = []
         with ThreadPoolExecutor(max_workers=len(inputs["prompt"])) as executor:
             futures = [

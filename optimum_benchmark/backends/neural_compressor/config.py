@@ -72,10 +72,5 @@ class INCConfig(BackendConfig):
             self.ptq_quantization_config = OmegaConf.to_object(
                 OmegaConf.merge(PTQ_QUANTIZATION_CONFIG, self.ptq_quantization_config)
             )
-            if (
-                self.ptq_quantization_config["approach"] == "static"
-                and not self.calibration
-            ):
-                raise ValueError(
-                    "Calibration must be enabled when using static quantization."
-                )
+            if self.ptq_quantization_config["approach"] == "static" and not self.calibration:
+                raise ValueError("Calibration must be enabled when using static quantization.")

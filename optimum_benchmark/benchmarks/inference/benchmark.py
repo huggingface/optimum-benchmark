@@ -112,18 +112,14 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             _ = backend.forward(forward_input, self.config.forward_kwargs)
 
         LOGGER.info("\t+ Tracking forward pass latency and throughput")
-        latency_tracker = LatencyTracker(
-            device=backend.config.device, backend=backend.config.name
-        )
+        latency_tracker = LatencyTracker(device=backend.config.device, backend=backend.config.name)
         while sum(self.forward_latencies) < self.config.duration:
             with latency_tracker.track():
                 _ = backend.forward(forward_input, self.config.forward_kwargs)
             self.forward_latencies = latency_tracker.get_latencies()
 
         LOGGER.info(f"\t+ Forward pass latency: {self.forward_latency:.3g} (s)")
-        LOGGER.info(
-            f"\t+ Forward pass throughput: {self.forward_throughput:.3g} (samples/s)"
-        )
+        LOGGER.info(f"\t+ Forward pass throughput: {self.forward_throughput:.3g} (samples/s)")
 
     def run_forward_energy_tracking(self, backend: Backend) -> None:
         forward_input = self.input_generator.generate(mode="forward")
@@ -138,23 +134,13 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             while energy_tracker.get_elapsed_time() < self.config.duration:
                 _ = backend.forward(forward_input, self.config.forward_kwargs)
                 num_forward_passes += 1
-        num_forward_samples = (
-            num_forward_passes * self.config.input_shapes["batch_size"]
-        )
+        num_forward_samples = num_forward_passes * self.config.input_shapes["batch_size"]
         self.forward_energy = energy_tracker.get_total_energy() / num_forward_samples
-        self.forward_emissions = (
-            energy_tracker.get_total_emissions() / num_forward_samples
-        )
+        self.forward_emissions = energy_tracker.get_total_emissions() / num_forward_samples
 
-        LOGGER.info(
-            f"\t+ Forward pass energy consumption: {self.forward_energy:.3g} (kWh/sample)"
-        )
-        LOGGER.info(
-            f"\t+ Forward pass carbon emissions: {self.forward_emissions:.3g} (kgCO2eq/sample)"
-        )
-        LOGGER.info(
-            f"\t+ Full details in the CodeCarbon report: {os.getcwd()}/forward_codecarbon.csv"
-        )
+        LOGGER.info(f"\t+ Forward pass energy consumption: {self.forward_energy:.3g} (kWh/sample)")
+        LOGGER.info(f"\t+ Forward pass carbon emissions: {self.forward_emissions:.3g} (kgCO2eq/sample)")
+        LOGGER.info(f"\t+ Full details in the CodeCarbon report: {os.getcwd()}/forward_codecarbon.csv")
 
     def run_forward_memory_tracking(self, backend: "Backend") -> None:
         forward_input = self.input_generator.generate(mode="forward")
@@ -163,24 +149,16 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         forward_input = backend.prepare_inputs(forward_input)
 
         LOGGER.info("\t+ Tracking forward pass peak memory")
-        memory_tracker = MemoryTracker(
-            device=backend.config.device, backend=backend.config.name
-        )
+        memory_tracker = MemoryTracker(device=backend.config.device, backend=backend.config.name)
         with memory_tracker.track():
             _ = backend.forward(forward_input, self.config.forward_kwargs)
         self.forward_max_memory_used = memory_tracker.get_max_memory_used()
         self.forward_max_memory_reserved = memory_tracker.get_max_memory_reserved()
         self.forward_max_memory_allocated = memory_tracker.get_max_memory_allocated()
 
-        LOGGER.info(
-            f"\t+ Forward pass max memory used: {self.forward_max_memory_used:.3g} (MB)"
-        )
-        LOGGER.info(
-            f"\t+ Forward pass max memory reserved: {self.forward_max_memory_reserved:.3g} (MB)"
-        )
-        LOGGER.info(
-            f"\t+ Forward pass max memory allocated: {self.forward_max_memory_allocated:.3g} (MB)"
-        )
+        LOGGER.info(f"\t+ Forward pass max memory used: {self.forward_max_memory_used:.3g} (MB)")
+        LOGGER.info(f"\t+ Forward pass max memory reserved: {self.forward_max_memory_reserved:.3g} (MB)")
+        LOGGER.info(f"\t+ Forward pass max memory allocated: {self.forward_max_memory_allocated:.3g} (MB)")
 
     def run_generate_latency_tracking(self, backend: "Backend") -> None:
         generate_input = self.input_generator.generate(mode="generate")
@@ -192,18 +170,14 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         _ = backend.generate(generate_input, self.config.generate_kwargs)
 
         LOGGER.info("\t+ Tracking generation latency and throughput")
-        latency_tracker = LatencyTracker(
-            device=backend.config.device, backend=backend.config.name
-        )
+        latency_tracker = LatencyTracker(device=backend.config.device, backend=backend.config.name)
         while sum(self.generate_latencies) < self.config.duration:
             with latency_tracker.track():
                 _ = backend.generate(generate_input, self.config.generate_kwargs)
             self.generate_latencies = latency_tracker.get_latencies()
 
         LOGGER.info(f"\t+ Generation pass latency: {self.generate_latency:.3g} (s)")
-        LOGGER.info(
-            f"\t+ Generation pass throughput: {self.generate_throughput:.3g} (tokens/s)"
-        )
+        LOGGER.info(f"\t+ Generation pass throughput: {self.generate_throughput:.3g} (tokens/s)")
 
     def run_generate_energy_tracking(self, backend: Backend) -> None:
         generate_input = self.input_generator.generate(mode="generate")
@@ -225,19 +199,11 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             * self.config.input_shapes["batch_size"]
         )
         self.generate_energy = energy_tracker.get_total_energy() / num_generated_tokens
-        self.generate_emissions = (
-            energy_tracker.get_total_emissions() / num_generated_tokens
-        )
+        self.generate_emissions = energy_tracker.get_total_emissions() / num_generated_tokens
 
-        LOGGER.info(
-            f"\t+ Generation pass energy consumption: {self.generate_energy:.3g} (kWh/token)"
-        )
-        LOGGER.info(
-            f"\t+ Generation pass carbon emissions: {self.generate_emissions:.3g} (kgCO2eq/token)"
-        )
-        LOGGER.info(
-            f"\t+ Full details in the CodeCarbon report: {os.getcwd()}/generate_codecarbon.csv"
-        )
+        LOGGER.info(f"\t+ Generation pass energy consumption: {self.generate_energy:.3g} (kWh/token)")
+        LOGGER.info(f"\t+ Generation pass carbon emissions: {self.generate_emissions:.3g} (kgCO2eq/token)")
+        LOGGER.info(f"\t+ Full details in the CodeCarbon report: {os.getcwd()}/generate_codecarbon.csv")
 
     def run_generate_memory_tracking(self, backend: "Backend") -> None:
         generate_input = self.input_generator.generate(mode="generate")
@@ -246,24 +212,16 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         generate_input = backend.prepare_inputs(generate_input)
 
         LOGGER.info("\t+ Tracking generation pass peak memory")
-        memory_tracker = MemoryTracker(
-            device=backend.config.device, backend=backend.config.name
-        )
+        memory_tracker = MemoryTracker(device=backend.config.device, backend=backend.config.name)
         with memory_tracker.track():
             _ = backend.generate(generate_input, self.config.generate_kwargs)
         self.generate_max_memory_used = memory_tracker.get_max_memory_used()
         self.generate_max_memory_reserved = memory_tracker.get_max_memory_reserved()
         self.generate_max_memory_allocated = memory_tracker.get_max_memory_allocated()
 
-        LOGGER.info(
-            f"\t+ Generation pass max memory used: {self.generate_max_memory_used:.3g} (MB)"
-        )
-        LOGGER.info(
-            f"\t+ Generation pass max memory reserved: {self.generate_max_memory_reserved:.3g} (MB)"
-        )
-        LOGGER.info(
-            f"\t+ Generation pass max memory allocated: {self.generate_max_memory_allocated:.3g} (MB)"
-        )
+        LOGGER.info(f"\t+ Generation pass max memory used: {self.generate_max_memory_used:.3g} (MB)")
+        LOGGER.info(f"\t+ Generation pass max memory reserved: {self.generate_max_memory_reserved:.3g} (MB)")
+        LOGGER.info(f"\t+ Generation pass max memory allocated: {self.generate_max_memory_allocated:.3g} (MB)")
 
     # Metrics
     ## Forward pass metrics
@@ -323,18 +281,12 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         if self.config.memory:
             report_dict["forward.peak_memory(MB)"] = self.forward_max_memory_used
             report_dict["forward.max_memory_used(MB)"] = self.forward_max_memory_used
-            report_dict["forward.max_memory_allocated(MB)"] = (
-                self.forward_max_memory_allocated
-            )
-            report_dict["forward.max_memory_reserved(MB)"] = (
-                self.forward_max_memory_reserved
-            )
+            report_dict["forward.max_memory_allocated(MB)"] = self.forward_max_memory_allocated
+            report_dict["forward.max_memory_reserved(MB)"] = self.forward_max_memory_reserved
 
         if self.config.energy:
             report_dict["forward.energy_consumption(kWh/sample)"] = self.forward_energy
-            report_dict["forward.carbon_emissions(kgCO2eq/sample)"] = (
-                self.forward_emissions
-            )
+            report_dict["forward.carbon_emissions(kgCO2eq/sample)"] = self.forward_emissions
 
         if self.can_generate:
             report_dict["generate.latency(s)"] = self.generate_latency
@@ -345,22 +297,12 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
 
             if self.config.memory:
                 report_dict["generate.peak_memory(MB)"] = self.generate_max_memory_used
-                report_dict["generate.max_memory_used(MB)"] = (
-                    self.generate_max_memory_used
-                )
-                report_dict["generate.max_memory_allocated(MB)"] = (
-                    self.generate_max_memory_allocated
-                )
-                report_dict["generate.max_memory_reserved(MB)"] = (
-                    self.generate_max_memory_reserved
-                )
+                report_dict["generate.max_memory_used(MB)"] = self.generate_max_memory_used
+                report_dict["generate.max_memory_allocated(MB)"] = self.generate_max_memory_allocated
+                report_dict["generate.max_memory_reserved(MB)"] = self.generate_max_memory_reserved
 
             if self.config.energy:
-                report_dict["generate.energy_consumption(kWh/token)"] = (
-                    self.generate_energy
-                )
-                report_dict["generate.carbon_emissions(kgCO2eq/token)"] = (
-                    self.generate_emissions
-                )
+                report_dict["generate.energy_consumption(kWh/token)"] = self.generate_energy
+                report_dict["generate.carbon_emissions(kgCO2eq/token)"] = self.generate_emissions
 
         return report_dict

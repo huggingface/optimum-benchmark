@@ -43,9 +43,7 @@ class TorchORTBackend(Backend[TorchORTConfig]):
 
             peft_config_class = get_peft_config_class(self.config.peft_strategy)
             peft_config = peft_config_class(**self.config.peft_config)
-            self.pretrained_model = get_peft_model(
-                self.pretrained_model, peft_config=peft_config
-            )
+            self.pretrained_model = get_peft_model(self.pretrained_model, peft_config=peft_config)
 
         self.tmpdir.cleanup()
 
@@ -108,12 +106,8 @@ class TorchORTBackend(Backend[TorchORTConfig]):
         from optimum.onnxruntime import ORTTrainer, ORTTrainingArguments
 
         LOGGER.info("\t+ Setting dataset format to `torch`")
-        training_dataset.set_format(
-            type="torch", columns=list(training_dataset.features.keys())
-        )
-        LOGGER.info(
-            "\t+ Wrapping training arguments with optimum.onnxruntime.ORTTrainingArguments"
-        )
+        training_dataset.set_format(type="torch", columns=list(training_dataset.features.keys()))
+        LOGGER.info("\t+ Wrapping training arguments with optimum.onnxruntime.ORTTrainingArguments")
         training_arguments = ORTTrainingArguments(**training_arguments)
         LOGGER.info("\t+ Wrapping model with optimum.onnxruntime.ORTTrainer")
         trainer = ORTTrainer(

@@ -59,22 +59,14 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         # Threading options
         if self.config.inter_op_num_threads is not None:
-            LOGGER.info(
-                f"\t+ Setting pytorch inter_op_num_threads({self.config.inter_op_num_threads}))"
-            )
+            LOGGER.info(f"\t+ Setting pytorch inter_op_num_threads({self.config.inter_op_num_threads}))")
             torch.set_num_threads(self.config.inter_op_num_threads)
         if self.config.intra_op_num_threads is not None:
-            LOGGER.info(
-                f"\t+ Setting pytorch intra_op_num_threads({self.config.intra_op_num_threads}))"
-            )
+            LOGGER.info(f"\t+ Setting pytorch intra_op_num_threads({self.config.intra_op_num_threads}))")
             torch.set_num_interop_threads(self.config.intra_op_num_threads)
 
         # Dtypes options
-        self.amp_dtype = (
-            getattr(torch, self.config.amp_dtype)
-            if self.config.amp_dtype is not None
-            else None
-        )
+        self.amp_dtype = getattr(torch, self.config.amp_dtype) if self.config.amp_dtype is not None else None
 
         if self.is_quantized:
             LOGGER.info("\t+ Processing quantization config")
@@ -86,9 +78,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         # Load model
         if self.config.no_weights and self.config.library == "diffusers":
-            raise ValueError(
-                "Diffusion pipelines are not supported with no_weights=True"
-            )
+            raise ValueError("Diffusion pipelines are not supported with no_weights=True")
         elif self.config.no_weights:
             LOGGER.info("\t+ Loading model with no weights")
             self.load_model_with_no_weights()
@@ -126,9 +116,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             LOGGER.info("\t+ Using PEFT")
             peft_config_class = get_peft_config_class(self.config.peft_strategy)
             peft_config = peft_config_class(**self.config.peft_config)
-            self.pretrained_model = get_peft_model(
-                self.pretrained_model, peft_config=peft_config
-            )
+            self.pretrained_model = get_peft_model(self.pretrained_model, peft_config=peft_config)
 
         if self.config.deepspeed_inference:
             LOGGER.info("\t+ Using DeepSpeed-Inference")
@@ -208,9 +196,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         if self.is_quantized:
             # tricking from_pretrained to load the model as if it was quantized
-            self.pretrained_config.quantization_config = (
-                self.quantization_config.to_dict()
-            )
+            self.pretrained_config.quantization_config = self.quantization_config.to_dict()
 
         LOGGER.info("\t+ Saving pretrained config")
         self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
@@ -225,9 +211,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
             for name, module in meta_model.named_modules():
                 if hasattr(module, "in_features"):
-                    state_dict[name + ".g_idx"] = torch.ones(
-                        (module.in_features,), dtype=torch.int32
-                    )
+                    state_dict[name + ".g_idx"] = torch.ones((module.in_features,), dtype=torch.int32)
 
         LOGGER.info("\t+ Saving no weights model state_dict")
         save_file(
@@ -287,32 +271,27 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
     @property
     def is_quantized(self) -> bool:
-        return self.config.quantization_scheme is not None or hasattr(
-            self.pretrained_config, "quantization_config"
-        )
+        return self.config.quantization_scheme is not None or hasattr(self.pretrained_config, "quantization_config")
 
     @property
     def is_bnb_quantized(self) -> bool:
         return self.config.quantization_scheme == "bnb" or (
             hasattr(self.pretrained_config, "quantization_config")
-            and self.pretrained_config.quantization_config.get("quant_method", None)
-            == "bnb"
+            and self.pretrained_config.quantization_config.get("quant_method", None) == "bnb"
         )
 
     @property
     def is_gptq_quantized(self) -> bool:
         return self.config.quantization_scheme == "gptq" or (
             hasattr(self.pretrained_config, "quantization_config")
-            and self.pretrained_config.quantization_config.get("quant_method", None)
-            == "gptq"
+            and self.pretrained_config.quantization_config.get("quant_method", None) == "gptq"
         )
 
     @property
     def is_awq_quantized(self) -> bool:
         return self.config.quantization_scheme == "awq" or (
             hasattr(self.pretrained_config, "quantization_config")
-            and self.pretrained_config.quantization_config.get("quant_method", None)
-            == "awq"
+            and self.pretrained_config.quantization_config.get("quant_method", None) == "awq"
         )
 
     @property
@@ -383,12 +362,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         from transformers import Trainer, TrainingArguments
 
         LOGGER.info("\t+ Setting dataset format to `torch`")
-        training_dataset.set_format(
-            type="torch", columns=list(training_dataset.features.keys())
-        )
-        LOGGER.info(
-            "\t+ Wrapping training arguments with transformers.TrainingArguments"
-        )
+        training_dataset.set_format(type="torch", columns=list(training_dataset.features.keys()))
+        LOGGER.info("\t+ Wrapping training arguments with transformers.TrainingArguments")
         training_arguments = TrainingArguments(**training_arguments)
         LOGGER.info("\t+ Wrapping model with transformers.Trainer")
         trainer = Trainer(

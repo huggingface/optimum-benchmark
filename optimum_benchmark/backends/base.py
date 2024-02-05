@@ -22,7 +22,7 @@ from transformers import (
     AutoModel,
 )
 
-from .config import BackendConfigT, BackendConfig
+from .config import BackendConfigT
 from ..task_utils import get_automodel_class_for_task
 from .diffusers_utils import (
     extract_diffusers_shapes_from_config,
@@ -64,25 +64,17 @@ class Backend(Generic[BackendConfigT], ABC):
         if self.config.library == "diffusers":
             self.pretrained_processor = None
             self.pretrained_generation_config = None
-            self.pretrained_config = get_diffusers_pretrained_config(
-                model=self.config.model, **self.config.hub_kwargs
-            )
-            self.model_shapes = extract_diffusers_shapes_from_config(
-                model=self.config.model, **self.config.hub_kwargs
-            )
+            self.pretrained_config = get_diffusers_pretrained_config(model=self.config.model, **self.config.hub_kwargs)
+            self.model_shapes = extract_diffusers_shapes_from_config(model=self.config.model, **self.config.hub_kwargs)
             self.model_type = self.config.task
         elif self.config.library == "timm":
             self.pretrained_processor = get_timm_pretrained_processor(self.config.model)
             self.pretrained_config = get_timm_pretrained_config(self.config.model)
-            self.model_shapes = extract_timm_shapes_from_config(
-                config=self.pretrained_config
-            )
+            self.model_shapes = extract_timm_shapes_from_config(config=self.pretrained_config)
             self.model_type = self.pretrained_config.architecture
             self.pretrained_generation_config = None
         else:
-            self.pretrained_config = get_transformers_pretrained_config(
-                self.config.model, **self.config.hub_kwargs
-            )
+            self.pretrained_config = get_transformers_pretrained_config(self.config.model, **self.config.hub_kwargs)
             self.pretrained_generation_config = get_transformers_generation_config(
                 self.config.model, **self.config.hub_kwargs
             )

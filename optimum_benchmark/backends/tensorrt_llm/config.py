@@ -34,21 +34,13 @@ class TRTLLMConfig(BackendConfig):
         super().__post_init__()
 
         if self.device != "cuda":
-            raise NotImplementedError(
-                f"TRTLLMBackend only supports device cuda, got {self.device}"
-            )
+            raise NotImplementedError(f"TRTLLMBackend only supports device cuda, got {self.device}")
 
         if self.dtype not in SUPPORTED_DTYPES:
-            raise ValueError(
-                f"dtype must be one of float16, bfloat16, float32, got {self.dtype}"
-            )
+            raise ValueError(f"dtype must be one of float16, bfloat16, float32, got {self.dtype}")
 
         if self.gpus_per_node != self.world_size:
-            raise ValueError(
-                f"gpus_per_node ({self.gpus_per_node}) != world_size ({self.world_size})"
-            )
+            raise ValueError(f"gpus_per_node ({self.gpus_per_node}) != world_size ({self.world_size})")
 
         if self.world_size != self.pp * self.tp:
-            raise ValueError(
-                f"world_size ({self.gpus_per_node}) != pp ({self.pp}) * tp ({self.tp})"
-            )
+            raise ValueError(f"world_size ({self.gpus_per_node}) != pp ({self.pp}) * tp ({self.tp})")

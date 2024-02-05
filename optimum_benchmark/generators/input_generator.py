@@ -9,15 +9,11 @@ LOGGER = getLogger("input-generator")
 class InputGenerator:
     task_generator: TaskGenerator
 
-    def __init__(
-        self, task: str, input_shapes: Dict[str, int], model_shapes: Dict[str, int]
-    ) -> None:
+    def __init__(self, task: str, input_shapes: Dict[str, int], model_shapes: Dict[str, int]) -> None:
         if task in TASKS_TO_GENERATORS:
             LOGGER.info(f"\t+ Using {task} task generator")
             shapes = {**input_shapes, **model_shapes}
-            self.task_generator = TASKS_TO_GENERATORS[task](
-                shapes=shapes, with_labels=False
-            )
+            self.task_generator = TASKS_TO_GENERATORS[task](shapes=shapes, with_labels=False)
         else:
             raise NotImplementedError(
                 f"Task {task} is not supported. "

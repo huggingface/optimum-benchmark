@@ -25,9 +25,7 @@ class TRTLLMBackend(Backend[TRTLLMConfig]):
 
     def validate_model_type(self) -> None:
         if self.model_type not in MODEL_TYPE_TO_TRTLLMMODEL:
-            raise NotImplementedError(
-                f"TRTLLMBackend does not support model_type {self.model_type}"
-            )
+            raise NotImplementedError(f"TRTLLMBackend does not support model_type {self.model_type}")
 
     def load_trtmodel_from_pretrained(self) -> None:
         self.pretrained_model = self.trtmodel_class.from_pretrained(

@@ -195,5 +195,4 @@ def test_api_launch_experiment(launcher_config):
         backend=backend_config,
     )
     report = launch(experiment_config)
-
-    assert type(report) == dict
+    assert isinstance(report, dict)

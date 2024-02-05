@@ -35,9 +35,7 @@ GENERATE_CONFIG = {
 @dataclass
 class InferenceConfig(BenchmarkConfig):
     name: str = "inference"
-    _target_: str = (
-        "optimum_benchmark.benchmarks.inference.benchmark.InferenceBenchmark"
-    )
+    _target_: str = "optimum_benchmark.benchmarks.inference.benchmark.InferenceBenchmark"
 
     # benchmark options
     duration: int = 10
@@ -63,13 +61,8 @@ class InferenceConfig(BenchmarkConfig):
         self.input_shapes = {**INPUT_SHAPES, **self.input_shapes}
         self.generate_kwargs = {**GENERATE_CONFIG, **self.generate_kwargs}
 
-        if (
-            self.generate_kwargs["max_new_tokens"]
-            != self.generate_kwargs["min_new_tokens"]
-        ):
-            raise ValueError(
-                "`max_new_tokens` and `min_new_tokens` must be equal for fixed length output."
-            )
+        if self.generate_kwargs["max_new_tokens"] != self.generate_kwargs["min_new_tokens"]:
+            raise ValueError("`max_new_tokens` and `min_new_tokens` must be equal for fixed length output.")
 
         if self.new_tokens is not None:
             self.generate_kwargs["max_new_tokens"] = self.new_tokens
@@ -78,6 +71,4 @@ class InferenceConfig(BenchmarkConfig):
             self.new_tokens = self.generate_kwargs["min_new_tokens"]
 
         if self.energy and is_rocm_system():
-            raise ValueError(
-                "Energy measurement through codecarbon is not yet available on ROCm-powered devices."
-            )
+            raise ValueError("Energy measurement through codecarbon is not yet available on ROCm-powered devices.")

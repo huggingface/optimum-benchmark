@@ -38,9 +38,7 @@ LOGGER = getLogger("memory")
 
 
 class MemoryTracker:
-    def __init__(
-        self, device: str, backend: str, device_ids: Optional[List[int]] = None
-    ):
+    def __init__(self, device: str, backend: str, device_ids: Optional[List[int]] = None):
         self.device = device
         self.backend = backend
         self.device_ids = device_ids
@@ -80,26 +78,16 @@ class MemoryTracker:
             try:
                 torch.cuda.reset_peak_memory_stats(device=device_index)
             except Exception as e:
-                LOGGER.warning(
-                    f"Could not reset peak memory stats for device {device_index}: {e}"
-                )
+                LOGGER.warning(f"Could not reset peak memory stats for device {device_index}: {e}")
 
         yield from self._cuda_memory()
 
         for device_index in range(torch.cuda.device_count()):
-            self.max_memory_allocated += torch.cuda.max_memory_allocated(
-                device=device_index
-            )
-            self.max_memory_reserved += torch.cuda.max_memory_reserved(
-                device=device_index
-            )
+            self.max_memory_allocated += torch.cuda.max_memory_allocated(device=device_index)
+            self.max_memory_reserved += torch.cuda.max_memory_reserved(device=device_index)
 
-        LOGGER.debug(
-            f"Pytorch max memory allocated: {self.get_max_memory_allocated()} MB"
-        )
-        LOGGER.debug(
-            f"Pytorch max memory reserved: {self.get_max_memory_reserved()} MB"
-        )
+        LOGGER.debug(f"Pytorch max memory allocated: {self.get_max_memory_allocated()} MB")
+        LOGGER.debug(f"Pytorch max memory reserved: {self.get_max_memory_reserved()} MB")
 
     def _cuda_memory(self):
         if is_nvidia_system() and is_py3nvml_available():
@@ -128,9 +116,7 @@ class MemoryTracker:
             rocml.smi_shutdown()
             LOGGER.debug(f"PyRSMI max memory used: {self.get_max_memory_used()} MB")
         else:
-            raise ValueError(
-                "Only NVIDIA and AMD RoCm GPUs are supported for CUDA memory tracking."
-            )
+            raise ValueError("Only NVIDIA and AMD RoCm GPUs are supported for CUDA memory tracking.")
 
     def _cpu_memory(self, interval: float = 0.0001):
         child_connection, parent_connection = Pipe()
@@ -150,18 +136,14 @@ class MemoryTracker:
         LOGGER.debug(f"Peak memory usage: {self.get_max_memory_used()} MB")
 
 
-def monitor_process_peak_memory(
-    process_id: int, connection: Connection, interval: float
-):
+def monitor_process_peak_memory(process_id: int, connection: Connection, interval: float):
     process = psutil.Process(process_id)
     peak_memory_usage = 0
     connection.send(0)
     stop = False
 
     while not stop:
-        meminfo_attr = (
-            "memory_info" if hasattr(process, "memory_info") else "get_memory_info"
-        )
+        meminfo_attr = "memory_info" if hasattr(process, "memory_info") else "get_memory_info"
         current_memory_usage = getattr(process, meminfo_attr)()[0]
         peak_memory_usage = max(peak_memory_usage, current_memory_usage)
         stop = connection.poll(interval)
@@ -183,8 +165,6 @@ def infer_cuda_device_ids() -> List[int]:
             cuda_device_ids = list(range(rocml.smi_get_device_count()))
             rocml.smi_shutdown()
         else:
-            raise ValueError(
-                "Only NVIDIA and AMD ROCm GPUs are supported for CUDA memory tracking."
-            )
+            raise ValueError("Only NVIDIA and AMD ROCm GPUs are supported for CUDA memory tracking.")
 
     return cuda_device_ids

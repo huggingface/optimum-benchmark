@@ -59,36 +59,22 @@ class ExperimentConfig:
             "python_version": platform.python_version(),
             # libraries
             "transformers_version": transformers_version(),
-            "transformers_commit": get_git_revision_hash(
-                "transformers", os.environ.get("TRANSFORMERS_PATH", None)
-            ),
+            "transformers_commit": get_git_revision_hash("transformers", os.environ.get("TRANSFORMERS_PATH", None)),
             "accelerate_version": accelerate_version(),
-            "accelerate_commit": get_git_revision_hash(
-                "accelerate", os.environ.get("ACCELERATE_PATH", None)
-            ),
+            "accelerate_commit": get_git_revision_hash("accelerate", os.environ.get("ACCELERATE_PATH", None)),
             "optimum_version": optimum_version(),
-            "optimum_commit": get_git_revision_hash(
-                "optimum", os.environ.get("OPTIMUM_PATH", None)
-            ),
+            "optimum_commit": get_git_revision_hash("optimum", os.environ.get("OPTIMUM_PATH", None)),
             "diffusers_version": diffusers_version(),
-            "diffusers_commit": get_git_revision_hash(
-                "diffusers", os.environ.get("DIFFUSERS_PATH", None)
-            ),
+            "diffusers_commit": get_git_revision_hash("diffusers", os.environ.get("DIFFUSERS_PATH", None)),
             "timm_version": timm_version(),
-            "timm_commit": get_git_revision_hash(
-                "timm", os.environ.get("TIMM_PATH", None)
-            ),
+            "timm_commit": get_git_revision_hash("timm", os.environ.get("TIMM_PATH", None)),
             "peft_version": peft_version(),
-            "peft_commit": get_git_revision_hash(
-                "peft", os.environ.get("PEFT_PATH", None)
-            ),
+            "peft_commit": get_git_revision_hash("peft", os.environ.get("PEFT_PATH", None)),
         }
     )
 
 
-def run(
-    benchmark_config: BenchmarkConfig, backend_config: BackendConfig
-) -> Dict[str, Any]:
+def run(benchmark_config: BenchmarkConfig, backend_config: BackendConfig) -> Dict[str, Any]:
     try:
         # Allocate requested backend
         backend_factory: Type[Backend] = get_class(backend_config._target_)

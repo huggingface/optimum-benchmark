@@ -86,23 +86,16 @@ class ORTConfig(BackendConfig):
         super().__post_init__()
 
         if self.device not in ["cpu", "cuda"]:
-            raise ValueError(
-                f"ORTBackend only supports CPU and CUDA devices, got {self.device}"
-            )
+            raise ValueError(f"ORTBackend only supports CPU and CUDA devices, got {self.device}")
 
         if not self.no_weights and not self.export and self.torch_dtype is not None:
-            raise NotImplementedError(
-                "Can't convert an exported model's weights to a different dtype."
-            )
+            raise NotImplementedError("Can't convert an exported model's weights to a different dtype.")
 
         if self.provider is None:
             self.provider = DEVICE_PROVIDER_MAP[self.device]
 
         if self.use_io_binding is None:
-            self.use_io_binding = (
-                self.provider in IO_BINDING_PROVIDERS
-                and self.library in IO_BINDING_LIBRARIES
-            )
+            self.use_io_binding = self.provider in IO_BINDING_PROVIDERS and self.library in IO_BINDING_LIBRARIES
 
         if self.provider == "TensorrtExecutionProvider":
             self.provider_options = {**TRT_PROVIDER_OPTIONS, **self.provider_options}
@@ -114,11 +107,7 @@ class ORTConfig(BackendConfig):
                 **self.quantization_config,
             }
             # raise ValueError if the quantization is static but calibration is not enabled
-            if (
-                self.quantization_config["is_static"]
-                and self.auto_calibration is None
-                and not self.calibration
-            ):
+            if self.quantization_config["is_static"] and self.auto_calibration is None and not self.calibration:
                 raise ValueError(
                     "Quantization is static but calibration is not enabled. "
                     "Please enable calibration or disable static quantization."
@@ -129,11 +118,7 @@ class ORTConfig(BackendConfig):
                 **AUTO_QUANTIZATION_CONFIG,
                 **self.auto_quantization_config,
             }
-            if (
-                self.auto_quantization_config["is_static"]
-                and self.auto_calibration is None
-                and not self.calibration
-            ):
+            if self.auto_quantization_config["is_static"] and self.auto_calibration is None and not self.calibration:
                 raise ValueError(
                     "Quantization is static but calibration is not enabled. "
                     "Please enable calibration or disable static quantization."
@@ -151,6 +136,4 @@ class ORTConfig(BackendConfig):
             self.peft_config = {**PEFT_CONFIG, **self.peft_config}
 
             if self.peft_config["task_type"] is None:
-                raise ValueError(
-                    f"`peft_config.task_type` must be set to one of the following {PEFT_TASKS_TYPES}"
-                )
+                raise ValueError(f"`peft_config.task_type` must be set to one of the following {PEFT_TASKS_TYPES}")

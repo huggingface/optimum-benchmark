@@ -38,9 +38,7 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
         training_dataset = dataset_generator.generate()
 
         LOGGER.info("\t+ Creating training callbacks")
-        training_callbacks = [
-            MeasurementCallback(warmup_steps=self.config.warmup_steps)
-        ]
+        training_callbacks = [MeasurementCallback(warmup_steps=self.config.warmup_steps)]
 
         self.trainer_state = backend.train(
             training_dataset=training_dataset,
@@ -50,9 +48,7 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
         )
 
         LOGGER.info(f"Training runtime: {self.trainer_state.training_runtime:.3g} (s)")
-        LOGGER.info(
-            f"Training throughput: {self.trainer_state.training_throughput:.3g} (samples/s)"
-        )
+        LOGGER.info(f"Training throughput: {self.trainer_state.training_throughput:.3g} (samples/s)")
 
         return self.report()
 
@@ -105,9 +101,7 @@ class MeasurementCallback(TrainerCallback):
         state.training_end = time.time_ns() * 1e-9
         state.overall_end = time.time_ns() * 1e-9
 
-        state.total_training_batch_size = (
-            args.train_batch_size * args.gradient_accumulation_steps * args.world_size
-        )
+        state.total_training_batch_size = args.train_batch_size * args.gradient_accumulation_steps * args.world_size
 
         # warmup metrics
         state.warmup_runtime = state.warmup_end - state.warmup_start
@@ -118,23 +112,15 @@ class MeasurementCallback(TrainerCallback):
         # training metrics
         state.training_runtime = state.training_end - state.training_start
         state.num_training_steps = state.max_steps - self.warmup_steps
-        state.num_training_samples = (
-            state.num_training_steps * state.total_training_batch_size
-        )
+        state.num_training_samples = state.num_training_steps * state.total_training_batch_size
         state.training_throughput = state.num_training_samples / state.training_runtime
-        state.training_steps_per_second = (
-            state.num_training_steps / state.training_runtime
-        )
+        state.training_steps_per_second = state.num_training_steps / state.training_runtime
 
         # overall training metrics
         state.overall_runtime = state.training_end - state.warmup_start
-        state.num_overall_samples = (
-            state.num_warmup_samples + state.num_training_samples
-        )
+        state.num_overall_samples = state.num_warmup_samples + state.num_training_samples
         state.overall_throughput = state.num_overall_samples / state.overall_runtime
-        state.overall_steps_per_second = (
-            state.num_overall_samples / state.overall_runtime
-        )
+        state.overall_steps_per_second = state.num_overall_samples / state.overall_runtime
 
 
 # def get_data_collator(task: str):

@@ -70,19 +70,13 @@ class PyTorchConfig(BackendConfig):
             self.torch_compile_config = {**COMPILE_CONFIG, **self.torch_compile_config}
 
         if self.device_map is not None and self.device_map not in DEVICE_MAPS:
-            raise ValueError(
-                f"`device_map` must be one of {DEVICE_MAPS}. Got {self.device_map} instead."
-            )
+            raise ValueError(f"`device_map` must be one of {DEVICE_MAPS}. Got {self.device_map} instead.")
 
         if self.torch_dtype is not None and self.torch_dtype not in TORCH_DTYPES:
-            raise ValueError(
-                f"`torch_dtype` must be one of {TORCH_DTYPES}. Got {self.torch_dtype} instead."
-            )
+            raise ValueError(f"`torch_dtype` must be one of {TORCH_DTYPES}. Got {self.torch_dtype} instead.")
 
         if self.amp_dtype is not None and self.amp_dtype not in AMP_DTYPES:
-            raise ValueError(
-                f"`amp_dtype` must be one of {AMP_DTYPES}. Got {self.amp_dtype} instead."
-            )
+            raise ValueError(f"`amp_dtype` must be one of {AMP_DTYPES}. Got {self.amp_dtype} instead.")
 
         if self.quantization_scheme is not None:
             if self.quantization_scheme not in QUANTIZATION_CONFIGS:
@@ -91,9 +85,7 @@ class PyTorchConfig(BackendConfig):
                 )
 
             if self.quantization_scheme == "bnb" and is_rocm_system():
-                raise ValueError(
-                    "BitsAndBytes is not supported on ROCm GPUs. Please disable it."
-                )
+                raise ValueError("BitsAndBytes is not supported on ROCm GPUs. Please disable it.")
 
             if self.quantization_config:
                 QUANTIZATION_CONFIG = QUANTIZATION_CONFIGS[self.quantization_scheme]
@@ -111,6 +103,4 @@ class PyTorchConfig(BackendConfig):
             self.peft_config = {**PEFT_CONFIG, **self.peft_config}
 
             if self.peft_config["task_type"] is None:
-                raise ValueError(
-                    f"`peft_config.task_type` must be set to one of the following {PEFT_TASKS_TYPES}"
-                )
+                raise ValueError(f"`peft_config.task_type` must be set to one of the following {PEFT_TASKS_TYPES}")

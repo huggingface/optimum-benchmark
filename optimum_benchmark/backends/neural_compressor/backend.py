@@ -56,15 +56,11 @@ class INCBackend(Backend[INCConfig]):
 
     def validate_task(self) -> None:
         if self.config.task not in TASKS_TO_INCMODELS:
-            raise NotImplementedError(
-                f"INCBackend does not support task {self.config.task}"
-            )
+            raise NotImplementedError(f"INCBackend does not support task {self.config.task}")
 
     def load_automodel_from_pretrained(self) -> None:
         LOGGER.info("\t+ Loading AutoModel from pretrained")
-        self.pretrained_model = self.automodel_class.from_pretrained(
-            self.config.model, **self.config.hub_kwargs
-        )
+        self.pretrained_model = self.automodel_class.from_pretrained(self.config.model, **self.config.hub_kwargs)
 
     def load_automodel_with_no_weights(self) -> None:
         no_weights_model = os.path.join(self.tmpdir.name, "no_weights")
@@ -91,9 +87,7 @@ class INCBackend(Backend[INCConfig]):
 
     def load_incmodel_from_pretrained(self) -> None:
         LOGGER.info("\t+ Loading INCModel from pretrained")
-        self.pretrained_model = self.incmodel_class.from_pretrained(
-            self.config.model, **self.config.hub_kwargs
-        )
+        self.pretrained_model = self.incmodel_class.from_pretrained(self.config.model, **self.config.hub_kwargs)
 
     def load_incmodel_with_no_weights(self) -> None:
         no_weights_model = os.path.join(self.tmpdir.name, "no_weights")
@@ -117,9 +111,7 @@ class INCBackend(Backend[INCConfig]):
         ptq_quantization_config["accuracy_criterion"] = AccuracyCriterion(
             **ptq_quantization_config["accuracy_criterion"]
         )
-        ptq_quantization_config["tuning_criterion"] = TuningCriterion(
-            **ptq_quantization_config["tuning_criterion"]
-        )
+        ptq_quantization_config["tuning_criterion"] = TuningCriterion(**ptq_quantization_config["tuning_criterion"])
         ptq_quantization_config = PostTrainingQuantConfig(**ptq_quantization_config)
         LOGGER.info("\t+ Creating quantizer")
         quantizer = INCQuantizer.from_pretrained(
@@ -138,16 +130,9 @@ class INCBackend(Backend[INCConfig]):
                 "sequence_length": 1,
                 **self.model_shapes,
             }
-            calibration_dataset = DatasetGenerator(
-                task=self.config.task, dataset_shapes=dataset_shapes
-            ).generate()
-            columns_to_be_removed = list(
-                set(calibration_dataset.column_names)
-                - set(quantizer._signature_columns)
-            )
-            calibration_dataset = calibration_dataset.remove_columns(
-                columns_to_be_removed
-            )
+            calibration_dataset = DatasetGenerator(task=self.config.task, dataset_shapes=dataset_shapes).generate()
+            columns_to_be_removed = list(set(calibration_dataset.column_names) - set(quantizer._signature_columns))
+            calibration_dataset = calibration_dataset.remove_columns(columns_to_be_removed)
         else:
             calibration_dataset = None
 

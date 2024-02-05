@@ -9,13 +9,10 @@ if is_timm_available():
 
 
 def get_timm_pretrained_processor(model: str) -> Any:
-
     try:
         pretrained_config = get_timm_pretrained_config(model)
-        return timm.data.create_transform(
-            **timm.data.resolve_data_config(pretrained_config)
-        )
-    except Exception as e:
+        return timm.data.create_transform(**timm.data.resolve_data_config(pretrained_config))
+    except Exception:
         return None
 
 

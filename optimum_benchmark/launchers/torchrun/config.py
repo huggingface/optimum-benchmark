@@ -33,9 +33,7 @@ class TorchrunConfig(LauncherConfig):
     # The endpoint of the rdzv sync. storage.
     rdzv_endpoint: str = "localhost:0"
     # Key, value pair that specifies rendezvous specific configuration.
-    rdzv_configs: Dict[str, Any] = field(
-        default_factory=lambda: {"rank": 0, "timeout": 900}
-    )
+    rdzv_configs: Dict[str, Any] = field(default_factory=lambda: {"rank": 0, "timeout": 900})
     # The maximum amount of restarts that elastic agent will conduct on workers before failure.
     max_restarts: int = 0
     # The method is used by the elastic agent to start the workers (spawn, fork, forkserver).
@@ -54,9 +52,7 @@ class TorchrunConfig(LauncherConfig):
 
     def __post_init__(self) -> None:
         if self.start_method not in ["spawn", "fork"]:
-            raise ValueError(
-                f"start_method must be one of ['spawn', 'fork'], got {self.start_method}"
-            )
+            raise ValueError(f"start_method must be one of ['spawn', 'fork'], got {self.start_method}")
 
         if self.min_nodes != self.max_nodes:
             raise ValueError(
@@ -64,9 +60,5 @@ class TorchrunConfig(LauncherConfig):
             )
 
         if self.min_nodes != 1:
-            LOGGER.info(
-                "For multi-node benchmarks, run the benchmark on each node separately."
-            )
-            LOGGER.info(
-                f"Waiting for the other nodes to be avaialable at {self.rdzv_endpoint}..."
-            )
+            LOGGER.info("For multi-node benchmarks, run the benchmark on each node separately.")
+            LOGGER.info(f"Waiting for the other nodes to be avaialable at {self.rdzv_endpoint}...")

@@ -48,12 +48,13 @@ git clone https://github.com/huggingface/optimum-benchmark.git && python -m pip 
 
 Depending on the backends you want to use, you might need to install some extra dependencies:
 
+- Pytorch (default): `pip install optimum-benchmark`
 - OpenVINO: `pip install optimum-benchmark[openvino]`
+- Torch-ORT: `pip install optimum-benchmark[torch-ort]`
 - OnnxRuntime: `pip install optimum-benchmark[onnxruntime]`
 - TensorRT-LLM: `pip install optimum-benchmark[tensorrt-llm]`
 - OnnxRuntime-GPU: `pip install optimum-benchmark[onnxruntime-gpu]`
 - Intel Neural Compressor: `pip install optimum-benchmark[neural-compressor]`
-- OnnxRuntime-Training: `pip install optimum-benchmark[onnxruntime-training]`
 - Text Generation Inference: `pip install optimum-benchmark[text-generation-inference]`
 
 ### Running a benchmark 🏃

@@ -24,9 +24,7 @@ class TorchORTConfig(BackendConfig):
         super().__post_init__()
 
         if self.device != "cuda":
-            raise ValueError(
-                f"TorchORTBackend only supports CUDA devices, got {self.device}"
-            )
+            raise ValueError(f"TorchORTBackend only supports CUDA devices, got {self.device}")
 
         if self.peft_strategy is not None:
             if self.peft_strategy not in PEFT_CONFIGS:
@@ -37,6 +35,4 @@ class TorchORTConfig(BackendConfig):
             self.peft_config = {**PEFT_CONFIG, **self.peft_config}
 
             if self.peft_config["task_type"] is None:
-                raise ValueError(
-                    f"`peft_config.task_type` must be set to one of the following {PEFT_TASKS_TYPES}"
-                )
+                raise ValueError(f"`peft_config.task_type` must be set to one of the following {PEFT_TASKS_TYPES}")

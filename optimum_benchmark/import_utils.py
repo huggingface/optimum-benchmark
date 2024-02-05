@@ -116,9 +116,7 @@ def onnxruntime_version():
             return "ort-gpu:" + importlib.metadata.version("onnxruntime-gpu")
         except importlib.metadata.PackageNotFoundError:
             try:
-                return "ort-training:" + importlib.metadata.version(
-                    "onnxruntime-training"
-                )
+                return "ort-training:" + importlib.metadata.version("onnxruntime-training")
             except importlib.metadata.PackageNotFoundError:
                 return "ort:unknown"
 

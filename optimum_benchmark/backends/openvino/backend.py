@@ -63,17 +63,11 @@ class OVBackend(Backend[OVConfig]):
 
     def validate_task(self) -> None:
         if self.config.task not in TASKS_TO_OVMODEL:
-            raise NotImplementedError(
-                f"OVBackend does not support task {self.config.task}"
-            )
+            raise NotImplementedError(f"OVBackend does not support task {self.config.task}")
 
     def set_inter_op_num_threads(self) -> None:
-        LOGGER.info(
-            f"\t+ Setting inter_op_num_threads to {self.config.inter_op_num_threads}"
-        )
-        self.config.openvino_config[properties.inference_num_threads()] = (
-            self.config.inter_op_num_threads
-        )
+        LOGGER.info(f"\t+ Setting inter_op_num_threads to {self.config.inter_op_num_threads}")
+        self.config.openvino_config[properties.inference_num_threads()] = self.config.inter_op_num_threads
 
     def create_no_weights_model(self) -> None:
         LOGGER.info("\t+ Creating no weights model directory")
@@ -109,9 +103,7 @@ class OVBackend(Backend[OVConfig]):
         self.pretrained_model.tie_weights()
 
     def load_automodel_from_pretrained(self) -> None:
-        self.pretrained_model = self.automodel_class.from_pretrained(
-            self.config.model, **self.config.hub_kwargs
-        )
+        self.pretrained_model = self.automodel_class.from_pretrained(self.config.model, **self.config.hub_kwargs)
 
     def load_ovmodel_with_no_weights(self) -> None:
         self.create_no_weights_model()
@@ -148,9 +140,7 @@ class OVBackend(Backend[OVConfig]):
         LOGGER.info("\t+ Processing quantization config")
         quantization_config = OVQuantizationConfig(**self.config.quantization_config)
         LOGGER.info("\t+ Creating quantizer")
-        quantizer = OVQuantizer.from_pretrained(
-            self.pretrained_model, task=self.config.task, seed=self.config.seed
-        )
+        quantizer = OVQuantizer.from_pretrained(self.pretrained_model, task=self.config.task, seed=self.config.seed)
 
         if self.config.calibration:
             LOGGER.info("\t+ Generating calibration dataset")
@@ -159,16 +149,9 @@ class OVBackend(Backend[OVConfig]):
                 "sequence_length": 1,
                 **self.model_shapes,
             }
-            calibration_dataset = DatasetGenerator(
-                task=self.config.task, dataset_shapes=dataset_shapes
-            ).generate()
-            columns_to_be_removed = list(
-                set(calibration_dataset.column_names)
-                - set(quantizer._export_input_names)
-            )
-            calibration_dataset = calibration_dataset.remove_columns(
-                columns_to_be_removed
-            )
+            calibration_dataset = DatasetGenerator(task=self.config.task, dataset_shapes=dataset_shapes).generate()
+            columns_to_be_removed = list(set(calibration_dataset.column_names) - set(quantizer._export_input_names))
+            calibration_dataset = calibration_dataset.remove_columns(columns_to_be_removed)
         else:
             calibration_dataset = None
 
@@ -193,9 +176,7 @@ class OVBackend(Backend[OVConfig]):
                 for key, value in kwargs.items()
                 if key in inspect.getfullargspec(self.pretrained_model.reshape).args
             }
-            if (static_shapes.get("height", None) is not None) and (
-                "sequence_length" in static_shapes
-            ):
+            if (static_shapes.get("height", None) is not None) and ("sequence_length" in static_shapes):
                 static_shapes["sequence_length"] = kwargs.get("num_channels", 3)
 
             LOGGER.info(f"\t+ Reshaping model with static shapes: {static_shapes}")

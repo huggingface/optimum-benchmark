@@ -11,17 +11,13 @@ LOGGER = getLogger("dataset-generator")
 class DatasetGenerator:
     task_generator: TaskGenerator
 
-    def __init__(
-        self, task: str, dataset_shapes: Dict[str, int], model_shapes: Dict[str, int]
-    ) -> None:
+    def __init__(self, task: str, dataset_shapes: Dict[str, int], model_shapes: Dict[str, int]) -> None:
         dataset_shapes["batch_size"] = dataset_shapes.pop("dataset_size")
 
         if task in TASKS_TO_GENERATORS:
             LOGGER.info(f"Using {task} task generator")
             shapes = {**dataset_shapes, **model_shapes}
-            self.task_generator = TASKS_TO_GENERATORS[task](
-                shapes=shapes, with_labels=True
-            )
+            self.task_generator = TASKS_TO_GENERATORS[task](shapes=shapes, with_labels=True)
         else:
             raise NotImplementedError(
                 f"Task {task} is supported. \n"

@@ -26,9 +26,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
         super().__init__(config)
 
         if mp.get_start_method(allow_none=True) != self.config.start_method:
-            LOGGER.info(
-                f"Setting multiprocessing start method to {self.config.start_method}."
-            )
+            LOGGER.info(f"Setting multiprocessing start method to {self.config.start_method}.")
             mp.set_start_method(self.config.start_method, force=True)
 
     def launch(self, worker: Callable, *worker_args) -> Dict[str, Any]:
@@ -51,12 +49,8 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             log_dir=self.config.log_dir,
         )
 
-        with device_isolation(
-            enabled=self.config.device_isolation, benchmark_pid=os.getpid()
-        ):
-            LOGGER.info(
-                f"\t+ Launching torchrun agent with {self.config.nproc_per_node} workers processes"
-            )
+        with device_isolation(enabled=self.config.device_isolation, benchmark_pid=os.getpid()):
+            LOGGER.info(f"\t+ Launching torchrun agent with {self.config.nproc_per_node} workers processes")
             report: Union[Dict[str, Any], List[Dict[str, Any]]] = launch_agent(
                 config=launch_config,
                 entrypoint=entrypoint,

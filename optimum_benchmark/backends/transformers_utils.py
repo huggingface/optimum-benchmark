@@ -72,9 +72,7 @@ def extract_transformers_shapes_from_artifacts(
     # text input
     shapes["vocab_size"] = artifacts_dict.get("vocab_size", None)
     shapes["type_vocab_size"] = artifacts_dict.get("type_vocab_size", None)
-    shapes["max_position_embeddings"] = artifacts_dict.get(
-        "max_position_embeddings", None
-    )
+    shapes["max_position_embeddings"] = artifacts_dict.get("max_position_embeddings", None)
     if shapes["max_position_embeddings"] is None:
         shapes["max_position_embeddings"] = artifacts_dict.get("n_positions", None)
 
@@ -195,9 +193,7 @@ def parallel_generate_apply(
         if stream is None:
             stream = torch.cuda.current_stream(device)
         try:
-            with torch.cuda.device(device), torch.cuda.stream(stream), autocast(
-                enabled=autocast_enabled
-            ):
+            with torch.cuda.device(device), torch.cuda.stream(stream), autocast(enabled=autocast_enabled):
                 # this also avoids accidental slicing of `input` if it is a Tensor
                 if not isinstance(input, (list, tuple)):
                     input = (input,)
@@ -206,15 +202,11 @@ def parallel_generate_apply(
                 results[i] = output
         except Exception:
             with lock:
-                results[i] = ExceptionWrapper(
-                    where=f"in replica {i} on device {device}"
-                )
+                results[i] = ExceptionWrapper(where=f"in replica {i} on device {device}")
 
     if len(modules) > 1:
         threads = [
-            threading.Thread(
-                target=_worker, args=(i, module, input, kwargs, device, stream)
-            )
+            threading.Thread(target=_worker, args=(i, module, input, kwargs, device, stream))
             for i, (module, input, kwargs, device, stream) in enumerate(
                 zip(modules, inputs, kwargs_tup, devices, streams)
             )
@@ -265,12 +257,8 @@ class TransformersDataParallel(torch.nn.DataParallel):
             outputs = self.parallel_generate_apply(replicas, inputs, module_kwargs)
             return self.gather(outputs, self.output_device)
 
-    def parallel_generate_apply(
-        self, replicas: Sequence, inputs: Sequence, kwargs: Any
-    ) -> List[Any]:
-        return parallel_generate_apply(
-            replicas, inputs, kwargs, self.device_ids[: len(replicas)]
-        )
+    def parallel_generate_apply(self, replicas: Sequence, inputs: Sequence, kwargs: Any) -> List[Any]:
+        return parallel_generate_apply(replicas, inputs, kwargs, self.device_ids[: len(replicas)])
 
     def __getattr__(self, name: str) -> Any:
         try:
