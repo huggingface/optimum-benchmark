@@ -3,13 +3,9 @@ from contextlib import contextmanager
 from logging import getLogger
 from typing import List
 
-from ..import_utils import (
-    is_torch_available,
-    is_torch_distributed_available,
-)
+import torch
 
-if is_torch_available():
-    import torch
+from ..import_utils import is_torch_distributed_available
 
 if is_torch_distributed_available():
     import torch.distributed
@@ -18,71 +14,67 @@ LOGGER = getLogger("latency")
 
 
 class LatencyTracker:
-    def __init__(self, backend: str, device: str):
+    def __init__(self, device: str, backend: str):
         self.device = device
         self.backend = backend
+
         self.latencies: List[float] = []
 
         if is_torch_distributed_available() and torch.distributed.is_initialized():
-            LOGGER.debug("Tracking distributed latency")
-            self.tracker = "distributed"
-        elif is_torch_available() and self.backend == "pytorch" and self.device == "cuda":
-            LOGGER.debug("Tracking PyTorch CUDA latency")
-            self.tracker = "cuda_pytorch"
+            LOGGER.debug("Tracking Pytorch Distributed latency")
+        elif self.device == "cuda" and self.backend == "pytorch":
+            LOGGER.debug("Tracking Pytorch CUDA latency")
         else:
-            LOGGER.debug("Tracking latency")
-            self.tracker = "default"
+            LOGGER.debug("Tracking CPU latency")
 
     @contextmanager
     def track(self):
-        if self.tracker == "distributed":
-            yield from self._distributed_latency()
-        elif self.tracker == "cuda_pytorch":
-            yield from self._cuda_pytorch_latency()
+        if is_torch_distributed_available() and torch.distributed.is_initialized():
+            yield from self._pytorch_distributed_tracker()
+        elif self.backend == "pytorch" and self.device == "cuda":
+            yield from self._pytorch_cuda_tracker()
         else:
-            yield from self._latency()
+            yield from self._cpu_tracker()
+
+    def _pytorch_distributed_tracker(self):
+        torch.distributed.barrier()  # synchronize before workload
+        start = time.perf_counter_ns()
+        yield
+        torch.distributed.barrier()  # synchronize after workload
+        end = time.perf_counter_ns()
+
+        latency_ns = end - start
+        latency = latency_ns / 1e9
+        self.latencies.append(latency)
+
+        LOGGER.debug(f"Tracked Pytorch Distributed latency: {latency:.2e}s")
+
+    def _pytorch_cuda_tracker(self):
+        torch.cuda.synchronize()  # synchronize before workload
+        start = time.perf_counter_ns()
+        yield
+        torch.cuda.synchronize()  # synchronize after workload
+        end = time.perf_counter_ns()
+
+        latency_ns = end - start
+        latency = latency_ns / 1e9
+        self.latencies.append(latency)
+
+        LOGGER.debug(f"Tracked Pytorch CUDA latency: {latency:.2e}s")
+
+    def _cpu_tracker(self):
+        start = time.perf_counter_ns()
+        yield
+        end = time.perf_counter_ns()
+
+        latency_ns = end - start
+        latency = latency_ns / 1e9
+        self.latencies.append(latency)
+
+        LOGGER.debug(f"Tracked CPU latency: {latency:.2e}s")
 
     def get_latencies(self):
         return self.latencies
 
     def get_total_latency(self):
         return sum(self.latencies)
-
-    def _latency(self):
-        start = time.perf_counter_ns()
-        yield
-        end = time.perf_counter_ns()
-
-        latency_ns = end - start
-        latency = latency_ns / 1e9
-
-        LOGGER.debug(f"Tracked CPU latency: {latency:.2e}s")
-        self.latencies.append(latency)
-
-    def _distributed_latency(self):
-        torch.distributed.barrier()  # synchronize before starting the timer
-        start = time.perf_counter_ns()
-        yield
-        torch.distributed.barrier()  # synchronize before starting the timer
-        end = time.perf_counter_ns()
-
-        latency_ns = end - start
-        latency = latency_ns / 1e9
-
-        LOGGER.debug(f"Tracked distributed latency: {latency:.2e}s")
-
-        self.latencies.append(latency)
-
-    def _cuda_pytorch_latency(self):
-        torch.cuda.synchronize()  # synchronize before starting the timer
-        start = time.perf_counter_ns()
-        yield
-        torch.cuda.synchronize()  # synchronize before stopping the timer
-        end = time.perf_counter_ns()
-
-        latency_ns = end - start
-        latency = latency_ns / 1e9
-
-        LOGGER.debug(f"Tracked CUDA latency: {latency:.2e}s")
-
-        self.latencies.append(latency)
