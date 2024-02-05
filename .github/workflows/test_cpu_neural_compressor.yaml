@@ -26,8 +26,7 @@ jobs:
       - name: Install Intel Neural Compressor CPU requirements
         run: |
           pip install --upgrade pip
-          pip install -e .[test,neural-compressor]
+          pip install -e .[testing,neural-compressor]
 
       - name: Run Intel Neural Compressor CPU tests
-        run: |
-          pytest -k "cpu and neural_compressor"
+        run: pytest -k "cli and cpu and neural_compressor"

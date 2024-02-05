@@ -1,4 +1,4 @@
-name: ROCm Pytorch Tests
+name: API CUDA Tests
 
 on:
   workflow_dispatch:
@@ -18,24 +18,23 @@ jobs:
       matrix:
         image:
           [
-            { torch_rocm: rocm5.6, torch_pre_release: 0, rocm_version: 5.6.1 },
-            { torch_rocm: rocm5.7, torch_pre_release: 1, rocm_version: 5.7 },
+            { torch_cuda: cu121, cuda_version: 12.1.1 },
+            { torch_cuda: cu118, cuda_version: 11.8.0 },
           ]
 
-    runs-on: hf-amd-mi210-dev
+    runs-on: hf-dgx-01
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v3
 
       - name: Build image
         run: docker build
-          --file docker/rocm.dockerfile
+          --file docker/cuda.dockerfile
           --build-arg USER_ID=$(id -u)
           --build-arg GROUP_ID=$(id -g)
-          --build-arg TORCH_ROCM=${{ matrix.image.torch_rocm }}
-          --build-arg TORCH_PRE_RELEASE=${{ matrix.image.torch_pre_release }}
-          --build-arg ROCM_VERSION=${{ matrix.image.rocm_version }}
-          --tag opt-bench-rocm:${{ matrix.image.rocm_version }}
+          --build-arg TORCH_CUDA=${{ matrix.image.torch_cuda }}
+          --build-arg CUDA_VERSION=${{ matrix.image.cuda_version }}
+          --tag opt-bench-cuda:${{ matrix.image.cuda_version }}
           .
 
       - name: Run tests
@@ -44,13 +43,11 @@ jobs:
           --net host
           --pid host
           --shm-size 64G
-          --env USE_ROCM="1"
+          --env USE_CUDA="1"
           --volume $HOME/.cache/huggingface:/home/user/.cache/huggingface
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
-          --device /dev/kfd
-          --device /dev/dri/renderD128
-          --device /dev/dri/renderD129
+          --gpus '"device=0,1"'
           --entrypoint /bin/bash
-          opt-bench-rocm:${{ matrix.image.rocm_version }}
-          -c "pip install -e .[testing,,diffusers,timm,deepspeed,peft] && pytest -k 'cli and cuda and pytorch' -x"
+          opt-bench-cuda:${{ matrix.image.cuda_version }}
+          -c "pip install -e .[testing] && pytest -k 'api and cuda' -x"

@@ -1,4 +1,4 @@
-name: Quality Code Checks
+name: API Misc Tests
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  run_code_quality_checks:
+  run_misc_tests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -23,10 +23,10 @@ jobs:
         with:
           python-version: 3.8
 
-      - name: Install quality requirements
+      - name: Install requirements
         run: |
           pip install --upgrade pip
-          pip install -e .[quality]
+          pip install -e .[testing]
 
-      - name: Check style
-        run: make style_check
+      - name: Run tests
+        run: pytest -k "api and not (cpu or cuda or rocm or tensorrt)"

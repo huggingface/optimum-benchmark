@@ -26,8 +26,7 @@ jobs:
       - name: Install requirements
         run: |
           pip install --upgrade pip
-          pip install -e .[test]
+          pip install -e .[testing]
 
       - name: Run tests
-        run: |
-          pytest -k "not (cpu or cuda or rocm or tensorrt)"
+        run: pytest -k "cli and not (cpu or cuda or rocm or tensorrt)"
