@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build_image_and_run_gpu_tests:
+  build_image_and_run_rocm_onnxruntime_inference_tests:
     runs-on: hf-amd-mi210-dev
     steps:
       - name: Checkout

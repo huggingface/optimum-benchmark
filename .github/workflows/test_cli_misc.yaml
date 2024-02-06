@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  run_misc_tests:
+  run_misc_cli_tests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

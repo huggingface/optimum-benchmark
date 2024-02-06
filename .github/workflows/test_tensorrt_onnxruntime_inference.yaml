@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build_image_and_run_gpu_tests:
+  build_image_and_run_tensorrt_onnxruntime_tests:
     runs-on: hf-dgx-01
     steps:
       - name: Checkout

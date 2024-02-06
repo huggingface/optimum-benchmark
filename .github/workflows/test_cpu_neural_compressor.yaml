@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  run_cpu_tests:
+  run_cpu_neural_compressor_tests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

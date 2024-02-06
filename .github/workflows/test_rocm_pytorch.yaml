@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build_image_and_run_gpu_tests:
+  build_image_and_run_rocm_pytorch_tests:
     strategy:
       fail-fast: false
       matrix:
@@ -53,4 +53,4 @@ jobs:
           --device /dev/dri/renderD129
           --entrypoint /bin/bash
           opt-bench-rocm:${{ matrix.image.rocm_version }}
-          -c "pip install -e .[testing,,diffusers,timm,deepspeed,peft] && pytest -k 'cli and cuda and pytorch' -x"
+          -c "pip install -e .[testing,diffusers,timm,deepspeed,peft] && pytest -k 'cli and cuda and pytorch' -x"

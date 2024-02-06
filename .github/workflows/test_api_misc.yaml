@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  run_misc_tests:
+  run_api_misc_tests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -26,7 +26,7 @@ jobs:
       - name: Install requirements
         run: |
           pip install --upgrade pip
-          pip install -e .[testing]
+          pip install -e .[testing,timm,diffusers]
 
       - name: Run tests
         run: pytest -k "api and not (cpu or cuda or rocm or tensorrt)"
