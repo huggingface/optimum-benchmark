@@ -15,6 +15,7 @@ from optimum_benchmark.launchers.torchrun.config import TorchrunConfig
 from optimum_benchmark.benchmarks.inference.config import INPUT_SHAPES
 from optimum_benchmark.benchmarks.training.config import DATASET_SHAPES
 from optimum_benchmark.generators.input_generator import InputGenerator
+from optimum_benchmark.benchmarks.training.config import TrainingConfig
 from optimum_benchmark.benchmarks.inference.config import InferenceConfig
 from optimum_benchmark.generators.dataset_generator import DatasetGenerator
 from optimum_benchmark.backends.transformers_utils import (
@@ -44,7 +45,8 @@ LIBRARIES_TASKS_MODELS = [
     ("transformers", "image-classification", "google/vit-base-patch16-224"),
     ("transformers", "semantic-segmentation", "google/vit-base-patch16-224"),
 ]
-LAUNCHER_CONFIGS = [InlineConfig(), ProcessConfig(), TorchrunConfig(nproc_per_node=1)]
+BENCHMARK_CONFIGS = [InferenceConfig(memory=True, energy=True), TrainingConfig()]
+LAUNCHER_CONFIGS = [InlineConfig(), ProcessConfig(), TorchrunConfig(nproc_per_node=2)]
 
 
 @pytest.mark.parametrize("device,backend", DEVICES_BACKENDS)
@@ -134,11 +136,24 @@ def test_api_dataset_generator(library, task, model):
 
 
 @pytest.mark.parametrize("launcher_config", LAUNCHER_CONFIGS)
-def test_api_launch_experiment(launcher_config):
+def test_api_launchers(launcher_config):
     backend_config = PyTorchConfig(model="gpt2", no_weights=True, device="cpu")
     benchmark_config = InferenceConfig(memory=True)
     experiment_config = ExperimentConfig(
         experiment_name="api-launch-experiment",
+        benchmark=benchmark_config,
+        launcher=launcher_config,
+        backend=backend_config,
+    )
+    _ = launch(experiment_config)
+
+
+@pytest.mark.parametrize("benchmark_config", BENCHMARK_CONFIGS)
+def test_api_benchmarks(benchmark_config):
+    backend_config = PyTorchConfig(model="gpt2", no_weights=True, device="cpu")
+    launcher_config = ProcessConfig()
+    experiment_config = ExperimentConfig(
+        experiment_name="api-benchmark-experiment",
         benchmark=benchmark_config,
         launcher=launcher_config,
         backend=backend_config,
