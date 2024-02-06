@@ -3,7 +3,7 @@ from typing import Any, Dict
 
 from .task_generator import TASKS_TO_GENERATORS, TaskGenerator
 
-LOGGER = getLogger("input-generator")
+LOGGER = getLogger("input")
 
 
 class InputGenerator:

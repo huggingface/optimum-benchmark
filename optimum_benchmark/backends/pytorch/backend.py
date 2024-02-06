@@ -8,9 +8,10 @@ import torch
 from datasets import Dataset
 from safetensors.torch import save_file
 from transformers.utils import ModelOutput
+import datasets.utils.logging as datasets_logging
 from transformers import TrainerCallback, TrainerState
 from transformers.modeling_utils import no_init_weights
-from transformers.utils.logging import set_verbosity_error
+import transformers.utils.logging as transformers_logging
 
 from ..base import Backend
 from .config import PyTorchConfig
@@ -31,8 +32,9 @@ if is_peft_available():
 if is_torch_distributed_available():
     import torch.distributed
 
-# disable transformers logging
-set_verbosity_error()
+# disable other loggers
+datasets_logging.set_verbosity_error()
+transformers_logging.set_verbosity_error()
 
 # bachend logger
 LOGGER = getLogger("pytorch")

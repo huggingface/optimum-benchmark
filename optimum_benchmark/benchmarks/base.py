@@ -2,8 +2,9 @@ from abc import ABC
 from logging import getLogger
 from typing import ClassVar, Generic, Dict, Any
 
-from .config import BenchmarkConfigT
 from ..backends.base import Backend
+from .config import BenchmarkConfigT
+
 
 LOGGER = getLogger("benchmark")
 

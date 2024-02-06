@@ -26,7 +26,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
         super().__init__(config)
 
         if mp.get_start_method(allow_none=True) != self.config.start_method:
-            LOGGER.info(f"Setting multiprocessing start method to {self.config.start_method}.")
+            LOGGER.info(f"\t+ Setting multiprocessing start method to {self.config.start_method}.")
             mp.set_start_method(self.config.start_method, force=True)
 
     def launch(self, worker: Callable, *worker_args) -> Dict[str, Any]:

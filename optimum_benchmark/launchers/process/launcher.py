@@ -20,7 +20,7 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         super().__init__(config)
 
         if mp.get_start_method(allow_none=True) != self.config.start_method:
-            LOGGER.info(f"Setting multiprocessing start method to {self.config.start_method}.")
+            LOGGER.info(f"\t+ Setting multiprocessing start method to {self.config.start_method}.")
             mp.set_start_method(self.config.start_method, force=True)
 
     def launch(self, worker: Callable, *worker_args) -> Dict[str, Any]:
@@ -34,7 +34,7 @@ class ProcessLauncher(Launcher[ProcessConfig]):
             worker_process.join()
 
         if worker_process.exitcode != 0:
-            LOGGER.error(f"Worker process exited with code {worker_process.exitcode}, forwarding...")
+            LOGGER.error(f"\t+ Worker process exited with code {worker_process.exitcode}, forwarding...")
             exit(worker_process.exitcode)
 
         report = queue.get()
@@ -48,4 +48,5 @@ def target(fn, q, *args):
     setup_colorlog_logging()
 
     out = fn(*args)
+
     q.put(out)
