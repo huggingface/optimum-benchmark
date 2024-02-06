@@ -1,4 +1,5 @@
 import os
+import logging
 import logging.config
 from subprocess import Popen, PIPE, STDOUT
 
@@ -37,16 +38,18 @@ JOB_LOGGING = {
 }
 
 
-def setup_colorlog_logging() -> None:
+def setup_logging(level: str = "INFO"):
     if os.path.exists(".hydra/hydra.yaml"):
         hydra_config = OmegaConf.load(".hydra/hydra.yaml")
         job_logging = OmegaConf.to_container(
             hydra_config.hydra.job_logging,
             resolve=True,
         )
-        logging.config.dictConfig(job_logging)
     else:
-        logging.config.dictConfig(JOB_LOGGING)
+        job_logging = JOB_LOGGING.copy()
+
+    job_logging["root"]["level"] = level
+    logging.config.dictConfig(job_logging)
 
 
 def run_process_and_log_stream_output(logger, args):

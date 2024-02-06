@@ -11,9 +11,9 @@ from torch.distributed.launcher.api import LaunchConfig, launch_agent
 
 from ..base import Launcher
 from .config import TorchrunConfig
+from ...logging_utils import setup_logging
 from ..isolation_utils import device_isolation
 from ...benchmarks.utils import consolidate_reports
-from ...logging_utils import setup_colorlog_logging
 
 
 LOGGER = getLogger("torchrun")
@@ -48,13 +48,14 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             local_addr=self.config.local_addr,
             log_dir=self.config.log_dir,
         )
+        current_log_level = getLogger().getEffectiveLevel()
 
         with device_isolation(enabled=self.config.device_isolation, benchmark_pid=os.getpid()):
             LOGGER.info(f"\t+ Launching torchrun agent with {self.config.nproc_per_node} workers processes")
             report: Union[Dict[str, Any], List[Dict[str, Any]]] = launch_agent(
                 config=launch_config,
                 entrypoint=entrypoint,
-                args=(worker, *worker_args),
+                args=(worker, current_log_level, *worker_args),
             )
 
         if isinstance(report, list):
@@ -64,7 +65,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
 
 
 @record
-def entrypoint(fn, *args):
+def entrypoint(fn, log_level, *args):
     """
     This a pickalable function that correctly sets up the logging configuration
     """
@@ -79,7 +80,7 @@ def entrypoint(fn, *args):
         torch.cuda.set_device(rank)
 
     if rank == 0:
-        setup_colorlog_logging()
+        setup_logging(log_level)
 
     # TODO: use a tcp store instead
     store = FileStore("torchrun_filestore")

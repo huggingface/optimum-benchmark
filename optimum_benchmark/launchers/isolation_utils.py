@@ -1,15 +1,14 @@
 import os
 import time
 import signal
-import logging.config
 from typing import Dict, Set
 from logging import getLogger
 from multiprocessing import Process
 from contextlib import contextmanager
 
 import psutil
-from omegaconf import OmegaConf
 
+from ..logging_utils import setup_logging
 from ..env_utils import is_nvidia_system, is_rocm_system
 from ..import_utils import is_amdsmi_available, is_py3nvml_available, torch_version
 
@@ -130,10 +129,9 @@ def get_pids_running_on_system_device() -> Set[int]:
 
 
 def assert_system_devices_isolation(benchmark_pid: int) -> None:
-    isolation_pid = os.getpid()
+    setup_logging("ERROR")
 
-    hydra_conf = OmegaConf.load(".hydra/hydra.yaml")
-    logging.config.dictConfig(OmegaConf.to_container(hydra_conf.hydra.job_logging, resolve=True))
+    isolation_pid = os.getpid()
 
     while psutil.pid_exists(benchmark_pid):
         child_processes = set()

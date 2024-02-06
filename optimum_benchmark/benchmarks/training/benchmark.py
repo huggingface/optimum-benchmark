@@ -47,8 +47,8 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
             training_arguments=self.config.training_arguments,
         )
 
-        LOGGER.info(f"Training runtime: {self.trainer_state.training_runtime:.3g} (s)")
-        LOGGER.info(f"Training throughput: {self.trainer_state.training_throughput:.3g} (samples/s)")
+        LOGGER.debug(f"Training runtime: {self.trainer_state.training_runtime:.3g} (s)")
+        LOGGER.debug(f"Training throughput: {self.trainer_state.training_throughput:.3g} (samples/s)")
 
         return self.report()
 

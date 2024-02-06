@@ -4,9 +4,8 @@ from logging import getLogger
 from typing import Callable, Dict, Any
 from multiprocessing import Process, Queue
 
-
-from ...logging_utils import setup_colorlog_logging
 from ..isolation_utils import device_isolation
+from ...logging_utils import setup_logging
 from .config import ProcessConfig
 from ..base import Launcher
 
@@ -26,7 +25,12 @@ class ProcessLauncher(Launcher[ProcessConfig]):
     def launch(self, worker: Callable, *worker_args) -> Dict[str, Any]:
         # worker process can't be daemon since it might spawn its own processes
         queue = Queue()
-        worker_process = Process(target=target, args=(worker, queue, *worker_args), daemon=False)
+        current_log_level = getLogger().getEffectiveLevel()
+        worker_process = Process(
+            daemon=False,
+            target=target,
+            args=(worker, queue, current_log_level, *worker_args),
+        )
         worker_process.start()
         LOGGER.info(f"\t+ Launched worker process with PID {worker_process.pid}.")
 
@@ -42,10 +46,10 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         return report
 
 
-def target(fn, q, *args):
+def target(fn, q, log_level, *args):
     """This a pickalable function that correctly sets up the logging configuration for the worker process."""
 
-    setup_colorlog_logging()
+    setup_logging(log_level)
 
     out = fn(*args)
 

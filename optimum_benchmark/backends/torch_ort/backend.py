@@ -130,7 +130,7 @@ class TorchORTBackend(Backend[TorchORTConfig]):
             self.tmpdir.cleanup()
 
         if self.config.device == "cuda":
-            LOGGER.info("\t+ Emptying CUDA cache")
+            LOGGER.info("\t+ Emptying Pytorch CUDA cache")
             torch.cuda.empty_cache()
 
         gc.collect()

@@ -21,11 +21,11 @@ class LatencyTracker:
         self.latencies: List[float] = []
 
         if is_torch_distributed_available() and torch.distributed.is_initialized():
-            LOGGER.debug("Tracking Pytorch Distributed latency")
+            LOGGER.info("Tracking Pytorch Distributed latency")
         elif self.device == "cuda" and self.backend == "pytorch":
-            LOGGER.debug("Tracking Pytorch CUDA latency")
+            LOGGER.info("Tracking Pytorch CUDA latency")
         else:
-            LOGGER.debug("Tracking CPU latency")
+            LOGGER.info("Tracking CPU latency")
 
     @contextmanager
     def track(self):
