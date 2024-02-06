@@ -44,7 +44,7 @@ LIBRARIES_TASKS_MODELS = [
     ("transformers", "image-classification", "google/vit-base-patch16-224"),
     ("transformers", "semantic-segmentation", "google/vit-base-patch16-224"),
 ]
-LAUNCHER_CONFIGS = [InlineConfig(), ProcessConfig(), TorchrunConfig()]
+LAUNCHER_CONFIGS = [InlineConfig(), ProcessConfig(), TorchrunConfig(nproc_per_node=1)]
 
 
 @pytest.mark.parametrize("device,backend", DEVICES_BACKENDS)

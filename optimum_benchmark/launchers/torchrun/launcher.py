@@ -69,15 +69,19 @@ def entrypoint(fn, *args):
     This a pickalable function that correctly sets up the logging configuration
     """
     if not torch.distributed.is_initialized():
-        # initialize the process group
-        torch.distributed.init_process_group()
+        # initialize the process group if not already initialized
+        backend = "nccl" if torch.cuda.is_available() else "gloo"
+        torch.distributed.init_process_group(backend=backend)
 
     rank = torch.distributed.get_rank()
-    world_size = torch.distributed.get_world_size()
 
-    if rank == 0 or world_size == 1:
+    if torch.cuda.is_available():
+        torch.cuda.set_device(rank)
+
+    if rank == 0:
         setup_colorlog_logging()
 
+    # TODO: use a tcp store instead
     store = FileStore("torchrun_filestore")
     store.set(f"rank_{rank}", str(os.getpid()))
 

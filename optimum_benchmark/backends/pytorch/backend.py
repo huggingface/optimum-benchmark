@@ -18,19 +18,16 @@ from .config import PyTorchConfig
 from ..peft_utils import get_peft_config_class
 from ..transformers_utils import TransformersDataParallel, randomize_weights
 from ...import_utils import (
-    is_torch_distributed_available,
     is_deepspeed_available,
     is_peft_available,
 )
 
-if is_deepspeed_available():
-    from deepspeed import init_inference
 
 if is_peft_available():
     from peft import get_peft_model
 
-if is_torch_distributed_available():
-    import torch.distributed
+if is_deepspeed_available():
+    from deepspeed import init_inference
 
 # disable other loggers
 datasets_logging.set_verbosity_error()
@@ -54,10 +51,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 LOGGER.info(f"\t+ Using Pipeline class {automodel}")
             else:
                 LOGGER.info(f"\t+ Using AutoModel class {automodel}")
-
-        if is_torch_distributed_available() and torch.distributed.is_initialized():
-            LOGGER.info("\t+ Setting default CUDA device to distributed rank")
-            torch.cuda.set_device(torch.distributed.get_rank())
 
         # Threading options
         if self.config.inter_op_num_threads is not None:

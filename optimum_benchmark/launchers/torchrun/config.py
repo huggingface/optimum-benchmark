@@ -20,8 +20,7 @@ class TorchrunConfig(LauncherConfig):
     # Maximum amount of nodes that the user function will be launched on.
     max_nodes: int = 1
     # On each node the elastic agent will launch this amount of workers that will execute user defined function.
-    nproc_per_node: int = len(os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(","))
-
+    nproc_per_node: Optional[int] = None
     # User defined role of the worker (defaults to "trainer").
     role: str = "benchmark_worker"
     # The interval in seconds that is used by the elastic_agent as a period of monitoring workers.
@@ -62,3 +61,18 @@ class TorchrunConfig(LauncherConfig):
         if self.min_nodes != 1:
             LOGGER.info("For multi-node benchmarks, run the benchmark on each node separately.")
             LOGGER.info(f"Waiting for the other nodes to be avaialable at {self.rdzv_endpoint}...")
+
+        if self.nproc_per_node is None:
+            if os.environ.get("CUDA_VISIBLE_DEVICES", None) is not None:
+                LOGGER.warning(
+                    "`nproc_per_node` is not set but `CUDA_VISIBLE_DEVICES` is set. "
+                    "Setting `nproc_per_node` to the number of visible devices."
+                )
+                self.nproc_per_node = len(os.environ["CUDA_VISIBLE_DEVICES"].split(","))
+            else:
+                LOGGER.warning(
+                    "`nproc_per_node` is not set and `CUDA_VISIBLE_DEVICES` is not set. "
+                    "Setting `nproc_per_node` and `CUDA_VISIBLE_DEVICES` to 1."
+                )
+                self.nproc_per_node = 1
+                os.environ["CUDA_VISIBLE_DEVICES"] = "0"
