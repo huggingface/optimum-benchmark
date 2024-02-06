@@ -2,7 +2,7 @@ import os
 import platform
 from logging import getLogger
 from dataclasses import dataclass, field
-from typing import Any, Dict, Type, TYPE_CHECKING
+from typing import Any, Dict, Type, Optional, TYPE_CHECKING
 
 from hydra.utils import get_class
 
@@ -47,6 +47,11 @@ class ExperimentConfig:
 
     # Experiment name
     experiment_name: str
+
+    task: Optional[str] = None  # deprecated
+    model: Optional[str] = None  # deprecated
+    device: Optional[str] = None  # deprecated
+    library: Optional[str] = None  # deprecated
 
     # ENVIRONMENT CONFIGURATION
     environment: Dict = field(
