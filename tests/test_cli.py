@@ -27,7 +27,7 @@ def test_cli_configs(config_name):
     ]
 
     popen = run_process_and_log_stream_output(LOGGER, args)
-    assert popen.returncode == 0
+    assert popen.returncode == 0, f"Failed to run {config_name}"
 
 
 def test_cli_exit_code():
@@ -38,7 +38,7 @@ def test_cli_exit_code():
         "--config-name",
         "cpu_inference_pytorch_bert_sweep",
         # compatible task and model
-        "backend.task=image-classification",
+        "backend.task=text-classification",
         "backend.model=bert-base-uncased",
     ]
 
@@ -52,7 +52,7 @@ def test_cli_exit_code():
         "--config-name",
         "cpu_inference_pytorch_bert_sweep",
         # incompatible task and model to trigger error
-        "backend.task=text-classification",
+        "backend.task=image-classification",
         "backend.model=bert-base-uncased",
     ]
 

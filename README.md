@@ -8,27 +8,34 @@ Optimum-Benchmark is a unified multi-backend utility for benchmarking [Transform
 ## Motivation 🤔
 
 - Hardware vendors wanting to know how their hardware performs compared to others on the same models.
-- HF users wanting to know how their chosen model performs in terms of latency, throughput, memory usage, energy consumption, etc.
-- Experimenting with Optimum's hardware & backend specific optimizations & quantization schemes that can be applied to models and improve their computational/memory/energy efficiency.
+- HF ecosystem users wanting to know how their chosen model performs in terms of latency, throughput, memory usage, energy consumption, etc.
+- Experimenting with hardware & backend specific optimizations & quantization schemes that can be applied to models and improve their computational/memory/energy efficiency.
 - [...]
 
 ## Current status 📈
 
+### API
+
+[![CPU](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_api_cpu.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_api_cpu.yaml)
+[![CUDA](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_api_cuda.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_api_cuda.yaml)
+[![ROCM](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_api_rocm.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_api_rocm.yaml)
+[![MISC](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_api_misc.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_api_misc.yaml)
+
+### CLI
 [![CPU Pytorch Tests](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cpu_pytorch.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cpu_pytorch.yaml)
 [![CPU OnnxRuntime Tests](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cpu_onnxruntime.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cpu_onnxruntime.yaml)
 [![CPU Intel Neural Compressor Tests](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cpu_neural_compressor.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cpu_neural_compressor.yaml)
 [![CPU OpenVINO Tests](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cpu_openvino.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cpu_openvino.yaml)
-<br>
+
 [![CUDA Pytorch Tests](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cuda_pytorch.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cuda_pytorch.yaml)
 [![CUDA OnnxRuntime Inference Tests](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cuda_onnxruntime_inference.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cuda_onnxruntime_inference.yaml)
-[![CUDA OnnxRuntime Training Tests](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cuda_onnxruntime_training.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cuda_onnxruntime_training.yaml)
-<br>
+[![CUDA Torch-ORT Training Tests](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cuda_torch_ort_training.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cuda_torch_ort_training.yaml)
+
 [![TensorRT OnnxRuntime Inference Tests](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_tensorrt_onnxruntime_inference.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_tensorrt_onnxruntime_inference.yaml)
 [![TensorRT-LLM Tests](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_tensorrt_llm.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_tensorrt_llm.yaml)
-<br>
+
 [![ROCm Pytorch Tests](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_rocm_pytorch.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_rocm_pytorch.yaml)
 [![ROCm OnnxRuntime Inference Tests](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_rocm_onnxruntime_inference.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_rocm_onnxruntime_inference.yaml)
-
 
 ## Quickstart 🚀
 

@@ -74,8 +74,7 @@ def benchmark_cli(experiment_config: DictConfig) -> None:
     experiment_config: ExperimentConfig = OmegaConf.to_object(experiment_config)
     OmegaConf.save(experiment_config, "experiment_config.yaml", resolve=True)
 
-    # launch the experiment
-    output = launch(experiment_config=experiment_config)
+    benchmark_report = launch(experiment_config=experiment_config)
 
-    # save the benchmark report
-    json.dump(output, open("benchmark_report.json", "w"), indent=4)
+    json.dump(benchmark_report, open("benchmark_report.json", "w"), indent=4)
+
