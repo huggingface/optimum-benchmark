@@ -1,7 +1,8 @@
 import os
 import multiprocessing as mp
 from logging import getLogger
-from typing import Callable, Dict, Any, List, Union
+from multiprocessing import Queue
+from typing import Callable, Dict, Any
 
 import torch.distributed
 from torch.distributed import FileStore
@@ -49,23 +50,27 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             log_dir=self.config.log_dir,
         )
         current_log_level = getLogger().getEffectiveLevel()
+        queue = Queue()
 
         with device_isolation(enabled=self.config.device_isolation, benchmark_pid=os.getpid()):
             LOGGER.info(f"\t+ Launching torchrun agent with {self.config.nproc_per_node} workers processes")
-            report: Union[Dict[str, Any], List[Dict[str, Any]]] = launch_agent(
+            launch_agent(
                 config=launch_config,
                 entrypoint=entrypoint,
-                args=(worker, current_log_level, *worker_args),
+                args=(worker, queue, current_log_level, *worker_args),
             )
 
-        if isinstance(report, list):
-            report = consolidate_reports(report)
+        outputs = []
+        while not queue.empty():
+            outputs.append(queue.get())
+
+        report = consolidate_reports(outputs)
 
         return report
 
 
 @record
-def entrypoint(fn, log_level, *args):
+def entrypoint(fn, q, log_level, *args):
     """
     This a pickalable function that correctly sets up the logging configuration
     """
@@ -86,4 +91,5 @@ def entrypoint(fn, log_level, *args):
     store = FileStore("torchrun_filestore")
     store.set(f"rank_{rank}", str(os.getpid()))
 
-    return fn(*args)
+    output = fn(*args)
+    q.put(output)

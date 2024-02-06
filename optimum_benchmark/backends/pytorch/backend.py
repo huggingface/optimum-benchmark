@@ -388,8 +388,4 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             LOGGER.info("\t+ Cleaning temporary directory")
             self.tmpdir.cleanup()
 
-        if self.config.device == "cuda":
-            LOGGER.info("\t+ Emptying Pytorch CUDA cache")
-            torch.cuda.empty_cache()
-
         gc.collect()

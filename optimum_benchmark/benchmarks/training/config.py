@@ -7,8 +7,8 @@ from ..config import BenchmarkConfig
 LOGGER = getLogger("training")
 
 TRAINING_ARGUMENT = {
-    "output_dir": "./trainer_output",
     "per_device_train_batch_size": 2,
+    "output_dir": "./trainer_output",
     "do_train": True,
     "use_cpu": False,
     "max_steps": -1,
