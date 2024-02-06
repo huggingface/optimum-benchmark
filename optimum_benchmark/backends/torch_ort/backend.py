@@ -9,7 +9,6 @@ from datasets import Dataset
 from safetensors.torch import save_file
 from transformers import TrainerCallback, TrainerState
 from transformers.modeling_utils import no_init_weights
-from transformers.utils import ModelOutput
 from transformers.utils.logging import set_verbosity_error
 from optimum.onnxruntime import ORTTrainer, ORTTrainingArguments
 
@@ -45,9 +44,7 @@ class TorchORTBackend(Backend[TorchORTConfig]):
 
             peft_config_class = get_peft_config_class(self.config.peft_strategy)
             peft_config = peft_config_class(**self.config.peft_config)
-            self.pretrained_model = get_peft_model(
-                self.pretrained_model, peft_config=peft_config
-            )
+            self.pretrained_model = get_peft_model(self.pretrained_model, peft_config=peft_config)
 
         self.tmpdir.cleanup()
 
@@ -108,12 +105,8 @@ class TorchORTBackend(Backend[TorchORTConfig]):
         training_data_collator: Callable[[List[Dict[str, Any]]], Dict[str, Any]],
     ) -> TrainerState:
         LOGGER.info("\t+ Setting dataset format to `torch`")
-        training_dataset.set_format(
-            type="torch", columns=list(training_dataset.features.keys())
-        )
-        LOGGER.info(
-            f"\t+ Wrapping training arguments with {ORTTrainingArguments.__name__}"
-        )
+        training_dataset.set_format(type="torch", columns=list(training_dataset.features.keys()))
+        LOGGER.info(f"\t+ Wrapping training arguments with {ORTTrainingArguments.__name__}")
         training_arguments = ORTTrainingArguments(**training_arguments)
         LOGGER.info(f"\t+ Wrapping model with {ORTTrainer.__name__}")
         trainer = ORTTrainer(
