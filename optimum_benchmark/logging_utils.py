@@ -1,5 +1,6 @@
 import os
 import logging.config
+from subprocess import Popen, PIPE, STDOUT
 
 from omegaconf import OmegaConf
 
@@ -46,3 +47,13 @@ def setup_colorlog_logging() -> None:
         logging.config.dictConfig(job_logging)
     else:
         logging.config.dictConfig(JOB_LOGGING)
+
+
+def run_process_and_log_stream_output(logger, args):
+    popen = Popen(args, stdout=PIPE, stderr=STDOUT)
+    for line in iter(popen.stdout.readline, b""):
+        if line is not None:
+            logger.info(line.decode("utf-8").rstrip())
+
+    popen.wait()
+    return popen

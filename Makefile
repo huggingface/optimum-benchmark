@@ -1,5 +1,5 @@
 # List of targets that are not associated with files
-.PHONY:	style_check style test install install_dev_cpu install_dev_gpu
+.PHONY:	quality style install install_dev_cpu install_dev_gpu
 
 quality:
 	ruff check .
@@ -12,8 +12,8 @@ style:
 install:
 	pip install -e .
 
-install_dev_cpu:
+install_cpu_dev:
 	pip install -e .[quality,testing,openvino,onnxruntime,neural-compressor,diffusers,timm,peft]
 
-install_dev_gpu:
+install_gpu_dev:
 	pip install -e .[quality,testing,onnxruntime-gpu,deepspeed,diffusers,timm,peft]

@@ -77,8 +77,8 @@ class MeasurementCallback(TrainerCallback):
         control: TrainerControl,
         **kwargs,
     ):
-        state.warmup_start = time.time_ns() * 1e-9
-        state.overall_start = time.time_ns() * 1e-9
+        state.warmup_start = time.perf_counter_ns() * 1e-9
+        state.overall_start = time.perf_counter_ns() * 1e-9
 
     def on_step_begin(
         self,
@@ -88,8 +88,8 @@ class MeasurementCallback(TrainerCallback):
         **kwargs,
     ):
         if state.global_step == self.warmup_steps:
-            state.warmup_end = time.time_ns() * 1e-9
-            state.training_start = time.time_ns() * 1e-9
+            state.warmup_end = time.perf_counter_ns() * 1e-9
+            state.training_start = time.perf_counter_ns() * 1e-9
 
     def on_train_end(
         self,
@@ -98,10 +98,10 @@ class MeasurementCallback(TrainerCallback):
         control: TrainerControl,
         **kwargs,
     ):
-        state.training_end = time.time_ns() * 1e-9
-        state.overall_end = time.time_ns() * 1e-9
+        state.training_end = time.perf_counter_ns() * 1e-9
+        state.overall_end = time.perf_counter_ns() * 1e-9
 
-        state.total_training_batch_size = args.train_batch_size * args.gradient_accumulation_steps * args.world_size
+        state.total_training_batch_size = args.train_batch_size * args.gradient_accumulation_steps
 
         # warmup metrics
         state.warmup_runtime = state.warmup_end - state.warmup_start

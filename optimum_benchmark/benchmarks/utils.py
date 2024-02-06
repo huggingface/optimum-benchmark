@@ -3,13 +3,27 @@ from typing import List, Dict, Any
 
 # TODO: use some kind of logic to handle this instead of this function
 def consolidate_reports(reports: List[Dict[str, Any]]) -> Dict[str, Any]:
-    if "training.runtime(s)" in reports[0]:
-        # for training benchmarks, we only care about the first report
-        return reports[0]
-
     report = {}
-    report["forward.latency(s)"] = reports[0]["forward.latency(s)"]
-    report["forward.throughput(samples/s)"] = sum(r["forward.throughput(samples/s)"] for r in reports)
+
+    ## Training
+
+    if "warmup.runtime(s)" in reports[0]:
+        report["warmup.runtime(s)"] = reports[0]["warmup.runtime(s)"]
+        report["warmup.throughput(samples/s)"] = sum(r["warmup.throughput(samples/s)"] for r in reports)
+
+    if "training.runtime(s)" in reports[0]:
+        report["training.runtime(s)"] = reports[0]["training.runtime(s)"]
+        report["training.throughput(samples/s)"] = sum(r["training.throughput(samples/s)"] for r in reports)
+
+    if "overall.runtime(s)" in reports[0]:
+        report["overall.runtime(s)"] = reports[0]["overall.runtime(s)"]
+        report["overall.throughput(samples/s)"] = sum(r["overall.throughput(samples/s)"] for r in reports)
+
+    ## Inference
+
+    if "forward.latency(s)" in reports[0]:
+        report["forward.latency(s)"] = reports[0]["forward.latency(s)"]
+        report["forward.throughput(samples/s)"] = sum(r["forward.throughput(samples/s)"] for r in reports)
 
     if "diffusion.throughput(images/s)" in reports[0]:
         report["diffusion.throughput(images/s)"] = sum(r["diffusion.throughput(images/s)"] for r in reports)
