@@ -130,7 +130,11 @@ class INCBackend(Backend[INCConfig]):
                 "sequence_length": 1,
                 **self.model_shapes,
             }
-            calibration_dataset = DatasetGenerator(task=self.config.task, dataset_shapes=dataset_shapes).generate()
+            calibration_dataset = DatasetGenerator(
+                task=self.config.task,
+                dataset_shapes=dataset_shapes,
+                model_shapes=self.model_shapes,
+            ).generate()
             columns_to_be_removed = list(set(calibration_dataset.column_names) - set(quantizer._signature_columns))
             calibration_dataset = calibration_dataset.remove_columns(columns_to_be_removed)
         else:
