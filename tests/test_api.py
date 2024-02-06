@@ -45,7 +45,7 @@ LIBRARIES_TASKS_MODELS = [
     ("transformers", "image-classification", "google/vit-base-patch16-224"),
     ("transformers", "semantic-segmentation", "google/vit-base-patch16-224"),
 ]
-BENCHMARK_CONFIGS = [InferenceConfig(memory=True, energy=True), TrainingConfig()]
+BENCHMARK_CONFIGS = [InferenceConfig(memory=True), TrainingConfig()]
 LAUNCHER_CONFIGS = [InlineConfig(), ProcessConfig(), TorchrunConfig(nproc_per_node=2)]
 
 
