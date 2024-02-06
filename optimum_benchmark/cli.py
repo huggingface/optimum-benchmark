@@ -76,4 +76,8 @@ def benchmark_cli(experiment_config: DictConfig) -> None:
 
     benchmark_report = launch(experiment_config=experiment_config)
 
+    LOGGER.info("Benchmark Report:")
+    for metric, value in benchmark_report.items():
+        LOGGER.info(f"\t+  {metric}: {value:.3f}")
+
     json.dump(benchmark_report, open("benchmark_report.json", "w"), indent=4)
