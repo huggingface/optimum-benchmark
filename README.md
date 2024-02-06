@@ -50,7 +50,9 @@ python -m pip install git+https://github.com/huggingface/optimum-benchmark.git
 or by cloning the repository and installing it in editable mode:
 
 ```bash
-git clone https://github.com/huggingface/optimum-benchmark.git && python -m pip install -e optimum-benchmark
+git clone https://github.com/huggingface/optimum-benchmark.git
+cd optimum-benchmark
+pip install -e .
 ```
 
 Depending on the backends you want to use, you might need to install some extra dependencies:
@@ -64,7 +66,34 @@ Depending on the backends you want to use, you might need to install some extra 
 - Intel Neural Compressor: `pip install optimum-benchmark[neural-compressor]`
 - Text Generation Inference: `pip install optimum-benchmark[text-generation-inference]`
 
-### Running a benchmark 🏃
+### Running benchmarks from python API 🧪
+
+You can run benchmarks from the python API:
+
+```python
+import logging
+logging.basicConfig(level=logging.INFO)
+
+from optimum_benchmark.experiment import launch, ExperimentConfig
+from optimum_benchmark.backends.pytorch.config import PyTorchConfig
+from optimum_benchmark.launchers.process.config import ProcessConfig
+from optimum_benchmark.benchmarks.inference.config import InferenceConfig
+
+if __name__ == "__main__":
+    backend_config = PyTorchConfig(model="gpt2", no_weights=True, device="cuda")
+    launcher_config = ProcessConfig(device_isolation=True)
+    benchmark_config = InferenceConfig(memory=True)
+    experiment_config = ExperimentConfig(
+        experiment_name="api-launch-experiment",
+        benchmark=benchmark_config,
+        launcher=launcher_config,
+        backend=backend_config,
+    )
+    benchmark_report = launch(experiment_config)
+    print("benchmark_report:", benchmark_report)
+```
+
+### Running benchmarks from CLI 🏃‍♂️
 
 You can run a benchmark using the command line by specifying the configuration directory and the configuration name. Both arguments are mandatory for [`hydra`](https://hydra.cc/). `--config-dir` is the directory where the configuration files are stored and `--config-name` is the name of the configuration file without its `.yaml` extension.
 
@@ -74,25 +103,25 @@ optimum-benchmark --config-dir examples/ --config-name pytorch_bert
 
 This will run the benchmark using the configuration in [`examples/pytorch_bert.yaml`](examples/pytorch_bert.yaml) and store the results in `runs/pytorch_bert`.
 
-The result files are `inference_results.csv`, the program's logs `experiment.log` and the configuration that's been used `hydra_config.yaml`. Some other files might be generated depending on the configuration (e.g. `forward_codecarbon.csv` if `benchmark.energy=true`).
+The result files are `benchmark_report.json`, the program's logs `experiment.log` and the configuration that's been used `experiment_config.yaml`, including backend, launcher, benchmark and environment configurations.
 
 The directory for storing these results can be changed by setting `hydra.run.dir` (and/or `hydra.sweep.dir` in case of a multirun) in the command line or in the config file.
 
-### Command-line configuration overrides 🎛️
+### Configuration overrides 🎛️
 
 It's easy to override the default behavior of a benchmark from the command line.
 
 ```bash
-optimum-benchmark --config-dir examples/ --config-name pytorch_bert model=gpt2 device=cuda
+optimum-benchmark --config-dir examples/ --config-name pytorch_bert backend.model=gpt2 backend.device=cuda
 ```
 
-### Multirun configuration sweeps 🧹
+### Configuration multirun sweeps 🧹
 
 You can easily run configuration sweeps using the `-m` or `--multirun` option. By default, configurations will be executed serially but other kinds of executions are supported with hydra's launcher plugins : `=submitit`, `hydra/launcher=rays`, etc.
 Note that the hydra launcher `hydra/launcher` is different than our own `launcher`, specifically `hydra/launcher` can only be used in `--multirun` mode, and will only handle the inter-run behavior.
 
 ```bash
-optimum-benchmark --config-dir examples --config-name pytorch_bert -m device=cpu,cuda
+optimum-benchmark --config-dir examples --config-name pytorch_bert -m backend.device=cpu,cuda
 ```
 
 Also, for integer parameters like `batch_size`, one can specify a range of values to sweep over:
@@ -123,16 +152,14 @@ Other than the [examples](examples), you can also check [tests](tests/configs/).
 
 ## Features 🎨
 
-`optimum-benchmark` allows you to run benchmarks with no code and minimal user input, just specify:
+`optimum-benchmark` allows you to run benchmarks with minimal configuration. The only required parameters are:
 
-- The type of device (e.g. `cuda`).
 - The launcher to use (e.g. `process`).
 - The type of benchmark (e.g. `training`)
 - The backend to run on (e.g. `onnxruntime`).
 - The model name or path (e.g. `bert-base-uncased`)
-- And optionally, the model's task (e.g. `text-classification`) and library (e.g. `timmm`).
 
-Everything else is either optional or inferred from the model's name or path.
+Everything else is optional or inferred at runtime, but can be configured to your needs.
 
 ### Backends & Devices 📱
 
@@ -187,6 +214,6 @@ Contributions are welcome! And we're happy to help you get started. Feel free to
 Things that we'd like to see:
 
 - More backends (Tensorflow, TFLite, Jax, etc).
+- More tests (for optimizations and quantization schemes).
 - More hardware support (Habana Gaudi Processor (HPU), etc).
-- More tests (right now we only have few tests per backend).
 - Task evaluators for the most common tasks (would be great for output regression).

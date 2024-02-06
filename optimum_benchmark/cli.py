@@ -77,4 +77,3 @@ def benchmark_cli(experiment_config: DictConfig) -> None:
     benchmark_report = launch(experiment_config=experiment_config)
 
     json.dump(benchmark_report, open("benchmark_report.json", "w"), indent=4)
-
