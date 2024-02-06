@@ -1,18 +1,14 @@
 from dataclasses import dataclass, field
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-from omegaconf import OmegaConf
-
-from ...import_utils import openvino_version
 from ..config import BackendConfig
-
-OmegaConf.register_new_resolver("openvino_version", openvino_version)
+from ...import_utils import openvino_version
 
 
 @dataclass
 class OVConfig(BackendConfig):
     name: str = "openvino"
-    version: str = "${openvino_version:}"
+    version: Optional[str] = openvino_version()
     _target_: str = "optimum_benchmark.backends.openvino.backend.OVBackend"
 
     # load options
@@ -40,6 +36,12 @@ class OVConfig(BackendConfig):
 
     def __post_init__(self):
         super().__post_init__()
+
+        if self.device != "cpu":
+            raise ValueError(f"OVBackend only supports CPU devices, got {self.device}")
+
+        if self.intra_op_num_threads is not None:
+            raise NotImplementedError("OVBackend does not support intra_op_num_threads")
 
         if self.quantization and not self.calibration:
             raise ValueError("OpenVINO quantization requires enabling calibration.")

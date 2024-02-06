@@ -1,18 +1,21 @@
-import logging.config
-import multiprocessing as mp
 import os
+import multiprocessing as mp
 from logging import getLogger
-from typing import Callable
+from multiprocessing import Queue
+from typing import Callable, Dict, Any
 
-from omegaconf import OmegaConf
+import torch.distributed
 from torch.distributed import FileStore
 from torch.distributed.elastic.multiprocessing import Std
 from torch.distributed.elastic.multiprocessing.errors import record
 from torch.distributed.launcher.api import LaunchConfig, launch_agent
 
 from ..base import Launcher
-from ..isolation_utils import device_isolation
 from .config import TorchrunConfig
+from ...logging_utils import setup_logging
+from ..isolation_utils import device_isolation
+from ...benchmarks.utils import consolidate_reports
+
 
 LOGGER = getLogger("torchrun")
 
@@ -20,17 +23,14 @@ LOGGER = getLogger("torchrun")
 class TorchrunLauncher(Launcher[TorchrunConfig]):
     NAME = "torchrun"
 
-    def __init__(self) -> None:
-        super().__init__()
-
-    def configure(self, config: TorchrunConfig) -> None:
-        super().configure(config)
+    def __init__(self, config: TorchrunConfig):
+        super().__init__(config)
 
         if mp.get_start_method(allow_none=True) != self.config.start_method:
-            LOGGER.info(f"Setting multiprocessing start method to {self.config.start_method}.")
+            LOGGER.info(f"\t+ Setting multiprocessing start method to {self.config.start_method}.")
             mp.set_start_method(self.config.start_method, force=True)
 
-    def launch(self, worker: Callable, *worker_args):
+    def launch(self, worker: Callable, *worker_args) -> Dict[str, Any]:
         launch_config = LaunchConfig(
             min_nodes=self.config.min_nodes,
             max_nodes=self.config.max_nodes,
@@ -49,28 +49,49 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             local_addr=self.config.local_addr,
             log_dir=self.config.log_dir,
         )
+        current_log_level = getLogger().getEffectiveLevel()
+        queue = Queue()
 
         with device_isolation(enabled=self.config.device_isolation, benchmark_pid=os.getpid()):
             LOGGER.info(f"\t+ Launching torchrun agent with {self.config.nproc_per_node} workers processes")
             launch_agent(
-                entrypoint=entrypoint,
-                args=(worker, *worker_args),
                 config=launch_config,
+                entrypoint=entrypoint,
+                args=(worker, queue, current_log_level, *worker_args),
             )
+
+        outputs = []
+        while not queue.empty():
+            outputs.append(queue.get())
+
+        report = consolidate_reports(outputs)
+
+        return report
 
 
 @record
-def entrypoint(fn, *args):
+def entrypoint(fn, q, log_level, *args):
     """
     This a pickalable function that correctly sets up the logging configuration
     """
-    store = FileStore("torchrun_filestore")
-    store.set(f"rank_{os.environ['RANK']}", str(os.getpid()))
+    if not torch.distributed.is_initialized():
+        # initialize the process group if not already initialized
+        backend = "nccl" if torch.cuda.is_available() else "gloo"
+        torch.distributed.init_process_group(backend=backend)
 
-    if os.environ["RANK"] == "0":
-        hydra_conf = OmegaConf.load(".hydra/hydra.yaml")
-        logging.config.dictConfig(OmegaConf.to_container(hydra_conf.hydra.job_logging, resolve=True))
+    rank = torch.distributed.get_rank()
+
+    if torch.cuda.is_available():
+        torch.cuda.set_device(rank)
+
+    if rank == 0:
+        setup_logging(log_level)
     else:
-        logging.disable(logging.CRITICAL)
+        setup_logging("ERROR")
 
-    fn(*args)
+    # TODO: use a tcp store instead
+    store = FileStore("torchrun_filestore")
+    store.set(f"rank_{rank}", str(os.getpid()))
+
+    output = fn(*args)
+    q.put(output)

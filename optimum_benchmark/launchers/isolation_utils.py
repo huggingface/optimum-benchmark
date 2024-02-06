@@ -1,23 +1,17 @@
-# import logging.config
-import logging.config
 import os
-import signal
 import time
-from contextlib import contextmanager
+import signal
+from typing import Dict, Set
 from logging import getLogger
 from multiprocessing import Process
-from typing import Dict, Set
+from contextlib import contextmanager
 
 import psutil
-from omegaconf import OmegaConf
 
-# from omegaconf import OmegaConf
+from ..logging_utils import setup_logging
 from ..env_utils import is_nvidia_system, is_rocm_system
-from ..import_utils import (
-    is_amdsmi_available,
-    is_py3nvml_available,
-    torch_version,
-)
+from ..import_utils import is_amdsmi_available, is_py3nvml_available, torch_version
+
 
 if is_py3nvml_available():
     import py3nvml.py3nvml as nvml  # type: ignore
@@ -135,10 +129,9 @@ def get_pids_running_on_system_device() -> Set[int]:
 
 
 def assert_system_devices_isolation(benchmark_pid: int) -> None:
-    isolation_pid = os.getpid()
+    setup_logging("ERROR")
 
-    hydra_conf = OmegaConf.load(".hydra/hydra.yaml")
-    logging.config.dictConfig(OmegaConf.to_container(hydra_conf.hydra.job_logging, resolve=True))
+    isolation_pid = os.getpid()
 
     while psutil.pid_exists(benchmark_pid):
         child_processes = set()
@@ -179,7 +172,7 @@ def assert_system_devices_isolation(benchmark_pid: int) -> None:
 
 
 @contextmanager
-def device_isolation(enabled: bool, benchmark_pid: int) -> None:
+def device_isolation(benchmark_pid: int, enabled: bool) -> None:
     if not enabled:
         yield
         return

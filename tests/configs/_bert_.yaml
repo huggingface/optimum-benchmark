@@ -1,0 +1,3 @@
+backend:
+  task: text-classification
+  model: bert-base-uncased

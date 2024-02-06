@@ -19,6 +19,31 @@ _codecarbon_available = importlib.util.find_spec("codecarbon") is not None
 _amdsmi_available = importlib.util.find_spec("amdsmi") is not None
 _tensorflow_available = importlib.util.find_spec("tensorflow") is not None
 _timm_available = importlib.util.find_spec("timm") is not None
+_is_diffusers_available = importlib.util.find_spec("diffusers") is not None
+_is_accelerate_available = importlib.util.find_spec("accelerate") is not None
+_is_torch_ort_available = importlib.util.find_spec("torch_ort") is not None
+_is_deepspeed_available = importlib.util.find_spec("deepspeed") is not None
+_is_tensorrt_llm_available = importlib.util.find_spec("tensorrt_llm") is not None
+
+
+def is_tensorrt_llm_available():
+    return _is_tensorrt_llm_available
+
+
+def is_deepspeed_available():
+    return _is_deepspeed_available
+
+
+def is_torch_ort_available():
+    return _is_torch_ort_available
+
+
+def is_accelerate_available():
+    return _accelerate_available
+
+
+def is_diffusers_available():
+    return _is_diffusers_available
 
 
 def is_timm_available():
@@ -124,3 +149,23 @@ def accelerate_version():
 def diffusers_version():
     if _diffusers_available:
         return importlib.metadata.version("diffusers")
+
+
+def torch_ort_version():
+    if _is_torch_ort_available:
+        return importlib.metadata.version("torch_ort")
+
+
+def timm_version():
+    if _timm_available:
+        return importlib.metadata.version("timm")
+
+
+def peft_version():
+    if _peft_available:
+        return importlib.metadata.version("peft")
+
+
+def tesnorrt_llm_version():
+    if _is_tensorrt_llm_available:
+        return importlib.metadata.version("tensorrt_llm")

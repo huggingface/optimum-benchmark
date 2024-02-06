@@ -7,9 +7,11 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-model: timm/mobilenetv3_large_100.ra_in1k
 experiment_name: pytorch_timm
-device: cuda
+
+backend:
+  model: timm/mobilenetv3_large_100.ra_in1k
+  device: cuda
 
 launcher:
   device_isolation: true

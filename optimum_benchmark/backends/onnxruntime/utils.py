@@ -1,19 +1,22 @@
 from typing import Any, Dict
 
+from optimum.pipelines import ORT_SUPPORTED_TASKS
 from onnxruntime.quantization import (
     CalibrationMethod,
-    QuantFormat,
     QuantizationMode,
+    QuantFormat,
     QuantType,
 )
-from optimum.pipelines import ORT_SUPPORTED_TASKS
+
 
 TASKS_TO_ORTSD = {
     "stable-diffusion": "optimum.onnxruntime.ORTStableDiffusionPipeline",
     "stable-diffusion-xl": "optimum.onnxruntime.ORTStableDiffusionXLPipeline",
 }
 
-TASKS_TO_ORTMODELS = {task: task_dict["class"][0] for task, task_dict in ORT_SUPPORTED_TASKS.items()}
+TASKS_TO_ORTMODELS = {
+    task: f"optimum.onnxruntime.{task_dict['class'][0].__name__}" for task, task_dict in ORT_SUPPORTED_TASKS.items()
+}
 
 
 def format_calibration_config(calibration_config: Dict[str, Any]) -> None:

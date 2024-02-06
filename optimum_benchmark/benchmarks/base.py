@@ -1,24 +1,12 @@
 from abc import ABC
-from dataclasses import dataclass
 from logging import getLogger
-from typing import TYPE_CHECKING, ClassVar, Generic, TypeVar
+from typing import ClassVar, Generic, Dict, Any
 
-if TYPE_CHECKING:
-    from ..backends.base import Backend
+from ..backends.base import Backend
+from .config import BenchmarkConfigT
+
 
 LOGGER = getLogger("benchmark")
-
-
-@dataclass
-class BenchmarkConfig(ABC):
-    name: str
-    _target_: str
-
-    def __post_init__(self):
-        pass
-
-
-BenchmarkConfigT = TypeVar("BenchmarkConfigT", bound=BenchmarkConfig)
 
 
 class Benchmark(Generic[BenchmarkConfigT], ABC):
@@ -26,18 +14,12 @@ class Benchmark(Generic[BenchmarkConfigT], ABC):
 
     config: BenchmarkConfigT
 
-    def __init__(self) -> None:
-        pass
-
-    def configure(self, config: BenchmarkConfigT) -> None:
-        LOGGER.info(f"Configuring {self.NAME} benchmark")
+    def __init__(self, config: BenchmarkConfigT) -> None:
+        LOGGER.info(f"Allocating {self.NAME} benchmark")
         self.config = config
 
-    def run(self, backend: "Backend") -> None:
+    def run(self, backend: Backend) -> None:
         raise NotImplementedError("Benchmark must implement run method")
 
-    def get_results_df(self) -> None:
-        raise NotImplementedError("Benchmark must implement get_results_df method")
-
-    def save(self) -> None:
+    def report(self) -> Dict[str, Any]:
         raise NotImplementedError("Benchmark must implement save method")

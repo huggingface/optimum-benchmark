@@ -5,21 +5,19 @@ from datasets import Dataset
 
 from .task_generator import TASKS_TO_GENERATORS, TaskGenerator
 
-LOGGER = getLogger("dataset-generator")
+LOGGER = getLogger("dataset")
 
 
 class DatasetGenerator:
     task_generator: TaskGenerator
 
-    def __init__(self, task: str, dataset_shapes: Dict[str, int]):
-        dataset_shapes["batch_size"] = dataset_shapes.pop("dataset_size")
+    def __init__(self, task: str, dataset_shapes: Dict[str, int], model_shapes: Dict[str, int]) -> None:
+        dataset_shapes["batch_size"] = dataset_shapes["dataset_size"]
 
         if task in TASKS_TO_GENERATORS:
             LOGGER.info(f"Using {task} task generator")
-            self.task_generator = TASKS_TO_GENERATORS[task](
-                shapes=dataset_shapes,
-                with_labels=True,
-            )
+            shapes = {**dataset_shapes, **model_shapes}
+            self.task_generator = TASKS_TO_GENERATORS[task](shapes=shapes, with_labels=True)
         else:
             raise NotImplementedError(
                 f"Task {task} is supported. \n"

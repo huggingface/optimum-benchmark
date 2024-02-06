@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  run_cpu_tests:
+  run_cpu_openvino_tests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -26,8 +26,8 @@ jobs:
       - name: Install requirements
         run: |
           pip install --upgrade pip
-          pip install -e .[test,openvino,diffusers]
+          pip install -e .[testing,openvino,diffusers,timm]
 
       - name: Run tests
         run: |
-          pytest -k "cpu and openvino"
+          pytest -k "cli and cpu and openvino"

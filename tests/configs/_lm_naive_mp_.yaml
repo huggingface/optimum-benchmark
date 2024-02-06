@@ -1,8 +1,7 @@
-# Language Modeling Naive Model Parallelism
-model: gpt2
-task: text-generation
-
 backend:
+  model: gpt2
+  task: text-generation
+  library: transformers
   device_map: auto
 
 hydra:

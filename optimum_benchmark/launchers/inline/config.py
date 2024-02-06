@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from logging import getLogger
 
-from ..base import LauncherConfig
+from ..config import LauncherConfig
 
 LOGGER = getLogger("inline")
 

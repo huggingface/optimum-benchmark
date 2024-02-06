@@ -4,7 +4,7 @@ defaults:
   - _base_ # inherits from base config
   - _inference_ # inherits from inference config
   - _lm_naive_mp_ # inherits from lm naive mp config
-  - _self_ # for hydra 1.1 compatibility
+  - _cuda_ # inherits from cpu config
+  - _self_ # hydra 1.1 compatibility
 
 experiment_name: cuda_inference_pytorch_lm_naive_mp
-device: cuda

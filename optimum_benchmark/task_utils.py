@@ -1,5 +1,5 @@
-import importlib
 import os
+import importlib
 from typing import Optional
 
 import huggingface_hub
@@ -16,7 +16,10 @@ _TRANSFORMERS_TASKS_TO_MODEL_LOADERS = {
     "feature-extraction": "AutoModel",
     "fill-mask": "AutoModelForMaskedLM",
     "image-classification": "AutoModelForImageClassification",
-    "image-segmentation": ("AutoModelForImageSegmentation", "AutoModelForSemanticSegmentation"),
+    "image-segmentation": (
+        "AutoModelForImageSegmentation",
+        "AutoModelForSemanticSegmentation",
+    ),
     "image-to-image": "AutoModelForImageToImage",
     "image-to-text": "AutoModelForVision2Seq",
     "mask-generation": "AutoModel",
@@ -93,10 +96,22 @@ _SYNONYM_TASK_MAP = {
     "zero-shot-classification": "text-classification",
 }
 _CUSTOM_CLASSES = {
-    ("pt", "pix2struct", "image-to-text"): ("transformers", "Pix2StructForConditionalGeneration"),
-    ("pt", "pix2struct", "visual-question-answering"): ("transformers", "Pix2StructForConditionalGeneration"),
-    ("pt", "visual-bert", "question-answering"): ("transformers", "VisualBertForQuestionAnswering"),
-    ("pt", "vision-encoder-decoder", "document-question-answering"): ("transformers", "VisionEncoderDecoderModel"),
+    ("pt", "pix2struct", "image-to-text"): (
+        "transformers",
+        "Pix2StructForConditionalGeneration",
+    ),
+    ("pt", "pix2struct", "visual-question-answering"): (
+        "transformers",
+        "Pix2StructForConditionalGeneration",
+    ),
+    ("pt", "visual-bert", "question-answering"): (
+        "transformers",
+        "VisualBertForQuestionAnswering",
+    ),
+    ("pt", "vision-encoder-decoder", "document-question-answering"): (
+        "transformers",
+        "VisionEncoderDecoderModel",
+    ),
 }
 
 DIFFUSION_TASKS = [
@@ -151,7 +166,10 @@ def infer_task_from_model_name_or_path(model_name_or_path: str, revision: Option
         else:
             pipeline_tag = getattr(model_info, "pipeline_tag", None)
             # conversational is not a supported task per se, just an alias that may map to text-generaton or text2text-generation
-            if pipeline_tag is not None and pipeline_tag not in ["conversational", "object-detection"]:
+            if pipeline_tag is not None and pipeline_tag not in [
+                "conversational",
+                "object-detection",
+            ]:
                 inferred_task_name = map_from_synonym(model_info.pipeline_tag)
             else:
                 transformers_info = model_info.transformersInfo
@@ -181,7 +199,7 @@ def infer_task_from_model_name_or_path(model_name_or_path: str, revision: Option
 
 
 # adapted from https://github.com/huggingface/optimum/blob/main/optimum/exporters/tasks.py without torch dependency
-def get_model_class_for_task(
+def get_automodel_class_for_task(
     task: str,
     model_class_name: Optional[str] = None,
     model_type: Optional[str] = None,

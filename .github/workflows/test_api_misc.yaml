@@ -1,0 +1,32 @@
+name: API Misc Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run_api_misc_tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v3
+        with:
+          python-version: 3.8
+
+      - name: Install requirements
+        run: |
+          pip install --upgrade pip
+          pip install -e .[testing,timm,diffusers]
+
+      - name: Run tests
+        run: pytest -k "api and not (cpu or cuda or rocm or tensorrt)"

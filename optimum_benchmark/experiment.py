@@ -1,217 +1,138 @@
 import os
 import platform
-from dataclasses import dataclass, field
 from logging import getLogger
-from typing import Any, Dict, Type
+from dataclasses import dataclass, field
+from typing import Any, Dict, Type, Optional, TYPE_CHECKING
 
-from hydra.core.config_store import ConfigStore
 from hydra.utils import get_class
-from omegaconf import DictConfig, OmegaConf
 
-from .backends.base import Backend
-from .backends.neural_compressor.config import INCConfig
-from .backends.onnxruntime.config import ORTConfig
-from .backends.openvino.config import OVConfig
-from .backends.pytorch.config import PyTorchConfig
-from .backends.tensorrt_llm.config import TRTLLMConfig
-from .backends.text_generation_inference.config import TGIConfig
-from .benchmarks.base import Benchmark
-from .benchmarks.inference.config import InferenceConfig
-from .benchmarks.training.config import TrainingConfig
-from .env_utils import get_cpu, get_cpu_ram_mb, get_git_revision_hash, get_gpus
+from .benchmarks.config import BenchmarkConfig
+from .launchers.config import LauncherConfig
+from .backends.config import BackendConfig
 from .import_utils import (
+    transformers_version,
     accelerate_version,
     diffusers_version,
     optimum_version,
-    transformers_version,
+    timm_version,
+    peft_version,
 )
-from .launchers.base import Launcher
-from .launchers.inline.config import InlineConfig
-from .launchers.process.config import ProcessConfig
-from .launchers.torchrun.config import TorchrunConfig
-from .task_utils import (
-    infer_library_from_model_name_or_path,
-    infer_task_from_model_name_or_path,
+from .env_utils import (
+    get_git_revision_hash,
+    get_cpu_ram_mb,
+    get_gpus,
+    get_cpu,
 )
+
+if TYPE_CHECKING:
+    # avoid importing any torch to be able to set
+    # the CUDA_VISIBLE_DEVICES environment variable
+    # in BackendConfig __post_init__
+    from .benchmarks.base import Benchmark
+    from .launchers.base import Launcher
+    from .backends.base import Backend
+
 
 LOGGER = getLogger("experiment")
-
-OmegaConf.register_new_resolver("infer_task", lambda model: infer_task_from_model_name_or_path(model))
-OmegaConf.register_new_resolver("infer_library", lambda model: infer_library_from_model_name_or_path(model))
 
 
 @dataclass
 class ExperimentConfig:
-    # LAUNCHER CONFIGURATION
-    launcher: Any  # https://github.com/facebookresearch/hydra/issues/1722#issuecomment-883568386
-
     # BACKEND CONFIGURATION
     backend: Any  # https://github.com/facebookresearch/hydra/issues/1722#issuecomment-883568386
-
+    # LAUNCHER CONFIGURATION
+    launcher: Any  # https://github.com/facebookresearch/hydra/issues/1722#issuecomment-883568386
     # BENCHMARK CONFIGURATION
     benchmark: Any  # https://github.com/facebookresearch/hydra/issues/1722#issuecomment-883568386
 
     # Experiment name
     experiment_name: str
 
-    # Device type (cpu, cuda, mps, xla)
-    device: str
-
-    # Model name or path
-    model: str
-
-    # Task name (text-classification, image-classification, ...)
-    task: str = "${infer_task:${model}}"
-
-    # Library name (transformers, diffusers, ...)
-    library: str = "${infer_library:${model}}"
-
-    # ADDITIONAL MODEL CONFIGURATION: Model revision, use_auth_token, trust_remote_code
-    hub_kwargs: Dict = field(
-        default_factory=lambda: {
-            # "token": None,
-            "revision": "main",
-            "cache_dir": None,
-            "force_download": False,
-            "local_files_only": False,
-        }
-    )
+    task: Optional[str] = None  # deprecated
+    model: Optional[str] = None  # deprecated
+    device: Optional[str] = None  # deprecated
+    library: Optional[str] = None  # deprecated
 
     # ENVIRONMENT CONFIGURATION
     environment: Dict = field(
         default_factory=lambda: {
-            "optimum_version": optimum_version(),
-            "optimum_commit": get_git_revision_hash(os.environ.get("OPTIMUM_PATH")),
-            "transformers_version": transformers_version(),
-            "transformers_commit": get_git_revision_hash(os.environ.get("TRANSFORMERS_PATH")),
-            "accelerate_version": accelerate_version(),
-            "accelerate_commit": get_git_revision_hash(os.environ.get("ACCELERATE_PATH")),
-            "diffusers_version": diffusers_version(),
-            "diffusers_commit": get_git_revision_hash(os.environ.get("DIFFUSERS_PATH")),
-            "python_version": platform.python_version(),
-            "system": platform.system(),
             "cpu": get_cpu(),
-            "cpu_count": os.cpu_count(),
-            "cpu_ram_mb": get_cpu_ram_mb(),
             "gpus": get_gpus(),
+            "cpu_count": os.cpu_count(),
+            "system": platform.system(),
+            "cpu_ram_mb": get_cpu_ram_mb(),
+            "python_version": platform.python_version(),
+            # libraries
+            "transformers_version": transformers_version(),
+            "transformers_commit": get_git_revision_hash("transformers", os.environ.get("TRANSFORMERS_PATH", None)),
+            "accelerate_version": accelerate_version(),
+            "accelerate_commit": get_git_revision_hash("accelerate", os.environ.get("ACCELERATE_PATH", None)),
+            "optimum_version": optimum_version(),
+            "optimum_commit": get_git_revision_hash("optimum", os.environ.get("OPTIMUM_PATH", None)),
+            "diffusers_version": diffusers_version(),
+            "diffusers_commit": get_git_revision_hash("diffusers", os.environ.get("DIFFUSERS_PATH", None)),
+            "timm_version": timm_version(),
+            "timm_commit": get_git_revision_hash("timm", os.environ.get("TIMM_PATH", None)),
+            "peft_version": peft_version(),
+            "peft_commit": get_git_revision_hash("peft", os.environ.get("PEFT_PATH", None)),
         }
     )
 
-    def __post_init__(self) -> None:
-        if self.device.startswith("cuda:"):
-            raise ValueError(
-                f"Device was specified as {self.device} with a target index."
-                "We recommend using the main cuda device (`cuda`) and specifying the target index in `CUDA_VISIBLE_DEVICES`."
-            )
 
-        if self.device not in ["cuda", "cpu", "mps", "xla"]:
-            raise ValueError("`device` must be either `cuda`, `cpu`, `mps` or `xla`.")
-
-        if self.device == "cuda" and len(self.environment["gpus"]) > 1:
-            if os.environ.get("CUDA_VISIBLE_DEVICES", None) is None:
-                LOGGER.warning(
-                    "Multiple GPUs detected but CUDA_VISIBLE_DEVICES is not set. "
-                    "This means that code might allocate resources from the wrong GPUs. "
-                    "We recommend setting CUDA_VISIBLE_DEVICES to isolate the GPUs that will be used for this experiment. "
-                    "`CUDA_VISIBLE_DEVICES` will be set to `0` to ensure that only the first GPU is used."
-                    "If you want to use multiple GPUs, please set `CUDA_VISIBLE_DEVICES` to the desired GPU indices."
-                )
-                os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-
-            if os.environ.get("CUDA_DEVICE_ORDER", None) != "PCI_BUS_ID":
-                LOGGER.warning(
-                    "Multiple GPUs detected but CUDA_DEVICE_ORDER is not set to `PCI_BUS_ID`. "
-                    "This means that code might allocate resources from the wrong GPUs even if `CUDA_VISIBLE_DEVICES` is set. "
-                    "For example pytorch uses the `FASTEST_FIRST` order by default, which is not guaranteed to be the same as nvidia-smi. "
-                    "`CUDA_DEVICE_ORDER` will be set to `PCI_BUS_ID` to ensure that the GPUs are allocated in the same order as nvidia-smi. "
-                )
-                os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-
-
-# Register configurations
-cs = ConfigStore.instance()
-cs.store(name="experiment", node=ExperimentConfig)
-#
-cs.store(group="backend", name="openvino", node=OVConfig)
-cs.store(group="backend", name="pytorch", node=PyTorchConfig)
-cs.store(group="backend", name="onnxruntime", node=ORTConfig)
-cs.store(group="backend", name="tensorrt-llm", node=TRTLLMConfig)
-cs.store(group="backend", name="neural-compressor", node=INCConfig)
-cs.store(group="backend", name="text-generation-inference", node=TGIConfig)
-#
-cs.store(group="benchmark", name="inference", node=InferenceConfig)
-cs.store(group="benchmark", name="training", node=TrainingConfig)
-#
-cs.store(group="launcher", name="inline", node=InlineConfig)
-cs.store(group="launcher", name="process", node=ProcessConfig)
-cs.store(group="launcher", name="torchrun", node=TorchrunConfig)
-
-
-def run(experiment: ExperimentConfig):
-    # Instantiate the experiment config to trigger __post_init__
-    experiment: ExperimentConfig = OmegaConf.to_object(experiment)
-    OmegaConf.save(experiment, "hydra_config.yaml", resolve=True)
-
-    # Allocate requested backend
-    backend_factory: Type[Backend] = get_class(experiment.backend._target_)
-    backend: Backend = backend_factory(
-        task=experiment.task,
-        model=experiment.model,
-        device=experiment.device,
-        library=experiment.library,
-        hub_kwargs=experiment.hub_kwargs,
-    )
+def run(benchmark_config: BenchmarkConfig, backend_config: BackendConfig) -> Dict[str, Any]:
+    try:
+        # Allocate requested backend
+        backend_factory: Type[Backend] = get_class(backend_config._target_)
+        backend: Backend = backend_factory(backend_config)
+    except Exception as e:
+        LOGGER.error(f"Error during backend allocation: {e}")
+        raise e
 
     try:
-        # Configure the backend
-        backend.configure(experiment.backend)
+        # Allocate requested benchmark
+        benchmark_factory: Type[Benchmark] = get_class(benchmark_config._target_)
+        benchmark: Benchmark = benchmark_factory(benchmark_config)
     except Exception as e:
-        LOGGER.error("Error during backend configuration: %s", e)
+        LOGGER.error(f"Error during benchmark allocation: {e}")
         backend.clean()
         raise e
 
-    # Allocate requested benchmark
-    benchmark_factory: Type[Benchmark] = get_class(experiment.benchmark._target_)
-    benchmark: Benchmark = benchmark_factory()
-
     try:
-        # Configure the benchmark
-        benchmark.configure(experiment.benchmark)
-    except Exception as e:
-        LOGGER.error("Error during benchmark configuration: %s", e)
-        backend.clean()
-        raise e
-
-    # Run the benchmark
-    try:
+        # Benchmark the backend
         benchmark.run(backend)
-        benchmark.save()
         backend.clean()
     except Exception as e:
         LOGGER.error("Error during benchmark execution: %s", e)
         backend.clean()
         raise e
 
-
-def run_with_launcher(experiment: DictConfig):
-    # instead of emplimenting hydra/launcher plugins, we handle the launcher ourselves
-    # this allows us to use spawn with torchrun, to gather outputs from parallel processes,
-    # and to handle errors gracefully
-
-    # Instantiate the experiment config to trigger __post_init__
-    experiment.launcher = OmegaConf.to_object(experiment.launcher)
-
-    launcher_factory: Type[Launcher] = get_class(experiment.launcher._target_)
-    launcher: Launcher = launcher_factory()
-
     try:
-        launcher.configure(experiment.launcher)
+        report = benchmark.report()
     except Exception as e:
-        LOGGER.error("Error during launcher configuration: %s", e)
+        LOGGER.error("Error during report generation: %s", e)
         raise e
 
+    return report
+
+
+def launch(experiment_config: ExperimentConfig) -> Dict[str, Any]:
+    launcher_config: LauncherConfig = experiment_config.launcher
+
     try:
-        launcher.launch(run, experiment)
+        # Allocate requested launcher
+        launcher_factory: Type[Launcher] = get_class(launcher_config._target_)
+        launcher: Launcher = launcher_factory(launcher_config)
     except Exception as e:
-        LOGGER.error("Error during experiment execution: %s", e)
+        LOGGER.error(f"Error during launcher allocation: {e}")
         raise e
+
+    backend_config: BackendConfig = experiment_config.backend
+    benchmark_config: BenchmarkConfig = experiment_config.benchmark
+
+    try:
+        output = launcher.launch(run, benchmark_config, backend_config)
+    except Exception as e:
+        LOGGER.error(f"Error during experiment launching: {e}")
+        raise e
+
+    return output

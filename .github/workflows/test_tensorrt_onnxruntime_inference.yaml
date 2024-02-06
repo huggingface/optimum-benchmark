@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build_image_and_run_gpu_tests:
+  build_image_and_run_tensorrt_onnxruntime_tests:
     runs-on: hf-dgx-01
     steps:
       - name: Checkout
@@ -40,4 +40,4 @@ jobs:
           --gpus '"device=0,1"'
           --entrypoint /bin/bash
           opt-bench-tensorrt:22.12
-          -c "pip install -e .[test,onnxruntime-gpu] && pytest -k 'tensorrt and onnxruntime and inference' -x"
+          -c "pip install -e .[testing,onnxruntime-gpu,diffusers,timm] && pytest -k 'cli and tensorrt and onnxruntime and inference' -x"

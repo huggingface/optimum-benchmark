@@ -1,0 +1,56 @@
+name: API ROCm Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build_image_and_run_api_rocm_tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          [
+            { torch_rocm: rocm5.6, torch_pre_release: 0, rocm_version: 5.6.1 },
+            { torch_rocm: rocm5.7, torch_pre_release: 1, rocm_version: 5.7 },
+          ]
+
+    runs-on: hf-amd-mi210-dev
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build image
+        run: docker build
+          --file docker/rocm.dockerfile
+          --build-arg USER_ID=$(id -u)
+          --build-arg GROUP_ID=$(id -g)
+          --build-arg TORCH_ROCM=${{ matrix.image.torch_rocm }}
+          --build-arg TORCH_PRE_RELEASE=${{ matrix.image.torch_pre_release }}
+          --build-arg ROCM_VERSION=${{ matrix.image.rocm_version }}
+          --tag opt-bench-rocm:${{ matrix.image.rocm_version }}
+          .
+
+      - name: Run tests
+        run: docker run
+          --rm
+          --net host
+          --pid host
+          --shm-size 64G
+          --env USE_ROCM="1"
+          --volume $HOME/.cache/huggingface:/home/user/.cache/huggingface
+          --volume $(pwd):/workspace/optimum-benchmark
+          --workdir /workspace/optimum-benchmark
+          --device /dev/kfd
+          --device /dev/dri/renderD128
+          --device /dev/dri/renderD129
+          --entrypoint /bin/bash
+          opt-bench-rocm:${{ matrix.image.rocm_version }}
+          -c "pip install -e .[testing,timm,diffusers] && pytest -k 'api and cuda' -x"

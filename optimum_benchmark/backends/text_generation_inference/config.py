@@ -7,8 +7,8 @@ from ..config import BackendConfig
 
 @dataclass
 class TGIConfig(BackendConfig):
-    name: str = "tgi"
-    version: str = "0.0.1"
+    name: str = "text-generation-inference"
+    version: Optional[str] = "0.0.1"
     _target_: str = "optimum_benchmark.backends.text_generation_inference.backend.TGIBackend"
 
     # docker options

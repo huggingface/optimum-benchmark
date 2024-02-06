@@ -1,71 +1,60 @@
 import os
 from logging import getLogger
-from subprocess import PIPE, STDOUT, Popen
 
 import pytest
 
-LOGGER = getLogger("test")
+from optimum_benchmark.logging_utils import run_process_and_log_stream_output
 
+LOGGER = getLogger("test-cli")
 
-CONFIG_NAMES = [
+TEST_CONFIG_DIR = "/".join(__file__.split("/")[:-1] + ["configs"])
+TEST_CONFIG_NAMES = [
     config.split(".")[0]
-    for config in os.listdir("tests/configs")
+    for config in os.listdir(TEST_CONFIG_DIR)
     if config.endswith(".yaml") and not (config.startswith("_") or config.endswith("_"))
 ]
 
 
-def run_and_stream(args):
-    popen = Popen(args, stdout=PIPE, stderr=STDOUT)
-    for line in iter(popen.stdout.readline, b""):
-        if line is not None:
-            LOGGER.info(line.decode("utf-8").rstrip())
-
-    popen.wait()
-    return popen
-
-
-@pytest.mark.parametrize("config_name", CONFIG_NAMES)
-def test_configs(config_name):
+@pytest.mark.parametrize("config_name", TEST_CONFIG_NAMES)
+def test_cli_configs(config_name):
     args = [
         "optimum-benchmark",
         "--config-dir",
-        "tests/configs",
+        TEST_CONFIG_DIR,
         "--config-name",
         config_name,
         "--multirun",
     ]
 
-    popen = run_and_stream(args)
-    assert popen.returncode == 0, popen.stderr
+    popen = run_process_and_log_stream_output(LOGGER, args)
+    assert popen.returncode == 0, f"Failed to run {config_name}"
 
 
-def test_exit_code():
+def test_cli_exit_code():
     args_0 = [
         "optimum-benchmark",
         "--config-dir",
-        "tests/configs",
+        TEST_CONFIG_DIR,
         "--config-name",
         "cpu_inference_pytorch_bert_sweep",
         # compatible task and model
-        "task=text-classification",
-        "model=bert-base-uncased",
-        # not using multirun to not sweep
+        "backend.task=text-classification",
+        "backend.model=bert-base-uncased",
     ]
 
-    popen_0 = run_and_stream(args_0)
-    assert popen_0.returncode == 0, popen_0.stderr.decode("utf-8")
+    popen_0 = run_process_and_log_stream_output(LOGGER, args_0)
+    assert popen_0.returncode == 0
 
     args_1 = [
         "optimum-benchmark",
         "--config-dir",
-        "tests/configs",
+        TEST_CONFIG_DIR,
         "--config-name",
         "cpu_inference_pytorch_bert_sweep",
         # incompatible task and model to trigger error
-        "task=image-classification",
-        "model=bert-base-uncased",
-        # not using multirun to not sweep
+        "backend.task=image-classification",
+        "backend.model=bert-base-uncased",
     ]
 
-    popen_1 = run_and_stream(args_1)
-    assert popen_1.returncode == 1, popen_1.stderr.decode("utf-8")
+    popen_1 = run_process_and_log_stream_output(LOGGER, args_1)
+    assert popen_1.returncode == 1
