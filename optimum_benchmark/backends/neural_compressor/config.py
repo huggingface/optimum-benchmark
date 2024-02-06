@@ -47,7 +47,7 @@ PTQ_QUANTIZATION_CONFIG = {
 
 @dataclass
 class INCConfig(BackendConfig):
-    name: str = "neural_compressor"
+    name: str = "neural-compressor"
     version: Optional[str] = neural_compressor_version()
     _target_: str = "optimum_benchmark.backends.neural_compressor.backend.INCBackend"
 

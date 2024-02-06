@@ -58,24 +58,16 @@ def benchmark_cli(experiment_config: DictConfig) -> None:
 
     # fix backend until deprecated model and device are removed
     if experiment_config.task is not None:
-        LOGGER.warning(
-            "`task` is deprecated in experiment. Use `backend.task` instead."
-        )
+        LOGGER.warning("`task` is deprecated in experiment. Use `backend.task` instead.")
         experiment_config.backend.task = experiment_config.task
     if experiment_config.model is not None:
-        LOGGER.warning(
-            "`model` is deprecated in experiment. Use `backend.model` instead."
-        )
+        LOGGER.warning("`model` is deprecated in experiment. Use `backend.model` instead.")
         experiment_config.backend.model = experiment_config.model
     if experiment_config.device is not None:
-        LOGGER.warning(
-            "`device` is deprecated in experiment. Use `backend.device` instead."
-        )
+        LOGGER.warning("`device` is deprecated in experiment. Use `backend.device` instead.")
         experiment_config.backend.device = experiment_config.device
     if experiment_config.library is not None:
-        LOGGER.warning(
-            "`library` is deprecated in experiment. Use `backend.library` instead."
-        )
+        LOGGER.warning("`library` is deprecated in experiment. Use `backend.library` instead.")
         experiment_config.backend.library = experiment_config.library
 
     # Instantiate the experiment configuration and trigger its __post_init__

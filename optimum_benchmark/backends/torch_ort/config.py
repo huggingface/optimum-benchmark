@@ -8,7 +8,7 @@ from ..peft_utils import PEFT_CONFIGS, PEFT_TASKS_TYPES
 
 @dataclass
 class TorchORTConfig(BackendConfig):
-    name: str = "torch_ort"
+    name: str = "torch-ort"
     version: Optional[str] = torch_ort_version
     _target_: str = "optimum_benchmark.backends.torch_ort.backend.TorchORTBackend"
 
