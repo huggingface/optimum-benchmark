@@ -35,15 +35,15 @@ cs.store(group="backend", name=PyTorchConfig.name, node=PyTorchConfig)
 cs.store(group="backend", name=ORTConfig.name, node=ORTConfig)
 cs.store(group="backend", name=TorchORTConfig.name, node=TorchORTConfig)
 cs.store(group="backend", name=TRTLLMConfig.name, node=TRTLLMConfig)
-cs.store(group="backend", name="neural-compressor", node=INCConfig)
-cs.store(group="backend", name="text-generation-inference", node=TGIConfig)
+cs.store(group="backend", name=INCConfig.name, node=INCConfig)
+cs.store(group="backend", name=TGIConfig.name, node=TGIConfig)
 # benchmarks configurations
-cs.store(group="benchmark", name="training", node=TrainingConfig)
-cs.store(group="benchmark", name="inference", node=InferenceConfig)
+cs.store(group="benchmark", name=TrainingConfig.name, node=TrainingConfig)
+cs.store(group="benchmark", name=InferenceConfig.name, node=InferenceConfig)
 # launchers configurations
-cs.store(group="launcher", name="inline", node=InlineConfig)
-cs.store(group="launcher", name="process", node=ProcessConfig)
-cs.store(group="launcher", name="torchrun", node=TorchrunConfig)
+cs.store(group="launcher", name=InlineConfig.name, node=InlineConfig)
+cs.store(group="launcher", name=ProcessConfig.name, node=ProcessConfig)
+cs.store(group="launcher", name=TorchrunConfig.name, node=TorchrunConfig)
 
 
 # optimum-benchmark
@@ -58,16 +58,24 @@ def benchmark_cli(experiment_config: DictConfig) -> None:
 
     # fix backend until deprecated model and device are removed
     if experiment_config.task is not None:
-        LOGGER.warning("`task` is deprecated in experiment. Use `backend.task` instead.")
+        LOGGER.warning(
+            "`task` is deprecated in experiment. Use `backend.task` instead."
+        )
         experiment_config.backend.task = experiment_config.task
     if experiment_config.model is not None:
-        LOGGER.warning("`model` is deprecated in experiment. Use `backend.model` instead.")
+        LOGGER.warning(
+            "`model` is deprecated in experiment. Use `backend.model` instead."
+        )
         experiment_config.backend.model = experiment_config.model
     if experiment_config.device is not None:
-        LOGGER.warning("`device` is deprecated in experiment. Use `backend.device` instead.")
+        LOGGER.warning(
+            "`device` is deprecated in experiment. Use `backend.device` instead."
+        )
         experiment_config.backend.device = experiment_config.device
     if experiment_config.library is not None:
-        LOGGER.warning("`library` is deprecated in experiment. Use `backend.library` instead.")
+        LOGGER.warning(
+            "`library` is deprecated in experiment. Use `backend.library` instead."
+        )
         experiment_config.backend.library = experiment_config.library
 
     # Instantiate the experiment configuration and trigger its __post_init__
