@@ -74,5 +74,13 @@ class TorchrunConfig(LauncherConfig):
                     "`nproc_per_node` is not set and `CUDA_VISIBLE_DEVICES` is not set. "
                     "Setting `nproc_per_node` and `CUDA_VISIBLE_DEVICES` to 1."
                 )
-                self.nproc_per_node = 1
                 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+                self.nproc_per_node = 1
+        else:
+            if len(os.environ.get("CUDA_VISIBLE_DEVICES", "").split(",")) != self.nproc_per_node:
+                LOGGER.warning(
+                    f"`nproc_per_node` is set to {self.nproc_per_node} but `CUDA_VISIBLE_DEVICES` "
+                    f"is set to {os.environ.get('CUDA_VISIBLE_DEVICES', '')}. "
+                    "Setting `CUDA_VISIBLE_DEVICES` to match `nproc_per_node`."
+                )
+                os.environ["CUDA_VISIBLE_DEVICES"] = ",".join([str(i) for i in range(self.nproc_per_node)])

@@ -86,6 +86,8 @@ def entrypoint(fn, q, log_level, *args):
 
     if rank == 0:
         setup_logging(log_level)
+    else:
+        setup_logging("ERROR")
 
     # TODO: use a tcp store instead
     store = FileStore("torchrun_filestore")

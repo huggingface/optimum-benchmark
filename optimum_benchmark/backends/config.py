@@ -79,6 +79,11 @@ class BackendConfig(ABC):
                 )
                 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 
+        elif self.device == "cuda" and len(get_gpus()) == 1:
+            if os.environ.get("CUDA_VISIBLE_DEVICES", None) is None:
+                os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+                os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
         if self.task is None:
             self.task = infer_task_from_model_name_or_path(self.model)
 

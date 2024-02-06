@@ -61,7 +61,7 @@ class TRTLLMBackend(Backend[TRTLLMConfig]):
             min_length=kwargs.get("min_new_tokens", -1),  # why different ?
             num_beams=kwargs.get("num_beams", 1),
             # not really important but just in case
-            repetition_penalty=kwargs.get("repetition_penalty", 0.0),
+            repetition_penalty=kwargs.get("repetition_penalty", 1.0),
             length_penalty=kwargs.get("length_penalty", 1.0),
             pad_token_id=kwargs.get("pad_token_id", 0),
             bos_token_id=kwargs.get("bos_token_id", 1),
