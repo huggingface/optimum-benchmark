@@ -44,8 +44,8 @@ LIBRARIES_TASKS_MODELS = [
     ("transformers", "semantic-segmentation", "google/vit-base-patch16-224"),
 ]
 BENCHMARK_CONFIGS = [
-    InferenceConfig(latency=True, memory=True, energy=True),
-    TrainingConfig(latency=True, memory=True, energy=True),
+    InferenceConfig(latency=True, memory=True),
+    TrainingConfig(latency=True, memory=True),
 ]
 LAUNCHER_CONFIGS = [
     TorchrunConfig(nproc_per_node=2, device_isolation=False),
