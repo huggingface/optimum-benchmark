@@ -5,12 +5,8 @@ launcher:
   nproc_per_node: 2
 
 backend:
+  device_ids: 0,1
   deepspeed_inference: true
   deepspeed_inference_config:
     tensor_parallel:
       tp_size: 2
-
-hydra:
-  job:
-    env_set:
-      CUDA_VISIBLE_DEVICES: 0,1

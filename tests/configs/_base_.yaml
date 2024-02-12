@@ -2,24 +2,27 @@ defaults:
   - launcher: process # isolated process launcher
   - experiment # inheriting experiment schema
   - _self_ # for hydra 1.1 compatibility
-  # - override hydra/hydra_logging: colorlog # colorful logging
-  # - override hydra/job_logging: colorlog # colorful logging
+  - override hydra/hydra_logging: colorlog # colorful logging
+  - override hydra/job_logging: colorlog # colorful logging
   - override hydra/launcher: joblib # for parallelization
 
 experiment_name: ${device}_${benchmark.name}_${backend.name}_${task}
 
+# hydra/cli specific settings
 hydra:
   run:
-    dir: tests/experiments/${experiment_name}
+    # where to store run results
+    dir: tests/runs/${experiment_name}
   sweep:
-    dir: tests/experiments/${experiment_name}
+    # where to store sweep results
+    dir: tests/sweeps/${experiment_name}
   job:
+    # change working directory to the run directory
     chdir: true
     env_set:
-      OVERRIDE_BENCHMARKS: 1 # to not skip if results already exist
-      CUDA_VISIBLE_DEVICES: 0 # by default we only use one GPU
-      CUDA_DEVICE_ORDER: PCI_BUS_ID # laking we use the right GPU
-
+      # set environment variable OVERRIDE_BENCHMARKS to 1
+      # to not skip benchmarks that have been run before
+      OVERRIDE_BENCHMARKS: 1
 
   # we are using joblib launcher to parallelize testing since
   # we're having ccorrect benchmarks is not important while testing

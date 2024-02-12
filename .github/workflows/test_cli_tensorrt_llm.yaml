@@ -1,4 +1,4 @@
-name: TensorRT-LLM Tests
+name: CLI TensorRT-LLM Tests
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  pull_image_and_run_tensorrt_llm_tests:
+  pull_image_and_run_cli_tensorrt_llm_tests:
     runs-on: hf-dgx-01
     steps:
       - name: Checkout

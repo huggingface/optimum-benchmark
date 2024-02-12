@@ -1,4 +1,4 @@
-name: CUDA Pytorch Tests
+name: CLI CUDA Pytorch Tests
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build_image_and_run_cuda_pytorch_tests:
+  build_image_and_run_cli_cuda_pytorch_tests:
     strategy:
       fail-fast: false
       matrix:

@@ -1,4 +1,4 @@
-name: ROCm Pytorch Tests
+name: CLI ROCm Pytorch Tests
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build_image_and_run_rocm_pytorch_tests:
+  build_image_and_run_cli_rocm_pytorch_tests:
     strategy:
       fail-fast: false
       matrix:

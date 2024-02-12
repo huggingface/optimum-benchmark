@@ -1,4 +1,4 @@
-name: ROCm OnnxRuntime Inference Tests
+name: CLI ROCm OnnxRuntime Tests
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build_image_and_run_rocm_onnxruntime_inference_tests:
+  build_image_and_run_cli_rocm_onnxruntime_tests:
     runs-on: hf-amd-mi210-dev
     steps:
       - name: Checkout
@@ -51,4 +51,4 @@ jobs:
           --device /dev/dri/renderD129
           --entrypoint /bin/bash
           opt-bench-rocm-ort:5.7
-          -c "pip install -e .[testing,timm,diffusers] && pytest -k 'cli and rocm and onnxruntime and inference' -x"
+          -c "pip install -e .[testing,timm,diffusers] && pytest -k 'cli and rocm and onnxruntime' -x"
