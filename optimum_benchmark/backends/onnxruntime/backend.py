@@ -1,33 +1,9 @@
 import gc
 import os
 from logging import getLogger
+from collections import OrderedDict
 from tempfile import TemporaryDirectory
 from typing import Any, Callable, Dict, List
-
-import torch
-from datasets import Dataset
-from hydra.utils import get_class
-from onnxruntime import SessionOptions
-from safetensors.torch import save_file
-from transformers.utils import ModelOutput
-from transformers import TrainerCallback, TrainerState
-from transformers.modeling_utils import no_init_weights
-from transformers.utils.logging import set_verbosity_error
-from optimum.onnxruntime.configuration import (
-    AutoOptimizationConfig,
-    AutoQuantizationConfig,
-    AutoCalibrationConfig,
-    OptimizationConfig,
-    QuantizationConfig,
-    CalibrationConfig,
-)
-from optimum.onnxruntime import (
-    ONNX_DECODER_WITH_PAST_NAME,
-    ONNX_DECODER_NAME,
-    ORTOptimizer,
-    ORTQuantizer,
-)
-
 from ...generators.dataset_generator import DatasetGenerator
 from ...task_utils import TEXT_GENERATION_TASKS
 from .config import ORTConfig
@@ -38,6 +14,25 @@ from .utils import (
     TASKS_TO_ORTMODELS,
     TASKS_TO_ORTSD,
 )
+
+import torch
+from datasets import Dataset
+from hydra.utils import get_class
+from onnxruntime import SessionOptions
+from safetensors.torch import save_file
+from transformers import TrainerCallback, TrainerState
+from transformers.modeling_utils import no_init_weights
+from transformers.utils.logging import set_verbosity_error
+from optimum.onnxruntime import ONNX_DECODER_WITH_PAST_NAME, ONNX_DECODER_NAME, ORTOptimizer, ORTQuantizer
+from optimum.onnxruntime.configuration import (
+    AutoOptimizationConfig,
+    AutoQuantizationConfig,
+    AutoCalibrationConfig,
+    OptimizationConfig,
+    QuantizationConfig,
+    CalibrationConfig,
+)
+
 
 # disable transformers logging
 set_verbosity_error()
@@ -353,11 +348,14 @@ class ORTBackend(Backend[ORTConfig]):
 
         return inputs
 
-    def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:
-        return self.pretrained_model(**inputs, **kwargs)
+    def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
+        return self.pretrained_model.forward(**inputs, **kwargs)
 
-    def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:
+    def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         return self.pretrained_model.generate(**inputs, **kwargs)
+
+    def call(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
+        return self.pretrained_model(**inputs, **kwargs)
 
     def train(
         self,

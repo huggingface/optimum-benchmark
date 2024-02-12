@@ -34,6 +34,7 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
 
         LOGGER.info("\t+ Initializing training report")
         self.report = TrainingReport(
+            num_processes=1,  # this process
             max_steps=self.config.max_steps,
             warmup_steps=self.config.warmup_steps,
             per_process_batch_size=self.config.training_arguments["per_device_train_batch_size"],

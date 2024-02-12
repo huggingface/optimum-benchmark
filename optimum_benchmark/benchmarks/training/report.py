@@ -12,6 +12,7 @@ LOGGER = getLogger("report")
 class TrainingReport(BenchmarkReport):
     max_steps: int
     warmup_steps: int
+    num_processes: int
     per_process_batch_size: int
     gradient_accumulation_steps: int
 
@@ -82,12 +83,42 @@ class TrainingReport(BenchmarkReport):
             self.gradient_accumulation_steps == other.gradient_accumulation_steps
         ), "Both reports must have the same gradient_accumulation_steps"
 
-        TrainingReport(
+        agg_report = TrainingReport(
             max_steps=self.max_steps,
             warmup_steps=self.warmup_steps,
+            num_processes=self.num_processes + other.num_processes,
             gradient_accumulation_steps=self.gradient_accumulation_steps,
             per_process_batch_size=self.per_process_batch_size + other.per_process_batch_size,
         )
+
+        if "latency" in self.training and "latency" in other.training:
+            agg_training_latencies_list = [
+                max(lat_1, lat_2)
+                for lat_1, lat_2 in zip(self.training["latency"]["list[s]"], other.training["latency"]["list[s]"])
+            ]
+            agg_report.populate_latency(agg_training_latencies_list)
+
+        if "memory" in self.training and "memory" in other.training:
+            agg_training_memories_dict = {}
+            for key in self.training["memory"]:
+                if "vram" in key:
+                    # our vram measures are not process-specific
+                    agg_training_memories_dict[key] = max(self.training["memory"][key], other.training["memory"][key])
+                else:
+                    # ram and pytorch measures are process-specific
+                    agg_training_memories_dict[key] = self.training["memory"][key] + other.training["memory"][key]
+
+            agg_report.populate_memory(agg_training_memories_dict)
+
+        if "energy" in self.training and "energy" in other.training:
+            agg_training_energies_dict = {}
+            for key in self.training["energy"]:
+                # theoretically, the energies measured by codecarbon are process-specific (it's not clear from the code)
+                agg_training_energies_dict[key] = self.training["energy"][key] + other.training["energy"][key]
+
+            agg_report.populate_energy(agg_training_energies_dict)
+
+        return agg_report
 
 
 def compute_mean(values: List[float]) -> float:
