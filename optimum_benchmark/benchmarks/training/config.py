@@ -8,6 +8,7 @@ LOGGER = getLogger("training")
 
 TRAINING_ARGUMENT = {
     "per_device_train_batch_size": 2,
+    "gradient_accumulation_steps": 1,
     "output_dir": "./trainer_output",
     "do_train": True,
     "use_cpu": False,
@@ -25,16 +26,9 @@ TRAINING_ARGUMENT = {
 }
 
 DATASET_SHAPES = {
-    # used with all tasks
     "dataset_size": 500,
-    # used with text input tasks
     "sequence_length": 16,
-    # used with multiple choice tasks where input
-    # is of shape (batch_size, num_choices, sequence_length)
     "num_choices": 1,
-    # used with audio input tasks
-    "feature_size": 80,
-    "nb_max_frames": 3000,
 }
 
 
@@ -49,9 +43,13 @@ class TrainingConfig(BenchmarkConfig):
 
     # dataset options
     dataset_shapes: Dict[str, Any] = field(default_factory=dict)
-
     # training options
     training_arguments: Dict[str, Any] = field(default_factory=dict)
+
+    # tracking options
+    latency: bool = field(default=True, metadata={"help": "Measure latencies and throughputs"})
+    memory: bool = field(default=False, metadata={"help": "Measure max memory usage"})
+    energy: bool = field(default=False, metadata={"help": "Measure energy usage"})
 
     def __post_init__(self):
         super().__post_init__()
