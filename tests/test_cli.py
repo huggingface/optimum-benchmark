@@ -3,7 +3,7 @@ from logging import getLogger
 
 import pytest
 
-from optimum_benchmark.logging_utils import run_process_and_log_stream_output
+from optimum_benchmark.logging_utils import run_subprocess_and_log_stream_output
 
 LOGGER = getLogger("test-cli")
 
@@ -26,7 +26,7 @@ def test_cli_configs(config_name):
         "--multirun",
     ]
 
-    popen = run_process_and_log_stream_output(LOGGER, args)
+    popen = run_subprocess_and_log_stream_output(LOGGER, args)
     assert popen.returncode == 0, f"Failed to run {config_name}"
 
 
@@ -42,7 +42,7 @@ def test_cli_exit_code():
         "backend.model=bert-base-uncased",
     ]
 
-    popen_0 = run_process_and_log_stream_output(LOGGER, args_0)
+    popen_0 = run_subprocess_and_log_stream_output(LOGGER, args_0)
     assert popen_0.returncode == 0
 
     args_1 = [
@@ -56,5 +56,5 @@ def test_cli_exit_code():
         "backend.model=bert-base-uncased",
     ]
 
-    popen_1 = run_process_and_log_stream_output(LOGGER, args_1)
+    popen_1 = run_subprocess_and_log_stream_output(LOGGER, args_1)
     assert popen_1.returncode == 1
