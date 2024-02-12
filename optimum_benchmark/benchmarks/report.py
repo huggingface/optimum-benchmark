@@ -10,9 +10,6 @@ import pandas as pd
 
 @dataclass
 class BenchmarkReport(PushToHubMixin):
-    def to_dict(self) -> dict:
-        return asdict(self)
-
     def save_pretrained(
         self,
         save_directory: Union[str, os.PathLike],
@@ -49,6 +46,9 @@ class BenchmarkReport(PushToHubMixin):
                 commit_message=commit_message,
                 token=kwargs.get("token"),
             )
+
+    def to_dict(self) -> dict:
+        return asdict(self)
 
     def to_flat_dict(self) -> dict:
         report_dict = self.to_dict()

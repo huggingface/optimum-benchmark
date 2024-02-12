@@ -18,6 +18,9 @@ build_docker_cpu:
 build_docker_cuda:
 	docker build -f docker/cuda.dockerfile  --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg TORCH_CUDA=cu118 --build-arg CUDA_VERSION=11.8.0 -t opt-bench-cuda:11.8.0 . 
 
+build_docker_rocm:
+	docker build -f docker/rocm.dockerfile  --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg TORCH_ROCM=rocm5.6 --build-arg ROCM_VERSION=5.6.1 -t opt-bench-rocm:5.6.1 . 
+
 test_cli_cpu_neural_compressor:
 	docker run \
 	--rm \

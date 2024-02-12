@@ -48,9 +48,9 @@ BENCHMARK_CONFIGS = [
     TrainingConfig(latency=True, memory=True, energy=True),
 ]
 LAUNCHER_CONFIGS = [
-    InlineConfig(device_isolation=False),
-    ProcessConfig(device_isolation=False),
     TorchrunConfig(nproc_per_node=2, device_isolation=False),
+    ProcessConfig(device_isolation=False),
+    InlineConfig(device_isolation=False),
 ]
 
 
@@ -144,25 +144,12 @@ def test_api_dataset_generator(library, task, model):
     _ = generator()
 
 
-@pytest.mark.parametrize("launcher_config", LAUNCHER_CONFIGS)
-def test_api_launchers(launcher_config):
-    backend_config = PyTorchConfig(model="gpt2", no_weights=True, device="cpu")
-    benchmark_config = InferenceConfig(memory=True)
-    experiment_config = ExperimentConfig(
-        experiment_name="api-launch-experiment",
-        benchmark=benchmark_config,
-        launcher=launcher_config,
-        backend=backend_config,
-    )
-    _ = launch(experiment_config)
-
-
 @pytest.mark.parametrize("benchmark_config", BENCHMARK_CONFIGS)
 @pytest.mark.parametrize("launcher_config", LAUNCHER_CONFIGS)
-@pytest.mark.parametrize("backend_config", [PyTorchConfig(model="gpt2", no_weights=True, device="cpu")])
-def test_api_benchmarks(benchmark_config, launcher_config, backend_config):
+def test_api_launch_cpu(benchmark_config, launcher_config):
+    backend_config = PyTorchConfig(model="bert-base-uncased", no_weights=True, device="cpu")
     experiment_config = ExperimentConfig(
-        experiment_name="api-benchmark-experiment",
+        experiment_name="",
         benchmark=benchmark_config,
         launcher=launcher_config,
         backend=backend_config,
