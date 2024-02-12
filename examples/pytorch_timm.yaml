@@ -10,8 +10,9 @@ defaults:
 experiment_name: pytorch_timm
 
 backend:
-  model: timm/mobilenetv3_large_100.ra_in1k
   device: cuda
+  device_ids: 0
+  model: timm/mobilenetv3_large_100.ra_in1k
 
 launcher:
   device_isolation: true
@@ -20,14 +21,18 @@ benchmark:
   input_shapes:
     batch_size: 1
 
+# hydra/cli specific settings
 hydra:
   run:
+    # where to store run results
     dir: runs/${experiment_name}
   sweep:
+    # where to store sweep results
     dir: sweeps/${experiment_name}
   job:
+    # change working directory to the run directory
     chdir: true
     env_set:
+      # set environment variable OVERRIDE_BENCHMARKS to 1
+      # to not skip benchmarks that have been run before
       OVERRIDE_BENCHMARKS: 1
-      CUDA_VISIBLE_DEVICES: 0
-      CUDA_DEVICE_ORDER: PCI_BUS_ID
