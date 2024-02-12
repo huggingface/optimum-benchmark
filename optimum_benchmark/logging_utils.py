@@ -2,6 +2,7 @@ import os
 import logging
 import logging.config
 from logging import Logger
+from typing import Optional
 from subprocess import Popen, PIPE, STDOUT
 
 from omegaconf import OmegaConf
@@ -28,19 +29,19 @@ JOB_LOGGING = {
             "stream": "ext://sys.stdout",
             "class": "logging.StreamHandler",
         },
-        "file": {
-            "filename": "api.log",
-            "formatter": "simple",
-            "class": "logging.FileHandler",
-        },
+        # "file": {
+        #     "filename": "api.log",
+        #     "formatter": "simple",
+        #     "class": "logging.FileHandler",
+        # },
     },
-    "root": {"level": "INFO", "handlers": ["console", "file"]},
+    "root": {"level": "INFO", "handlers": ["console"]},  # "file"]},
     "disable_existing_loggers": False,
 }
 
 
-def setup_logging(level: str = "INFO", prefix: str = ""):
-    if os.path.exists(".hydra/hydra.yaml"):
+def setup_logging(level: str = "INFO", prefix: Optional[str] = None):
+    if os.environ.get("BENCHMARK_CLI", "0") == "1":
         hydra_config = OmegaConf.load(".hydra/hydra.yaml")
         job_logging = OmegaConf.to_container(
             hydra_config.hydra.job_logging,
@@ -48,10 +49,11 @@ def setup_logging(level: str = "INFO", prefix: str = ""):
         )
     else:
         job_logging = JOB_LOGGING.copy()
+        job_logging["root"]["handlers"] = ["console"]
 
     job_logging["root"]["level"] = level
 
-    if prefix:
+    if prefix is not None:
         job_logging["formatters"]["simple"]["format"] = f"[{prefix}]" + job_logging["formatters"]["simple"]["format"]
         job_logging["formatters"]["colorlog"]["format"] = (
             f"[{prefix}]" + job_logging["formatters"]["colorlog"]["format"]

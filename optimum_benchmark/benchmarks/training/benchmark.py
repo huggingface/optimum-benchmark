@@ -34,7 +34,6 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
 
         LOGGER.info("\t+ Initializing training report")
         self.report = TrainingReport(
-            num_processes=1,  # this process
             max_steps=self.config.max_steps,
             warmup_steps=self.config.warmup_steps,
             per_process_batch_size=self.config.training_arguments["per_device_train_batch_size"],
@@ -72,15 +71,15 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
             )
 
         if self.config.latency:
-            self.report.populate_latency(all_latencies_list=latency_callback.get_latencies_list())
+            self.report.populate_latency(overall_latencies_list=latency_callback.get_latencies_list())
             self.report.log_latency()
 
         if self.config.memory:
-            self.report.populate_memory(all_memories_dict=memory_tracker.get_memories_dict())
+            self.report.populate_memory(overall_memories_dict=memory_tracker.get_memories_dict())
             self.report.log_memory()
 
         if self.config.energy:
-            self.report.populate_energy(all_energies_dict=energy_tracker.get_energies_dict())
+            self.report.populate_energy(overall_energies_dict=energy_tracker.get_energies_dict())
             self.report.log_energy()
 
     def get_report(self) -> TrainingReport:

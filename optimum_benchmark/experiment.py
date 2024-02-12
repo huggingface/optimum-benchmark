@@ -1,6 +1,7 @@
 import os
 import platform
 from logging import getLogger
+from tempfile import TemporaryDirectory
 from dataclasses import dataclass, field
 from typing import Any, Dict, Type, Optional, TYPE_CHECKING
 
@@ -20,6 +21,9 @@ from .import_utils import (
 )
 from .env_utils import (
     get_git_revision_hash,
+    is_nvidia_system,
+    is_rocm_system,
+    get_gpu_vram_mb,
     get_cpu_ram_mb,
     get_gpus,
     get_cpu,
@@ -58,36 +62,36 @@ class ExperimentConfig:
     environment: Dict = field(
         default_factory=lambda: {
             "cpu": get_cpu(),
-            "gpus": get_gpus(),
             "cpu_count": os.cpu_count(),
-            "system": platform.system(),
             "cpu_ram_mb": get_cpu_ram_mb(),
+            "system": platform.system(),
             "python_version": platform.python_version(),
             # libraries
             "transformers_version": transformers_version(),
-            "transformers_commit": get_git_revision_hash("transformers", os.environ.get("TRANSFORMERS_PATH", None)),
+            "transformers_commit": get_git_revision_hash("transformers"),
             "accelerate_version": accelerate_version(),
-            "accelerate_commit": get_git_revision_hash("accelerate", os.environ.get("ACCELERATE_PATH", None)),
-            "optimum_version": optimum_version(),
-            "optimum_commit": get_git_revision_hash("optimum", os.environ.get("OPTIMUM_PATH", None)),
+            "accelerate_commit": get_git_revision_hash("accelerate"),
             "diffusers_version": diffusers_version(),
-            "diffusers_commit": get_git_revision_hash("diffusers", os.environ.get("DIFFUSERS_PATH", None)),
+            "diffusers_commit": get_git_revision_hash("diffusers"),
+            "optimum_version": optimum_version(),
+            "optimum_commit": get_git_revision_hash("optimum"),
             "timm_version": timm_version(),
-            "timm_commit": get_git_revision_hash("timm", os.environ.get("TIMM_PATH", None)),
+            "timm_commit": get_git_revision_hash("timm"),
             "peft_version": peft_version(),
-            "peft_commit": get_git_revision_hash("peft", os.environ.get("PEFT_PATH", None)),
+            "peft_commit": get_git_revision_hash("peft"),
         }
     )
 
     def __post_init__(self):
-        # this where some artifacts are saved when using the Python API
-        if os.environ.get("BENCHMARK_CLI", None) is None and self.experiment_name != "":
-            LOGGER.info(
-                f"Creating experiment directory: {self.experiment_name}. "
-                "This is where some artifacts will be saved when using the Python API."
-            )
-            os.makedirs(self.experiment_name, exist_ok=True)
-            os.chdir(self.experiment_name)
+        # adding GPU information to the environment
+        if is_nvidia_system() or is_rocm_system():
+            available_gpus = get_gpus()
+            if len(available_gpus) > 0:
+                self.environment["gpu"] = available_gpus[0]
+                self.environment["gpu_count"] = len(available_gpus)
+                self.environment["gpu_vram_mb"] = get_gpu_vram_mb()
+            else:
+                LOGGER.warning("Detected NVIDIA or ROCm system, but no GPUs found.")
 
 
 def run(benchmark_config: BenchmarkConfig, backend_config: BackendConfig) -> BenchmarkReport:
@@ -127,6 +131,12 @@ def run(benchmark_config: BenchmarkConfig, backend_config: BackendConfig) -> Ben
 
 
 def launch(experiment_config: ExperimentConfig) -> BenchmarkReport:
+    if os.environ.get("BENCHMARK_CLI", "0") == "0":
+        LOGGER.info("Launching experiment in a temporary directory.")
+        tmep_dir = TemporaryDirectory()
+        original_dir = os.getcwd()
+        os.chdir(tmep_dir.name)
+
     launcher_config: LauncherConfig = experiment_config.launcher
 
     try:
@@ -145,5 +155,9 @@ def launch(experiment_config: ExperimentConfig) -> BenchmarkReport:
     except Exception as e:
         LOGGER.error(f"Error during experiment launching: {e}")
         raise e
+
+    if os.environ.get("BENCHMARK_CLI", "0") == "0":
+        os.chdir(original_dir)
+        tmep_dir.cleanup()
 
     return output

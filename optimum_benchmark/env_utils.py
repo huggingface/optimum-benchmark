@@ -157,20 +157,19 @@ def get_cuda_device_ids() -> str:
     return ",".join(str(i) for i in device_ids)
 
 
-def get_git_revision_hash(package_name: str, path: Optional[str] = None) -> Optional[str]:
+def get_git_revision_hash(package_name: str) -> Optional[str]:
     """
     Returns the git commit SHA of a package installed from a git repository.
     """
 
-    if path is None:
-        try:
-            path = importlib.util.find_spec(package_name).origin
-        except Exception:
-            return None
+    try:
+        path = importlib.util.find_spec(package_name).origin
+    except Exception:
+        return None
 
     try:
         git_hash = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=path).decode().strip()
     except Exception:
-        git_hash = None
+        return None
 
     return git_hash
