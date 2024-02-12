@@ -22,8 +22,8 @@ class InputGenerator:
                 "please submit a PR or a feature request to optimum-benchmark. "
             )
 
-    def generate(self, mode: str) -> Dict[str, Any]:
-        task_input = self.task_generator.generate()
+    def __call__(self, mode: str) -> Dict[str, Any]:
+        task_input = self.task_generator()
 
         if mode == "generate":
             if "pixel_values" in task_input:
@@ -46,5 +46,9 @@ class InputGenerator:
                 task_input = {
                     "inputs": task_input["input_ids"],
                 }
+        elif mode == "call":
+            task_input = {
+                "prompt": task_input["prompt"],
+            }
 
         return task_input

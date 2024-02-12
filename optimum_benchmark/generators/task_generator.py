@@ -34,8 +34,8 @@ class TaskGenerator(ABC):
             for _ in range(shape[0])
         ]
 
-    def generate(self):
-        raise NotImplementedError("Generator must implement generate method")
+    def __call__(self):
+        raise NotImplementedError("Generator must implement __call__ method")
 
 
 class TextGenerator(TaskGenerator):
@@ -131,7 +131,7 @@ class TextClassificationGenerator(TextGenerator):
             shape=(self.shapes["batch_size"],),
         )
 
-    def generate(self):
+    def __call__(self):
         dummy = {}
 
         dummy["input_ids"] = self.input_ids()
@@ -160,7 +160,7 @@ class TokenClassificationGenerator(TextGenerator):
             ),
         )
 
-    def generate(self):
+    def __call__(self):
         dummy = {}
 
         dummy["input_ids"] = self.input_ids()
@@ -179,7 +179,7 @@ class TokenClassificationGenerator(TextGenerator):
 
 
 class TextGenerationGenerator(TextGenerator):
-    def generate(self):
+    def __call__(self):
         dummy = {}
         dummy["input_ids"] = self.input_ids()
         dummy["attention_mask"] = self.attention_mask()
@@ -211,7 +211,7 @@ class QuestionAnsweringGenerator(TextGenerator):
             shape=(self.shapes["batch_size"],),
         )
 
-    def generate(self):
+    def __call__(self):
         dummy = {}
 
         dummy["input_ids"] = self.input_ids()
@@ -226,7 +226,7 @@ class QuestionAnsweringGenerator(TextGenerator):
 
 
 class MaskedLanguageModelingGenerator(TextGenerator):
-    def generate(self):
+    def __call__(self):
         dummy = {}
 
         dummy["input_ids"] = self.input_ids()
@@ -252,7 +252,7 @@ class MultipleChoiceGenerator(TextGenerator):
             shape=(self.shapes["batch_size"],),
         )
 
-    def generate(self):
+    def __call__(self):
         dummy = {}
 
         dummy["input_ids"] = (
@@ -288,7 +288,7 @@ class ImageClassificationGenerator(ImageGenerator):
             shape=(self.shapes["batch_size"],),
         )
 
-    def generate(self):
+    def __call__(self):
         dummy = {}
         dummy["pixel_values"] = self.pixel_values()
 
@@ -316,7 +316,7 @@ class ObjectDetectionGenerator(ImageGenerator):
             for _ in range(self.shapes["batch_size"])
         ]
 
-    def generate(self):
+    def __call__(self):
         dummy = {}
         dummy["pixel_values"] = self.pixel_values()
 
@@ -338,7 +338,7 @@ class SemanticSegmentationGenerator(ImageGenerator):
             ),
         )
 
-    def generate(self):
+    def __call__(self):
         dummy = {}
         dummy["pixel_values"] = self.pixel_values()
 
@@ -356,7 +356,7 @@ class AudioClassificationGenerator(AudioGenerator):
             shape=(self.shapes["batch_size"],),
         )
 
-    def generate(self):
+    def __call__(self):
         dummy = {}
         dummy["input_values"] = self.input_values()
 
@@ -377,7 +377,7 @@ class AutomaticSpeechRecognitionGenerator(AudioGenerator):
             ),
         )
 
-    def generate(self):
+    def __call__(self):
         dummy = {}
         dummy["input_values"] = self.input_values()
 
@@ -391,7 +391,7 @@ class PromptGenerator(TaskGenerator):
     def prompt(self):
         return self.generate_random_strings(shape=(self.shapes["batch_size"], 10))
 
-    def generate(self):
+    def __call__(self):
         dummy = {}
         dummy["prompt"] = self.prompt()
 
@@ -399,7 +399,7 @@ class PromptGenerator(TaskGenerator):
 
 
 class FeatureExtractionGenerator(TextGenerator, ImageGenerator):
-    def generate(self):
+    def __call__(self):
         dummy = {}
 
         if self.shapes["num_channels"] is not None and self.shapes["height"] is not None:
