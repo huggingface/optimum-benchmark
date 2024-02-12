@@ -4,17 +4,19 @@ from logging import getLogger
 from multiprocessing import Queue
 from typing import Callable, Dict, Any
 
-import torch.distributed
-from torch.distributed import FileStore
-from torch.distributed.elastic.multiprocessing import Std
-from torch.distributed.elastic.multiprocessing.errors import record
-from torch.distributed.launcher.api import LaunchConfig, launch_agent
-
 from ..base import Launcher
 from .config import TorchrunConfig
 from ...logging_utils import setup_logging
 from ..isolation_utils import device_isolation
-from ...benchmarks.utils import consolidate_reports
+from ...benchmarks.report import BenchmarkReport
+from ...import_utils import is_torch_distributed_available
+
+if is_torch_distributed_available():
+    import torch.distributed
+    from torch.distributed import FileStore
+    from torch.distributed.elastic.multiprocessing import Std
+    from torch.distributed.elastic.multiprocessing.errors import record
+    from torch.distributed.launcher.api import LaunchConfig, launch_agent
 
 
 LOGGER = getLogger("torchrun")
@@ -49,8 +51,8 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             local_addr=self.config.local_addr,
             log_dir=self.config.log_dir,
         )
-        current_log_level = getLogger().getEffectiveLevel()
         queue = Queue()
+        current_log_level = getLogger().getEffectiveLevel()
 
         with device_isolation(enabled=self.config.device_isolation, benchmark_pid=os.getpid()):
             LOGGER.info(f"\t+ Launching torchrun agent with {self.config.nproc_per_node} workers processes")
@@ -61,10 +63,16 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             )
 
         outputs = []
+
         while not queue.empty():
             outputs.append(queue.get())
 
-        report = consolidate_reports(outputs)
+        if len(outputs) == 1:
+            report: BenchmarkReport = outputs[0]
+        else:
+            report: BenchmarkReport = sum(outputs[1:], outputs[0])
+
+        report.log_all()
 
         return report
 
@@ -85,12 +93,12 @@ def entrypoint(fn, q, log_level, *args):
         torch.cuda.set_device(rank)
 
     if rank == 0:
-        setup_logging(log_level)
+        setup_logging(level=log_level, prefix="RANK-0")
     else:
-        setup_logging("ERROR")
+        setup_logging(level="ERROR")
 
     # TODO: use a tcp store instead
-    store = FileStore("torchrun_filestore")
+    store = FileStore("torchrun.filestore")
     store.set(f"rank_{rank}", str(os.getpid()))
 
     output = fn(*args)
