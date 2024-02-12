@@ -1,6 +1,5 @@
 import os
 import glob
-import json
 from logging import getLogger
 
 import hydra
@@ -19,6 +18,7 @@ from .backends.tensorrt_llm.config import TRTLLMConfig
 from .backends.neural_compressor.config import INCConfig
 from .backends.text_generation_inference.config import TGIConfig
 
+from .benchmarks.report import BenchmarkReport
 from .experiment import launch, ExperimentConfig
 from .benchmarks.training.config import TrainingConfig
 from .benchmarks.inference.config import InferenceConfig
@@ -49,6 +49,8 @@ cs.store(group="launcher", name=TorchrunConfig.name, node=TorchrunConfig)
 # optimum-benchmark
 @hydra.main(version_base=None)
 def benchmark_cli(experiment_config: DictConfig) -> None:
+    os.environ["BENCHMARK_CLI"] = "1"
+
     if glob.glob("*.csv") and os.environ.get("OVERRIDE_BENCHMARKS", "0") != "1":
         LOGGER.warning(
             "Skipping benchmark because results already exist. "
@@ -74,10 +76,6 @@ def benchmark_cli(experiment_config: DictConfig) -> None:
     experiment_config: ExperimentConfig = OmegaConf.to_object(experiment_config)
     OmegaConf.save(experiment_config, "experiment_config.yaml", resolve=True)
 
-    benchmark_report = launch(experiment_config=experiment_config)
+    benchmark_report: BenchmarkReport = launch(experiment_config=experiment_config)
 
-    LOGGER.info("Benchmark Report:")
-    for metric, value in benchmark_report.items():
-        LOGGER.info(f"\t+  {metric}: {value:.3f}")
-
-    json.dump(benchmark_report, open("benchmark_report.json", "w"), indent=4)
+    benchmark_report.to_json("benchmark_report.json")

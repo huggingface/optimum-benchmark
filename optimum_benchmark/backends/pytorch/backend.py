@@ -1,27 +1,23 @@
 import gc
 import os
 from logging import getLogger
+from collections import OrderedDict
 from tempfile import TemporaryDirectory
 from typing import Any, Callable, Dict, List
-
-import torch
-from datasets import Dataset
-from safetensors.torch import save_file
-from transformers.utils import ModelOutput
-import datasets.utils.logging as datasets_logging
-from transformers import TrainerCallback, TrainerState
-from transformers.modeling_utils import no_init_weights
-import transformers.utils.logging as transformers_logging
 
 from ..base import Backend
 from .config import PyTorchConfig
 from ..peft_utils import get_peft_config_class
-from ..transformers_utils import TransformersDataParallel, randomize_weights
-from ...import_utils import (
-    is_deepspeed_available,
-    is_peft_available,
-)
+from ..transformers_utils import randomize_weights
+from ...import_utils import is_deepspeed_available, is_peft_available
 
+import torch
+from datasets import Dataset
+from safetensors.torch import save_file
+import datasets.utils.logging as datasets_logging
+from transformers.modeling_utils import no_init_weights
+import transformers.utils.logging as transformers_logging
+from transformers import TrainerCallback, TrainerState, Trainer, TrainingArguments
 
 if is_peft_available():
     from peft import get_peft_model
@@ -38,7 +34,7 @@ LOGGER = getLogger("pytorch")
 
 
 class PyTorchBackend(Backend[PyTorchConfig]):
-    NAME: str = "pytorch"
+    NAME = "pytorch"
 
     def __init__(self, config: PyTorchConfig):
         super().__init__(config)
@@ -52,7 +48,10 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             else:
                 LOGGER.info(f"\t+ Using AutoModel class {automodel}")
 
-        # Threading options
+        # Mixed precision
+        self.amp_dtype = getattr(torch, self.config.amp_dtype) if self.config.amp_dtype is not None else None
+
+        # Threads
         if self.config.inter_op_num_threads is not None:
             LOGGER.info(f"\t+ Setting pytorch inter_op_num_threads({self.config.inter_op_num_threads}))")
             torch.set_num_threads(self.config.inter_op_num_threads)
@@ -60,9 +59,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             LOGGER.info(f"\t+ Setting pytorch intra_op_num_threads({self.config.intra_op_num_threads}))")
             torch.set_num_interop_threads(self.config.intra_op_num_threads)
 
-        # Dtypes options
-        self.amp_dtype = getattr(torch, self.config.amp_dtype) if self.config.amp_dtype is not None else None
-
+        # Quantization
         if self.is_quantized:
             LOGGER.info("\t+ Processing quantization config")
             self.process_quantization_config()
@@ -70,8 +67,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.quantization_config = None
 
         self.tmpdir = TemporaryDirectory()
-
-        # Load model
         if self.config.no_weights and self.config.library == "diffusers":
             raise ValueError("Diffusion pipelines are not supported with no_weights=True")
         elif self.config.no_weights:
@@ -80,6 +75,10 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         else:
             LOGGER.info("\t+ Loading model with pretrained weights")
             self.load_model_from_pretrained()
+
+        if self.config.cache_implementation is not None:
+            LOGGER.info(f"\t+ Setting cache implementation to {self.config.cache_implementation}")
+            self.pretrained_model.generation_config.cache_implementation = self.config.cache_implementation
 
         # Eval mode
         if self.config.eval_mode and not self.config.library == "diffusers":
@@ -91,7 +90,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             LOGGER.info("\t+ Enabling BetterTransformer")
             self.pretrained_model.to_bettertransformer()
 
-        # Compile model
+        # Torch compile
         if self.config.torch_compile:
             if self.config.library == "diffusers":
                 LOGGER.info("\t+ Using torch.compile on unet forward pass")
@@ -115,16 +114,11 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         if self.config.deepspeed_inference:
             LOGGER.info("\t+ Using DeepSpeed-Inference")
-
             self.pretrained_model = init_inference(
                 self.pretrained_model,
                 config=self.config.deepspeed_inference_config,
                 dtype=getattr(self.pretrained_model, "dtype", None),
             )
-
-        if self.config.data_parallel:
-            LOGGER.info("\t+ Using TransformersDataParallel")
-            self.pretrained_model = TransformersDataParallel(self.pretrained_model)
 
         self.tmpdir.cleanup()
 
@@ -148,7 +142,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             LOGGER.info("\t+ Loading BnB quantized model")
             self.pretrained_model = self.automodel_class.from_pretrained(
                 pretrained_model_name_or_path=self.config.model,
-                low_cpu_mem_usage=self.config.low_cpu_mem_usage,
                 device_map=self.config.device_map,
                 **self.config.hub_kwargs,
                 **self.automodel_kwargs,
@@ -160,8 +153,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 # for gptq, we need to specify the device_map to either auto
                 # or a cuda adevice to avoid any modules being assigned to cpu
                 device_map=self.config.device_map or torch.device(self.config.device),
-                # this avoids unnecessary memory usage when loading quantized models
-                low_cpu_mem_usage=self.config.low_cpu_mem_usage,
                 **self.config.hub_kwargs,
                 **self.automodel_kwargs,
             )
@@ -292,8 +283,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
     @property
     def is_exllamav2(self) -> bool:
         return (
-            self.is_quantized
-            and self.is_gptq_quantized
+            self.is_gptq_quantized
             and "exllama_config" in self.config.quantization_config
             and self.config.quantization_config["exllama_config"]["version"] == 2
         )
@@ -305,12 +295,14 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         if self.config.torch_dtype is not None:
             kwargs["torch_dtype"] = getattr(torch, self.config.torch_dtype)
 
-        if self.config.use_flash_attention_2:
-            kwargs["use_flash_attention_2"] = True
+        if self.config.attn_implementation is not None:
+            kwargs["attn_implementation"] = self.config.attn_implementation
 
-        if self.is_gptq_quantized or self.is_bnb_quantized:
-            # awq quantization doesn't support overriding the quantization
-            # config by passing quantization_config to from_pretrained
+        if self.config.low_cpu_mem_usage is not None:
+            kwargs["low_cpu_mem_usage"] = self.config.low_cpu_mem_usage
+
+        if self.is_quantized:
+            kwargs["_fast_init"] = False
             kwargs["quantization_config"] = self.quantization_config
 
         return kwargs
@@ -329,23 +321,18 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         return inputs
 
     @torch.inference_mode()
-    def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:
-        if self.config.library == "diffusers":
-            return self.pretrained_model(**inputs, **kwargs)
-
-        if self.config.amp_autocast:
-            with torch.autocast(device_type=self.config.device, dtype=self.amp_dtype):
-                return self.pretrained_model(**inputs, **kwargs)
-        else:
-            return self.pretrained_model(**inputs, **kwargs)
+    def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
+        with torch.autocast(device_type=self.config.device, dtype=self.amp_dtype, enabled=self.config.amp_autocast):
+            return self.pretrained_model.forward(**inputs, **kwargs)
 
     @torch.inference_mode()
-    def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:
-        if self.config.amp_autocast:
-            with torch.autocast(device_type=self.config.device, dtype=self.amp_dtype):
-                return self.pretrained_model.generate(**inputs, **kwargs)
-        else:
+    def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
+        with torch.autocast(device_type=self.config.device, dtype=self.amp_dtype, enabled=self.config.amp_autocast):
             return self.pretrained_model.generate(**inputs, **kwargs)
+
+    @torch.inference_mode()
+    def call(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
+        return self.pretrained_model(**inputs, **kwargs)
 
     def train(
         self,
@@ -354,10 +341,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         training_callbacks: List[TrainerCallback],
         training_data_collator: Callable[[List[Dict[str, Any]]], Dict[str, Any]],
     ) -> TrainerState:
-        from transformers import Trainer, TrainingArguments
-
-        LOGGER.info("\t+ Setting dataset format to `torch`")
-        training_dataset.set_format(type="torch", columns=list(training_dataset.features.keys()))
         LOGGER.info("\t+ Wrapping training arguments with transformers.TrainingArguments")
         training_arguments = TrainingArguments(**training_arguments)
         LOGGER.info("\t+ Wrapping model with transformers.Trainer")
@@ -371,8 +354,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         LOGGER.info("\t+ Starting training")
         trainer.train()
         LOGGER.info("\t+ Training finished successfully")
-
-        return trainer.state
 
     def seed(self):
         super().seed()

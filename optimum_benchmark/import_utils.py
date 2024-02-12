@@ -1,6 +1,7 @@
 import importlib.metadata
 import importlib.util
 
+
 _transformers_available = importlib.util.find_spec("transformers") is not None
 _accelerate_available = importlib.util.find_spec("accelerate") is not None
 _diffusers_available = importlib.util.find_spec("diffusers") is not None
@@ -19,23 +20,31 @@ _codecarbon_available = importlib.util.find_spec("codecarbon") is not None
 _amdsmi_available = importlib.util.find_spec("amdsmi") is not None
 _tensorflow_available = importlib.util.find_spec("tensorflow") is not None
 _timm_available = importlib.util.find_spec("timm") is not None
-_is_diffusers_available = importlib.util.find_spec("diffusers") is not None
-_is_accelerate_available = importlib.util.find_spec("accelerate") is not None
-_is_torch_ort_available = importlib.util.find_spec("torch_ort") is not None
-_is_deepspeed_available = importlib.util.find_spec("deepspeed") is not None
-_is_tensorrt_llm_available = importlib.util.find_spec("tensorrt_llm") is not None
+_diffusers_available = importlib.util.find_spec("diffusers") is not None
+_torch_ort_available = importlib.util.find_spec("torch_ort") is not None
+_deepspeed_available = importlib.util.find_spec("deepspeed") is not None
+_tensorrt_llm_available = importlib.util.find_spec("tensorrt_llm") is not None
+_psutil_available = importlib.util.find_spec("psutil") is not None
+
+
+def is_psutil_available():
+    return _psutil_available
+
+
+def is_transformers_available():
+    return _transformers_available
 
 
 def is_tensorrt_llm_available():
-    return _is_tensorrt_llm_available
+    return _tensorrt_llm_available
 
 
 def is_deepspeed_available():
-    return _is_deepspeed_available
+    return _deepspeed_available
 
 
 def is_torch_ort_available():
-    return _is_torch_ort_available
+    return _torch_ort_available
 
 
 def is_accelerate_available():
@@ -43,7 +52,7 @@ def is_accelerate_available():
 
 
 def is_diffusers_available():
-    return _is_diffusers_available
+    return _diffusers_available
 
 
 def is_timm_available():
@@ -118,7 +127,7 @@ def onnxruntime_version():
             try:
                 return "ort-training:" + importlib.metadata.version("onnxruntime-training")
             except importlib.metadata.PackageNotFoundError:
-                return "ort:unknown"
+                return None
 
 
 def openvino_version():
@@ -152,7 +161,7 @@ def diffusers_version():
 
 
 def torch_ort_version():
-    if _is_torch_ort_available:
+    if _torch_ort_available:
         return importlib.metadata.version("torch_ort")
 
 
@@ -167,5 +176,5 @@ def peft_version():
 
 
 def tesnorrt_llm_version():
-    if _is_tensorrt_llm_available:
+    if _tensorrt_llm_available:
         return importlib.metadata.version("tensorrt_llm")

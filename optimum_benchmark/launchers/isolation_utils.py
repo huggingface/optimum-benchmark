@@ -17,7 +17,7 @@ if is_py3nvml_available():
     import py3nvml.py3nvml as nvml
 
 if is_amdsmi_available():
-    import amdsmi # type: ignore
+    import amdsmi  # type: ignore
 
 LOGGER = getLogger("isolation")
 

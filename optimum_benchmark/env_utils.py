@@ -1,12 +1,13 @@
+import os
 import re
 import platform
 import subprocess
 import importlib.util
-from typing import Optional
-
-import psutil
+from typing import Optional, List
 
 from .import_utils import is_py3nvml_available, is_pyrsmi_available
+
+import psutil
 
 
 def is_nvidia_system():
@@ -89,6 +90,71 @@ def get_gpus():
         gpus = []
 
     return gpus
+
+
+def get_gpu_vram_mb() -> List[int]:
+    if is_nvidia_system():
+        if not is_py3nvml_available():
+            raise ValueError(
+                "The library py3nvml is required to collect information on NVIDIA GPUs, but is not installed. "
+                "Please install it through `pip install py3nvml`."
+            )
+        import py3nvml.py3nvml as nvml
+
+        nvml.nvmlInit()
+        device_count = nvml.nvmlDeviceGetCount()
+        vrams = [nvml.nvmlDeviceGetMemoryInfo(nvml.nvmlDeviceGetHandleByIndex(i)).total for i in range(device_count)]
+        nvml.nvmlShutdown()
+    elif is_rocm_system():
+        if not is_pyrsmi_available():
+            raise ValueError(
+                "The library pyrsmi is required to collect information on ROCm-powered GPUs, but is not installed. "
+                "Please install it following the instructions https://github.com/RadeonOpenCompute/pyrsmi."
+            )
+
+        from pyrsmi import rocml
+
+        rocml.smi_initialize()
+        device_count = rocml.smi_get_device_count()
+        vrams = [rocml.smi_get_device_memory_total(index) for index in range(device_count)]
+        rocml.smi_shutdown()
+    else:
+        vrams = []
+
+    return sum(vrams)
+
+
+def get_cuda_device_ids() -> str:
+    if os.environ.get("CUDA_VISIBLE_DEVICES", None) is not None:
+        device_ids = os.environ["CUDA_VISIBLE_DEVICES"]
+    else:
+        if is_nvidia_system():
+            if not is_py3nvml_available():
+                raise ValueError(
+                    "The library py3nvml is required to collect information on NVIDIA GPUs, but is not installed. "
+                    "Please install it through `pip install py3nvml`."
+                )
+            import py3nvml.py3nvml as nvml
+
+            nvml.nvmlInit()
+            device_ids = list(range(nvml.nvmlDeviceGetCount()))
+            nvml.nvmlShutdown()
+        elif is_rocm_system():
+            if not is_pyrsmi_available():
+                raise ValueError(
+                    "The library pyrsmi is required to collect information on ROCm-powered GPUs, but is not installed. "
+                    "Please install it following the instructions https://github.com/RadeonOpenCompute/pyrsmi."
+                )
+
+            from pyrsmi import rocml
+
+            rocml.smi_initialize()
+            device_ids = list(range(rocml.smi_get_device_count()))
+            rocml.smi_shutdown()
+        else:
+            raise ValueError("No NVIDIA or ROCm GPUs found.")
+
+    return ",".join(str(i) for i in device_ids)
 
 
 def get_git_revision_hash(package_name: str, path: Optional[str] = None) -> Optional[str]:

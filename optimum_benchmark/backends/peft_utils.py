@@ -13,7 +13,6 @@ if is_peft_available():
         PromptLearningConfig,
     )
 
-
 PEFT_TASKS_TYPES = [
     "SEQ_CLS",
     "SEQ_2_SEQ_LM",

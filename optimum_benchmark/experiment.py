@@ -6,6 +6,7 @@ from typing import Any, Dict, Type, Optional, TYPE_CHECKING
 
 from hydra.utils import get_class
 
+from .benchmarks.report import BenchmarkReport
 from .benchmarks.config import BenchmarkConfig
 from .launchers.config import LauncherConfig
 from .backends.config import BackendConfig
@@ -78,8 +79,18 @@ class ExperimentConfig:
         }
     )
 
+    def __post_init__(self):
+        # this where some artifacts are saved when using the Python API
+        if os.environ.get("BENCHMARK_CLI", None) is None and self.experiment_name != "":
+            LOGGER.info(
+                f"Creating experiment directory: {self.experiment_name}. "
+                "This is where some artifacts will be saved when using the Python API."
+            )
+            os.makedirs(self.experiment_name, exist_ok=True)
+            os.chdir(self.experiment_name)
 
-def run(benchmark_config: BenchmarkConfig, backend_config: BackendConfig) -> Dict[str, Any]:
+
+def run(benchmark_config: BenchmarkConfig, backend_config: BackendConfig) -> BenchmarkReport:
     try:
         # Allocate requested backend
         backend_factory: Type[Backend] = get_class(backend_config._target_)
@@ -107,7 +118,7 @@ def run(benchmark_config: BenchmarkConfig, backend_config: BackendConfig) -> Dic
         raise e
 
     try:
-        report = benchmark.report()
+        report = benchmark.get_report()
     except Exception as e:
         LOGGER.error("Error during report generation: %s", e)
         raise e
@@ -115,7 +126,7 @@ def run(benchmark_config: BenchmarkConfig, backend_config: BackendConfig) -> Dic
     return report
 
 
-def launch(experiment_config: ExperimentConfig) -> Dict[str, Any]:
+def launch(experiment_config: ExperimentConfig) -> BenchmarkReport:
     launcher_config: LauncherConfig = experiment_config.launcher
 
     try:

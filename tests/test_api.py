@@ -156,6 +156,7 @@ def test_api_launchers(launcher_config):
     )
     _ = launch(experiment_config)
 
+
 @pytest.mark.parametrize("benchmark_config", BENCHMARK_CONFIGS)
 @pytest.mark.parametrize("launcher_config", LAUNCHER_CONFIGS)
 @pytest.mark.parametrize("backend_config", [PyTorchConfig(model="gpt2", no_weights=True, device="cpu")])

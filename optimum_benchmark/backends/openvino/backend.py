@@ -3,6 +3,7 @@ import os
 import inspect
 from typing import Any, Dict
 from logging import getLogger
+from collections import OrderedDict
 from tempfile import TemporaryDirectory
 
 import torch
@@ -11,7 +12,6 @@ from openvino.runtime import properties
 from safetensors.torch import save_file
 from optimum.intel.openvino import OVQuantizer
 from transformers.modeling_utils import no_init_weights
-from transformers.utils import ModelOutput
 from transformers.utils.logging import set_verbosity_error
 from optimum.intel.openvino import OVConfig as OVQuantizationConfig  # naming conflict
 
@@ -196,11 +196,14 @@ class OVBackend(Backend[OVConfig]):
 
         return inputs
 
-    def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:
-        return self.pretrained_model(**inputs, **kwargs)
+    def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
+        return self.pretrained_model.forward(**inputs, **kwargs)
 
-    def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:
+    def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         return self.pretrained_model.generate(**inputs, **kwargs)
+
+    def call(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
+        return self.pretrained_model(**inputs, **kwargs)
 
     def clean(self) -> None:
         super().clean()

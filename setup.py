@@ -62,6 +62,7 @@ EXTRAS_REQUIRE = {
     # docker-based backends
     "text-generation-inference": ["docker"],
     # specific settings
+    "codecarbon": ["codecarbon"],
     "deepspeed": ["deepspeed"],
     "diffusers": ["diffusers"],
     "timm": ["timm"],

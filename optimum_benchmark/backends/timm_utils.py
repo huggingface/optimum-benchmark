@@ -1,22 +1,18 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-from transformers import PretrainedConfig
+from ..import_utils import is_timm_available, is_transformers_available, is_torch_available
 
-from ..import_utils import is_timm_available
+if is_torch_available():
+    import torch
 
 if is_timm_available():
     import timm
 
-
-def get_timm_pretrained_processor(model: str) -> Any:
-    try:
-        pretrained_config = get_timm_pretrained_config(model)
-        return timm.data.create_transform(**timm.data.resolve_data_config(pretrained_config))
-    except Exception:
-        return None
+if is_transformers_available():
+    from transformers import PretrainedConfig
 
 
-def get_timm_pretrained_config(model_name: str) -> PretrainedConfig:
+def get_timm_pretrained_config(model_name: str) -> "PretrainedConfig":
     model_source, model_name = timm.models.parse_model_name(model_name)
     if model_source == "hf-hub":
         # For model names specified in the form `hf-hub:path/architecture_name@revision`,
@@ -27,12 +23,21 @@ def get_timm_pretrained_config(model_name: str) -> PretrainedConfig:
     return timm.get_pretrained_cfg(model_name)
 
 
-def extract_timm_shapes_from_config(config: PretrainedConfig) -> Dict[str, Any]:
-    shapes = {}
+def get_timm_pre_processor(model: str) -> Optional["torch.nn.Module"]:
+    try:
+        pretrained_config = get_timm_pretrained_config(model)
+        return timm.data.create_transform(**timm.data.resolve_data_config(pretrained_config))
+    except Exception:
+        return None
+
+
+def extract_timm_shapes_from_config(config: "PretrainedConfig") -> Dict[str, Any]:
     artifacts_dict = {}
 
     config_dict = {k: v for k, v in config.to_dict().items() if v is not None}
     artifacts_dict.update(config_dict)
+
+    shapes = {}
 
     # image input
     shapes["num_channels"] = artifacts_dict.get("num_channels", None)
