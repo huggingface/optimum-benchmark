@@ -79,7 +79,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.pretrained_model.generation_config.cache_implementation = self.config.cache_implementation
 
         # Eval mode
-        if self.config.eval_mode and self.config.library == "diffusers":
+        if self.config.eval_mode and self.config.library != "diffusers":
             LOGGER.info("\t+ Turning on model's eval mode")
             self.pretrained_model.eval()
 
