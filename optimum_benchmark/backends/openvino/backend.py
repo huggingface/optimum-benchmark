@@ -3,17 +3,8 @@ import os
 import inspect
 from typing import Any, Dict
 from logging import getLogger
+from collections import OrderedDict
 from tempfile import TemporaryDirectory
-
-import torch
-from hydra.utils import get_class
-from openvino.runtime import properties
-from safetensors.torch import save_file
-from optimum.intel.openvino import OVQuantizer
-from transformers.modeling_utils import no_init_weights
-from transformers.utils import ModelOutput
-from transformers.utils.logging import set_verbosity_error
-from optimum.intel.openvino import OVConfig as OVQuantizationConfig  # naming conflict
 
 from ..base import Backend
 from .config import OVConfig
@@ -22,6 +13,14 @@ from ...task_utils import TEXT_GENERATION_TASKS
 from ..transformers_utils import randomize_weights
 from ...generators.dataset_generator import DatasetGenerator
 
+import torch
+from hydra.utils import get_class
+from openvino.runtime import properties
+from safetensors.torch import save_file
+from optimum.intel.openvino import OVQuantizer
+from transformers.modeling_utils import no_init_weights
+from transformers.utils.logging import set_verbosity_error
+from optimum.intel.openvino import OVConfig as OVQuantizationConfig  # naming conflict
 
 # disable transformers logging
 set_verbosity_error()
@@ -149,7 +148,11 @@ class OVBackend(Backend[OVConfig]):
                 "sequence_length": 1,
                 **self.model_shapes,
             }
-            calibration_dataset = DatasetGenerator(task=self.config.task, dataset_shapes=dataset_shapes).generate()
+            calibration_dataset = DatasetGenerator(
+                task=self.config.task,
+                dataset_shapes=dataset_shapes,
+                model_shapes=self.model_shapes,
+            )()
             columns_to_be_removed = list(set(calibration_dataset.column_names) - set(quantizer._export_input_names))
             calibration_dataset = calibration_dataset.remove_columns(columns_to_be_removed)
         else:
@@ -196,11 +199,14 @@ class OVBackend(Backend[OVConfig]):
 
         return inputs
 
-    def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:
-        return self.pretrained_model(**inputs, **kwargs)
+    def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
+        return self.pretrained_model.forward(**inputs, **kwargs)
 
-    def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:
+    def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         return self.pretrained_model.generate(**inputs, **kwargs)
+
+    def call(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
+        return self.pretrained_model(**inputs, **kwargs)
 
     def clean(self) -> None:
         super().clean()

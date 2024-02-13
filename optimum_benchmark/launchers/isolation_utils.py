@@ -6,15 +6,15 @@ from logging import getLogger
 from multiprocessing import Process
 from contextlib import contextmanager
 
-import psutil
-
 from ..logging_utils import setup_logging
 from ..env_utils import is_nvidia_system, is_rocm_system
-from ..import_utils import is_amdsmi_available, is_py3nvml_available, torch_version
+from ..import_utils import is_amdsmi_available, is_py3nvml_available, torch_version, is_psutil_available
 
+if is_psutil_available():
+    import psutil
 
 if is_py3nvml_available():
-    import py3nvml.py3nvml as nvml  # type: ignore
+    import py3nvml.py3nvml as nvml
 
 if is_amdsmi_available():
     import amdsmi  # type: ignore
@@ -172,7 +172,7 @@ def assert_system_devices_isolation(benchmark_pid: int) -> None:
 
 
 @contextmanager
-def device_isolation(benchmark_pid: int, enabled: bool) -> None:
+def device_isolation(benchmark_pid: int, enabled: bool):
     if not enabled:
         yield
         return

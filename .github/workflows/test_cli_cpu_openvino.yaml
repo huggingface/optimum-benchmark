@@ -1,4 +1,4 @@
-name: CPU Pytorch tests
+name: CLI CPU OpenVINO Tests
 
 on:
   workflow_dispatch:
@@ -12,22 +12,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  run_cpu_pytorch_tests:
+  run_cli_cpu_openvino_tests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.10
         uses: actions/setup-python@v3
         with:
-          python-version: 3.8
+          python-version: '3.10'
 
       - name: Install requirements
         run: |
           pip install --upgrade pip
-          pip install -e .[testing,diffusers,timm,peft]
+          pip install -e .[testing,openvino,diffusers,timm]
 
       - name: Run tests
         run: |
-          pytest -k "cli and cpu and pytorch"
+          pytest -k "cli and cpu and openvino"

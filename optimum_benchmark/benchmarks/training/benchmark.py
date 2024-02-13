@@ -1,19 +1,16 @@
-import time
-from typing import Any, Dict
 from logging import getLogger
+from contextlib import ExitStack
 
-from transformers import (
-    default_data_collator,
-    TrainingArguments,
-    TrainerCallback,
-    TrainerControl,
-    TrainerState,
-)
-
-from ...generators.dataset_generator import DatasetGenerator
-from ...backends.base import Backend
-from .config import TrainingConfig
 from ..base import Benchmark
+from .config import TrainingConfig
+from .report import TrainingReport
+from ...trackers.memory import MemoryTracker
+from ...trackers.energy import EnergyTracker
+from .callback import LatencyTrainerCallback
+from ...backends.base import Backend, BackendConfigT
+from ...generators.dataset_generator import DatasetGenerator
+
+from transformers import default_data_collator
 
 LOGGER = getLogger("training")
 
@@ -24,9 +21,7 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
     def __init__(self, config: TrainingConfig) -> None:
         super().__init__(config)
 
-    def run(self, backend: Backend) -> None:
-        LOGGER.info("Running training benchmark")
-
+    def run(self, backend: Backend[BackendConfigT]) -> None:
         LOGGER.info("\t+ Creating dataset generator")
         dataset_generator = DatasetGenerator(
             task=backend.config.task,
@@ -35,105 +30,57 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
         )
 
         LOGGER.info("\t+ Generating training dataset")
-        training_dataset = dataset_generator.generate()
+        training_dataset = dataset_generator()
 
-        LOGGER.info("\t+ Creating training callbacks")
-        training_callbacks = [MeasurementCallback(warmup_steps=self.config.warmup_steps)]
-
-        self.trainer_state = backend.train(
-            training_dataset=training_dataset,
-            training_callbacks=training_callbacks,
-            training_data_collator=default_data_collator,
-            training_arguments=self.config.training_arguments,
+        LOGGER.info("\t+ Initializing training report")
+        self.report = TrainingReport(
+            max_steps=self.config.max_steps,
+            warmup_steps=self.config.warmup_steps,
+            per_process_batch_size=self.config.training_arguments["per_device_train_batch_size"],
+            gradient_accumulation_steps=self.config.training_arguments["gradient_accumulation_steps"],
         )
 
-        LOGGER.debug(f"Training runtime: {self.trainer_state.training_runtime:.3g} (s)")
-        LOGGER.debug(f"Training throughput: {self.trainer_state.training_throughput:.3g} (samples/s)")
+        training_callbackes = []
+        if self.config.latency:
+            LOGGER.info("\t+ Adding latency measuring callback")
+            latency_callback = LatencyTrainerCallback(device=backend.config.device, backend=backend.config.name)
+            training_callbackes.append(latency_callback)
 
-        return self.report()
+        training_trackers = []
+        if self.config.memory:
+            LOGGER.info("\t+ Adding memory tracking context manager")
+            memory_tracker = MemoryTracker(
+                device=backend.config.device, backend=backend.config.name, device_ids=backend.config.device_ids
+            )
+            training_trackers.append(memory_tracker.track())
 
-    def report(self) -> Dict[str, Any]:
-        return {
-            # warmup metrics
-            "warmup.runtime(s)": self.trainer_state.warmup_runtime,
-            "warmup.throughput(samples/s)": self.trainer_state.warmup_throughput,
-            # training metrics
-            "training.runtime(s)": self.trainer_state.training_runtime,
-            "training.throughput(samples/s)": self.trainer_state.training_throughput,
-            # overall metrics
-            "overall.runtime(s)": self.trainer_state.overall_runtime,
-            "overall.throughput(samples/s)": (self.trainer_state.overall_throughput),
-        }
+        if self.config.energy:
+            LOGGER.info("\t+ Adding energy tracking context manager")
+            energy_tracker = EnergyTracker(device=backend.config.device, device_ids=backend.config.device_ids)
+            training_trackers.append(energy_tracker.track())
 
+        with ExitStack() as stack:
+            for tracker in training_trackers:
+                stack.enter_context(tracker)
 
-class MeasurementCallback(TrainerCallback):
-    def __init__(self, warmup_steps: int):
-        self.warmup_steps = warmup_steps
+            backend.train(
+                training_dataset=training_dataset,
+                training_callbacks=training_callbackes,
+                training_data_collator=default_data_collator,
+                training_arguments=self.config.training_arguments,
+            )
 
-    def on_train_begin(
-        self,
-        args: TrainingArguments,
-        state: TrainerState,
-        control: TrainerControl,
-        **kwargs,
-    ):
-        state.warmup_start = time.perf_counter_ns() * 1e-9
-        state.overall_start = time.perf_counter_ns() * 1e-9
+        if self.config.latency:
+            self.report.populate_latency(overall_latencies_list=latency_callback.get_latencies_list())
+            self.report.log_latency()
 
-    def on_step_begin(
-        self,
-        args: TrainingArguments,
-        state: TrainerState,
-        control: TrainerControl,
-        **kwargs,
-    ):
-        if state.global_step == self.warmup_steps:
-            state.warmup_end = time.perf_counter_ns() * 1e-9
-            state.training_start = time.perf_counter_ns() * 1e-9
+        if self.config.memory:
+            self.report.populate_memory(overall_memories_dict=memory_tracker.get_memories_dict())
+            self.report.log_memory()
 
-    def on_train_end(
-        self,
-        args: TrainingArguments,
-        state: TrainerState,
-        control: TrainerControl,
-        **kwargs,
-    ):
-        state.training_end = time.perf_counter_ns() * 1e-9
-        state.overall_end = time.perf_counter_ns() * 1e-9
+        if self.config.energy:
+            self.report.populate_energy(overall_energies_dict=energy_tracker.get_energies_dict())
+            self.report.log_energy()
 
-        state.total_training_batch_size = args.train_batch_size * args.gradient_accumulation_steps
-
-        # warmup metrics
-        state.warmup_runtime = state.warmup_end - state.warmup_start
-        state.num_warmup_samples = self.warmup_steps * state.total_training_batch_size
-        state.warmup_throughput = state.num_warmup_samples / state.warmup_runtime
-        state.warmup_steps_per_second = self.warmup_steps / state.warmup_runtime
-
-        # training metrics
-        state.training_runtime = state.training_end - state.training_start
-        state.num_training_steps = state.max_steps - self.warmup_steps
-        state.num_training_samples = state.num_training_steps * state.total_training_batch_size
-        state.training_throughput = state.num_training_samples / state.training_runtime
-        state.training_steps_per_second = state.num_training_steps / state.training_runtime
-
-        # overall training metrics
-        state.overall_runtime = state.training_end - state.warmup_start
-        state.num_overall_samples = state.num_warmup_samples + state.num_training_samples
-        state.overall_throughput = state.num_overall_samples / state.overall_runtime
-        state.overall_steps_per_second = state.num_overall_samples / state.overall_runtime
-
-
-# def get_data_collator(task: str):
-#     if task == "object-detection":
-#         return object_detection_data_collator
-#     else:
-#         return default_data_collator
-
-
-# def object_detection_data_collator(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
-#     pixel_values = torch.stack([example["pixel_values"] for example in batch])
-#     labels = [example["labels"] for example in batch]
-#     return {
-#         "pixel_values": pixel_values,
-#         "labels": labels,
-#     }
+    def get_report(self) -> TrainingReport:
+        return self.report

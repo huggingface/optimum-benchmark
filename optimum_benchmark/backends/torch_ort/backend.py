@@ -4,6 +4,11 @@ from logging import getLogger
 from tempfile import TemporaryDirectory
 from typing import Any, Callable, Dict, List
 
+from ..transformers_utils import randomize_weights
+from ..peft_utils import get_peft_config_class
+from .config import TorchORTConfig
+from ..base import Backend
+
 import torch
 from datasets import Dataset
 from safetensors.torch import save_file
@@ -11,11 +16,6 @@ from transformers import TrainerCallback, TrainerState
 from transformers.modeling_utils import no_init_weights
 from transformers.utils.logging import set_verbosity_error
 from optimum.onnxruntime import ORTTrainer, ORTTrainingArguments
-
-from ..transformers_utils import randomize_weights
-from ..peft_utils import get_peft_config_class
-from .config import TorchORTConfig
-from ..base import Backend
 
 # disable transformers logging
 set_verbosity_error()
@@ -28,9 +28,9 @@ class TorchORTBackend(Backend[TorchORTConfig]):
 
     def __init__(self, config: TorchORTConfig):
         super().__init__(config)
+        self.validate_library()
 
-        LOGGER.info(f"Using AutoModel: {self.automodel_class.__name__}")
-
+        LOGGER.info("\t+ Creating backend temporary directory")
         self.tmpdir = TemporaryDirectory()
 
         if self.config.no_weights:
@@ -46,7 +46,11 @@ class TorchORTBackend(Backend[TorchORTConfig]):
             peft_config = peft_config_class(**self.config.peft_config)
             self.pretrained_model = get_peft_model(self.pretrained_model, peft_config=peft_config)
 
-        self.tmpdir.cleanup()
+    def validate_library(self) -> None:
+        if self.config.library == "transformers":
+            LOGGER.info(f"Using AutoModel: {self.automodel_class.__name__}")
+        else:
+            raise NotImplementedError(f"TorchORTBackend does not support {self.config.library} library")
 
     def create_no_weights_model(self) -> None:
         LOGGER.info("\t+ Creating no weights model directory")
@@ -76,9 +80,9 @@ class TorchORTBackend(Backend[TorchORTConfig]):
             self.load_automodel_from_pretrained()
             self.config.model = original_model
 
-        LOGGER.info("\t+ Randomizing weights")
+        LOGGER.info("\t+ Randomizing model weights")
         randomize_weights(self.pretrained_model)
-        LOGGER.info("\t+ Tying model weights after randomization")
+        LOGGER.info("\t+ Tying model weights")
         self.pretrained_model.tie_weights()
 
     def load_automodel_from_pretrained(self) -> None:
@@ -126,7 +130,7 @@ class TorchORTBackend(Backend[TorchORTConfig]):
         super().clean()
 
         if hasattr(self, "tmpdir"):
-            LOGGER.info("\t+ Cleaning temporary directory")
+            LOGGER.info("\t+ Cleaning backend temporary directory")
             self.tmpdir.cleanup()
 
         gc.collect()

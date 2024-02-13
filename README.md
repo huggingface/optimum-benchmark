@@ -3,14 +3,13 @@
 </p>
 <h1 align="center">Optimum-Benchmark 🏋️</h1>
 
-Optimum-Benchmark is a unified multi-backend utility for benchmarking [Transformers](https://github.com/huggingface/transformers), [Diffusers](https://github.com/huggingface/diffusers), [PEFT](https://github.com/huggingface/peft), [TIMM](https://github.com/huggingface/pytorch-image-models) and [Optimum](https://github.com/huggingface/optimum) flavors, along with supported optimizations & quantization schemes, for [inference](https://github.com/huggingface/optimum#accelerated-inference) & [training](https://github.com/huggingface/optimum#accelerated-training), on multiple [backends & hardwares](https://github.com/huggingface/optimum-benchmark?tab=readme-ov-file#supported-backendsdevices).
+Optimum-Benchmark is a unified [multi-backend & multi-device](#backends--devices-) utility for benchmarking [Transformers](https://github.com/huggingface/transformers), [Diffusers](https://github.com/huggingface/diffusers), [PEFT](https://github.com/huggingface/peft), [TIMM](https://github.com/huggingface/pytorch-image-models) and [Optimum](https://github.com/huggingface/optimum) flavors, along with all their supported [optimizations & quantization schemes](#backend-features-), for [inference & training](#benchmark-features-%EF%B8%8F), in [distributed & non-distributed settings](#backend-features-).
 
 ## Motivation 🤔
 
-- Hardware vendors wanting to know how their hardware performs compared to others on the same models.
-- HF ecosystem users wanting to know how their chosen model performs in terms of latency, throughput, memory usage, energy consumption, etc.
+- HF hardware partners wanting to know how their hardware performs compared to another hardware on the same models.
+- HF ecosystem users wanting to know how their chosen model performs in terms of latency, throughput, memory usage, energy consumption, etc compared to another model.
 - Experimenting with hardware & backend specific optimizations & quantization schemes that can be applied to models and improve their computational/memory/energy efficiency.
-- [...]
 
 ## Current status 📈
 
@@ -19,23 +18,20 @@ Optimum-Benchmark is a unified multi-backend utility for benchmarking [Transform
 [![CPU](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_api_cpu.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_api_cpu.yaml)
 [![CUDA](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_api_cuda.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_api_cuda.yaml)
 [![ROCM](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_api_rocm.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_api_rocm.yaml)
-[![MISC](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_api_misc.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_api_misc.yaml)
 
 ### CLI
+
 [![CPU Pytorch Tests](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cpu_pytorch.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cpu_pytorch.yaml)
 [![CPU OnnxRuntime Tests](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cpu_onnxruntime.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cpu_onnxruntime.yaml)
 [![CPU Intel Neural Compressor Tests](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cpu_neural_compressor.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cpu_neural_compressor.yaml)
 [![CPU OpenVINO Tests](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cpu_openvino.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cpu_openvino.yaml)
-
 [![CUDA Pytorch Tests](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cuda_pytorch.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cuda_pytorch.yaml)
-[![CUDA OnnxRuntime Inference Tests](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cuda_onnxruntime_inference.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cuda_onnxruntime_inference.yaml)
-[![CUDA Torch-ORT Training Tests](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cuda_torch_ort_training.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cuda_torch_ort_training.yaml)
-
-[![TensorRT OnnxRuntime Inference Tests](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_tensorrt_onnxruntime_inference.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_tensorrt_onnxruntime_inference.yaml)
+[![CUDA OnnxRuntime Tests](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cuda_onnxruntime_inference.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cuda_onnxruntime_inference.yaml)
+[![CUDA Torch-ORT Tests](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cuda_torch_ort_training.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cuda_torch_ort_training.yaml)
+[![TensorRT OnnxRuntime Tests](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_tensorrt_onnxruntime_inference.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_tensorrt_onnxruntime_inference.yaml)
 [![TensorRT-LLM Tests](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_tensorrt_llm.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_tensorrt_llm.yaml)
-
 [![ROCm Pytorch Tests](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_rocm_pytorch.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_rocm_pytorch.yaml)
-[![ROCm OnnxRuntime Inference Tests](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_rocm_onnxruntime_inference.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_rocm_onnxruntime_inference.yaml)
+[![ROCm OnnxRuntime Tests](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_rocm_onnxruntime_inference.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_rocm_onnxruntime_inference.yaml)
 
 ## Quickstart 🚀
 
@@ -44,7 +40,7 @@ Optimum-Benchmark is a unified multi-backend utility for benchmarking [Transform
 You can install `optimum-benchmark` using pip:
 
 ```bash
-python -m pip install git+https://github.com/huggingface/optimum-benchmark.git
+pip install optimum-benchmark
 ```
 
 or by cloning the repository and installing it in editable mode:
@@ -66,32 +62,44 @@ Depending on the backends you want to use, you might need to install some extra 
 - Intel Neural Compressor: `pip install optimum-benchmark[neural-compressor]`
 - Text Generation Inference: `pip install optimum-benchmark[text-generation-inference]`
 
-### Running benchmarks from python API 🧪
+### Running benchmarks from Python API 🧪
 
-You can run benchmarks from the python API:
+You can run benchmarks from the Python API, using the `launch` function from the `optimum_benchmark.experiment` module. Here's an example of how to run a benchmark using the `pytorch` backend, `process` launcher and `inference` benchmark.
 
 ```python
-import logging
-logging.basicConfig(level=logging.INFO)
-
+from optimum_benchmark.logging_utils import setup_logging
 from optimum_benchmark.experiment import launch, ExperimentConfig
 from optimum_benchmark.backends.pytorch.config import PyTorchConfig
 from optimum_benchmark.launchers.process.config import ProcessConfig
 from optimum_benchmark.benchmarks.inference.config import InferenceConfig
 
+
 if __name__ == "__main__":
-    backend_config = PyTorchConfig(model="gpt2", no_weights=True, device="cuda")
-    launcher_config = ProcessConfig(device_isolation=True)
-    benchmark_config = InferenceConfig(memory=True)
+    setup_logging(level="INFO")
+    benchmark_config = InferenceConfig(latency=False, memory=True, energy=True)
+    launcher_config = ProcessConfig()
+    backend_config = PyTorchConfig(
+        device="cuda",
+        no_weights=True,
+        device_ids="0,1",
+        device_map="auto",
+        model="IlyasMoutawwakil/vicuna-7b-v1.5-awq-gemm",
+    )
     experiment_config = ExperimentConfig(
-        experiment_name="api-launch-experiment",
+        experiment_name="python-api-launch-experiment",
         benchmark=benchmark_config,
         launcher=launcher_config,
         backend=backend_config,
     )
     benchmark_report = launch(experiment_config)
-    print("benchmark_report:", benchmark_report)
+    benchmark_report.log_all()
+    # or
+    print(benchmark_report.to_dict())
+    # or
+    benchmark_report.push_to_hub("IlyasMoutawwakil/vicuna-7b-v1.5-awq-gemm")
 ```
+
+Yep, it's that simple! Check the supported backends, launchers and benchmarks in the [features](#features-) section.
 
 ### Running benchmarks from CLI 🏃‍♂️
 
@@ -161,26 +169,26 @@ Other than the [examples](examples), you can also check [tests](tests/configs/).
 
 Everything else is optional or inferred at runtime, but can be configured to your needs.
 
-### Backends & Devices 📱
-
-- [x] Pytorch backend for CPU (`device=cpu`, `backend=pytorch`)
-- [x] Pytorch backend for CUDA (`device=cuda`, `backend=pytorch`)
-- [ ] Pytorch backend for Habana Gaudi Processor (`device=hpu`, `backend=pytorch`)
-- [x] OnnxRuntime backend for CPUExecutionProvider (`device=cpu`, `backend=onnxruntime`)
-- [x] OnnxRuntime backend for CUDAExecutionProvider (`device=cuda`, `backend=onnxruntime`)
-- [x] OnnxRuntime backend for ROCMExecutionProvider (`device=cuda`, `backend=onnxruntime`, `backend.provider=ROCMExecutionProvider`)
-- [x] OnnxRuntime backend for TensorrtExecutionProvider (`device=cuda`, `backend=onnxruntime`, `backend.provider=TensorrtExecutionProvider`)
-- [x] Intel Neural Compressor backend for CPU (`device=cpu`, `backend=neural-compressor`)
-- [x] TensorRT-LLM backend for CUDA (`device=cuda`, `backend=tensorrt-llm`)
-- [x] OpenVINO backend for CPU (`device=cpu`, `backend=openvino`)
-
-### Launcher features 🚀
+### Launchers 🚀
 
 - [x] Process isolation between consecutive runs (`launcher=process`)
-- [x] Assert devices (NVIDIA & AMD GPUs) isolation (`launcher.device_isolation=true`)
-- [x] Distributed inference/training (`launcher=torchrun`, `launcher.n_proc_per_node=2`, etc)
+- [x] Assert GPU devices (NVIDIA & AMD) isolation (`launcher.device_isolation=true`)
+- [x] Distributed inference/training (`launcher=torchrun`, `launcher.n_proc_per_node=2`)
 
-### Benchmark features 🏋️
+### Backends & Devices 📱
+
+- [x] Pytorch backend for CPU (`backend=pytorch`, `backend.device=cpu`)
+- [x] Pytorch backend for CUDA (`backend=pytorch`, `backend.device=cuda`)
+- [ ] Pytorch backend for Habana Gaudi Processor (`backend=pytorch`, `backend.device=habana`)
+- [x] OnnxRuntime backend for CPUExecutionProvider (`backend=onnxruntime`, `backend.device=cpu`)
+- [x] OnnxRuntime backend for CUDAExecutionProvider (`backend=onnxruntime`, `backend.device=cuda`)
+- [x] OnnxRuntime backend for ROCMExecutionProvider (`backend=onnxruntime`, `backend.device=cuda`, `backend.provider=ROCMExecutionProvider`)
+- [x] OnnxRuntime backend for TensorrtExecutionProvider (`backend=onnxruntime`, `backend.device=cuda`, `backend.provider=TensorrtExecutionProvider`)
+- [x] Intel Neural Compressor backend for CPU (`backend=neural-compressor`, `backend.device=cpu`)
+- [x] TensorRT-LLM backend for CUDA (`backend=tensorrt-llm`, `backend.device=cuda`)
+- [x] OpenVINO backend for CPU (`backend=openvino`, `backend.device=cpu`)
+
+### Benchmarking 🏋️
 
 - [x] Memory tracking (`benchmark.memory=true`)
 - [x] Latency and throughput tracking of forward pass (default)

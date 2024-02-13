@@ -42,9 +42,10 @@ class PyTorchConfig(BackendConfig):
 
     # optimization options
     eval_mode: bool = True
-    low_cpu_mem_usage: bool = False
     to_bettertransformer: bool = False
-    use_flash_attention_2: bool = False
+    low_cpu_mem_usage: Optional[bool] = None
+    attn_implementation: Optional[str] = None
+    cache_implementation: Optional[str] = None
 
     # compilation options
     torch_compile: bool = False
@@ -55,7 +56,6 @@ class PyTorchConfig(BackendConfig):
     quantization_config: Dict[str, Any] = field(default_factory=dict)
 
     # distributed inference options
-    data_parallel: bool = False
     deepspeed_inference: bool = False
     deepspeed_inference_config: Dict[str, Any] = field(default_factory=dict)
 

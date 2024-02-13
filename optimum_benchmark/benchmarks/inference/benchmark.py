@@ -1,24 +1,28 @@
-import os
-import statistics
 from logging import getLogger
-from typing import List, Dict, Any
+from typing import List, Tuple, Dict
 
 from ..base import Benchmark
 from .config import InferenceConfig
-from ...backends.base import Backend
 from ...trackers.energy import EnergyTracker
 from ...trackers.memory import MemoryTracker
 from ...trackers.latency import LatencyTracker
+from ...backends.base import Backend, BackendConfigT
 from ...generators.input_generator import InputGenerator
-from ...task_utils import TEXT_GENERATION_TASKS, DIFFUSION_TASKS
+from ...import_utils import is_torch_distributed_available
+from ...task_utils import TEXT_GENERATION_TASKS, IMAGE_DIFFUSION_TASKS
+from .report import InferenceReport, TextGenerationReport, ImageDiffusionReport
+
+if is_torch_distributed_available():
+    import torch.distributed
 
 LOGGER = getLogger("inference")
 
-DIFFUSION_KWARGS = {
+IMAGE_DIFFUSION_KWARGS = {
+    "num_inference_steps": 30,
     "num_images_per_prompt": 1,
 }
 
-GENERATE_KWARGS = {
+TEXT_GENERATION_KWARGS = {
     "num_return_sequences": 1,
     "max_new_tokens": 100,
     "min_new_tokens": 100,
@@ -36,45 +40,13 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
     def __init__(self, config: InferenceConfig) -> None:
         super().__init__(config)
 
-        self.forward_energy: float = 0
-        self.forward_emissions: float = 0
-        self.forward_max_memory_used: int = 0
-        self.forward_max_memory_allocated: int = 0
-        self.forward_max_memory_reserved: int = 0
-        self.forward_latencies: List[float] = []
-
-        self.generate_energy: float = 0
-        self.generate_emissions: float = 0
-        self.generate_max_memory_used: int = 0
-        self.generate_max_memory_allocated: int = 0
-        self.generate_max_memory_reserved: int = 0
-        self.generate_latencies: List[float] = []
-
-    def run(self, backend: Backend) -> None:
-        self.can_diffuse = backend.config.task in DIFFUSION_TASKS
-        self.can_generate = backend.config.task in TEXT_GENERATION_TASKS
-
-        if self.can_diffuse:
-            LOGGER.info("\t+ Updating forward kwargs with default values")
-            self.config.forward_kwargs = {
-                **DIFFUSION_KWARGS,
-                **self.config.forward_kwargs,
-            }
-        if self.can_generate:
-            LOGGER.info("\t+ Updating generate kwargs with default values")
-            self.config.generate_kwargs = {
-                **GENERATE_KWARGS,
-                **self.config.generate_kwargs,
-            }
-
-        # compile with static shapes if needed
-        LOGGER.info("\t+ Preparing backend for inference")
-        backend.prepare_for_inference(
-            **backend.model_shapes,
-            **self.config.input_shapes,
-            **self.config.forward_kwargs,
-            **self.config.generate_kwargs,
-        )
+    def run(self, backend: Backend[BackendConfigT]) -> None:
+        if is_torch_distributed_available() and torch.distributed.is_initialized():
+            if self.config.input_shapes["batch_size"] % torch.distributed.get_world_size() != 0:
+                raise ValueError(
+                    "The batch size must be divisible by the number of processes in a distributed environment"
+                )
+            self.config.input_shapes["batch_size"] //= torch.distributed.get_world_size()
 
         LOGGER.info("\t+ Creating input generator")
         self.input_generator = InputGenerator(
@@ -83,226 +55,223 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             input_shapes=self.config.input_shapes,
         )
 
-        # run memory tracking
-        # we do this first to measure the memory on the first call to forward/generate
-        if self.config.memory:
-            self.run_forward_memory_tracking(backend)
-            if self.can_generate:
-                self.run_generate_memory_tracking(backend)
+        if backend.config.task in TEXT_GENERATION_TASKS:
+            LOGGER.info("\t+ Generating and preparing Text Generation input")
+            self.forward_inputs = self.input_generator(mode="forward")
+            self.generate_input = self.input_generator(mode="generate")
+            self.forward_inputs = backend.prepare_inputs(self.forward_inputs)
+            self.generate_input = backend.prepare_inputs(self.generate_input)
+            LOGGER.info("\t+ Updating Text Generation kwargs with default values")
+            self.config.generate_kwargs = {**TEXT_GENERATION_KWARGS, **self.config.generate_kwargs}
+            LOGGER.info("\t+ Initializing Text Generation report")
+            self.report = TextGenerationReport(
+                batch_size=self.config.input_shapes["batch_size"],
+                sequence_length=self.config.input_shapes["sequence_length"],
+                num_new_tokens=self.config.generate_kwargs["max_new_tokens"],
+                num_return_sequences=self.config.generate_kwargs["num_return_sequences"],
+            )
 
-        # run lacency tracking
-        self.run_forward_latency_tracking(backend)
-        if self.can_generate:
-            self.run_generate_latency_tracking(backend)
+        elif backend.config.task in IMAGE_DIFFUSION_TASKS:
+            LOGGER.info("\t+ Generating and preparing Image Diffusion input")
+            self.diffuse_input = self.input_generator(mode="call")
+            self.diffuse_input = backend.prepare_inputs(self.diffuse_input)
+            LOGGER.info("\t+ Updating Image Diffusion kwargs with default values")
+            self.config.forward_kwargs = {**IMAGE_DIFFUSION_KWARGS, **self.config.forward_kwargs}
+            LOGGER.info("\t+ Initializing Image Diffusion report")
+            self.report = ImageDiffusionReport(
+                batch_size=self.config.input_shapes["batch_size"],
+                num_images_per_prompts=self.config.forward_kwargs["num_images_per_prompt"],
+            )
 
-        # run energy tracking
-        if self.config.energy:
-            self.run_forward_energy_tracking(backend)
-            if self.can_generate:
-                self.run_generate_energy_tracking(backend)
+        else:
+            LOGGER.info("\t+ Generating and preparing Inference input")
+            self.forward_inputs = self.input_generator(mode="forward")
+            self.forward_inputs = backend.prepare_inputs(self.forward_inputs)
+            LOGGER.info("\t+ Initializing Inference report")
+            self.report = InferenceReport(
+                batch_size=self.config.input_shapes["batch_size"],
+            )
 
-    def run_forward_latency_tracking(self, backend: "Backend") -> None:
-        forward_input = self.input_generator.generate(mode="forward")
+        LOGGER.info("\t+ Preparing backend for Inference")
+        backend.prepare_for_inference(
+            **backend.model_shapes,
+            **self.config.input_shapes,
+            **self.config.forward_kwargs,
+            **self.config.generate_kwargs,
+        )
 
-        LOGGER.info("\t+ Preparing input for the forward pass")
-        forward_input = backend.prepare_inputs(forward_input)
-
-        LOGGER.info("\t+ Warming up the forward pass")
+        LOGGER.info("\t+ Warming up backend for Inference")
         for _ in range(self.config.warmup_runs):
-            _ = backend.forward(forward_input, self.config.forward_kwargs)
-
-        LOGGER.info("\t+ Tracking forward pass latency and throughput")
-        latency_tracker = LatencyTracker(device=backend.config.device, backend=backend.config.name)
-        while sum(self.forward_latencies) < self.config.duration:
-            with latency_tracker.track():
-                _ = backend.forward(forward_input, self.config.forward_kwargs)
-            self.forward_latencies = latency_tracker.get_latencies()
-
-        LOGGER.debug(f"\t+ Forward pass latency: {self.forward_latency:.3g} (s)")
-        LOGGER.debug(f"\t+ Forward pass throughput: {self.forward_throughput:.3g} (samples/s)")
-
-    def run_forward_energy_tracking(self, backend: Backend) -> None:
-        forward_input = self.input_generator.generate(mode="forward")
-
-        LOGGER.info("\t+ Preparing input for the forward pass")
-        forward_input = backend.prepare_inputs(forward_input)
-
-        LOGGER.info("\t+ Tracking forward pass energy consumption")
-        num_forward_passes = 0
-        energy_tracker = EnergyTracker()
-        with energy_tracker.track(interval=1, file_prefix="forward"):
-            while energy_tracker.get_elapsed_time() < self.config.duration:
-                _ = backend.forward(forward_input, self.config.forward_kwargs)
-                num_forward_passes += 1
-        num_forward_samples = num_forward_passes * self.config.input_shapes["batch_size"]
-        self.forward_energy = energy_tracker.get_total_energy() / num_forward_samples
-        self.forward_emissions = energy_tracker.get_total_emissions() / num_forward_samples
-
-        LOGGER.debug(f"\t+ Forward pass energy consumption: {self.forward_energy:.3g} (kWh/sample)")
-        LOGGER.debug(f"\t+ Forward pass carbon emissions: {self.forward_emissions:.3g} (kgCO2eq/sample)")
-        LOGGER.debug(f"\t+ Full details in the CodeCarbon report: {os.getcwd()}/forward_codecarbon.csv")
-
-    def run_forward_memory_tracking(self, backend: "Backend") -> None:
-        forward_input = self.input_generator.generate(mode="forward")
-
-        LOGGER.info("\t+ Preparing input for the forward pass")
-        forward_input = backend.prepare_inputs(forward_input)
-
-        LOGGER.info("\t+ Tracking forward pass peak memory")
-        memory_tracker = MemoryTracker(device=backend.config.device, backend=backend.config.name)
-        with memory_tracker.track():
-            _ = backend.forward(forward_input, self.config.forward_kwargs)
-        self.forward_max_memory_used = memory_tracker.get_max_memory_used()
-        self.forward_max_memory_reserved = memory_tracker.get_max_memory_reserved()
-        self.forward_max_memory_allocated = memory_tracker.get_max_memory_allocated()
-
-        LOGGER.debug(f"\t+ Forward pass max memory used: {self.forward_max_memory_used:.3g} (MB)")
-        LOGGER.debug(f"\t+ Forward pass max memory reserved: {self.forward_max_memory_reserved:.3g} (MB)")
-        LOGGER.debug(f"\t+ Forward pass max memory allocated: {self.forward_max_memory_allocated:.3g} (MB)")
-
-    def run_generate_latency_tracking(self, backend: "Backend") -> None:
-        generate_input = self.input_generator.generate(mode="generate")
-
-        LOGGER.info("\t+ Preparing input for the generation pass")
-        generate_input = backend.prepare_inputs(generate_input)
-
-        LOGGER.info("\t+ Warming up the generation pass")
-        _ = backend.generate(generate_input, self.config.generate_kwargs)
-
-        LOGGER.info("\t+ Tracking generation latency and throughput")
-        latency_tracker = LatencyTracker(device=backend.config.device, backend=backend.config.name)
-        while sum(self.generate_latencies) < self.config.duration:
-            with latency_tracker.track():
-                _ = backend.generate(generate_input, self.config.generate_kwargs)
-            self.generate_latencies = latency_tracker.get_latencies()
-
-        LOGGER.debug(f"\t+ Generation pass latency: {self.generate_latency:.3g} (s)")
-        LOGGER.debug(f"\t+ Generation pass throughput: {self.generate_throughput:.3g} (tokens/s)")
-
-    def run_generate_energy_tracking(self, backend: Backend) -> None:
-        generate_input = self.input_generator.generate(mode="generate")
-
-        LOGGER.info("\t+ Preparing input for the generation pass")
-        generate_input = backend.prepare_inputs(generate_input)
-
-        LOGGER.info("\t+ Tracking generation pass energy consumption")
-        num_generate_passes = 0
-        energy_tracker = EnergyTracker()
-        with energy_tracker.track(interval=1, file_prefix="generate"):
-            while energy_tracker.get_elapsed_time() < self.config.duration:
-                _ = backend.generate(generate_input, self.config.generate_kwargs)
-                num_generate_passes += 1
-        num_generated_tokens = (
-            num_generate_passes
-            * self.config.generate_kwargs["min_new_tokens"]
-            * self.config.generate_kwargs["num_return_sequences"]
-            * self.config.input_shapes["batch_size"]
-        )
-        self.generate_energy = energy_tracker.get_total_energy() / num_generated_tokens
-        self.generate_emissions = energy_tracker.get_total_emissions() / num_generated_tokens
-
-        LOGGER.debug(f"\t+ Generation pass energy consumption: {self.generate_energy:.3g} (kWh/token)")
-        LOGGER.debug(f"\t+ Generation pass carbon emissions: {self.generate_emissions:.3g} (kgCO2eq/token)")
-        LOGGER.debug(f"\t+ Full details in the CodeCarbon report: {os.getcwd()}/generate_codecarbon.csv")
-
-    def run_generate_memory_tracking(self, backend: "Backend") -> None:
-        generate_input = self.input_generator.generate(mode="generate")
-
-        LOGGER.info("\t+ Preparing input for the generation pass")
-        generate_input = backend.prepare_inputs(generate_input)
-
-        LOGGER.info("\t+ Tracking generation pass peak memory")
-        memory_tracker = MemoryTracker(device=backend.config.device, backend=backend.config.name)
-        with memory_tracker.track():
-            _ = backend.generate(generate_input, self.config.generate_kwargs)
-        self.generate_max_memory_used = memory_tracker.get_max_memory_used()
-        self.generate_max_memory_reserved = memory_tracker.get_max_memory_reserved()
-        self.generate_max_memory_allocated = memory_tracker.get_max_memory_allocated()
-
-        LOGGER.debug(f"\t+ Generation pass max memory used: {self.generate_max_memory_used:.3g} (MB)")
-        LOGGER.debug(f"\t+ Generation pass max memory reserved: {self.generate_max_memory_reserved:.3g} (MB)")
-        LOGGER.debug(f"\t+ Generation pass max memory allocated: {self.generate_max_memory_allocated:.3g} (MB)")
-
-    # Metrics
-    ## Forward pass metrics
-    @property
-    def forward_latency(self) -> float:
-        return statistics.mean(self.forward_latencies)
-
-    @property
-    def forward_throughput(self) -> float:
-        return self.config.input_shapes["batch_size"] / self.forward_latency
-
-    ## Generation pass metrics
-    @property
-    def generate_latency(self) -> float:
-        return statistics.mean(self.generate_latencies)
-
-    @property
-    def generate_throughput(self) -> float:
-        return (
-            self.config.generate_kwargs["min_new_tokens"]
-            * self.config.generate_kwargs["num_return_sequences"]
-            * self.config.input_shapes["batch_size"]
-            / self.generate_latency
-        )
-
-    @property
-    def decode_latency(self) -> float:
-        return self.generate_latency - self.forward_latency
-
-    @property
-    def decode_throughput(self) -> float:
-        return (
-            (self.config.generate_kwargs["min_new_tokens"] - 1)
-            * self.config.generate_kwargs["num_return_sequences"]
-            * self.config.input_shapes["batch_size"]
-            / self.decode_latency
-        )
-
-    ## Diffusion pass metrics
-    @property
-    def diffusion_throughput(self) -> float:
-        return (
-            self.config.input_shapes["batch_size"]
-            * self.config.forward_kwargs["num_images_per_prompt"]
-            / self.forward_latency
-        )
-
-    def report(self) -> Dict[str, Any]:
-        report_dict = {}
-
-        report_dict["forward.latency(s)"] = self.forward_latency
-        report_dict["forward.throughput(samples/s)"] = self.forward_throughput
-
-        if self.can_diffuse:
-            report_dict["diffusion.throughput(images/s)"] = self.diffusion_throughput
+            if backend.config.task in TEXT_GENERATION_TASKS:
+                generate_warmup_kwargs = {"max_new_tokens": 2, "min_new_tokens": 2}
+                _ = backend.generate(self.generate_input, generate_warmup_kwargs)
+            elif backend.config.task in IMAGE_DIFFUSION_TASKS:
+                diffuse_warmup_kwargs = {"num_inference_steps": 2}
+                _ = backend.call(self.diffuse_input, diffuse_warmup_kwargs)
+            else:
+                _ = backend.forward(self.forward_inputs, self.config.forward_kwargs)
 
         if self.config.memory:
-            report_dict["forward.peak_memory(MB)"] = self.forward_max_memory_used
-            report_dict["forward.max_memory_used(MB)"] = self.forward_max_memory_used
-            report_dict["forward.max_memory_allocated(MB)"] = self.forward_max_memory_allocated
-            report_dict["forward.max_memory_reserved(MB)"] = self.forward_max_memory_reserved
+            LOGGER.info("\t+ Creating inference memory tracker")
+            self.memory_tracker = MemoryTracker(
+                backend=backend.config.name, device=backend.config.device, device_ids=backend.config.device_ids
+            )
+            if backend.config.task in TEXT_GENERATION_TASKS:
+                forward_memories_dict, generate_memories_dict = self.run_text_generation_memory_tracking(backend)
+                self.report.populate_memory(forward_memories_dict, generate_memories_dict)
+            elif backend.config.task in IMAGE_DIFFUSION_TASKS:
+                call_memories_dict = self.run_image_diffusion_memory_tracking(backend)
+                self.report.populate_memory(call_memories_dict)
+            else:
+                forward_memories_dict = self.run_inference_memory_tracking(backend)
+                self.report.populate_memory(forward_memories_dict)
+
+            self.report.log_memory()
+
+        if self.config.latency:
+            LOGGER.info("\t+ Creating inference latency tracker")
+            self.latency_tracker = LatencyTracker(backend=backend.config.name, device=backend.config.device)
+            if backend.config.task in TEXT_GENERATION_TASKS:
+                forward_latencies_dict, generate_latencies_dict = self.run_text_generation_latency_tracking(backend)
+                self.report.populate_latency(forward_latencies_dict, generate_latencies_dict)
+            elif backend.config.task in IMAGE_DIFFUSION_TASKS:
+                call_latencies_dict = self.run_image_diffusion_latency_tracking(backend)
+                self.report.populate_latency(call_latencies_dict)
+            else:
+                forward_latencies_dict = self.run_latency_inference_tracking(backend)
+                self.report.populate_latency(forward_latencies_dict)
+
+            self.report.log_latency()
 
         if self.config.energy:
-            report_dict["forward.energy_consumption(kWh/sample)"] = self.forward_energy
-            report_dict["forward.carbon_emissions(kgCO2eq/sample)"] = self.forward_emissions
+            LOGGER.info("\t+ Creating inference energy tracker")
+            self.energy_tracker = EnergyTracker(device=backend.config.device, device_ids=backend.config.device_ids)
+            if backend.config.task in TEXT_GENERATION_TASKS:
+                forward_energies_dict, generate_energies_dict = self.run_text_generation_energy_tracking(backend)
+                self.report.populate_energy(forward_energies_dict, generate_energies_dict)
+            elif backend.config.task in IMAGE_DIFFUSION_TASKS:
+                call_energies_dict = self.run_image_diffusion_energy_tracking(backend)
+                self.report.populate_energy(call_energies_dict)
+            else:
+                forward_energies_dict = self.run_inference_energy_tracking(backend)
+                self.report.populate_energy(forward_energies_dict)
 
-        if self.can_generate:
-            report_dict["generate.latency(s)"] = self.generate_latency
-            report_dict["generate.throughput(tokens/s)"] = self.generate_throughput
+            self.report.log_energy()
 
-            report_dict["decode.latency(s)"] = self.decode_latency
-            report_dict["decode.throughput(tokens/s)"] = self.decode_throughput
+    ## Memory tracking
+    def run_text_generation_memory_tracking(self, backend: Backend) -> Tuple[Dict[str, float], Dict[str, float]]:
+        LOGGER.info("\t+ Running memory tracking")
+        self.memory_tracker.reset()
+        with self.memory_tracker.track():
+            _ = backend.forward(self.forward_inputs, self.config.forward_kwargs)
 
-            if self.config.memory:
-                report_dict["generate.peak_memory(MB)"] = self.generate_max_memory_used
-                report_dict["generate.max_memory_used(MB)"] = self.generate_max_memory_used
-                report_dict["generate.max_memory_allocated(MB)"] = self.generate_max_memory_allocated
-                report_dict["generate.max_memory_reserved(MB)"] = self.generate_max_memory_reserved
+        forward_memories_dict = self.memory_tracker.get_memories_dict()
 
-            if self.config.energy:
-                report_dict["generate.energy_consumption(kWh/token)"] = self.generate_energy
-                report_dict["generate.carbon_emissions(kgCO2eq/token)"] = self.generate_emissions
+        self.memory_tracker.reset()
+        with self.memory_tracker.track():
+            _ = backend.generate(self.generate_input, self.config.generate_kwargs)
 
-        return report_dict
+        generate_memories_dict = self.memory_tracker.get_memories_dict()
+
+        return forward_memories_dict, generate_memories_dict
+
+    def run_image_diffusion_memory_tracking(self, backend: Backend) -> Dict[str, float]:
+        LOGGER.info("\t+ Running memory tracking")
+        self.memory_tracker.reset()
+        with self.memory_tracker.track():
+            _ = backend.call(self.diffuse_input, self.config.forward_kwargs)
+
+        call_memories_dict = self.memory_tracker.get_memories_dict()
+
+        return call_memories_dict
+
+    def run_inference_memory_tracking(self, backend: Backend) -> Dict[str, float]:
+        LOGGER.info("\t+ Running memory tracking")
+        self.memory_tracker.reset()
+        with self.memory_tracker.track():
+            _ = backend.forward(self.forward_inputs, self.config.forward_kwargs)
+
+        forward_memories_dict = self.memory_tracker.get_memories_dict()
+
+        return forward_memories_dict
+
+    ## Latency tracking
+    def run_text_generation_latency_tracking(self, backend: Backend) -> Tuple[List[float], List[float]]:
+        LOGGER.info("\t+ Running latency tracking")
+        self.latency_tracker.reset()
+        while self.latency_tracker.get_total_latency() < self.config.duration:
+            with self.latency_tracker.track():
+                _ = backend.forward(self.forward_inputs, self.config.forward_kwargs)
+
+        forward_latencies_list = self.latency_tracker.get_latencies_list()
+
+        self.latency_tracker.reset()
+        while self.latency_tracker.get_total_latency() < self.config.duration:
+            with self.latency_tracker.track():
+                _ = backend.generate(self.generate_input, self.config.generate_kwargs)
+
+        generate_latencies_list = self.latency_tracker.get_latencies_list()
+
+        return forward_latencies_list, generate_latencies_list
+
+    def run_image_diffusion_latency_tracking(self, backend: Backend) -> List[float]:
+        LOGGER.info("\t+ Running latency tracking")
+        self.latency_tracker.reset()
+        while self.latency_tracker.get_total_latency() < self.config.duration:
+            with self.latency_tracker.track():
+                _ = backend.call(self.diffuse_input, self.config.forward_kwargs)
+
+        call_latencies_list = self.latency_tracker.get_latencies_list()
+
+        return call_latencies_list
+
+    def run_latency_inference_tracking(self, backend: Backend) -> List[float]:
+        LOGGER.info("\t+ Running latency tracking")
+        self.latency_tracker.reset()
+        while self.latency_tracker.get_total_latency() < self.config.duration:
+            with self.latency_tracker.track():
+                _ = backend.forward(self.forward_inputs, self.config.forward_kwargs)
+
+        forward_latencies_list = self.latency_tracker.get_latencies_list()
+
+        return forward_latencies_list
+
+    ## Energy tracking
+    def run_text_generation_energy_tracking(self, backend: Backend) -> Tuple[Dict[str, float], Dict[str, float]]:
+        LOGGER.info("\t+ Running energy tracking")
+        self.energy_tracker.reset()
+        with self.energy_tracker.track():
+            _ = backend.forward(self.forward_inputs, self.config.forward_kwargs)
+
+        forward_energies_dict = self.energy_tracker.get_energies_dict()
+
+        self.energy_tracker.reset()
+        with self.energy_tracker.track():
+            _ = backend.generate(self.generate_input, self.config.generate_kwargs)
+
+        generate_energies_dict = self.energy_tracker.get_energies_dict()
+
+        return forward_energies_dict, generate_energies_dict
+
+    def run_image_diffusion_energy_tracking(self, backend: Backend) -> Dict[str, float]:
+        LOGGER.info("\t+ Running energy tracking")
+        self.energy_tracker.reset()
+        with self.energy_tracker.track():
+            _ = backend.call(self.diffuse_input, self.config.forward_kwargs)
+
+        call_energies_dict = self.energy_tracker.get_energies_dict()
+
+        return call_energies_dict
+
+    def run_inference_energy_tracking(self, backend: Backend) -> Dict[str, float]:
+        LOGGER.info("\t+ Running energy tracking")
+        self.energy_tracker.reset()
+        with self.energy_tracker.track():
+            _ = backend.forward(self.forward_inputs, self.config.forward_kwargs)
+
+        forward_energies_dict = self.energy_tracker.get_energies_dict()
+
+        return forward_energies_dict
+
+    def get_report(self) -> InferenceReport:
+        return self.report

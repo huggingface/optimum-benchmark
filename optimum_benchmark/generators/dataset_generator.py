@@ -15,7 +15,7 @@ class DatasetGenerator:
         dataset_shapes["batch_size"] = dataset_shapes["dataset_size"]
 
         if task in TASKS_TO_GENERATORS:
-            LOGGER.info(f"Using {task} task generator")
+            LOGGER.info(f"\t+ Using {task} task generator")
             shapes = {**dataset_shapes, **model_shapes}
             self.task_generator = TASKS_TO_GENERATORS[task](shapes=shapes, with_labels=True)
         else:
@@ -26,7 +26,8 @@ class DatasetGenerator:
                 "please submit a PR or a feature request to optimum-benchmark. \n"
             )
 
-    def generate(self) -> Dataset:
-        task_dataset = self.task_generator.generate()
+    def __call__(self) -> Dataset:
+        task_dataset = self.task_generator()
         task_dataset = Dataset.from_dict(task_dataset)
+        task_dataset.set_format(type="torch", columns=list(task_dataset.features.keys()))
         return task_dataset

@@ -1,12 +1,12 @@
 from logging import getLogger
 from typing import Any, Dict
 
-from hydra.utils import get_class
-from transformers.utils import ModelOutput
-
 from ..base import Backend
 from .config import TRTLLMConfig
 from .utils import MODEL_TYPE_TO_TRTLLMMODEL
+
+from hydra.utils import get_class
+from transformers.utils import ModelOutput
 
 LOGGER = getLogger("tensorrt-llm")
 
@@ -18,14 +18,14 @@ class TRTLLMBackend(Backend[TRTLLMConfig]):
         super().__init__(config)
         self.validate_model_type()
 
-        self.trtmodel_class = get_class(MODEL_TYPE_TO_TRTLLMMODEL[self.model_type])
-        LOGGER.info(f"\t+ Using TRTLLMModel class {self.trtmodel_class.__name__}")
-
         self.load_trtmodel_from_pretrained()
 
     def validate_model_type(self) -> None:
         if self.model_type not in MODEL_TYPE_TO_TRTLLMMODEL:
             raise NotImplementedError(f"TRTLLMBackend does not support model_type {self.model_type}")
+
+        self.trtmodel_class = get_class(MODEL_TYPE_TO_TRTLLMMODEL[self.model_type])
+        LOGGER.info(f"\t+ Using TRTLLMModel class {self.trtmodel_class.__name__}")
 
     def load_trtmodel_from_pretrained(self) -> None:
         self.pretrained_model = self.trtmodel_class.from_pretrained(

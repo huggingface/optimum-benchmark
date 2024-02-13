@@ -114,7 +114,7 @@ _CUSTOM_CLASSES = {
     ),
 }
 
-DIFFUSION_TASKS = [
+IMAGE_DIFFUSION_TASKS = [
     "stable-diffusion",
     "stable-diffusion-xl",
 ]
