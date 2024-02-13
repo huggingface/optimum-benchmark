@@ -70,9 +70,9 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
         if len(outputs) == 1:
             report: BenchmarkReport = outputs[0]
         else:
+            LOGGER.info(f"\t+ Merging benchmark reports from {len(outputs)} workers")
             report: BenchmarkReport = sum(outputs[1:], outputs[0])
-
-        report.log_all()
+            report.log_all()
 
         return report
 

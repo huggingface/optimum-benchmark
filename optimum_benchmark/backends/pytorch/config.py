@@ -56,7 +56,6 @@ class PyTorchConfig(BackendConfig):
     quantization_config: Dict[str, Any] = field(default_factory=dict)
 
     # distributed inference options
-    data_parallel: bool = False
     deepspeed_inference: bool = False
     deepspeed_inference_config: Dict[str, Any] = field(default_factory=dict)
 

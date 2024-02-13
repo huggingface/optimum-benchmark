@@ -38,6 +38,7 @@ class ORTConfig(BackendConfig):
     version: Optional[str] = onnxruntime_version()
     _target_: str = "optimum_benchmark.backends.onnxruntime.backend.ORTBackend"
 
+    # load options
     no_weights: bool = False
 
     # export options

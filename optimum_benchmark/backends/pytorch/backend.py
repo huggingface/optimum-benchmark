@@ -38,18 +38,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
     def __init__(self, config: PyTorchConfig):
         super().__init__(config)
-
-        if self.config.library == "timm":
-            LOGGER.info("\t+ Using method timm.create_model")
-        else:
-            automodel = self.automodel_class.__name__
-            if self.config.library == "diffusers":
-                LOGGER.info(f"\t+ Using Pipeline class {automodel}")
-            else:
-                LOGGER.info(f"\t+ Using AutoModel class {automodel}")
-
-        # Mixed precision
-        self.amp_dtype = getattr(torch, self.config.amp_dtype) if self.config.amp_dtype is not None else None
+        self.validate_library()
 
         # Threads
         if self.config.inter_op_num_threads is not None:
@@ -59,6 +48,13 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             LOGGER.info(f"\t+ Setting pytorch intra_op_num_threads({self.config.intra_op_num_threads}))")
             torch.set_num_interop_threads(self.config.intra_op_num_threads)
 
+        # Mixed precision
+        if self.config.amp_dtype:
+            LOGGER.info(f"\t+ Setting mixed precision dtype to {self.config.amp_dtype}")
+            self.amp_dtype = getattr(torch, self.config.amp_dtype)
+        else:
+            self.amp_dtype = None
+
         # Quantization
         if self.is_quantized:
             LOGGER.info("\t+ Processing quantization config")
@@ -66,7 +62,9 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         else:
             self.quantization_config = None
 
+        LOGGER.info("\t+ Creating backend temporary directory")
         self.tmpdir = TemporaryDirectory()
+
         if self.config.no_weights and self.config.library == "diffusers":
             raise ValueError("Diffusion pipelines are not supported with no_weights=True")
         elif self.config.no_weights:
@@ -81,7 +79,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.pretrained_model.generation_config.cache_implementation = self.config.cache_implementation
 
         # Eval mode
-        if self.config.eval_mode and not self.config.library == "diffusers":
+        if self.config.eval_mode and self.config.library == "diffusers":
             LOGGER.info("\t+ Turning on model's eval mode")
             self.pretrained_model.eval()
 
@@ -120,7 +118,15 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 dtype=getattr(self.pretrained_model, "dtype", None),
             )
 
-        self.tmpdir.cleanup()
+    def validate_library(self) -> None:
+        if self.config.library == "timm":
+            LOGGER.info(f"\t+ Using Timm method {self.automodel_class.__name__}")
+        elif self.config.library == "diffusers":
+            LOGGER.info(f"\t+ Using Pipeline class {self.automodel_class.__name__}")
+        elif self.config.library == "transformers":
+            LOGGER.info(f"\t+ Using AutoModel class {self.automodel_class.__name__}")
+        else:
+            raise ValueError(f"Library {self.config.library} not supported")
 
     def load_model_from_pretrained(self) -> None:
         if self.config.library == "timm":
@@ -132,8 +138,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.pretrained_model = self.automodel_class.from_pretrained(
                 pretrained_model_name_or_path=self.config.model,
                 device_map=self.config.device_map,
-                **self.automodel_kwargs,
                 **self.config.hub_kwargs,
+                **self.automodel_kwargs,
             )
             if self.config.device_map is None:
                 LOGGER.info(f"\t+ Moving pipeline to device: {self.config.device}")
@@ -151,7 +157,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.pretrained_model = self.automodel_class.from_pretrained(
                 pretrained_model_name_or_path=self.config.model,
                 # for gptq, we need to specify the device_map to either auto
-                # or a cuda adevice to avoid any modules being assigned to cpu
+                # or a cuda adevice to avoid any modules being assigned to cpu ¯\_(ツ)_/¯
                 device_map=self.config.device_map or torch.device(self.config.device),
                 **self.config.hub_kwargs,
                 **self.automodel_kwargs,
@@ -166,38 +172,38 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             )
         else:
             # this is the fastest way to load a model on a specific device
+            # but not compatible with all quantization methods (and pipelines)
             LOGGER.info(f"\t+ Loading model directly on device: {self.config.device}")
             with torch.device(self.config.device):
                 self.pretrained_model = self.automodel_class.from_pretrained(
                     pretrained_model_name_or_path=self.config.model,
-                    **self.automodel_kwargs,
                     **self.config.hub_kwargs,
+                    **self.automodel_kwargs,
                 )
 
     def create_no_weights_model(self) -> None:
-        self.no_weights_model = os.path.join(self.tmpdir.name, "no_weights")
+        LOGGER.info("\t+ Creating no weights model state_dict")
+        state_dict = torch.nn.Linear(1, 1).state_dict()
 
-        LOGGER.info("\t+ Creating no weights model directory")
-        os.makedirs(self.no_weights_model, exist_ok=True)
+        if self.is_exllamav2:
+            # for exllamav2 we need to add g_idx to the state_dict which
+            # requires some information about linear layers dimensions
+            with torch.device("meta"):
+                meta_model = self.automodel_class.from_config(self.pretrained_config)
+            for name, module in meta_model.named_modules():
+                if hasattr(module, "in_features"):
+                    state_dict[name + ".g_idx"] = torch.ones((module.in_features,), dtype=torch.int32)
 
         if self.is_quantized:
             # tricking from_pretrained to load the model as if it was quantized
             self.pretrained_config.quantization_config = self.quantization_config.to_dict()
 
-        LOGGER.info("\t+ Saving pretrained config")
+        LOGGER.info("\t+ Creating no weights model directory")
+        self.no_weights_model = os.path.join(self.tmpdir.name, "no_weights")
+        os.makedirs(self.no_weights_model, exist_ok=True)
+
+        LOGGER.info("\t+ Saving no weights model pretrained config")
         self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
-
-        LOGGER.info("\t+ Creating no weights model state_dict")
-        state_dict = torch.nn.Linear(1, 1).state_dict()
-
-        if self.is_exllamav2:
-            # for exllamav2 we need to add g_idx to the state_dict
-            with torch.device("meta"):
-                meta_model = self.automodel_class.from_config(self.pretrained_config)
-
-            for name, module in meta_model.named_modules():
-                if hasattr(module, "in_features"):
-                    state_dict[name + ".g_idx"] = torch.ones((module.in_features,), dtype=torch.int32)
 
         LOGGER.info("\t+ Saving no weights model state_dict")
         save_file(
@@ -284,8 +290,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
     def is_exllamav2(self) -> bool:
         return (
             self.is_gptq_quantized
-            and "exllama_config" in self.config.quantization_config
-            and self.config.quantization_config["exllama_config"]["version"] == 2
+            and "exllama_config" in self.quantization_config
+            and self.quantization_config["exllama_config"].get("version", None) == 2
         )
 
     @property
@@ -345,8 +351,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         training_arguments = TrainingArguments(**training_arguments)
         LOGGER.info("\t+ Wrapping model with transformers.Trainer")
         trainer = Trainer(
-            model=self.pretrained_model,
             args=training_arguments,
+            model=self.pretrained_model,
             callbacks=training_callbacks,
             train_dataset=training_dataset,
             data_collator=training_data_collator,
@@ -366,7 +372,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         super().clean()
 
         if hasattr(self, "tmpdir"):
-            LOGGER.info("\t+ Cleaning temporary directory")
+            LOGGER.info("\t+ Cleaning backend temporary directory")
             self.tmpdir.cleanup()
 
         gc.collect()

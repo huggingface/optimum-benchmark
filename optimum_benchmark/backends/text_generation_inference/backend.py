@@ -6,6 +6,11 @@ from typing import Any, Dict, List
 from tempfile import TemporaryDirectory
 from concurrent.futures import ThreadPoolExecutor
 
+from ..base import Backend
+from .config import TGIConfig
+from ...task_utils import TEXT_GENERATION_TASKS
+from ..transformers_utils import randomize_weights
+
 import torch
 import docker
 import docker.types
@@ -13,10 +18,6 @@ import docker.errors
 from safetensors.torch import save_model
 from huggingface_hub import InferenceClient, snapshot_download
 from huggingface_hub.inference._text_generation import TextGenerationResponse
-
-from ..base import Backend
-from .config import TGIConfig
-from ..transformers_utils import randomize_weights
 
 # bachend logger
 LOGGER = getLogger("text-generation-inference")
@@ -29,8 +30,7 @@ class TGIBackend(Backend[TGIConfig]):
         super().__init__(config)
         self.validate_task()
 
-        LOGGER.info(f"Using AutoModel class {self.automodel_class.__name__}")
-
+        LOGGER.info("\t+ Creating backend temporary directory")
         self.tmp_dir = TemporaryDirectory()
 
         if self.config.no_weights:
@@ -40,8 +40,10 @@ class TGIBackend(Backend[TGIConfig]):
             self.load_model_from_pretrained()
 
     def validate_task(self) -> None:
-        if self.config.task not in ["text-generation", "text2text-generation"]:
+        if self.config.task not in TEXT_GENERATION_TASKS:
             raise NotImplementedError(f"TGI does not support task {self.config.task}")
+
+        LOGGER.info(f"Using AutoModel class {self.automodel_class.__name__}")
 
     def download_pretrained_model(self) -> None:
         LOGGER.info("\t+ Downloading pretrained model")
@@ -93,7 +95,7 @@ class TGIBackend(Backend[TGIConfig]):
         self.pretrained_model = self.automodel_class.from_pretrained(
             self.no_weights_model,
             **self.config.hub_kwargs,
-            device_map="auto",
+            device_map="auto",  # for faster/safer loading
         )
 
         LOGGER.info("\t+ Randomizing weights")

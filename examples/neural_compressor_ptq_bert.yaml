@@ -7,7 +7,7 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: openvino_static_quant_bert
+experiment_name: neural_compressor_ptq_bert
 
 backend:
   device: cpu

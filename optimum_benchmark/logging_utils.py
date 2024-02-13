@@ -7,7 +7,7 @@ from subprocess import Popen, PIPE, STDOUT
 
 from omegaconf import OmegaConf
 
-JOB_LOGGING = {
+API_JOB_LOGGING = {
     "version": 1,
     "formatters": {
         "simple": {"format": "[%(asctime)s][%(name)s][%(levelname)s] - %(message)s"},
@@ -29,13 +29,8 @@ JOB_LOGGING = {
             "stream": "ext://sys.stdout",
             "class": "logging.StreamHandler",
         },
-        # "file": {
-        #     "filename": "api.log",
-        #     "formatter": "simple",
-        #     "class": "logging.FileHandler",
-        # },
     },
-    "root": {"level": "INFO", "handlers": ["console"]},  # "file"]},
+    "root": {"level": "INFO", "handlers": ["console"]},
     "disable_existing_loggers": False,
 }
 
@@ -48,8 +43,7 @@ def setup_logging(level: str = "INFO", prefix: Optional[str] = None):
             resolve=True,
         )
     else:
-        job_logging = JOB_LOGGING.copy()
-        job_logging["root"]["handlers"] = ["console"]
+        job_logging = API_JOB_LOGGING.copy()
 
     job_logging["root"]["level"] = level
 

@@ -6,6 +6,13 @@ from logging import getLogger
 from collections import OrderedDict
 from tempfile import TemporaryDirectory
 
+from ..base import Backend
+from .config import OVConfig
+from .utils import TASKS_TO_OVMODEL
+from ...task_utils import TEXT_GENERATION_TASKS
+from ..transformers_utils import randomize_weights
+from ...generators.dataset_generator import DatasetGenerator
+
 import torch
 from hydra.utils import get_class
 from openvino.runtime import properties
@@ -14,14 +21,6 @@ from optimum.intel.openvino import OVQuantizer
 from transformers.modeling_utils import no_init_weights
 from transformers.utils.logging import set_verbosity_error
 from optimum.intel.openvino import OVConfig as OVQuantizationConfig  # naming conflict
-
-from ..base import Backend
-from .config import OVConfig
-from .utils import TASKS_TO_OVMODEL
-from ...task_utils import TEXT_GENERATION_TASKS
-from ..transformers_utils import randomize_weights
-from ...generators.dataset_generator import DatasetGenerator
-
 
 # disable transformers logging
 set_verbosity_error()
@@ -149,7 +148,11 @@ class OVBackend(Backend[OVConfig]):
                 "sequence_length": 1,
                 **self.model_shapes,
             }
-            calibration_dataset = DatasetGenerator(task=self.config.task, dataset_shapes=dataset_shapes).generate()
+            calibration_dataset = DatasetGenerator(
+                task=self.config.task,
+                dataset_shapes=dataset_shapes,
+                model_shapes=self.model_shapes,
+            )()
             columns_to_be_removed = list(set(calibration_dataset.column_names) - set(quantizer._export_input_names))
             calibration_dataset = calibration_dataset.remove_columns(columns_to_be_removed)
         else:

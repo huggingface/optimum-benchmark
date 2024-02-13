@@ -4,26 +4,21 @@ from logging import getLogger
 from collections import OrderedDict
 from tempfile import TemporaryDirectory
 from typing import Any, Callable, Dict, List
-from ...generators.dataset_generator import DatasetGenerator
-from ...task_utils import TEXT_GENERATION_TASKS
-from .config import ORTConfig
+
 from ..base import Backend
-from .utils import (
-    format_calibration_config,
-    format_quantization_config,
-    TASKS_TO_ORTMODELS,
-    TASKS_TO_ORTSD,
-)
+from .config import ORTConfig
+from ...task_utils import TEXT_GENERATION_TASKS
+from ...generators.dataset_generator import DatasetGenerator
+from .utils import format_calibration_config, format_quantization_config, TASKS_TO_ORTMODELS, TASKS_TO_ORTSD
 
 import torch
 from datasets import Dataset
 from hydra.utils import get_class
 from onnxruntime import SessionOptions
 from safetensors.torch import save_file
-from transformers import TrainerCallback, TrainerState
+from transformers import TrainerCallback
 from transformers.modeling_utils import no_init_weights
 from transformers.utils.logging import set_verbosity_error
-from optimum.onnxruntime import ONNX_DECODER_WITH_PAST_NAME, ONNX_DECODER_NAME, ORTOptimizer, ORTQuantizer
 from optimum.onnxruntime.configuration import (
     AutoOptimizationConfig,
     AutoQuantizationConfig,
@@ -32,7 +27,14 @@ from optimum.onnxruntime.configuration import (
     QuantizationConfig,
     CalibrationConfig,
 )
-
+from optimum.onnxruntime import (
+    ONNX_DECODER_WITH_PAST_NAME,
+    ONNX_DECODER_NAME,
+    ORTTrainingArguments,
+    ORTOptimizer,
+    ORTQuantizer,
+    ORTTrainer,
+)
 
 # disable transformers logging
 set_verbosity_error()
@@ -56,15 +58,19 @@ class ORTBackend(Backend[ORTConfig]):
         else:
             raise NotImplementedError(f"ORTBackend does not support task {self.config.task}")
 
-        self.set_session_options()
+        LOGGER.info("\t+ Creating backend temporary directory")
         self.tmpdir = TemporaryDirectory()
+
+        self.session_options = SessionOptions()
+        for key, value in self.config.session_options.items():
+            setattr(self.session_options, key, value)
 
         if self.config.no_weights:
             self.load_ortmodel_with_no_weights()
         else:
             self.load_ortmodel_from_pretrained()
 
-        if self.is_deferred_trt_loading():
+        if self.is_trt_text_generation:
             return
 
         if self.is_optimized or self.is_quantized:
@@ -94,35 +100,30 @@ class ORTBackend(Backend[ORTConfig]):
             self.pretrained_model.providers[0] == self.config.provider
         ), f"{self.config.provider} is not first in providers list: {self.pretrained_model.providers}"
 
-    def is_deferred_trt_loading(self) -> bool:
-        return self.config.provider == "TensorrtExecutionProvider" and self.config.task in TEXT_GENERATION_TASKS
-
-    def set_session_options(self) -> None:
-        self.session_options = SessionOptions()
-        for key, value in self.config.session_options.items():
-            setattr(self.session_options, key, value)
-
-    def load_ortmodel_with_no_weights(self) -> None:
+    def create_no_weights_model(self) -> None:
         LOGGER.info("\t+ Creating no weights model directory")
-        no_weights_model = os.path.join(self.tmpdir.name, "no_weights")
-        os.makedirs(no_weights_model, exist_ok=True)
+        self.no_weights_model = os.path.join(self.tmpdir.name, "no_weights")
+        os.makedirs(self.no_weights_model, exist_ok=True)
 
         LOGGER.info("\t+ Saving pretrained config")
-        self.pretrained_config.save_pretrained(save_directory=no_weights_model)
+        self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
 
-        LOGGER.info("\t+ Creating no weights model weights")
+        LOGGER.info("\t+ Creating no weights model state dict")
         state_dict = torch.nn.Linear(1, 1).state_dict()
 
-        LOGGER.info("\t+ Saving no weights model weights")
+        LOGGER.info("\t+ Saving no weights model state dict")
         save_file(
-            filename=os.path.join(no_weights_model, "model.safetensors"),
+            filename=os.path.join(self.no_weights_model, "model.safetensors"),
             metadata={"format": "pt"},
             tensors=state_dict,
         )
 
+    def load_ortmodel_with_no_weights(self) -> None:
+        self.create_no_weights_model()
+
         with no_init_weights():
             original_model = self.config.model
-            self.config.model = no_weights_model
+            self.config.model = self.no_weights_model
             LOGGER.info("\t+ Loading no weights model")
             self.load_ortmodel_from_pretrained()
             self.config.model = original_model
@@ -138,6 +139,10 @@ class ORTBackend(Backend[ORTConfig]):
             **self.config.hub_kwargs,
             **self.ortmodel_kwargs,
         )
+
+    @property
+    def is_trt_text_generation(self) -> bool:
+        return self.config.provider == "TensorrtExecutionProvider" and self.config.task in TEXT_GENERATION_TASKS
 
     @property
     def is_optimized(self) -> bool:
@@ -247,7 +252,7 @@ class ORTBackend(Backend[ORTConfig]):
                 task=self.config.task,
                 dataset_shapes=dataset_shapes,
                 model_shapes=self.model_shapes,
-            ).generate()
+            )()
             columns_to_be_removed = list(set(calibration_dataset.column_names) - set(self.inputs_names))
             calibration_dataset = calibration_dataset.remove_columns(columns_to_be_removed)
 
@@ -309,7 +314,7 @@ class ORTBackend(Backend[ORTConfig]):
         self.config.model = quantized_model_path
 
     def prepare_for_inference(self, **kwargs) -> None:
-        if self.is_deferred_trt_loading():
+        if self.is_trt_text_generation:
             LOGGER.info("\t+ Creating dynamic shapes for Tensorrt engine. Engine creation might take a while.")
             batch_size = kwargs["batch_size"]
             max_new_tokens = kwargs["max_new_tokens"]
@@ -363,9 +368,7 @@ class ORTBackend(Backend[ORTConfig]):
         training_arguments: Dict[str, Any],
         training_callbacks: List[TrainerCallback],
         training_data_collator: Callable[[List[Dict[str, Any]]], Dict[str, Any]],
-    ) -> TrainerState:
-        from optimum.onnxruntime import ORTTrainer, ORTTrainingArguments
-
+    ) -> None:
         LOGGER.info("\t+ Setting dataset format to `torch`")
         training_dataset.set_format(type="torch", columns=list(training_dataset.features.keys()))
         LOGGER.info("\t+ Wrapping training arguments with optimum.onnxruntime.ORTTrainingArguments")
@@ -382,13 +385,11 @@ class ORTBackend(Backend[ORTConfig]):
         trainer.train()
         LOGGER.info("\t+ Training finished successfully")
 
-        return trainer.state
-
     def clean(self) -> None:
         super().clean()
 
         if hasattr(self, "tmpdir"):
-            LOGGER.info("\t+ Cleaning temporary directory")
+            LOGGER.info("\t+ Cleaning backend temporary directory")
             self.tmpdir.cleanup()
 
         gc.collect()

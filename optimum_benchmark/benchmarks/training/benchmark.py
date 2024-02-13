@@ -4,9 +4,9 @@ from contextlib import ExitStack
 from ..base import Benchmark
 from .config import TrainingConfig
 from .report import TrainingReport
-from .callback import MeasurementCallback
 from ...trackers.memory import MemoryTracker
 from ...trackers.energy import EnergyTracker
+from .callback import LatencyTrainerCallback
 from ...backends.base import Backend, BackendConfigT
 from ...generators.dataset_generator import DatasetGenerator
 
@@ -43,7 +43,7 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
         training_callbackes = []
         if self.config.latency:
             LOGGER.info("\t+ Adding latency measuring callback")
-            latency_callback = MeasurementCallback(device=backend.config.device, backend=backend.config.name)
+            latency_callback = LatencyTrainerCallback(device=backend.config.device, backend=backend.config.name)
             training_callbackes.append(latency_callback)
 
         training_trackers = []

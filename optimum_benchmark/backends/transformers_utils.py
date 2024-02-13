@@ -127,16 +127,15 @@ def extract_transformers_shapes_from_artifacts(
 
 def randomize_weights(model: "torch.nn.Module") -> None:
     for param in model.parameters():
-        if param.data.dtype in (torch.float32, torch.float16, torch.bfloat16):
+        if param.data.is_floating_point():
             if torch.cuda.is_available() and param.device.type != "cuda":
                 param.data.cuda().normal_(mean=0.0, std=0.2).cpu()
             elif torch.backends.mps.is_available() and param.device.type != "mps":
-                param.data.to("mps").normal_(mean=0.0, std=0.2).to("cpu")
+                param.data.to("mps").normal_(mean=0.0, std=0.2).cpu()
             else:
                 param.data.normal_(mean=0.0, std=0.2)
 
-        # TODO: enable quantized weights randomization
-        elif param.data.dtype in (torch.int8, torch.int16, torch.int32, torch.int64):
+        elif param.data.dtype in (torch.int32, torch.int16, torch.int8):
             if torch.cuda.is_available() and param.device.type != "cuda":
                 param.data.copy_(torch.randint(-127, 127, param.data.shape, device="cuda"))
             elif torch.backends.mps.is_available() and param.device.type != "mps":

@@ -1,15 +1,11 @@
 import time
 from typing import List
 
-from ...import_utils import is_torch_available
-
-if is_torch_available():
-    import torch
-
+import torch
 from transformers import TrainerCallback
 
 
-class MeasurementCallback(TrainerCallback):
+class LatencyTrainerCallback(TrainerCallback):
     def __init__(self, device: str, backend: str) -> None:
         self.device = device
         self.backend = backend
