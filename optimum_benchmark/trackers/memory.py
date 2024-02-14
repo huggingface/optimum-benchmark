@@ -7,8 +7,8 @@ from multiprocessing import Pipe, Process
 from typing import List, Optional, Literal
 from multiprocessing.connection import Connection
 
-from ..env_utils import get_cuda_device_ids, is_nvidia_system, is_rocm_system
-from ..import_utils import is_pynvml_available, is_amdsmi_available, is_torch_available, torch_version
+from ..env_utils import get_cuda_device_ids, is_nvidia_system, is_rocm_system, get_rocm_version
+from ..import_utils import is_pynvml_available, is_amdsmi_available, is_torch_available
 
 if is_nvidia_system() and is_pynvml_available():
     import pynvml
@@ -250,7 +250,7 @@ def monitor_gpu_vram_memory(
                 "Please install the official and AMD maintained amdsmi library from https://github.com/ROCm/amdsmi."
             )
         amdsmi.amdsmi_init()
-        rocm_version = torch_version().split("rocm")[-1]
+        rocm_version = get_rocm_version()
 
         if rocm_version >= "5.7":
             devices_handles = amdsmi.amdsmi_get_processor_handles()

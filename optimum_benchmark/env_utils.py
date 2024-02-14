@@ -4,7 +4,7 @@ import platform
 import subprocess
 from typing import Optional, List
 
-from .import_utils import is_pynvml_available, is_amdsmi_available, torch_version
+from .import_utils import is_pynvml_available, is_amdsmi_available
 
 import psutil
 
@@ -32,6 +32,14 @@ if is_nvidia_system():
 if is_rocm_system():
     if is_amdsmi_available():
         import amdsmi as amdsmi
+
+
+def get_rocm_version():
+    for folder in os.listdir("/opt/"):
+        if "rocm" in folder and "rocm" != folder:
+            return folder.split("-")[-1]
+
+    raise ValueError("No ROCm version found.")
 
 
 def get_cpu() -> Optional[str]:
@@ -82,7 +90,7 @@ def get_gpus():
 
         gpus = []
         amdsmi.amdsmi_init()
-        rocm_version = torch_version().split("rocm")[-1]
+        rocm_version = get_rocm_version()
 
         if rocm_version >= "5.7":
             devices_handles = amdsmi.amdsmi_get_processor_handles()
@@ -122,7 +130,7 @@ def get_gpu_vram_mb() -> List[int]:
             )
 
         amdsmi.amdsmi_init()
-        rocm_version = torch_version().split("rocm")[-1]
+        rocm_version = get_rocm_version()
 
         if rocm_version >= "5.7":
             device_handles = amdsmi.amdsmi_get_processor_handles()
@@ -167,7 +175,7 @@ def get_cuda_device_ids() -> str:
                 )
 
             amdsmi.amdsmi_init()
-            rocm_version = torch_version().split("rocm")[-1]
+            rocm_version = get_rocm_version()
 
             if rocm_version >= "5.7":
                 device_ids = list(range(len(amdsmi.amdsmi_get_processor_handles())))

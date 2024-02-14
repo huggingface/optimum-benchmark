@@ -1,6 +1,6 @@
-from logging import getLogger
-import time
 import gc
+import time
+from logging import getLogger
 
 from optimum_benchmark.trackers.memory import MemoryTracker
 from optimum_benchmark.trackers.latency import LatencyTracker

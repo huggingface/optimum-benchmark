@@ -7,8 +7,8 @@ from multiprocessing import Process
 from contextlib import contextmanager
 
 from ..logging_utils import setup_logging
-from ..env_utils import is_nvidia_system, is_rocm_system
-from ..import_utils import is_amdsmi_available, is_pynvml_available, torch_version, is_psutil_available
+from ..env_utils import is_nvidia_system, is_rocm_system, get_rocm_version
+from ..import_utils import is_amdsmi_available, is_pynvml_available, is_psutil_available
 
 if is_psutil_available():
     import psutil
@@ -56,7 +56,7 @@ def get_amd_devices_pids() -> Dict[int, list]:
         )
 
     devices_pids: Dict[int, list] = {}
-    rocm_version = torch_version().split("rocm")[-1]
+    rocm_version = get_rocm_version()
     devices_ids = [int(device_id) for device_id in os.environ["CUDA_VISIBLE_DEVICES"].split(",")]
 
     amdsmi.amdsmi_init()
