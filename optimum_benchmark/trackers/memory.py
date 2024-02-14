@@ -50,13 +50,13 @@ class Memory:
         )
 
     @staticmethod
-    def aggregate(max_memories: List["Memory"]) -> "Memory":
-        if len(max_memories) == 0 or all(memory is None for memory in max_memories):
+    def aggregate(memories: List["Memory"]) -> "Memory":
+        if len(memories) == 0 or all(memory is None for memory in memories):
             return None
-        elif any(memory is None for memory in max_memories):
+        elif any(memory is None for memory in memories):
             raise ValueError("Some memory measurements are missing")
 
-        return reduce(lambda x, y: x + y, max_memories)
+        return reduce(lambda x, y: x + y, memories)
 
     def log(self, prefix: str = "forward"):
         LOGGER.info(f"\t\t+ {prefix} max RAM memory: {self.max_ram:f} ({self.unit})")
@@ -124,11 +124,11 @@ class MemoryTracker:
 
         yield from self._cuda_memory()
 
-        self.max_allocated_memory = (
-            sum(torch.cuda.max_memory_allocated(device=device) for device in range(torch.cuda.device_count())) / 1e6
+        self.max_allocated_memory = sum(
+            torch.cuda.max_memory_allocated(device=device) / 1e6 for device in range(torch.cuda.device_count())
         )
-        self.max_reserved_memory = (
-            sum(torch.cuda.max_memory_reserved(device=device) for device in range(torch.cuda.device_count())) / 1e6
+        self.max_reserved_memory = sum(
+            torch.cuda.max_memory_reserved(device=device) / 1e6 for device in range(torch.cuda.device_count())
         )
 
     def _cuda_memory(self):
@@ -227,12 +227,16 @@ def monitor_gpu_vram_memory(
                     LOGGER.warning(f"Could not get process list for device {device_id}: {e}")
                     continue
                 for device_process in device_processes:
-                    if device_process.pid == process_id or (
-                        psutil.pid_exists(device_process.pid)
-                        and psutil.Process(device_process.pid).parent().pid == process_id
-                    ):
-                        # only memory usage of the process and its children is tracked
+                    if device_process.pid == process_id:
                         current_used_memory += device_process.usedGpuMemory
+                    else:
+                        try:
+                            cpu_process = psutil.Process(device_process.pid)
+                        except Exception as e:
+                            LOGGER.warning(f"Could not get process info for process {device_process.pid}: {e}")
+                            continue
+                        if cpu_process.parent() is not None and cpu_process.parent().pid == process_id:
+                            current_used_memory += device_process.usedGpuMemory
 
             max_memory = max(max_memory, current_used_memory)
             stop = connection.poll(interval)
@@ -255,24 +259,29 @@ def monitor_gpu_vram_memory(
                 for device_id in device_ids:
                     device_handle = devices_handles[device_id]
                     try:
-                        device_process = amdsmi.amdsmi_get_gpu_process_list(device_handle)
+                        processes_handles = amdsmi.amdsmi_get_gpu_process_list(device_handle)
                     except Exception as e:
                         LOGGER.warning(f"Could not get process list for device {device_id}: {e}")
                         continue
-
-                    for process_handle in device_process:
+                    for process_handle in processes_handles:
                         try:
-                            process_info = amdsmi.amdsmi_get_gpu_process_info(device_handle, process_handle)
+                            gpu_process_info = amdsmi.amdsmi_get_gpu_process_info(device_handle, process_handle)
                         except Exception as e:
                             LOGGER.warning(f"Could not get process info for process {process_handle}: {e}")
                             continue
-
-                        if process_info["pid"] == process_id or (
-                            psutil.pid_exists(process_info["pid"])
-                            and psutil.Process(process_info["pid"]).parent().pid == process_id
-                        ):
-                            # only memory usage of the monitored process and its children is tracked
-                            current_used_memory += process_info["memory_usage"]["vram_mem"]
+                        # only memory usage of the monitored process and its children is tracked
+                        if gpu_process_info["pid"] == process_id:
+                            current_used_memory += gpu_process_info["memory_usage"]["vram_mem"]
+                        else:
+                            try:
+                                cpu_process_info = psutil.Process(gpu_process_info["pid"])
+                            except Exception as e:
+                                LOGGER.warning(
+                                    f"Could not get process info for process {gpu_process_info['pid']}: {e}"
+                                )
+                                continue
+                            if cpu_process_info.parent() is not None and cpu_process_info.parent().pid == process_id:
+                                current_used_memory += gpu_process_info["memory_usage"]["vram_mem"]
 
                 max_memory = max(max_memory, current_used_memory)
                 stop = connection.poll(interval)
@@ -283,24 +292,29 @@ def monitor_gpu_vram_memory(
                 for device_id in device_ids:
                     device_handle = devices_handles[device_id]
                     try:
-                        device_process = amdsmi.amdsmi_get_process_list(device_handle)
+                        processes_handles = amdsmi.amdsmi_get_process_list(device_handle)
                     except Exception as e:
                         LOGGER.warning(f"Could not get process list for device {device_id}: {e}")
                         continue
-
-                    for process_handle in device_process:
+                    for process_handle in processes_handles:
                         try:
-                            process_info = amdsmi.amdsmi_get_process_info(device_handle, process_handle)
+                            gpu_process_info = amdsmi.amdsmi_get_process_info(device_handle, process_handle)
                         except Exception as e:
                             LOGGER.warning(f"Could not get process info for process {process_handle}: {e}")
                             continue
-
-                        if process_info["pid"] == process_id or (
-                            psutil.pid_exists(process_info["pid"])
-                            and psutil.Process(process_info["pid"]).parent().pid == process_id
-                        ):
-                            # only memory usage of the monitored process and its children is tracked
-                            current_used_memory += process_info["memory_usage"]["vram_mem"]
+                        # only memory usage of the monitored process and its children is tracked
+                        if gpu_process_info["pid"] == process_id:
+                            current_used_memory += gpu_process_info["memory_usage"]["vram_mem"]
+                        else:
+                            try:
+                                cpu_process_info = psutil.Process(gpu_process_info["pid"])
+                            except Exception as e:
+                                LOGGER.warning(
+                                    f"Could not get process info for process {gpu_process_info['pid']}: {e}"
+                                )
+                                continue
+                            if cpu_process_info.parent() is not None and cpu_process_info.parent().pid == process_id:
+                                current_used_memory += gpu_process_info["memory_usage"]["vram_mem"]
 
                 max_memory = max(max_memory, current_used_memory)
                 stop = connection.poll(interval)

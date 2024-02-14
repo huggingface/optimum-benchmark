@@ -6,9 +6,9 @@ from typing import Callable, Dict, Any, List
 
 from ..base import Launcher
 from .config import TorchrunConfig
+from ...report import BenchmarkReport
 from ...logging_utils import setup_logging
 from ..isolation_utils import device_isolation
-from ...benchmarks.report import BenchmarkReport
 
 import torch.distributed
 from torch.distributed import FileStore
@@ -65,12 +65,15 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
         while not queue.empty():
             outputs.append(queue.get())
 
-        if len(outputs) == 1:
-            report: BenchmarkReport = outputs[0]
-        else:
+        if len(outputs) > 1:
             LOGGER.info(f"\t+ Merging benchmark reports from {len(outputs)} workers")
-            report: BenchmarkReport = outputs[0].aggregate(outputs)
-            report.log_all()
+            report = outputs[0].aggregate(outputs)
+        elif len(outputs) == 1:
+            report = outputs[0]
+        else:
+            raise ValueError("No benchmark report was returned by the workers")
+
+        report.log_all()
 
         return report
 

@@ -1,15 +1,12 @@
 import os
 from logging import getLogger
 from tempfile import TemporaryDirectory
-from dataclasses import dataclass, field
-from typing import Any, Dict, Type, Optional, TYPE_CHECKING
+from dataclasses import dataclass, field, asdict
+from typing import Any, Dict, Type, Optional, Union, TYPE_CHECKING
 
-from hydra.utils import get_class
-from transformers.configuration_utils import PushToHubMixin
-
+from .report import BenchmarkReport
 from .env_utils import get_system_info
 from .import_utils import get_hf_libs_info
-from .benchmarks.report import BenchmarkReport
 from .benchmarks.config import BenchmarkConfig
 from .launchers.config import LauncherConfig
 from .backends.config import BackendConfig
@@ -22,8 +19,14 @@ if TYPE_CHECKING:
     from .launchers.base import Launcher
     from .backends.base import Backend
 
+from json import dump
+from flatten_dict import flatten
+from hydra.utils import get_class
+from transformers.configuration_utils import PushToHubMixin
 
 LOGGER = getLogger("experiment")
+
+EXPERIMENT_FILE_NAME = "experiment_config.json"
 
 
 @dataclass
@@ -45,6 +48,58 @@ class ExperimentConfig(PushToHubMixin):
 
     # ENVIRONMENT CONFIGURATION
     environment: Dict = field(default_factory=lambda: {**get_system_info(), **get_hf_libs_info()})
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+    def to_flat_dict(self) -> Dict[str, Any]:
+        report_dict = self.to_dict()
+        return flatten(report_dict, reducer="dot")
+
+    def to_json(self, path: str, flat: bool = False) -> None:
+        if flat:
+            with open(path, "w") as f:
+                dump(self.to_flat_dict(), f, indent=4)
+        else:
+            with open(path, "w") as f:
+                dump(self.to_dict(), f, indent=4)
+
+    def save_pretrained(
+        self,
+        save_directory: Union[str, os.PathLike],
+        config_file_name: Optional[Union[str, os.PathLike]] = None,
+        push_to_hub: bool = False,
+        **kwargs,
+    ):
+        use_auth_token = kwargs.pop("use_auth_token", None)
+
+        if use_auth_token is not None:
+            kwargs["token"] = use_auth_token
+
+        config_file_name = config_file_name if config_file_name is not None else EXPERIMENT_FILE_NAME
+
+        if os.path.isfile(save_directory):
+            raise AssertionError(f"Provided path ({save_directory}) should be a directory, not a file")
+
+        os.makedirs(save_directory, exist_ok=True)
+
+        if push_to_hub:
+            commit_message = kwargs.pop("commit_message", None)
+            repo_id = kwargs.pop("repo_id", save_directory.split(os.path.sep)[-1])
+            repo_id = self._create_repo(repo_id, **kwargs)
+            files_timestamps = self._get_files_timestamps(save_directory)
+
+        output_config_file = os.path.join(save_directory, config_file_name)
+        self.to_json(output_config_file, flat=False)
+
+        if push_to_hub:
+            self._upload_modified_files(
+                save_directory,
+                repo_id,
+                files_timestamps,
+                commit_message=commit_message,
+                token=kwargs.get("token"),
+            )
 
 
 def run(benchmark_config: BenchmarkConfig, backend_config: BackendConfig) -> BenchmarkReport:

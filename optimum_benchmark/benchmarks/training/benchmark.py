@@ -1,10 +1,11 @@
 from logging import getLogger
 from contextlib import ExitStack
+from dataclasses import dataclass
 
 from ..base import Benchmark
 from .config import TrainingConfig
-from .report import TrainingReport
 from ...trackers.memory import MemoryTracker
+from ...report import BenchmarkReport, Measurements
 from ...backends.base import Backend, BackendConfigT
 from ...trackers.energy import EnergyTracker, Efficiency
 from ...generators.dataset_generator import DatasetGenerator
@@ -16,6 +17,13 @@ LOGGER = getLogger("training")
 
 TRAIN_THROUGHPUT_UNIT = "samples/s"
 TRAIN_EFFICIENCY_UNIT = "samples/kWh"
+
+
+@dataclass
+class TrainingReport(BenchmarkReport):
+    overall: Measurements = Measurements()
+    warmup: Measurements = Measurements()
+    train: Measurements = Measurements()
 
 
 class TrainingBenchmark(Benchmark[TrainingConfig]):
@@ -69,10 +77,9 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
             )
 
         if self.config.memory:
-            # it's the same
-            self.report.overall.max_memory = memory_tracker.get_max_memory()
-            self.report.warmup.max_memory = memory_tracker.get_max_memory()
-            self.report.train.max_memory = memory_tracker.get_max_memory()
+            self.report.overall.memory = memory_tracker.get_max_memory()
+            self.report.warmup.memory = memory_tracker.get_max_memory()
+            self.report.train.memory = memory_tracker.get_max_memory()
 
             self.report.log_memory()
 

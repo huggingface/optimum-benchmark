@@ -1,15 +1,16 @@
 from logging import getLogger
+from dataclasses import dataclass
 
 from ..base import Benchmark
 from .config import InferenceConfig
 from ...trackers.memory import MemoryTracker
+from ...report import BenchmarkReport, Measurements
 from ...backends.base import Backend, BackendConfigT
 from ...generators.input_generator import InputGenerator
 from ...trackers.energy import EnergyTracker, Efficiency
 from ...trackers.latency import LatencyTracker, Throughput
 from ...import_utils import is_torch_distributed_available
 from ...task_utils import TEXT_GENERATION_TASKS, IMAGE_DIFFUSION_TASKS
-from .report import InferenceReport, TextGenerationReport, ImageDiffusionReport
 
 if is_torch_distributed_available():
     import torch.distributed
@@ -42,6 +43,22 @@ CALL_THROUGHPUT_UNIT = "images/s"
 PREFILL_EFFICIENCY_UNIT = "tokens/kWh"
 DECODE_EFFICIENCY_UNIT = "tokens/kWh"
 CALL_EFFICIENCY_UNIT = "images/kWh"
+
+
+@dataclass
+class InferenceReport(BenchmarkReport):
+    forward: Measurements = Measurements()
+
+
+@dataclass
+class ImageDiffusionReport(BenchmarkReport):
+    call: Measurements = Measurements()
+
+
+@dataclass
+class TextGenerationReport(BenchmarkReport):
+    prefill: Measurements = Measurements()
+    decode: Measurements = Measurements()
 
 
 class InferenceBenchmark(Benchmark[InferenceConfig]):
@@ -157,13 +174,13 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         with self.memory_tracker.track():
             _ = backend.forward(self.forward_inputs, self.config.forward_kwargs)
 
-        self.report.prefill.max_memory = self.memory_tracker.get_max_memory()
+        self.report.prefill.memory = self.memory_tracker.get_max_memory()
 
         self.memory_tracker.reset()
         with self.memory_tracker.track():
             _ = backend.generate(self.generate_input, self.config.generate_kwargs)
 
-        self.report.decode.max_memory = self.memory_tracker.get_max_memory()
+        self.report.decode.memory = self.memory_tracker.get_max_memory()
 
     def run_image_diffusion_memory_tracking(self, backend: Backend):
         LOGGER.info("\t+ Running memory tracking")
@@ -171,7 +188,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         with self.memory_tracker.track():
             _ = backend.call(self.diffuse_input, self.config.forward_kwargs)
 
-        self.report.call.max_memory = self.memory_tracker.get_max_memory()
+        self.report.call.memory = self.memory_tracker.get_max_memory()
 
     def run_inference_memory_tracking(self, backend: Backend):
         LOGGER.info("\t+ Running memory tracking")
@@ -179,7 +196,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         with self.memory_tracker.track():
             _ = backend.forward(self.forward_inputs, self.config.forward_kwargs)
 
-        self.report.forward.max_memory = self.memory_tracker.get_max_memory()
+        self.report.forward.memory = self.memory_tracker.get_max_memory()
 
     ## Latency tracking
     def run_text_generation_latency_tracking(self, backend: Backend):
