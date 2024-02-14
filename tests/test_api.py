@@ -97,8 +97,6 @@ def test_api_memory_tracker(device, backend):
         measured_memory = final_memory.max_allocated - initial_memory.max_allocated
     elif device == "cuda":
         measured_memory = final_memory.max_vram - initial_memory.max_vram
-        if torch.version.hip is not None:
-            measured_memory -= 1600  # something is wrong with amdsmi or rocm
     else:
         measured_memory = final_memory.max_ram - initial_memory.max_ram
 
