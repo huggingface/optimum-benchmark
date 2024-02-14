@@ -27,10 +27,6 @@ from optimum_benchmark.backends.transformers_utils import (
 
 LOGGER = getLogger("test-api")
 
-DEVICES_BACKENDS = [
-    ("cpu", "none"),
-    ("cuda", "pytorch"),
-]
 LIBRARIES_TASKS_MODELS = [
     ("transformers", "fill-mask", "bert-base-uncased"),
     ("timm", "image-classification", "timm/resnet50.a1_in1k"),
@@ -52,9 +48,12 @@ LAUNCHER_CONFIGS = [
     ProcessConfig(device_isolation=False),
     InlineConfig(device_isolation=False),
 ]
+BACKENDS = ["pytorch", "none"]
+DEVICES = ["cpu", "cuda"]
 
 
-@pytest.mark.parametrize("device,backend", DEVICES_BACKENDS)
+@pytest.mark.parametrize("device", DEVICES)
+@pytest.mark.parametrize("backend", BACKENDS)
 def test_api_latency_tracker(device, backend):
     expected_latency = 1
     tracker = LatencyTracker(device=device, backend=backend)
@@ -63,36 +62,37 @@ def test_api_latency_tracker(device, backend):
         with tracker.track():
             time.sleep(1)
 
-    latencies_list = tracker.get_latencies_list()
+    latency = tracker.get_latency()
 
-    assert len(latencies_list) == 2
-    assert latencies_list[0] > expected_latency * 0.9
-    assert latencies_list[0] < expected_latency * 1.1
+    assert latency[0] > expected_latency * 0.9
+    assert latency[0] < expected_latency * 1.1
 
 
-@pytest.mark.parametrize("device,backend", DEVICES_BACKENDS)
+@pytest.mark.parametrize("device", DEVICES)
+@pytest.mark.parametrize("backend", BACKENDS)
 def test_api_memory_tracker(device, backend):
     tracker = MemoryTracker(device=device, backend=backend)
 
+    tracker.reset()
     with tracker.track():
         pass
 
     # the process consumes memory that we can't control
-    if backend == "pytorch":
-        initial_process_memory = tracker.get_max_memory_allocated_mb()
-    else:
-        initial_process_memory = tracker.get_max_memory_used_mb()
+    initial_memory = tracker.get_max_memory()
 
+    tracker.reset()
     with tracker.track():
         array = torch.ones((10000, 10000), dtype=torch.float64, device=device)
         expected_memory = array.nbytes / 1e6  # around 800 MB
 
-    if backend == "pytorch":
-        final_process_memory = tracker.get_max_memory_allocated_mb()
-    else:
-        final_process_memory = tracker.get_max_memory_used_mb()
+    final_memory = tracker.get_max_memory()
 
-    measured_memory = final_process_memory - initial_process_memory
+    if device == "cuda" and backend == "pytorch":
+        measured_memory = final_memory.allocated - initial_memory.allocated
+    elif device == "cuda":
+        measured_memory = final_memory.vram - initial_memory.vram
+    else:
+        measured_memory = final_memory.ram - initial_memory.ram
 
     assert measured_memory < expected_memory * 1.1
     assert measured_memory > expected_memory * 0.9
@@ -146,8 +146,19 @@ def test_api_dataset_generator(library, task, model):
 
 @pytest.mark.parametrize("benchmark_config", BENCHMARK_CONFIGS)
 @pytest.mark.parametrize("launcher_config", LAUNCHER_CONFIGS)
-def test_api_launch_cpu(benchmark_config, launcher_config):
-    backend_config = PyTorchConfig(model="bert-base-uncased", no_weights=True, device="cpu")
+@pytest.mark.parametrize("device", DEVICES)
+def test_api_launch(benchmark_config, launcher_config, device):
+    if launcher_config.name == "torchrun" and device == "cuda":
+        device_ids = ",".join(str(i) for i in range(torch.cuda.device_count()))
+    else:
+        device_ids = None
+
+    backend_config = PyTorchConfig(
+        no_weights=True,
+        model="bert-base-uncased",
+        device_ids=device_ids,
+        device=device,
+    )
     experiment_config = ExperimentConfig(
         experiment_name="",
         benchmark=benchmark_config,
