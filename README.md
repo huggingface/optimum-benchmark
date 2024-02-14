@@ -70,33 +70,23 @@ You can run benchmarks from the Python API, using the `launch` function from the
 from optimum_benchmark.logging_utils import setup_logging
 from optimum_benchmark.experiment import launch, ExperimentConfig
 from optimum_benchmark.backends.pytorch.config import PyTorchConfig
-from optimum_benchmark.launchers.process.config import ProcessConfig
+from optimum_benchmark.launchers.torchrun.config import TorchrunConfig
 from optimum_benchmark.benchmarks.inference.config import InferenceConfig
-
 
 if __name__ == "__main__":
     setup_logging(level="INFO")
-    benchmark_config = InferenceConfig(latency=False, memory=True, energy=True)
-    launcher_config = ProcessConfig()
-    backend_config = PyTorchConfig(
-        device="cuda",
-        no_weights=True,
-        device_ids="0,1",
-        device_map="auto",
-        model="IlyasMoutawwakil/vicuna-7b-v1.5-awq-gemm",
-    )
+    launcher_config = TorchrunConfig(nproc_per_node=2)
+    benchmark_config = InferenceConfig(latency=True, memory=True)
+    backend_config = PyTorchConfig(model="gpt2", device="cuda", device_ids="0,1", no_weights=True)
     experiment_config = ExperimentConfig(
-        experiment_name="python-api-launch-experiment",
+        experiment_name="api-launch",
         benchmark=benchmark_config,
         launcher=launcher_config,
         backend=backend_config,
     )
     benchmark_report = launch(experiment_config)
-    benchmark_report.log_all()
-    # or
-    print(benchmark_report.to_dict())
-    # or
-    benchmark_report.push_to_hub("IlyasMoutawwakil/vicuna-7b-v1.5-awq-gemm")
+    experiment_config.push_to_hub("IlyasMoutawwakil/benchmarks")
+    benchmark_report.push_to_hub("IlyasMoutawwakil/benchmarks")
 ```
 
 Yep, it's that simple! Check the supported backends, launchers and benchmarks in the [features](#features-) section.

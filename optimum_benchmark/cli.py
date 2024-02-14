@@ -18,7 +18,7 @@ from .backends.tensorrt_llm.config import TRTLLMConfig
 from .backends.neural_compressor.config import INCConfig
 from .backends.text_generation_inference.config import TGIConfig
 
-from .benchmarks.report import BenchmarkReport
+from .report import BenchmarkReport
 from .experiment import launch, ExperimentConfig
 from .benchmarks.training.config import TrainingConfig
 from .benchmarks.inference.config import InferenceConfig
@@ -74,8 +74,7 @@ def benchmark_cli(experiment_config: DictConfig) -> None:
 
     # Instantiate the experiment configuration and trigger its __post_init__
     experiment_config: ExperimentConfig = OmegaConf.to_object(experiment_config)
-    OmegaConf.save(experiment_config, "experiment_config.yaml", resolve=True)
+    experiment_config.to_json("experiment_config.json")
 
     benchmark_report: BenchmarkReport = launch(experiment_config=experiment_config)
-
     benchmark_report.to_json("benchmark_report.json")
