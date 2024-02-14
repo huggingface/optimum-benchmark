@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   build_image_and_run_cli_cuda_onnxruntime_tests:
-    runs-on: hf-dgx-01
+    runs-on: nvidia-gpu
     steps:
       - name: Checkout
         uses: actions/checkout@v3

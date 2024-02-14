@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   build_image_and_run_cli_rocm_onnxruntime_tests:
-    runs-on: hf-amd-mi210-dev
+    runs-on: amd-gpu
     steps:
       - name: Checkout
         uses: actions/checkout@v3

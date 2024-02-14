@@ -22,7 +22,7 @@ jobs:
             { torch_cuda: cu118, cuda_version: 11.8.0 },
           ]
 
-    runs-on: hf-dgx-01
+    runs-on: nvidia-gpu
     steps:
       - name: Checkout
         uses: actions/checkout@v3

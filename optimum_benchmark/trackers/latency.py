@@ -115,10 +115,7 @@ class LatencyTracker:
         self.device = device
         self.backend = backend
 
-        if is_torch_distributed_available() and torch.distributed.is_initialized():
-            self.distributed = True
-        else:
-            self.distributed = False
+        self.distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
         self.start_events: List[Union[float, torch.cuda.Event]] = []
         self.end_events: List[Union[float, torch.cuda.Event]] = []

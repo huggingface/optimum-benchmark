@@ -22,7 +22,7 @@ jobs:
             { torch_rocm: rocm5.7, torch_pre_release: 1, rocm_version: 5.7 },
           ]
 
-    runs-on: hf-amd-mi210-dev
+    runs-on: amd-gpu
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
