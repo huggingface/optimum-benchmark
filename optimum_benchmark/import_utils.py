@@ -1,6 +1,7 @@
+from typing import Optional
 import importlib.metadata
 import importlib.util
-
+import subprocess
 
 _transformers_available = importlib.util.find_spec("transformers") is not None
 _accelerate_available = importlib.util.find_spec("accelerate") is not None
@@ -178,3 +179,38 @@ def peft_version():
 def tesnorrt_llm_version():
     if _tensorrt_llm_available:
         return importlib.metadata.version("tensorrt_llm")
+
+
+def get_git_revision_hash(package_name: str) -> Optional[str]:
+    """
+    Returns the git commit SHA of a package installed from a git repository.
+    """
+
+    try:
+        path = importlib.util.find_spec(package_name).origin
+    except Exception:
+        return None
+
+    try:
+        git_hash = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=path).decode().strip()
+    except Exception:
+        return None
+
+    return git_hash
+
+
+def get_hf_libs_info():
+    return {
+        "transformers_version": transformers_version(),
+        "transformers_commit": get_git_revision_hash("transformers"),
+        "accelerate_version": accelerate_version(),
+        "accelerate_commit": get_git_revision_hash("accelerate"),
+        "diffusers_version": diffusers_version(),
+        "diffusers_commit": get_git_revision_hash("diffusers"),
+        "optimum_version": optimum_version(),
+        "optimum_commit": get_git_revision_hash("optimum"),
+        "timm_version": timm_version(),
+        "timm_commit": get_git_revision_hash("timm"),
+        "peft_version": peft_version(),
+        "peft_commit": get_git_revision_hash("peft"),
+    }

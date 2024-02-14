@@ -1,33 +1,18 @@
 import os
-import platform
 from logging import getLogger
 from tempfile import TemporaryDirectory
 from dataclasses import dataclass, field
 from typing import Any, Dict, Type, Optional, TYPE_CHECKING
 
 from hydra.utils import get_class
+from transformers.configuration_utils import PushToHubMixin
 
+from .env_utils import get_system_info
+from .import_utils import get_hf_libs_info
 from .benchmarks.report import BenchmarkReport
 from .benchmarks.config import BenchmarkConfig
 from .launchers.config import LauncherConfig
 from .backends.config import BackendConfig
-from .import_utils import (
-    transformers_version,
-    accelerate_version,
-    diffusers_version,
-    optimum_version,
-    timm_version,
-    peft_version,
-)
-from .env_utils import (
-    get_git_revision_hash,
-    is_nvidia_system,
-    is_rocm_system,
-    get_gpu_vram_mb,
-    get_cpu_ram_mb,
-    get_gpus,
-    get_cpu,
-)
 
 if TYPE_CHECKING:
     # avoid importing any torch to be able to set
@@ -42,7 +27,7 @@ LOGGER = getLogger("experiment")
 
 
 @dataclass
-class ExperimentConfig:
+class ExperimentConfig(PushToHubMixin):
     # BACKEND CONFIGURATION
     backend: Any  # https://github.com/facebookresearch/hydra/issues/1722#issuecomment-883568386
     # LAUNCHER CONFIGURATION
@@ -59,39 +44,7 @@ class ExperimentConfig:
     library: Optional[str] = None  # deprecated
 
     # ENVIRONMENT CONFIGURATION
-    environment: Dict = field(
-        default_factory=lambda: {
-            "cpu": get_cpu(),
-            "cpu_count": os.cpu_count(),
-            "cpu_ram_mb": get_cpu_ram_mb(),
-            "system": platform.system(),
-            "python_version": platform.python_version(),
-            # libraries
-            "transformers_version": transformers_version(),
-            "transformers_commit": get_git_revision_hash("transformers"),
-            "accelerate_version": accelerate_version(),
-            "accelerate_commit": get_git_revision_hash("accelerate"),
-            "diffusers_version": diffusers_version(),
-            "diffusers_commit": get_git_revision_hash("diffusers"),
-            "optimum_version": optimum_version(),
-            "optimum_commit": get_git_revision_hash("optimum"),
-            "timm_version": timm_version(),
-            "timm_commit": get_git_revision_hash("timm"),
-            "peft_version": peft_version(),
-            "peft_commit": get_git_revision_hash("peft"),
-        }
-    )
-
-    def __post_init__(self):
-        # adding GPU information to the environment
-        if is_nvidia_system() or is_rocm_system():
-            available_gpus = get_gpus()
-            if len(available_gpus) > 0:
-                self.environment["gpu"] = available_gpus[0]
-                self.environment["gpu_count"] = len(available_gpus)
-                self.environment["gpu_vram_mb"] = get_gpu_vram_mb()
-            else:
-                LOGGER.warning("Detected NVIDIA or ROCm system, but no GPUs found.")
+    environment: Dict = field(default_factory=lambda: {**get_system_info(), **get_hf_libs_info()})
 
 
 def run(benchmark_config: BenchmarkConfig, backend_config: BackendConfig) -> BenchmarkReport:

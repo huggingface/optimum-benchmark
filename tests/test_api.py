@@ -93,10 +93,14 @@ def test_api_memory_tracker(device, backend):
     final_memory = tracker.get_max_memory()
     final_memory.log()
 
-    if device == "cuda" and backend == "pytorch":
-        measured_memory = final_memory.max_allocated - initial_memory.max_allocated
-    elif device == "cuda":
-        measured_memory = final_memory.max_vram - initial_memory.max_vram
+    if device == "cuda":
+        if backend == "pytorch":
+            measured_memory = final_memory.max_allocated - initial_memory.max_allocated
+        else:
+            measured_memory = final_memory.max_vram - initial_memory.max_vram
+            if torch.version.hip is not None:
+                # something is wrong with amdsmi
+                measured_memory -= 1600
     else:
         measured_memory = final_memory.max_ram - initial_memory.max_ram
 
@@ -105,6 +109,8 @@ def test_api_memory_tracker(device, backend):
 
     del array
     gc.collect()
+    if device == "cuda":
+        torch.cuda.empty_cache()
 
 
 @pytest.mark.parametrize("library,task,model", LIBRARIES_TASKS_MODELS)

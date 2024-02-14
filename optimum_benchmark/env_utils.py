@@ -2,7 +2,6 @@ import os
 import re
 import platform
 import subprocess
-import importlib.util
 from typing import Optional, List
 
 from .import_utils import is_pynvml_available, is_amdsmi_available, torch_version
@@ -184,19 +183,21 @@ def get_cuda_device_ids() -> str:
     return device_ids
 
 
-def get_git_revision_hash(package_name: str) -> Optional[str]:
-    """
-    Returns the git commit SHA of a package installed from a git repository.
-    """
+def get_system_info() -> dict:
+    system_dict = {
+        "cpu": get_cpu(),
+        "cpu_count": os.cpu_count(),
+        "cpu_ram_mb": get_cpu_ram_mb(),
+        "system": platform.system(),
+        "machine": platform.machine(),
+        "platform": platform.platform(),
+        "processor": platform.processor(),
+        "python_version": platform.python_version(),
+    }
 
-    try:
-        path = importlib.util.find_spec(package_name).origin
-    except Exception:
-        return None
+    if is_nvidia_system() or is_rocm_system():
+        system_dict["gpu"] = get_gpus()
+        system_dict["gpu_count"] = len(get_gpus())
+        system_dict["gpu_vram_mb"] = get_gpu_vram_mb()
 
-    try:
-        git_hash = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=path).decode().strip()
-    except Exception:
-        return None
-
-    return git_hash
+    return system_dict
