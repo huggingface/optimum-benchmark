@@ -5,7 +5,7 @@ import subprocess
 import importlib.util
 from typing import Optional, List
 
-from .import_utils import is_pynvml_available, is_amdsmi_available
+from .import_utils import is_pynvml_available, is_amdsmi_available, torch_version
 
 import psutil
 
@@ -26,9 +26,13 @@ def is_rocm_system():
         return False
 
 
-def bytes_to_mega_bytes(bytes: int) -> float:
-    # MB, not MiB
-    return bytes / 1e6
+if is_nvidia_system():
+    if is_pynvml_available():
+        import pynvml as pynvml
+
+if is_rocm_system():
+    if is_amdsmi_available():
+        import amdsmi as amdsmi
 
 
 def get_cpu() -> Optional[str]:
@@ -52,7 +56,7 @@ def get_cpu() -> Optional[str]:
 
 
 def get_cpu_ram_mb():
-    return bytes_to_mega_bytes(psutil.virtual_memory().total)
+    return psutil.virtual_memory().total / 1e6
 
 
 def get_gpus():
@@ -62,32 +66,37 @@ def get_gpus():
                 "The library pynvml is required to run memory benchmark on NVIDIA GPUs, but is not installed. "
                 "Please install the official and NVIDIA maintained PyNVML library through `pip install nvidia-ml-py`."
             )
-        import pynvml as nvml
 
         gpus = []
-        nvml.nvmlInit()
-        device_count = nvml.nvmlDeviceGetCount()
+        pynvml.nvmlInit()
+        device_count = pynvml.nvmlDeviceGetCount()
         for i in range(device_count):
-            handle = nvml.nvmlDeviceGetHandleByIndex(i)
-            gpus.append(nvml.nvmlDeviceGetName(handle))
-        nvml.nvmlShutdown()
+            handle = pynvml.nvmlDeviceGetHandleByIndex(i)
+            gpus.append(pynvml.nvmlDeviceGetName(handle))
+        pynvml.nvmlShutdown()
     elif is_rocm_system():
         if not is_amdsmi_available():
             raise ValueError(
                 "The library amdsmi is required to run memory benchmark on AMD GPUs, but is not installed. "
                 "Please install the official and AMD maintained amdsmi library from https://github.com/ROCm/amdsmi."
             )
-        import amdsmi as rocml
 
         gpus = []
-        rocml.amdsmi_init()
-        devices_handles = rocml.amdsmi_get_processor_handles()
-        for device_handle in devices_handles:
-            gpus.append(rocml.amdsmi_get_gpu_vendor_name(device_handle))
+        amdsmi.amdsmi_init()
+        rocm_version = torch_version().split("rocm")[-1]
 
-        rocml.amdsmi_shut_down()
+        if rocm_version >= "5.7":
+            devices_handles = amdsmi.amdsmi_get_processor_handles()
+            for device_handle in devices_handles:
+                gpus.append(amdsmi.amdsmi_get_gpu_vendor_name(device_handle))
+        else:
+            devices_handles = amdsmi.amdsmi_get_device_handles()
+            for device_handle in devices_handles:
+                gpus.append(amdsmi.amdsmi_dev_get_vendor_name(device_handle))
+
+        amdsmi.amdsmi_shut_down()
     else:
-        gpus = []
+        raise ValueError("No NVIDIA or ROCm GPUs found.")
 
     return gpus
 
@@ -99,12 +108,13 @@ def get_gpu_vram_mb() -> List[int]:
                 "The library pynvml is required to run memory benchmark on NVIDIA GPUs, but is not installed. "
                 "Please install the official and NVIDIA maintained PyNVML library through `pip install nvidia-ml-py`."
             )
-        import pynvml as nvml
 
-        nvml.nvmlInit()
-        device_count = nvml.nvmlDeviceGetCount()
-        vrams = [nvml.nvmlDeviceGetMemoryInfo(nvml.nvmlDeviceGetHandleByIndex(i)).total for i in range(device_count)]
-        nvml.nvmlShutdown()
+        pynvml.nvmlInit()
+        device_count = pynvml.nvmlDeviceGetCount()
+        vrams = [
+            pynvml.nvmlDeviceGetMemoryInfo(pynvml.nvmlDeviceGetHandleByIndex(i)).total for i in range(device_count)
+        ]
+        pynvml.nvmlShutdown()
     elif is_rocm_system():
         if not is_amdsmi_available():
             raise ValueError(
@@ -112,14 +122,23 @@ def get_gpu_vram_mb() -> List[int]:
                 "Please install the official and AMD maintained amdsmi library from https://github.com/ROCm/amdsmi."
             )
 
-        import amdsmi as rocml
+        amdsmi.amdsmi_init()
+        rocm_version = torch_version().split("rocm")[-1]
 
-        rocml.amdsmi_init()
-        device_handles = rocml.amdsmi_get_processor_handles()
-        vrams = [rocml.amdsmi_get_gpu_memory_total(device_handle) for device_handle in device_handles]
-        rocml.amdsmi_shut_down()
+        if rocm_version >= "5.7":
+            device_handles = amdsmi.amdsmi_get_processor_handles()
+            vrams = [amdsmi.amdsmi_get_gpu_memory_total(device_handle) for device_handle in device_handles]
+        else:
+            device_handles = amdsmi.amdsmi_get_device_handles()
+            vrams = [
+                amdsmi.amdsmi_dev_get_memory_total(device_handle, mem_type=amdsmi.AmdSmiMemoryType.VRAM)
+                for device_handle in device_handles
+            ]
+
+        amdsmi.amdsmi_shut_down()
+
     else:
-        vrams = []
+        raise ValueError("No NVIDIA or ROCm GPUs found.")
 
     return sum(vrams)
 
@@ -134,26 +153,32 @@ def get_cuda_device_ids() -> str:
                     "The library pynvml is required to run memory benchmark on NVIDIA GPUs, but is not installed. "
                     "Please install the official and NVIDIA maintained PyNVML library through `pip install nvidia-ml-py`."
                 )
-            import pynvml as nvml
 
-            nvml.nvmlInit()
-            device_ids = list(range(nvml.nvmlDeviceGetCount()))
-            nvml.nvmlShutdown()
+            pynvml.nvmlInit()
+            device_ids = list(range(pynvml.nvmlDeviceGetCount()))
+            pynvml.nvmlShutdown()
         elif is_rocm_system():
             if not is_amdsmi_available():
                 raise ValueError(
                     "The library amdsmi is required to run memory benchmark on AMD GPUs, but is not installed. "
                     "Please install the official and AMD maintained amdsmi library from https://github.com/ROCm/amdsmi."
                 )
-            import amdsmi as rocml
 
-            rocml.amdsmi_init()
-            device_ids = len(rocml.amdsmi_get_processor_handles())
-            rocml.amdsmi_shut_down()
+            amdsmi.amdsmi_init()
+            rocm_version = torch_version().split("rocm")[-1]
+
+            if rocm_version >= "5.7":
+                device_ids = list(range(len(amdsmi.amdsmi_get_processor_handles())))
+            else:
+                device_ids = list(range(len(amdsmi.amdsmi_get_device_handles())))
+
+            amdsmi.amdsmi_shut_down()
         else:
             raise ValueError("No NVIDIA or ROCm GPUs found.")
 
-    return ",".join(str(i) for i in device_ids)
+        device_ids = ",".join(str(i) for i in device_ids)
+
+    return device_ids
 
 
 def get_git_revision_hash(package_name: str) -> Optional[str]:

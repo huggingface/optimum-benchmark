@@ -9,8 +9,12 @@ defaults:
 
 experiment_name: pytorch_bert
 
+benchmark:
+  latency: true
+  memory: true
+
 backend:
-  device: cpu
+  device: cuda
   device_ids: 0
   model: bert-base-uncased
 

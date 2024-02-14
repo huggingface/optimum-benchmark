@@ -9,10 +9,11 @@ from ..env_utils import get_cuda_device_ids
 from ..import_utils import is_codecarbon_available
 
 if is_codecarbon_available():
-    from codecarbon import EmissionsTracker, OfflineEmissionsTracker
+    from codecarbon import EmissionsTracker, OfflineEmissionsTracker  # type: ignore
 
 LOGGER = getLogger("energy")
 
+ENERGY_UNIT = "kWh"
 Energy_Unit_Literal = Literal["kWh"]
 Efficiency_Unit_Literal = Literal["samples/kWh", "tokens/kWh", "images/kWh"]
 
@@ -156,7 +157,7 @@ class EnergyTracker:
 
     def get_energy(self) -> Energy:
         return Energy(
-            unit="kWh",
+            unit=ENERGY_UNIT,
             cpu=self.cpu_energy,
             gpu=self.gpu_energy,
             ram=self.ram_energy,

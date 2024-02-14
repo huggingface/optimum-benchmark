@@ -4,12 +4,11 @@ from logging import getLogger
 from dataclasses import dataclass
 from contextlib import contextmanager
 from multiprocessing import Pipe, Process
-from typing import List, Optional, Dict, Literal
+from typing import List, Optional, Literal
 from multiprocessing.connection import Connection
 
-from ..env_utils import bytes_to_mega_bytes, get_cuda_device_ids, is_nvidia_system, is_rocm_system
-from ..import_utils import is_pynvml_available, is_amdsmi_available, is_torch_available
-from .utils import compute_max
+from ..env_utils import get_cuda_device_ids, is_nvidia_system, is_rocm_system
+from ..import_utils import is_pynvml_available, is_amdsmi_available, is_torch_available, torch_version
 
 if is_nvidia_system() and is_pynvml_available():
     import pynvml
@@ -22,35 +21,36 @@ if is_torch_available():
 
 import psutil
 
-Memory_Unit_Literal = Literal["MB"]
-
 LOGGER = getLogger("memory")
+
+MEMORY_UNIT = "MB"
+Memory_Unit_Literal = Literal["MB"]
 
 
 @dataclass
-class MaxMemory:
+class Memory:
     unit: Memory_Unit_Literal
 
-    ram: float
-    vram: Optional[float] = None
-    reserved: Optional[float] = None
-    allocated: Optional[float] = None
+    max_ram: float
+    max_vram: Optional[float] = None
+    max_reserved: Optional[float] = None
+    max_allocated: Optional[float] = None
 
-    def __add__(self, other: "MaxMemory") -> "MaxMemory":
+    def __add__(self, other: "Memory") -> "Memory":
         if self.unit != other.unit:
             raise ValueError(f"Cannot add memory with different units: {self.unit} and {other.unit}")
 
-        ram = self.ram + other.ram
-        vram = self.vram + other.vram if self.vram is not None and other.vram is not None else None
-        reserved = self.reserved + other.reserved if self.reserved is not None and other.reserved is not None else None
-        allocated = (
-            self.allocated + other.allocated if self.allocated is not None and other.allocated is not None else None
+        max_ram = self.max_ram + other.max_ram
+        max_vram = self.max_vram + other.max_vram if self.max_vram is not None else None
+        max_reserved = self.max_reserved + other.max_reserved if self.max_reserved is not None else None
+        max_allocated = self.max_allocated + other.max_allocated if self.max_allocated is not None else None
+
+        return Memory(
+            unit=self.unit, max_ram=max_ram, max_vram=max_vram, max_reserved=max_reserved, max_allocated=max_allocated
         )
 
-        return MaxMemory(unit=self.unit, ram=ram, vram=vram, reserved=reserved, allocated=allocated)
-
     @staticmethod
-    def aggregate(max_memories: List["MaxMemory"]) -> "MaxMemory":
+    def aggregate(max_memories: List["Memory"]) -> "Memory":
         if len(max_memories) == 0 or all(memory is None for memory in max_memories):
             return None
         elif any(memory is None for memory in max_memories):
@@ -59,13 +59,13 @@ class MaxMemory:
         return reduce(lambda x, y: x + y, max_memories)
 
     def log(self, prefix: str = "forward"):
-        LOGGER.info(f"\t\t+ {prefix} max RAM memory: {self.ram:f} ({self.unit})")
-        if self.vram is not None:
-            LOGGER.info(f"\t\t+ {prefix} max VRAM memory: {self.vram:f} ({self.unit})")
-        if self.reserved is not None:
-            LOGGER.info(f"\t\t+ {prefix} max reserved memory: {self.reserved:f} ({self.unit})")
-        if self.allocated is not None:
-            LOGGER.info(f"\t\t+ {prefix} max allocated memory: {self.allocated:f} ({self.unit})")
+        LOGGER.info(f"\t\t+ {prefix} max RAM memory: {self.max_ram:f} ({self.unit})")
+        if self.max_vram is not None:
+            LOGGER.info(f"\t\t+ {prefix} max VRAM memory: {self.max_vram:f} ({self.unit})")
+        if self.max_reserved is not None:
+            LOGGER.info(f"\t\t+ {prefix} max reserved memory: {self.max_reserved:f} ({self.unit})")
+        if self.max_allocated is not None:
+            LOGGER.info(f"\t\t+ {prefix} max allocated memory: {self.max_allocated:f} ({self.unit})")
 
 
 class MemoryTracker:
@@ -74,10 +74,10 @@ class MemoryTracker:
         self.backend = backend
         self.device_ids = device_ids
 
-        self.ram_memory = []
-        self.vram_memory = []
-        self.reserved_memory = {}
-        self.allocated_memory = {}
+        self.max_ram_memory: List[int] = []
+        self.max_vram_memory: List[int] = []
+        self.max_reserved_memory: float = 0
+        self.max_allocated_memory: float = 0
 
         LOGGER.info("\t+ Tracking RAM memory")
 
@@ -90,21 +90,19 @@ class MemoryTracker:
             LOGGER.info(f"\t+ Tracking VRAM memory of CUDA devices: {self.device_ids}")
 
             if self.backend == "pytorch":
-                num_pytorch_cuda_devices = torch.cuda.device_count()
-                if len(self.device_ids) != num_pytorch_cuda_devices:
+                num_pytorch_devices = torch.cuda.device_count()
+                if len(self.device_ids) != num_pytorch_devices:
                     raise ValueError(
                         "The number of CUDA devices and Pytorch CUDA devices must be the same. "
-                        f"Got {len(self.device_ids)} and {num_pytorch_cuda_devices} respectively."
+                        f"Got {len(self.device_ids)} and {num_pytorch_devices} respectively."
                     )
-                LOGGER.info(
-                    f"\t+ Tracking Allocated/Reserved memory of {num_pytorch_cuda_devices} Pytorch CUDA devices"
-                )
+                LOGGER.info(f"\t+ Tracking Allocated/Reserved memory of {num_pytorch_devices} Pytorch CUDA devices")
 
     def reset(self):
-        self.ram_memory = []
-        self.vram_memory = []
-        self.reserved_memory = {}
-        self.allocated_memory = {}
+        self.max_ram_memory = 0
+        self.max_vram_memory = 0
+        self.max_reserved_memory = 0
+        self.max_allocated_memory = 0
 
     @contextmanager
     def track(self):
@@ -115,66 +113,45 @@ class MemoryTracker:
         else:
             yield from self._cpu_memory()
 
-    def _cuda_pytorch_memory(self, interval: float = 0.001):
+    def _cuda_pytorch_memory(self):
         torch.cuda.empty_cache()
 
         for device in range(torch.cuda.device_count()):
-            self.reserved_memory[device] = []
-            self.allocated_memory[device] = []
             try:
                 torch.cuda.reset_peak_memory_stats(device=device)
             except Exception as e:
                 LOGGER.warning(f"\t+ Could not reset max memory stats for device {device}: {e}")
 
-            # initial memory usage
-            self.reserved_memory[device].append(torch.cuda.memory_reserved(device=device))
-            self.allocated_memory[device].append(torch.cuda.memory_allocated(device=device))
+        yield from self._cuda_memory()
 
-        # start recording memory allocations
-        torch.cuda.memory._record_memory_history()
+        self.max_allocated_memory = (
+            sum(torch.cuda.max_memory_allocated(device=device) for device in range(torch.cuda.device_count())) / 1e6
+        )
+        self.max_reserved_memory = (
+            sum(torch.cuda.max_memory_reserved(device=device) for device in range(torch.cuda.device_count())) / 1e6
+        )
 
-        yield from self._cuda_memory(interval)
-
-        # get snapshots and stop recording memory allocations
-        memory_device_traces = torch.cuda.memory._snapshot()["device_traces"]
-        torch.cuda.memory._record_memory_history(enabled=None)
-
-        for device in range(torch.cuda.device_count()):
-            device_trace = memory_device_traces[device]
-            for entry in device_trace:
-                if entry["action"] == "alloc":
-                    self.allocated_memory[device].append(self.allocated_memory[device][-1] + entry["size"])
-                elif entry["action"] == "free_completed":
-                    self.allocated_memory[device].append(self.allocated_memory[device][-1] - entry["size"])
-                elif entry["action"] == "segment_alloc":
-                    self.reserved_memory[device].append(self.reserved_memory[device][-1] + entry["size"])
-                elif entry["action"] == "segment_free":
-                    self.reserved_memory[device].append(self.reserved_memory[device][-1] - entry["size"])
-
-        LOGGER.debug(f"\t+ Max allocated memory: {self.get_max_allocated_memory_mb()} MB")
-        LOGGER.debug(f"\t+ Max reserved memory: {self.get_max_reserved_memory_mb()} MB")
-
-    def _cuda_memory(self, interval: float = 0.0001):
+    def _cuda_memory(self):
         child_connection, parent_connection = Pipe()
         memory_process = Process(
             target=monitor_gpu_vram_memory,
-            args=(os.getpid(), self.device_ids, child_connection, interval),
+            args=(os.getpid(), self.device_ids, child_connection),
             daemon=True,
         )
         memory_process.start()
         parent_connection.recv()  # wait for memory process to be ready
 
-        yield from self._cpu_memory(interval)
+        yield from self._cpu_memory()
 
+        # if process still running, get the last memory snapshot
         parent_connection.send(True)
-        self.vram_memory = parent_connection.recv()
-        LOGGER.debug(f"\t+ Max memory (VRAM) used: {self.get_max_vram_memory_mb()} MB")
+        self.max_vram_memory = parent_connection.recv()
 
-    def _cpu_memory(self, interval: float = 0.0001):
+    def _cpu_memory(self):
         child_connection, parent_connection = Pipe()
         memory_process = Process(
             target=monitor_cpu_ram_memory,
-            args=(os.getpid(), child_connection, interval),
+            args=(os.getpid(), child_connection),
             daemon=True,
         )
         memory_process.start()
@@ -183,80 +160,56 @@ class MemoryTracker:
         yield
 
         parent_connection.send(True)
-        self.ram_memory = parent_connection.recv()
-        LOGGER.debug(f"\t+ Max memory (RAM) used: {self.get_max_ram_memory_mb()} MB")
-
-    def get_ram_memory_mb(self) -> List[int]:
-        return [bytes_to_mega_bytes(memory) for memory in self.ram_memory]
-
-    def get_vram_memory_mb(self) -> List[int]:
-        return [bytes_to_mega_bytes(memory) for memory in self.vram_memory]
-
-    def get_reserved_memory_mb(self) -> Dict[str, List[int]]:
-        return {
-            device: [bytes_to_mega_bytes(memory) for memory in self.reserved_memory[device]]
-            for device in self.reserved_memory
-        }
-
-    def get_allocated_memory_mb(self) -> Dict[str, List[int]]:
-        return {
-            device: [bytes_to_mega_bytes(memory) for memory in self.allocated_memory[device]]
-            for device in self.allocated_memory
-        }
-
-    def get_max_ram_memory_mb(self) -> int:
-        return compute_max(self.get_ram_memory_mb())
-
-    def get_max_vram_memory_mb(self) -> int:
-        return compute_max(self.get_vram_memory_mb())
-
-    def get_max_reserved_memory_mb(self) -> Dict[str, int]:
-        reserved_memory_mb = self.get_reserved_memory_mb()
-        return sum(compute_max(reserved_memory_mb[device]) for device in reserved_memory_mb)
-
-    def get_max_allocated_memory_mb(self) -> Dict[str, int]:
-        allocated_memory_mb = self.get_allocated_memory_mb()
-        return sum(compute_max(allocated_memory_mb[device]) for device in allocated_memory_mb)
+        self.max_vram_memory = parent_connection.recv()
 
     def get_max_memory(self):
         if self.device == "cuda" and self.backend == "pytorch":
-            return MaxMemory(
-                unit="MB",
-                ram=self.get_max_ram_memory_mb(),
-                vram=self.get_max_vram_memory_mb(),
-                reserved=self.get_max_reserved_memory_mb(),
-                allocated=self.get_max_allocated_memory_mb(),
+            return Memory(
+                unit=MEMORY_UNIT,
+                max_ram=self.max_ram_memory,
+                max_vram=self.max_vram_memory,
+                max_reserved=self.max_reserved_memory,
+                max_allocated=self.max_allocated_memory,
             )
         elif self.device == "cuda":
-            return MaxMemory(
-                unit="MB",
-                ram=self.get_max_ram_memory_mb(),
-                vram=self.get_max_vram_memory_mb(),
+            return Memory(
+                unit=MEMORY_UNIT,
+                max_ram=self.max_ram_memory,
+                max_vram=self.max_vram_memory,
             )
         else:
-            return MaxMemory(
-                unit="MB",
-                ram=self.get_max_ram_memory_mb(),
+            return Memory(
+                unit=MEMORY_UNIT,
+                max_ram=self.max_ram_memory,
             )
 
 
-def monitor_cpu_ram_memory(process_id: int, connection: Connection, interval: float):
+def monitor_cpu_ram_memory(process_id: int, connection: Connection, interval: float = 0.001):
+    stop = False
+    max_memory = 0
     process = psutil.Process(process_id)
     connection.send(0)
-    used_memory = []
-    stop = False
 
     while not stop:
         meminfo_attr = "memory_info" if hasattr(process, "memory_info") else "get_memory_info"
         current_used_memory = getattr(process, meminfo_attr)()[0]
-        used_memory.append(current_used_memory)
+        max_memory = max(max_memory, current_used_memory)
         stop = connection.poll(interval)
 
-    connection.send(used_memory)
+    connection.send(max_memory / 1e6)  # convert to MB
     connection.close()
 
 
-def monitor_gpu_vram_memory(process_id: int, device_ids: List[int], connection: Connection, interval: float):
+def monitor_gpu_vram_memory(
+    process_id: int,
+    device_ids: List[int],
+    connection: Connection,
+    interval: float = 0.01,
+):
+    stop = False
+    max_memory = 0
+    connection.send(0)
+
     if is_nvidia_system():
         if not is_pynvml_available():
             raise ValueError(
@@ -265,14 +218,15 @@ def monitor_gpu_vram_memory(process_id: int, device_ids: List[int], connection: 
             )
         pynvml.nvmlInit()
         devices_handles = [pynvml.nvmlDeviceGetHandleByIndex(device_id) for device_id in device_ids]
-        connection.send(0)
-        used_memory = []
-        stop = False
 
         while not stop:
             current_used_memory = 0
             for device_id, device_handle in zip(device_ids, devices_handles):
-                device_processes = pynvml.nvmlDeviceGetComputeRunningProcesses(device_handle)
+                try:
+                    device_processes = pynvml.nvmlDeviceGetComputeRunningProcesses(device_handle)
+                except Exception as e:
+                    LOGGER.warning(f"Could not get process list for device {device_id}: {e}")
+                    continue
                 for device_process in device_processes:
                     if device_process.pid == process_id or (
                         psutil.pid_exists(device_process.pid)
@@ -281,12 +235,11 @@ def monitor_gpu_vram_memory(process_id: int, device_ids: List[int], connection: 
                         # only memory usage of the process and its children is tracked
                         current_used_memory += device_process.usedGpuMemory
 
-            used_memory.append(current_used_memory)
+            max_memory = max(max_memory, current_used_memory)
             stop = connection.poll(interval)
 
-        connection.send(used_memory)
         pynvml.nvmlShutdown()
-        connection.close()
+
     elif is_rocm_system():
         if not is_amdsmi_available():
             raise ValueError(
@@ -294,31 +247,68 @@ def monitor_gpu_vram_memory(process_id: int, device_ids: List[int], connection: 
                 "Please install the official and AMD maintained amdsmi library from https://github.com/ROCm/amdsmi."
             )
         amdsmi.amdsmi_init()
-        # we can only get all handles at once
-        devices_handles = amdsmi.amdsmi_get_processor_handles()
-        connection.send(0)
-        used_memory = []
-        stop = False
+        rocm_version = torch_version().split("rocm")[-1]
 
-        while not stop:
-            current_used_memory = 0
-            for device_id in device_ids:
-                device_handle = devices_handles[device_id]
-                device_process = amdsmi.amdsmi_get_gpu_process_list(device_handle)
-                for process_handle in device_process:
-                    process_info = amdsmi.amdsmi_get_gpu_process_info(device_handle, process_handle)
-                    if process_info["pid"] == process_id or (
-                        psutil.pid_exists(process_info["pid"])
-                        and psutil.Process(process_info["pid"]).parent().pid == process_id
-                    ):
-                        # only memory usage of the process and its children is tracked
-                        current_used_memory += process_info["memory_usage"]["vram_mem"]
+        if rocm_version >= "5.7":
+            devices_handles = amdsmi.amdsmi_get_processor_handles()
+            while not stop:
+                current_used_memory = 0
+                for device_id in device_ids:
+                    device_handle = devices_handles[device_id]
+                    try:
+                        device_process = amdsmi.amdsmi_get_gpu_process_list(device_handle)
+                    except Exception as e:
+                        LOGGER.warning(f"Could not get process list for device {device_id}: {e}")
+                        continue
 
-            used_memory.append(current_used_memory)
-            stop = connection.poll(interval)
+                    for process_handle in device_process:
+                        try:
+                            process_info = amdsmi.amdsmi_get_gpu_process_info(device_handle, process_handle)
+                        except Exception as e:
+                            LOGGER.warning(f"Could not get process info for process {process_handle}: {e}")
+                            continue
 
-        connection.send(used_memory)
+                        if process_info["pid"] == process_id or (
+                            psutil.pid_exists(process_info["pid"])
+                            and psutil.Process(process_info["pid"]).parent().pid == process_id
+                        ):
+                            # only memory usage of the monitored process and its children is tracked
+                            current_used_memory += process_info["memory_usage"]["vram_mem"]
+
+                max_memory = max(max_memory, current_used_memory)
+                stop = connection.poll(interval)
+        else:
+            devices_handles = amdsmi.amdsmi_get_device_handles()
+            while not stop:
+                current_used_memory = 0
+                for device_id in device_ids:
+                    device_handle = devices_handles[device_id]
+                    try:
+                        device_process = amdsmi.amdsmi_get_process_list(device_handle)
+                    except Exception as e:
+                        LOGGER.warning(f"Could not get process list for device {device_id}: {e}")
+                        continue
+
+                    for process_handle in device_process:
+                        try:
+                            process_info = amdsmi.amdsmi_get_process_info(device_handle, process_handle)
+                        except Exception as e:
+                            LOGGER.warning(f"Could not get process info for process {process_handle}: {e}")
+                            continue
+
+                        if process_info["pid"] == process_id or (
+                            psutil.pid_exists(process_info["pid"])
+                            and psutil.Process(process_info["pid"]).parent().pid == process_id
+                        ):
+                            # only memory usage of the monitored process and its children is tracked
+                            current_used_memory += process_info["memory_usage"]["vram_mem"]
+
+                max_memory = max(max_memory, current_used_memory)
+                stop = connection.poll(interval)
+
         amdsmi.amdsmi_shut_down()
-        connection.close()
     else:
         raise ValueError("Only NVIDIA and AMD ROCm GPUs are supported for CUDA memory tracking.")
+
+    connection.send(max_memory / 1e6)  # convert to MB
+    connection.close()

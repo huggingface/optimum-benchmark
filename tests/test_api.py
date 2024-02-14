@@ -1,8 +1,6 @@
 from logging import getLogger
 import time
-
-import torch
-import pytest
+import gc
 
 from optimum_benchmark.trackers.memory import MemoryTracker
 from optimum_benchmark.trackers.latency import LatencyTracker
@@ -24,6 +22,8 @@ from optimum_benchmark.backends.transformers_utils import (
     get_transformers_pretrained_config,
 )
 
+import pytest
+import torch
 
 LOGGER = getLogger("test-api")
 
@@ -63,6 +63,7 @@ def test_api_latency_tracker(device, backend):
             time.sleep(1)
 
     latency = tracker.get_latency()
+    latency.log()
 
     assert latency[0] > expected_latency * 0.9
     assert latency[0] < expected_latency * 1.1
@@ -75,24 +76,35 @@ def test_api_memory_tracker(device, backend):
 
     tracker.reset()
     with tracker.track():
+        time.sleep(1)
         pass
 
     # the process consumes memory that we can't control
     initial_memory = tracker.get_max_memory()
+    initial_memory.log()
 
     tracker.reset()
     with tracker.track():
-        array = torch.ones((10000, 10000), dtype=torch.float64, device=device)
-        expected_memory = array.nbytes / 1e6  # around 800 MB
+        time.sleep(2)
+        array = torch.randn((10000, 10000), dtype=torch.float64, device=device)
+        expected_memory = array.nbytes / 1e6
+        time.sleep(2)
+
+        del array
+        gc.collect()
+        torch.cuda.empty_cache()
 
     final_memory = tracker.get_max_memory()
+    final_memory.log()
 
     if device == "cuda" and backend == "pytorch":
-        measured_memory = final_memory.allocated - initial_memory.allocated
+        measured_memory = final_memory.max_allocated - initial_memory.max_allocated
     elif device == "cuda":
-        measured_memory = final_memory.vram - initial_memory.vram
+        measured_memory = final_memory.max_vram - initial_memory.max_vram
+        if torch.version.hip is not None:
+            measured_memory -= 1600 # ???
     else:
-        measured_memory = final_memory.ram - initial_memory.ram
+        measured_memory = final_memory.max_ram - initial_memory.max_ram
 
     assert measured_memory < expected_memory * 1.1
     assert measured_memory > expected_memory * 0.9

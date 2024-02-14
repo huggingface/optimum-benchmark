@@ -122,7 +122,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             else:
                 self.run_inference_memory_tracking(backend)
 
-            self.report.log_max_memory()
+            self.report.log_memory()
 
         if self.config.latency:
             LOGGER.info("\t+ Creating inference latency tracker")

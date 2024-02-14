@@ -6,7 +6,7 @@ import os
 
 from ..trackers.latency import Latency, Throughput
 from ..trackers.energy import Energy, Efficiency
-from ..trackers.memory import MaxMemory
+from ..trackers.memory import Memory
 
 from transformers.configuration_utils import PushToHubMixin
 from flatten_dict import flatten
@@ -17,7 +17,7 @@ LOGGER = getLogger("report")
 
 @dataclass
 class BenchmarkMeasurements:
-    max_memory: Optional[MaxMemory] = None
+    memory: Optional[Memory] = None
     latency: Optional[Latency] = None
     throughput: Optional[Throughput] = None
     energy: Optional[Energy] = None
@@ -25,14 +25,14 @@ class BenchmarkMeasurements:
 
     @staticmethod
     def aggregate(measurements: List["BenchmarkMeasurements"]) -> "BenchmarkMeasurements":
-        max_memory = MaxMemory.aggregate([m.max_memory for m in measurements if m.max_memory is not None])
+        memory = Memory.aggregate([m.memory for m in measurements if m.memory is not None])
         latency = Latency.aggregate([m.latency for m in measurements if m.latency is not None])
         throughput = Throughput.aggregate([m.throughput for m in measurements if m.throughput is not None])
         energy = Energy.aggregate([m.energy for m in measurements if m.energy is not None])
         efficiency = Efficiency.aggregate([m.efficiency for m in measurements if m.efficiency is not None])
 
         return BenchmarkMeasurements(
-            max_memory=max_memory,
+            memory=memory,
             latency=latency,
             throughput=throughput,
             energy=energy,
@@ -101,11 +101,11 @@ class BenchmarkReport(PushToHubMixin):
     def to_csv(self, path: str) -> None:
         self.to_dataframe().to_csv(path, index=False)
 
-    def log_max_memory(self):
+    def log_memory(self):
         for target in self.to_dict().keys():
             benchmark_measurements: BenchmarkMeasurements = getattr(self, target)
-            if benchmark_measurements.max_memory is not None:
-                benchmark_measurements.max_memory.log(prefix=target)
+            if benchmark_measurements.memory is not None:
+                benchmark_measurements.memory.log(prefix=target)
 
     def log_latency(self):
         for target in self.to_dict().keys():
@@ -132,7 +132,7 @@ class BenchmarkReport(PushToHubMixin):
                 benchmark_measurements.efficiency.log(prefix=target)
 
     def log_all(self):
-        self.log_max_memory()
+        self.log_memory()
         self.log_latency()
         self.log_throughput()
         self.log_energy()

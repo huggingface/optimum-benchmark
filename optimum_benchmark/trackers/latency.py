@@ -12,8 +12,9 @@ import torch
 
 LOGGER = getLogger("latency")
 
-Throughput_Unit_Literal = Literal["samples/s", "tokens/s", "images/s", "steps/s"]
+LATENCY_UNIT = "s"
 Latency_Unit_Literal = Literal["s"]
+Throughput_Unit_Literal = Literal["samples/s", "tokens/s", "images/s", "steps/s"]
 
 
 @dataclass
@@ -55,7 +56,12 @@ class Latency:
 
     @staticmethod
     def from_values(values: List[float], unit: str) -> "Latency":
-        return Latency(mean=compute_mean(values), stdev=compute_stdev(values), values=values, unit=unit)
+        return Latency(
+            mean=compute_mean(values),
+            stdev=compute_stdev(values),
+            values=values,
+            unit=unit,
+        )
 
     def log(self, prefix: str = "forward"):
         LOGGER.info(f"\t\t+ {prefix} latency: {self.mean:f} ± 2 x {self.stdev:f} ({self.unit})")
@@ -72,7 +78,11 @@ class Throughput:
         if self.unit != other.unit:
             raise ValueError(f"Cannot add throughputs with different units: {self.unit} and {other.unit}")
 
-        return Throughput(mean=self.mean + other.mean, stdev=(self.stdev**2 + other.stdev**2) ** 0.5, unit=self.unit)
+        return Throughput(
+            mean=self.mean + other.mean,
+            stdev=(self.stdev**2 + other.stdev**2) ** 0.5,
+            unit=self.unit,
+        )
 
     @staticmethod
     def aggregate(throughputs: List["Throughput"]) -> "Throughput":
@@ -156,7 +166,7 @@ class LatencyTracker:
         else:
             latencies_list = [(self.end_events[i] - self.start_events[i]) for i in range(len(self.start_events))]
 
-        return Latency.from_values(latencies_list, unit="s")
+        return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
 
 
 class LatencyTrainerCallback(TrainerCallback):
@@ -196,7 +206,7 @@ class LatencyTrainerCallback(TrainerCallback):
         else:
             latencies_list = [(self.events[i] - self.events[i - 1]) for i in range(1, len(self.events))]
 
-        return Latency.from_values(latencies_list, unit="s")
+        return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
 
 
 class LatencyLogitsProcessor(LogitsProcessor):
@@ -233,4 +243,4 @@ class LatencyLogitsProcessor(LogitsProcessor):
         else:
             latencies_list = [(self.events[i] - self.events[i - 1]) for i in range(1, len(self.events))]
 
-        return Latency.from_values(latencies_list, unit="s")
+        return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
