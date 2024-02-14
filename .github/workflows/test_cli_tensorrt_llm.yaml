@@ -40,4 +40,4 @@ jobs:
           --gpus '"device=0,1"'
           --entrypoint /bin/bash
           opt-bench-tensorrt-llm:latest
-          -c "pip install -e .[testing] && pytest -k 'cli and tensorrt_llm' -x"
+          -c "pip install -e .[testing] && pip install pynvml && pytest -k 'cli and tensorrt_llm' -x"
