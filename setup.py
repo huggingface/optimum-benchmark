@@ -28,20 +28,21 @@ USE_CUDA = os.environ.get("USE_CUDA", None) == "1"
 USE_ROCM = os.environ.get("USE_ROCM", None) == "1"
 
 if USE_CUDA:
-    INSTALL_REQUIRES.append("py3nvml")
+    INSTALL_REQUIRES.append("nvidia-ml-py")
 else:
     try:
         subprocess.run(["nvidia-smi"], stdout=subprocess.DEVNULL)
-        INSTALL_REQUIRES.append("py3nvml")
+        INSTALL_REQUIRES.append("nvidia-ml-py")
     except FileNotFoundError:
         pass
 
+# we keep this as a check that amdsmi is installed since it's not available on pypi
 if USE_ROCM:
-    INSTALL_REQUIRES.append("pyrsmi@git+https://github.com/RadeonOpenCompute/pyrsmi.git")
+    INSTALL_REQUIRES.append("amdsmi")
 else:
     try:
-        subprocess.run(["nvidia-smi"], stdout=subprocess.DEVNULL)
-        INSTALL_REQUIRES.append("pyrsmi@git+https://github.com/RadeonOpenCompute/pyrsmi.git")
+        subprocess.run(["rocm-smi"], stdout=subprocess.DEVNULL)
+        INSTALL_REQUIRES.append("amdsmi")
     except FileNotFoundError:
         pass
 

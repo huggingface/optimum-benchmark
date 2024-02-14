@@ -5,7 +5,7 @@ import subprocess
 import importlib.util
 from typing import Optional, List
 
-from .import_utils import is_py3nvml_available, is_pyrsmi_available
+from .import_utils import is_pynvml_available, is_amdsmi_available
 
 import psutil
 
@@ -26,10 +26,9 @@ def is_rocm_system():
         return False
 
 
-def bytes_to_mega_bytes(bytes: int) -> int:
+def bytes_to_mega_bytes(bytes: int) -> float:
     # MB, not MiB
-    # Reference: https://en.wikipedia.org/wiki/Byte#Multiple-byte_units
-    return int(bytes * 1e-6)
+    return bytes / 1e6
 
 
 def get_cpu() -> Optional[str]:
@@ -58,12 +57,12 @@ def get_cpu_ram_mb():
 
 def get_gpus():
     if is_nvidia_system():
-        if not is_py3nvml_available():
+        if not is_pynvml_available():
             raise ValueError(
-                "The library py3nvml is required to collect information on NVIDIA GPUs, but is not installed. "
-                "Please install it through `pip install py3nvml`."
+                "The library pynvml is required to run memory benchmark on NVIDIA GPUs, but is not installed. "
+                "Please install the official and NVIDIA maintained PyNVML library through `pip install nvidia-ml-py`."
             )
-        import py3nvml.py3nvml as nvml
+        import pynvml as nvml
 
         gpus = []
         nvml.nvmlInit()
@@ -73,19 +72,20 @@ def get_gpus():
             gpus.append(nvml.nvmlDeviceGetName(handle))
         nvml.nvmlShutdown()
     elif is_rocm_system():
-        if not is_pyrsmi_available():
+        if not is_amdsmi_available():
             raise ValueError(
-                "The library pyrsmi is required to collect information on ROCm-powered GPUs, but is not installed. "
-                "Please install it following the instructions https://github.com/RadeonOpenCompute/pyrsmi."
+                "The library amdsmi is required to run memory benchmark on AMD GPUs, but is not installed. "
+                "Please install the official and AMD maintained amdsmi library from https://github.com/ROCm/amdsmi."
             )
-        from pyrsmi import rocml
+        import amdsmi as rocml
 
-        rocml.smi_initialize()
+        gpus = []
+        rocml.amdsmi_init()
+        devices_handles = rocml.amdsmi_get_processor_handles()
+        for device_handle in devices_handles:
+            gpus.append(rocml.amdsmi_get_gpu_vendor_name(device_handle))
 
-        device_count = rocml.smi_get_device_count()
-
-        gpus = [rocml.smi_get_device_name(index) for index in range(device_count)]
-        rocml.smi_shutdown()
+        rocml.amdsmi_shut_down()
     else:
         gpus = []
 
@@ -94,30 +94,30 @@ def get_gpus():
 
 def get_gpu_vram_mb() -> List[int]:
     if is_nvidia_system():
-        if not is_py3nvml_available():
+        if not is_pynvml_available():
             raise ValueError(
-                "The library py3nvml is required to collect information on NVIDIA GPUs, but is not installed. "
-                "Please install it through `pip install py3nvml`."
+                "The library pynvml is required to run memory benchmark on NVIDIA GPUs, but is not installed. "
+                "Please install the official and NVIDIA maintained PyNVML library through `pip install nvidia-ml-py`."
             )
-        import py3nvml.py3nvml as nvml
+        import pynvml as nvml
 
         nvml.nvmlInit()
         device_count = nvml.nvmlDeviceGetCount()
         vrams = [nvml.nvmlDeviceGetMemoryInfo(nvml.nvmlDeviceGetHandleByIndex(i)).total for i in range(device_count)]
         nvml.nvmlShutdown()
     elif is_rocm_system():
-        if not is_pyrsmi_available():
+        if not is_amdsmi_available():
             raise ValueError(
-                "The library pyrsmi is required to collect information on ROCm-powered GPUs, but is not installed. "
-                "Please install it following the instructions https://github.com/RadeonOpenCompute/pyrsmi."
+                "The library amdsmi is required to run memory benchmark on AMD GPUs, but is not installed. "
+                "Please install the official and AMD maintained amdsmi library from https://github.com/ROCm/amdsmi."
             )
 
-        from pyrsmi import rocml
+        import amdsmi as rocml
 
-        rocml.smi_initialize()
-        device_count = rocml.smi_get_device_count()
-        vrams = [rocml.smi_get_device_memory_total(index) for index in range(device_count)]
-        rocml.smi_shutdown()
+        rocml.amdsmi_init()
+        device_handles = rocml.amdsmi_get_processor_handles()
+        vrams = [rocml.amdsmi_get_gpu_memory_total(device_handle) for device_handle in device_handles]
+        rocml.amdsmi_shut_down()
     else:
         vrams = []
 
@@ -129,28 +129,27 @@ def get_cuda_device_ids() -> str:
         device_ids = os.environ["CUDA_VISIBLE_DEVICES"]
     else:
         if is_nvidia_system():
-            if not is_py3nvml_available():
+            if not is_pynvml_available():
                 raise ValueError(
-                    "The library py3nvml is required to collect information on NVIDIA GPUs, but is not installed. "
-                    "Please install it through `pip install py3nvml`."
+                    "The library pynvml is required to run memory benchmark on NVIDIA GPUs, but is not installed. "
+                    "Please install the official and NVIDIA maintained PyNVML library through `pip install nvidia-ml-py`."
                 )
-            import py3nvml.py3nvml as nvml
+            import pynvml as nvml
 
             nvml.nvmlInit()
             device_ids = list(range(nvml.nvmlDeviceGetCount()))
             nvml.nvmlShutdown()
         elif is_rocm_system():
-            if not is_pyrsmi_available():
+            if not is_amdsmi_available():
                 raise ValueError(
-                    "The library pyrsmi is required to collect information on ROCm-powered GPUs, but is not installed. "
-                    "Please install it following the instructions https://github.com/RadeonOpenCompute/pyrsmi."
+                    "The library amdsmi is required to run memory benchmark on AMD GPUs, but is not installed. "
+                    "Please install the official and AMD maintained amdsmi library from https://github.com/ROCm/amdsmi."
                 )
+            import amdsmi as rocml
 
-            from pyrsmi import rocml
-
-            rocml.smi_initialize()
-            device_ids = list(range(rocml.smi_get_device_count()))
-            rocml.smi_shutdown()
+            rocml.amdsmi_init()
+            device_ids = len(rocml.amdsmi_get_processor_handles())
+            rocml.amdsmi_shut_down()
         else:
             raise ValueError("No NVIDIA or ROCm GPUs found.")
 

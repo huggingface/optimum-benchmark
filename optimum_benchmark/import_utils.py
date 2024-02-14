@@ -10,7 +10,7 @@ _torch_available = importlib.util.find_spec("torch") is not None
 _onnx_available = importlib.util.find_spec("onnx") is not None
 _tensorrt_available = importlib.util.find_spec("tensorrt") is not None
 _peft_available = importlib.util.find_spec("peft") is not None
-_py3nvml_available = importlib.util.find_spec("py3nvml") is not None
+_pynvml_available = importlib.util.find_spec("pynvml") is not None
 _torch_distributed_available = importlib.util.find_spec("torch.distributed") is not None
 _onnxruntime_available = importlib.util.find_spec("onnxruntime") is not None
 _openvino_available = importlib.util.find_spec("openvino") is not None
@@ -83,8 +83,8 @@ def is_onnxruntime_available():
     return _onnxruntime_available
 
 
-def is_py3nvml_available():
-    return _py3nvml_available
+def is_pynvml_available():
+    return _pynvml_available
 
 
 def is_pyrsmi_available():

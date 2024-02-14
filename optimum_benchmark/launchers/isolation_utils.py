@@ -8,53 +8,56 @@ from contextlib import contextmanager
 
 from ..logging_utils import setup_logging
 from ..env_utils import is_nvidia_system, is_rocm_system
-from ..import_utils import is_amdsmi_available, is_py3nvml_available, torch_version, is_psutil_available
+from ..import_utils import is_amdsmi_available, is_pynvml_available, torch_version, is_psutil_available
 
 if is_psutil_available():
     import psutil
 
-if is_py3nvml_available():
-    import py3nvml.py3nvml as nvml
+if is_pynvml_available():
+    import pynvml
 
 if is_amdsmi_available():
-    import amdsmi  # type: ignore
+    import amdsmi
 
 LOGGER = getLogger("isolation")
 
 
 def get_nvidia_devices_pids() -> Dict[int, list]:
+    if not is_pynvml_available():
+        raise ValueError(
+            "The library pynvml is required to get the pids running on NVIDIA GPUs, but is not installed. "
+            "Please install the official and NVIDIA maintained PyNVML library through `pip install nvidia-ml-py`."
+        )
+
     devices_pids: Dict[int, list] = {}
     devices_ids = [int(device_id) for device_id in os.environ["CUDA_VISIBLE_DEVICES"].split(",")]
 
-    if not is_py3nvml_available():
-        raise ValueError("get_nvidia_device_pids requires py3nvml. Please install it with `pip install py3nvml`.")
-
-    nvml.nvmlInit()
+    pynvml.nvmlInit()
 
     for device_id in devices_ids:
-        device_handle = nvml.nvmlDeviceGetHandleByIndex(device_id)
-        device_processes = nvml.nvmlDeviceGetComputeRunningProcesses(device_handle)
+        device_handle = pynvml.nvmlDeviceGetHandleByIndex(device_id)
+        device_processes = pynvml.nvmlDeviceGetComputeRunningProcesses(device_handle)
         for device_process in device_processes:
             if device_id not in devices_pids:
                 devices_pids[device_id] = []
 
             devices_pids[device_id].append(device_process.pid)
 
-    nvml.nvmlShutdown()
+    pynvml.nvmlShutdown()
 
     return devices_pids
 
 
 def get_amd_devices_pids() -> Dict[int, list]:
+    if not is_amdsmi_available():
+        raise ValueError(
+            "The library amdsmi is required get the pids running on AMD GPUs, but is not installed. "
+            "Please install the official and AMD maintained amdsmi library from https://github.com/ROCm/amdsmi."
+        )
+
     devices_pids: Dict[int, list] = {}
     rocm_version = torch_version().split("rocm")[-1]
     devices_ids = [int(device_id) for device_id in os.environ["CUDA_VISIBLE_DEVICES"].split(",")]
-
-    if not is_amdsmi_available():
-        raise ValueError(
-            "get_amd_devices_pids requires amdsmi. "
-            "Please follow the instructions at https://github.com/RadeonOpenCompute/amdsmi/tree/master"
-        )
 
     amdsmi.amdsmi_init()
 
@@ -115,7 +118,6 @@ def get_amd_devices_pids() -> Dict[int, list]:
 
 def get_pids_running_on_system_device() -> Set[int]:
     """Returns the set of pids running on the system device(s)."""
-
     if is_nvidia_system():
         devices_pids = get_nvidia_devices_pids()
     elif is_rocm_system():
