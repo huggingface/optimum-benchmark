@@ -13,7 +13,7 @@ install:
 	pip install -e .
 
 build_docker_cpu:
-	docker build -f docker/cuda.dockerfile  --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) -t opt-bench-cpu:latest .
+	docker build -f docker/cpu.dockerfile  --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) -t opt-bench-cpu:latest .
 
 build_docker_cuda:
 	docker build -f docker/cuda.dockerfile  --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg TORCH_CUDA=cu118 --build-arg CUDA_VERSION=11.8.0 -t opt-bench-cuda:11.8.0 . 

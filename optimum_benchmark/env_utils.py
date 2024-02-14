@@ -127,7 +127,10 @@ def get_gpu_vram_mb() -> List[int]:
 
         if rocm_version >= "5.7":
             device_handles = amdsmi.amdsmi_get_processor_handles()
-            vrams = [amdsmi.amdsmi_get_gpu_memory_total(device_handle) for device_handle in device_handles]
+            vrams = [
+                amdsmi.amdsmi_get_gpu_memory_total(device_handle, mem_type=amdsmi.AmdSmiMemoryType.VRAM)
+                for device_handle in device_handles
+            ]
         else:
             device_handles = amdsmi.amdsmi_get_device_handles()
             vrams = [

@@ -65,8 +65,8 @@ def test_api_latency_tracker(device, backend):
     latency = tracker.get_latency()
     latency.log()
 
-    assert latency[0] > expected_latency * 0.9
-    assert latency[0] < expected_latency * 1.1
+    assert latency.mean < expected_latency * 1.1
+    assert latency.mean > expected_latency * 0.9
 
 
 @pytest.mark.parametrize("device", DEVICES)
@@ -85,14 +85,10 @@ def test_api_memory_tracker(device, backend):
 
     tracker.reset()
     with tracker.track():
-        time.sleep(2)
+        time.sleep(1)
         array = torch.randn((10000, 10000), dtype=torch.float64, device=device)
         expected_memory = array.nbytes / 1e6
-        time.sleep(2)
-
-        del array
-        gc.collect()
-        torch.cuda.empty_cache()
+        time.sleep(1)
 
     final_memory = tracker.get_max_memory()
     final_memory.log()
@@ -102,12 +98,15 @@ def test_api_memory_tracker(device, backend):
     elif device == "cuda":
         measured_memory = final_memory.max_vram - initial_memory.max_vram
         if torch.version.hip is not None:
-            measured_memory -= 1600 # ???
+            measured_memory -= 1600  # something is wrong with amdsmi or rocm
     else:
         measured_memory = final_memory.max_ram - initial_memory.max_ram
 
     assert measured_memory < expected_memory * 1.1
     assert measured_memory > expected_memory * 0.9
+
+    del array
+    gc.collect()
 
 
 @pytest.mark.parametrize("library,task,model", LIBRARIES_TASKS_MODELS)

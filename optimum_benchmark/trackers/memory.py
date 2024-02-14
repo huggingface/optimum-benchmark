@@ -74,8 +74,8 @@ class MemoryTracker:
         self.backend = backend
         self.device_ids = device_ids
 
-        self.max_ram_memory: List[int] = []
-        self.max_vram_memory: List[int] = []
+        self.max_ram_memory: float = 0
+        self.max_vram_memory: float = 0
         self.max_reserved_memory: float = 0
         self.max_allocated_memory: float = 0
 
@@ -143,7 +143,6 @@ class MemoryTracker:
 
         yield from self._cpu_memory()
 
-        # if process still running, get the last memory snapshot
         parent_connection.send(True)
         self.max_vram_memory = parent_connection.recv()
 
@@ -160,7 +159,7 @@ class MemoryTracker:
         yield
 
         parent_connection.send(True)
-        self.max_vram_memory = parent_connection.recv()
+        self.max_ram_memory = parent_connection.recv()
 
     def get_max_memory(self):
         if self.device == "cuda" and self.backend == "pytorch":
