@@ -5,14 +5,17 @@ from ..base import Benchmark
 from .config import TrainingConfig
 from .report import TrainingReport
 from ...trackers.memory import MemoryTracker
-from ...trackers.energy import EnergyTracker
-from .callback import LatencyTrainerCallback
 from ...backends.base import Backend, BackendConfigT
+from ...trackers.energy import EnergyTracker, Efficiency
 from ...generators.dataset_generator import DatasetGenerator
+from ...trackers.latency import LatencyTrainerCallback, Throughput
 
 from transformers import default_data_collator
 
 LOGGER = getLogger("training")
+
+TRAIN_THROUGHPUT_UNIT = "samples/s"
+TRAIN_EFFICIENCY_UNIT = "samples/kWh"
 
 
 class TrainingBenchmark(Benchmark[TrainingConfig]):
@@ -33,12 +36,7 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
         training_dataset = dataset_generator()
 
         LOGGER.info("\t+ Initializing training report")
-        self.report = TrainingReport(
-            max_steps=self.config.max_steps,
-            warmup_steps=self.config.warmup_steps,
-            per_process_batch_size=self.config.training_arguments["per_device_train_batch_size"],
-            gradient_accumulation_steps=self.config.training_arguments["gradient_accumulation_steps"],
-        )
+        self.report = TrainingReport()
 
         training_callbackes = []
         if self.config.latency:
@@ -71,16 +69,67 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
             )
 
         if self.config.latency:
-            self.report.populate_latency(overall_latencies_list=latency_callback.get_latencies_list())
+            self.report.overall.latency = latency_callback.get_latency()
+            self.report.overall.throughput = Throughput.from_latency(
+                self.report.overall.latency,
+                volume=self.overall_volume,
+                unit=TRAIN_THROUGHPUT_UNIT,
+            )
+            self.report.warmup.latency = self.report.overall.latency[: self.config.warmup_steps]
+            self.report.warmup.throughput = Throughput.from_latency(
+                self.report.warmup.latency,
+                volume=self.warmup_volume,
+                unit=TRAIN_THROUGHPUT_UNIT,
+            )
+            self.report.train.latency = self.report.overall.latency[self.config.warmup_steps :]
+            self.report.train.throughput = Throughput.from_latency(
+                self.report.train.latency,
+                volume=self.train_volume,
+                unit=TRAIN_THROUGHPUT_UNIT,
+            )
+
             self.report.log_latency()
+            self.report.log_throughput()
 
         if self.config.memory:
-            self.report.populate_memory(overall_memories_dict=memory_tracker.get_memories_dict())
-            self.report.log_memory()
+            # it's the same
+            self.report.overall.max_memory = memory_tracker.get_max_memory()
+            self.report.warmup.max_memory = memory_tracker.get_max_memory()
+            self.report.train.max_memory = memory_tracker.get_max_memory()
+
+            self.report.log_max_memory()
 
         if self.config.energy:
-            self.report.populate_energy(overall_energies_dict=energy_tracker.get_energies_dict())
+            # can only get overall energy consumption
+            self.report.overall.energy = energy_tracker.get_energy()
+            self.report.overall.efficiency = Efficiency.from_energy(
+                self.report.overall.energy,
+                volume=self.overall_volume,
+                unit=TRAIN_EFFICIENCY_UNIT,
+            )
+
             self.report.log_energy()
+            self.report.log_efficiency()
+
+    @property
+    def overall_volume(self) -> int:
+        return (
+            self.config.max_steps
+            * self.config.training_arguments["per_device_train_batch_size"]
+            * self.config.training_arguments["gradient_accumulation_steps"]
+        )
+
+    @property
+    def warmup_volume(self) -> int:
+        return (
+            self.config.warmup_steps
+            * self.config.training_arguments["per_device_train_batch_size"]
+            * self.config.training_arguments["gradient_accumulation_steps"]
+        )
+
+    @property
+    def train_volume(self) -> int:
+        return self.overall_volume - self.warmup_volume
 
     def get_report(self) -> TrainingReport:
         return self.report

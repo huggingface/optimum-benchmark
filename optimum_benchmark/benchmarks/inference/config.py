@@ -9,8 +9,8 @@ LOGGER = getLogger("inference")
 
 INPUT_SHAPES = {
     "batch_size": 2,
-    "sequence_length": 16,
     "num_choices": 2,
+    "sequence_length": 16,
 }
 
 

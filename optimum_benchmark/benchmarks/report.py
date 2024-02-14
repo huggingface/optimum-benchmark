@@ -1,11 +1,43 @@
 from dataclasses import dataclass, asdict
-from typing import Union, Optional
+from typing import Optional, Union, List
+from logging import getLogger
 from json import dump
 import os
+
+from ..trackers.latency import Latency, Throughput
+from ..trackers.energy import Energy, Efficiency
+from ..trackers.memory import MaxMemory
 
 from transformers.configuration_utils import PushToHubMixin
 from flatten_dict import flatten
 import pandas as pd
+
+LOGGER = getLogger("report")
+
+
+@dataclass
+class BenchmarkMeasurements:
+    max_memory: Optional[MaxMemory] = None
+    latency: Optional[Latency] = None
+    throughput: Optional[Throughput] = None
+    energy: Optional[Energy] = None
+    efficiency: Optional[Efficiency] = None
+
+    @staticmethod
+    def aggregate(measurements: List["BenchmarkMeasurements"]) -> "BenchmarkMeasurements":
+        max_memory = MaxMemory.aggregate([m.max_memory for m in measurements if m.max_memory is not None])
+        latency = Latency.aggregate([m.latency for m in measurements if m.latency is not None])
+        throughput = Throughput.aggregate([m.throughput for m in measurements if m.throughput is not None])
+        energy = Energy.aggregate([m.energy for m in measurements if m.energy is not None])
+        efficiency = Efficiency.aggregate([m.efficiency for m in measurements if m.efficiency is not None])
+
+        return BenchmarkMeasurements(
+            max_memory=max_memory,
+            latency=latency,
+            throughput=throughput,
+            energy=energy,
+            efficiency=efficiency,
+        )
 
 
 @dataclass
@@ -69,5 +101,49 @@ class BenchmarkReport(PushToHubMixin):
     def to_csv(self, path: str) -> None:
         self.to_dataframe().to_csv(path, index=False)
 
-    def log_all(self) -> None:
-        raise NotImplementedError("`log_all` method must be implemented in the child class")
+    def log_max_memory(self):
+        for target in self.to_dict().keys():
+            benchmark_measurements: BenchmarkMeasurements = getattr(self, target)
+            if benchmark_measurements.max_memory is not None:
+                benchmark_measurements.max_memory.log(prefix=target)
+
+    def log_latency(self):
+        for target in self.to_dict().keys():
+            benchmark_measurements: BenchmarkMeasurements = getattr(self, target)
+            if benchmark_measurements.latency is not None:
+                benchmark_measurements.latency.log(prefix=target)
+
+    def log_throughput(self):
+        for target in self.to_dict().keys():
+            benchmark_measurements: BenchmarkMeasurements = getattr(self, target)
+            if benchmark_measurements.throughput is not None:
+                benchmark_measurements.throughput.log(prefix=target)
+
+    def log_energy(self):
+        for target in self.to_dict().keys():
+            benchmark_measurements: BenchmarkMeasurements = getattr(self, target)
+            if benchmark_measurements.energy is not None:
+                benchmark_measurements.energy.log(prefix=target)
+
+    def log_efficiency(self):
+        for target in self.to_dict().keys():
+            benchmark_measurements: BenchmarkMeasurements = getattr(self, target)
+            if benchmark_measurements.efficiency is not None:
+                benchmark_measurements.efficiency.log(prefix=target)
+
+    def log_all(self):
+        self.log_max_memory()
+        self.log_latency()
+        self.log_throughput()
+        self.log_energy()
+        self.log_efficiency()
+
+    @classmethod
+    def aggregate(cls, reports: List["BenchmarkReport"]) -> "BenchmarkReport":
+        aggregated_report = cls()
+        for target in aggregated_report.to_dict().keys():
+            measurements = [getattr(report, target) for report in reports]
+            aggregated_measurements = BenchmarkMeasurements.aggregate(measurements)
+            setattr(aggregated_report, target, aggregated_measurements)
+
+        return aggregated_report

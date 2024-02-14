@@ -2,21 +2,19 @@ import os
 import multiprocessing as mp
 from logging import getLogger
 from multiprocessing import Queue
-from typing import Callable, Dict, Any
+from typing import Callable, Dict, Any, List
 
 from ..base import Launcher
 from .config import TorchrunConfig
 from ...logging_utils import setup_logging
 from ..isolation_utils import device_isolation
 from ...benchmarks.report import BenchmarkReport
-from ...import_utils import is_torch_distributed_available
 
-if is_torch_distributed_available():
-    import torch.distributed
-    from torch.distributed import FileStore
-    from torch.distributed.elastic.multiprocessing import Std
-    from torch.distributed.elastic.multiprocessing.errors import record
-    from torch.distributed.launcher.api import LaunchConfig, launch_agent
+import torch.distributed
+from torch.distributed import FileStore
+from torch.distributed.elastic.multiprocessing import Std
+from torch.distributed.elastic.multiprocessing.errors import record
+from torch.distributed.launcher.api import LaunchConfig, launch_agent
 
 
 LOGGER = getLogger("torchrun")
@@ -62,7 +60,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
                 args=(worker, queue, current_log_level, *worker_args),
             )
 
-        outputs = []
+        outputs: List[BenchmarkReport] = []
 
         while not queue.empty():
             outputs.append(queue.get())
@@ -71,7 +69,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             report: BenchmarkReport = outputs[0]
         else:
             LOGGER.info(f"\t+ Merging benchmark reports from {len(outputs)} workers")
-            report: BenchmarkReport = sum(outputs[1:], outputs[0])
+            report: BenchmarkReport = outputs[0].aggregate(outputs)
             report.log_all()
 
         return report
