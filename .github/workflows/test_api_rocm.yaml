@@ -45,7 +45,6 @@ jobs:
           --pid host
           --shm-size 64G
           --env USE_ROCM="1"
-          --volume $HOME/.cache/huggingface:/home/user/.cache/huggingface
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
           --device /dev/kfd

@@ -1,5 +1,5 @@
 # List of targets that are not associated with files
-.PHONY:	quality style install install_dev_cpu install_dev_gpu
+.PHONY:	quality style install install_dev_cpu install_dev_gpu, build_docker_cpu, build_docker_cuda, build_docker_rocm, test_cli_cpu_neural_compressor, test_cli_cpu_onnxruntime, test_cli_cpu_openvino, test_cli_cpu_pytorch, test_cli_rocm_pytorch, test_api_cpu, test_api_cuda, test_api_rocm, test_api_misc
 
 quality:
 	ruff check .
@@ -13,13 +13,13 @@ install:
 	pip install -e .
 
 build_docker_cpu:
-	docker build -f docker/cpu.dockerfile  --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) -t opt-bench-cpu:latest .
+	docker build -f docker/cpu.dockerfile  --build-arg USER_ID=$(shell id -u) --build-arg GROUP_ID=$(shell id -g) -t opt-bench-cpu:latest .
 
 build_docker_cuda:
-	docker build -f docker/cuda.dockerfile  --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg TORCH_CUDA=cu118 --build-arg CUDA_VERSION=11.8.0 -t opt-bench-cuda:11.8.0 . 
+	docker build -f docker/cuda.dockerfile  --build-arg USER_ID=$(shell id -u) --build-arg GROUP_ID=$(shell id -g) --build-arg TORCH_CUDA=cu118 --build-arg CUDA_VERSION=11.8.0 -t opt-bench-cuda:11.8.0 . 
 
 build_docker_rocm:
-	docker build -f docker/rocm.dockerfile  --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) --build-arg TORCH_ROCM=rocm5.6 --build-arg ROCM_VERSION=5.6.1 -t opt-bench-rocm:5.6.1 . 
+	docker build -f docker/rocm.dockerfile  --build-arg USER_ID=$(shell id -u) --build-arg GROUP_ID=$(shell id -g) --build-arg TORCH_ROCM=rocm5.6 --build-arg ROCM_VERSION=5.6.1 -t opt-bench-rocm:5.6.1 . 
 
 test_cli_cpu_neural_compressor:
 	docker run \

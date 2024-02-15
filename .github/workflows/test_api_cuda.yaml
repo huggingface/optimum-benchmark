@@ -44,7 +44,6 @@ jobs:
           --pid host
           --shm-size 64G
           --env USE_CUDA="1"
-          --volume $HOME/.cache/huggingface:/home/user/.cache/huggingface
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
           --gpus '"device=0,1"'
