@@ -10,8 +10,3 @@ backend:
   deepspeed_inference_config:
     tensor_parallel:
       tp_size: 2
-
-hydra:
-  launcher:
-    n_jobs: 1
-    batch_size: 1
