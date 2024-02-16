@@ -1,5 +1,4 @@
 import os
-from functools import reduce
 from logging import getLogger
 from dataclasses import dataclass
 from contextlib import contextmanager
@@ -36,27 +35,29 @@ class Memory:
     max_reserved: Optional[float] = None
     max_allocated: Optional[float] = None
 
-    def __add__(self, other: "Memory") -> "Memory":
-        if self.unit != other.unit:
-            raise ValueError(f"Cannot add memory with different units: {self.unit} and {other.unit}")
-
-        max_ram = self.max_ram + other.max_ram
-        max_vram = self.max_vram + other.max_vram if self.max_vram is not None else None
-        max_reserved = self.max_reserved + other.max_reserved if self.max_reserved is not None else None
-        max_allocated = self.max_allocated + other.max_allocated if self.max_allocated is not None else None
-
-        return Memory(
-            unit=self.unit, max_ram=max_ram, max_vram=max_vram, max_reserved=max_reserved, max_allocated=max_allocated
-        )
-
     @staticmethod
     def aggregate(memories: List["Memory"]) -> "Memory":
-        if len(memories) == 0 or all(memory is None for memory in memories):
-            return None
+        if len(memories) == 0:
+            raise ValueError("No memory measurements to aggregate")
         elif any(memory is None for memory in memories):
             raise ValueError("Some memory measurements are missing")
 
-        return reduce(lambda x, y: x + y, memories)
+        unit = memories[0].unit
+        max_ram = sum(memory.max_ram for memory in memories)
+        max_vram = sum(memory.max_vram for memory in memories) if memories[0].max_vram is not None else None
+        max_reserved = (
+            sum(memory.max_reserved for memory in memories) if memories[0].max_reserved is not None else None
+        )
+        max_allocated = (
+            sum(memory.max_allocated for memory in memories) if memories[0].max_allocated is not None else None
+        )
+        return Memory(
+            unit=unit,
+            max_ram=max_ram,
+            max_vram=max_vram,
+            max_reserved=max_reserved,
+            max_allocated=max_allocated,
+        )
 
     def log(self, prefix: str = "forward"):
         LOGGER.info(f"\t\t+ {prefix} max RAM memory: {self.max_ram:f} ({self.unit})")
@@ -79,15 +80,15 @@ class MemoryTracker:
         self.max_reserved_memory: float = 0
         self.max_allocated_memory: float = 0
 
-        LOGGER.info("\t+ Tracking RAM memory")
+        LOGGER.info("\t\t+ Tracking RAM memory")
 
         if self.device == "cuda":
             if self.device_ids is None:
-                LOGGER.warning("\t+ `device=cuda` but `device_ids` not provided. Using all available CUDA devices.")
+                LOGGER.warning("\t\t+ `device=cuda` but `device_ids` not provided. Using all available CUDA devices.")
                 self.device_ids = get_cuda_device_ids()
 
             self.device_ids = list(map(int, self.device_ids.split(",")))
-            LOGGER.info(f"\t+ Tracking VRAM memory of CUDA devices: {self.device_ids}")
+            LOGGER.info(f"\t\t+ Tracking VRAM memory of CUDA devices: {self.device_ids}")
 
             if self.backend == "pytorch":
                 num_pytorch_devices = torch.cuda.device_count()
@@ -96,7 +97,7 @@ class MemoryTracker:
                         "The number of CUDA devices and Pytorch CUDA devices must be the same. "
                         f"Got {len(self.device_ids)} and {num_pytorch_devices} respectively."
                     )
-                LOGGER.info(f"\t+ Tracking Allocated/Reserved memory of {num_pytorch_devices} Pytorch CUDA devices")
+                LOGGER.info(f"\t\t+ Tracking Allocated/Reserved memory of {num_pytorch_devices} Pytorch CUDA devices")
 
     def reset(self):
         self.max_ram_memory = 0
@@ -120,7 +121,7 @@ class MemoryTracker:
             try:
                 torch.cuda.reset_peak_memory_stats(device=device)
             except Exception as e:
-                LOGGER.warning(f"\t+ Could not reset max memory stats for device {device}: {e}")
+                LOGGER.warning(f"\t\t+ Could not reset max memory stats for device {device}: {e}")
 
         yield from self._cuda_memory()
 
@@ -199,12 +200,7 @@ def monitor_cpu_ram_memory(process_id: int, connection: Connection, interval: fl
     connection.close()
 
 
-def monitor_gpu_vram_memory(
-    process_id: int,
-    device_ids: List[int],
-    connection: Connection,
-    interval: float = 0.01,
-):
+def monitor_gpu_vram_memory(process_id: int, device_ids: List[int], connection: Connection, interval: float = 0.01):
     stop = False
     max_memory = 0
     connection.send(0)
@@ -224,7 +220,7 @@ def monitor_gpu_vram_memory(
                 try:
                     device_processes = pynvml.nvmlDeviceGetComputeRunningProcesses(device_handle)
                 except Exception as e:
-                    LOGGER.warning(f"Could not get process list for device {device_id}: {e}")
+                    LOGGER.warning(f"\t\t+ Could not get process list for device {device_id}: {e}")
                     continue
                 for device_process in device_processes:
                     if device_process.pid == process_id:
@@ -233,7 +229,7 @@ def monitor_gpu_vram_memory(
                         try:
                             cpu_process = psutil.Process(device_process.pid)
                         except Exception as e:
-                            LOGGER.warning(f"Could not get process info for process {device_process.pid}: {e}")
+                            LOGGER.warning(f"\t\t+ Could not get process info for process {device_process.pid}: {e}")
                             continue
                         if cpu_process.parent() is not None and cpu_process.parent().pid == process_id:
                             current_used_memory += device_process.usedGpuMemory
@@ -261,13 +257,13 @@ def monitor_gpu_vram_memory(
                     try:
                         processes_handles = amdsmi.amdsmi_get_gpu_process_list(device_handle)
                     except Exception as e:
-                        LOGGER.warning(f"Could not get process list for device {device_id}: {e}")
+                        LOGGER.warning(f"\t\t+ Could not get process list for device {device_id}: {e}")
                         continue
                     for process_handle in processes_handles:
                         try:
                             gpu_process_info = amdsmi.amdsmi_get_gpu_process_info(device_handle, process_handle)
                         except Exception as e:
-                            LOGGER.warning(f"Could not get process info for process {process_handle}: {e}")
+                            LOGGER.warning(f"\t\t+ Could not get process info for process {process_handle}: {e}")
                             continue
                         # only memory usage of the monitored process and its children is tracked
                         if gpu_process_info["pid"] == process_id:
@@ -277,7 +273,7 @@ def monitor_gpu_vram_memory(
                                 cpu_process_info = psutil.Process(gpu_process_info["pid"])
                             except Exception as e:
                                 LOGGER.warning(
-                                    f"Could not get process info for process {gpu_process_info['pid']}: {e}"
+                                    f"\t\t+ Could not get process info for process {gpu_process_info['pid']}: {e}"
                                 )
                                 continue
                             if cpu_process_info.parent() is not None and cpu_process_info.parent().pid == process_id:
@@ -294,13 +290,13 @@ def monitor_gpu_vram_memory(
                     try:
                         processes_handles = amdsmi.amdsmi_get_process_list(device_handle)
                     except Exception as e:
-                        LOGGER.warning(f"Could not get process list for device {device_id}: {e}")
+                        LOGGER.warning(f"\t\t+ Could not get process list for device {device_id}: {e}")
                         continue
                     for process_handle in processes_handles:
                         try:
                             gpu_process_info = amdsmi.amdsmi_get_process_info(device_handle, process_handle)
                         except Exception as e:
-                            LOGGER.warning(f"Could not get process info for process {process_handle}: {e}")
+                            LOGGER.warning(f"\t\t+ Could not get process info for process {process_handle}: {e}")
                             continue
                         # only memory usage of the monitored process and its children is tracked
                         if gpu_process_info["pid"] == process_id:
@@ -310,7 +306,7 @@ def monitor_gpu_vram_memory(
                                 cpu_process_info = psutil.Process(gpu_process_info["pid"])
                             except Exception as e:
                                 LOGGER.warning(
-                                    f"Could not get process info for process {gpu_process_info['pid']}: {e}"
+                                    f"\t\t+ Could not get process info for process {gpu_process_info['pid']}: {e}"
                                 )
                                 continue
                             if cpu_process_info.parent() is not None and cpu_process_info.parent().pid == process_id:

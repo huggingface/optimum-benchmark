@@ -4,9 +4,9 @@ from tempfile import TemporaryDirectory
 from dataclasses import dataclass, field, asdict
 from typing import Any, Dict, Type, Optional, Union, TYPE_CHECKING
 
-from .report import BenchmarkReport
 from .env_utils import get_system_info
 from .import_utils import get_hf_libs_info
+from .benchmarks.report import BenchmarkReport
 from .benchmarks.config import BenchmarkConfig
 from .launchers.config import LauncherConfig
 from .backends.config import BackendConfig
@@ -139,11 +139,27 @@ def run(benchmark_config: BenchmarkConfig, backend_config: BackendConfig) -> Ben
 
 
 def launch(experiment_config: ExperimentConfig) -> BenchmarkReport:
-    if os.environ.get("BENCHMARK_CLI", "0") == "0":
+    # fix backend until deprecated model and device are removed
+    if experiment_config.task is not None:
+        LOGGER.warning("`task` is deprecated in experiment config. Use `backend.task` instead.")
+        experiment_config.backend.task = experiment_config.task
+    if experiment_config.model is not None:
+        LOGGER.warning("`model` is deprecated in experiment config. Use `backend.model` instead.")
+        experiment_config.backend.model = experiment_config.model
+    if experiment_config.device is not None:
+        LOGGER.warning("`device` is deprecated in experiment config. Use `backend.device` instead.")
+        experiment_config.backend.device = experiment_config.device
+    if experiment_config.library is not None:
+        LOGGER.warning("`library` is deprecated in experiment config. Use `backend.library` instead.")
+        experiment_config.backend.library = experiment_config.library
+
+    original_dir = os.getcwd()
+    tmpdir = TemporaryDirectory()
+
+    if os.environ.get("BENCHMARK_INTERFACE", "API") == "API":
+        # to not pollute the user's environment
         LOGGER.info("Launching experiment in a temporary directory.")
-        tmep_dir = TemporaryDirectory()
-        original_dir = os.getcwd()
-        os.chdir(tmep_dir.name)
+        os.chdir(tmpdir.name)
 
     launcher_config: LauncherConfig = experiment_config.launcher
 
@@ -153,6 +169,7 @@ def launch(experiment_config: ExperimentConfig) -> BenchmarkReport:
         launcher: Launcher = launcher_factory(launcher_config)
     except Exception as e:
         LOGGER.error(f"Error during launcher allocation: {e}")
+        tmpdir.cleanup()
         raise e
 
     backend_config: BackendConfig = experiment_config.backend
@@ -162,10 +179,11 @@ def launch(experiment_config: ExperimentConfig) -> BenchmarkReport:
         output = launcher.launch(run, benchmark_config, backend_config)
     except Exception as e:
         LOGGER.error(f"Error during experiment launching: {e}")
+        tmpdir.cleanup()
         raise e
 
-    if os.environ.get("BENCHMARK_CLI", "0") == "0":
+    if os.environ.get("BENCHMARK_INTERFACE", "API") == "API":
         os.chdir(original_dir)
-        tmep_dir.cleanup()
+        tmpdir.cleanup()
 
     return output

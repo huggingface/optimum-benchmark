@@ -2,10 +2,8 @@ from typing import List, Literal, Union
 from contextlib import contextmanager
 from dataclasses import dataclass
 from logging import getLogger
-from functools import reduce
 import time
 
-from .utils import compute_mean, compute_stdev
 from ..import_utils import is_torch_distributed_available
 
 if is_torch_distributed_available():
@@ -33,21 +31,14 @@ class Latency:
         if isinstance(index, slice):
             return Latency.from_values(values=self.values[index], unit=self.unit)
         else:
-            return self.values[index]
+            return Latency.from_values(values=[self.values[index]], unit=self.unit)
 
     def __sub__(self, scalar: float) -> "Latency":
         if not isinstance(scalar, (int, float)):
             raise ValueError(f"Cannot subtract non-scalar value from latency: {scalar}")
 
         latencies = [lat - scalar for lat in self.values]
-
         return Latency.from_values(values=latencies, unit=self.unit)
-
-    def __add__(self, other: "Latency") -> "Latency":
-        if self.unit != other.unit:
-            raise ValueError(f"Cannot add latencies with different units: {self.unit} and {other.unit}")
-
-        return Latency.from_values(values=self.values + other.values, unit=self.unit)
 
     @staticmethod
     def aggregate(latencies: List["Latency"]) -> "Latency":
@@ -56,16 +47,15 @@ class Latency:
         elif any(latency is None for latency in latencies):
             raise ValueError("Some latency measurements are missing")
 
-        return reduce(lambda x, y: x + y, latencies)
+        unit = latencies[0].unit
+        values = sum((lat.values for lat in latencies), [])
+        return Latency.from_values(values=values, unit=unit)
 
     @staticmethod
     def from_values(values: List[float], unit: str) -> "Latency":
-        return Latency(
-            mean=compute_mean(values),
-            stdev=compute_stdev(values),
-            values=values,
-            unit=unit,
-        )
+        mean = sum(values) / len(values) if len(values) > 0 else 0
+        stdev = (sum((val - mean) ** 2 for val in values) / len(values)) ** 0.5 if len(values) > 1 else 0
+        return Latency(mean=mean, stdev=stdev, values=values, unit=unit)
 
     def log(self, prefix: str = "forward"):
         LOGGER.info(f"\t\t+ {prefix} latency: {self.mean:f} ± 2 x {self.stdev:f} ({self.unit})")
@@ -75,39 +65,27 @@ class Latency:
 class Throughput:
     unit: Throughput_Unit_Literal
 
-    mean: float
-    stdev: float
-
-    def __add__(self, other: "Throughput") -> "Throughput":
-        if self.unit != other.unit:
-            raise ValueError(f"Cannot add throughputs with different units: {self.unit} and {other.unit}")
-
-        return Throughput(
-            mean=self.mean + other.mean,
-            stdev=(self.stdev**2 + other.stdev**2) ** 0.5,
-            unit=self.unit,
-        )
+    value: float
 
     @staticmethod
     def aggregate(throughputs: List["Throughput"]) -> "Throughput":
-        if len(throughputs) == 0 or all(throughput is None for throughput in throughputs):
-            return None
+        if len(throughputs) == 0:
+            raise ValueError("No throughput measurements to aggregate")
         elif any(throughput is None for throughput in throughputs):
             raise ValueError("Some throughput measurements are missing")
 
-        return reduce(lambda x, y: x + y, throughputs)
+        unit = throughputs[0].unit
+        value = sum(throughput.value for throughput in throughputs)
+
+        return Throughput(value=value, unit=unit)
 
     @staticmethod
-    def from_values(values: List[float], unit: str) -> "Throughput":
-        return Throughput(mean=compute_mean(values), stdev=compute_stdev(values), unit=unit)
-
-    @staticmethod
-    def from_latency(latency: "Latency", volume: int, unit: str) -> "Throughput":
-        throughputs = [volume / lat if lat > 0 else 0 for lat in latency.values]
-        return Throughput.from_values(values=throughputs, unit=unit)
+    def from_latency(latency: Latency, volume: int, unit: str) -> "Throughput":
+        value = volume / latency.mean if latency.mean > 0 else 0
+        return Throughput(value=value, unit=unit)
 
     def log(self, prefix: str = "forward"):
-        LOGGER.info(f"\t\t+ {prefix} throughput: {self.mean:f} ± 2 x {self.stdev:f} ({self.unit})")
+        LOGGER.info(f"\t\t+ {prefix} throughput: {self.value:f} {self.unit}")
 
 
 class LatencyTracker:
@@ -176,6 +154,9 @@ class LatencyTracker:
 
         return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
 
+    def get_throughput(self, volume: int, unit: str) -> Throughput:
+        return Throughput.from_latency(self.get_latency(), volume, unit)
+
 
 class LatencyTrainerCallback(TrainerCallback):
     def __init__(self, device: str, backend: str) -> None:
@@ -216,6 +197,9 @@ class LatencyTrainerCallback(TrainerCallback):
 
         return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
 
+    def get_throughput(self, volume: int, unit: str) -> Throughput:
+        return Throughput.from_latency(self.get_latency(), volume, unit)
+
 
 class LatencyLogitsProcessor(LogitsProcessor):
     def __init__(self, device: str, backend: str):
@@ -252,3 +236,6 @@ class LatencyLogitsProcessor(LogitsProcessor):
             latencies_list = [(self.events[i] - self.events[i - 1]) for i in range(1, len(self.events))]
 
         return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
+
+    def get_throughput(self, volume: int, unit: str) -> Throughput:
+        return Throughput.from_latency(self.get_latency(), volume, unit)

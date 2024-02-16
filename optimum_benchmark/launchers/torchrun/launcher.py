@@ -6,9 +6,9 @@ from typing import Callable, Dict, Any, List
 
 from ..base import Launcher
 from .config import TorchrunConfig
-from ...report import BenchmarkReport
-from ...logging_utils import setup_logging
+from ...benchmarks.report import BenchmarkReport
 from ..isolation_utils import device_isolation
+from ...logging_utils import setup_logging
 
 import torch.distributed
 from torch.distributed import FileStore
@@ -73,7 +73,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
         else:
             raise ValueError("No benchmark report was returned by the workers")
 
-        report.log_all()
+        report.log()
 
         return report
 
@@ -83,12 +83,12 @@ def entrypoint(fn, q, log_level, *args):
     """
     This a pickalable function that correctly sets up the logging configuration
     """
-    if not torch.distributed.is_initialized():
-        # initialize the process group if not already initialized
-        backend = "nccl" if torch.cuda.is_available() else "gloo"
-        torch.distributed.init_process_group(backend=backend)
+    # if not torch.distributed.is_initialized():
+    #     # initialize the process group if not already initialized
+    #     backend = "nccl" if torch.cuda.is_available() else "gloo"
+    #     torch.distributed.init_process_group(backend=backend)
 
-    rank = torch.distributed.get_rank()
+    rank = int(os.environ.get("RANK", "0"))
 
     if torch.cuda.is_available():
         torch.cuda.set_device(rank)

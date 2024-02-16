@@ -1,5 +1,4 @@
 import os
-from functools import reduce
 from logging import getLogger
 from dataclasses import dataclass
 from contextlib import contextmanager
@@ -27,18 +26,6 @@ class Energy:
     gpu: float
     total: float
 
-    def __add__(self, other: "Energy") -> "Energy":
-        if self.unit != other.unit:
-            raise ValueError(f"Cannot add energies with different units: {self.unit} and {other.unit}")
-
-        return Energy(
-            unit=self.unit,
-            cpu=self.cpu + other.cpu,
-            gpu=self.gpu + other.gpu,
-            ram=self.ram + other.ram,
-            total=self.total + other.total,
-        )
-
     @staticmethod
     def aggregate(energies: List["Energy"]) -> "Energy":
         if len(energies) == 0 or all(energy is None for energy in energies):
@@ -46,7 +33,12 @@ class Energy:
         elif any(energy is None for energy in energies):
             raise ValueError("Some energy measurements are missing")
 
-        return reduce(lambda x, y: x + y, energies)
+        cpu = sum(energy.cpu for energy in energies)
+        gpu = sum(energy.gpu for energy in energies)
+        ram = sum(energy.ram for energy in energies)
+        total = sum(energy.total for energy in energies)
+
+        return Energy(cpu=cpu, gpu=gpu, ram=ram, total=total, unit=ENERGY_UNIT)
 
     def log(self, prefix: str = "forward"):
         LOGGER.info(f"\t\t+ {prefix} CPU energy: {self.cpu:f} ({self.unit})")
@@ -61,20 +53,17 @@ class Efficiency:
 
     value: float
 
-    def __add__(self, other: "Efficiency") -> "Efficiency":
-        if self.unit != other.unit:
-            raise ValueError(f"Cannot add efficiencies with different units: {self.unit} and {other.unit}")
-
-        return Efficiency(value=(self.value + other.value) / 2, unit=self.unit)
-
     @staticmethod
     def aggregate(efficiencies: List["Efficiency"]) -> "Efficiency":
-        if len(efficiencies) == 0 or all(efficiency is None for efficiency in efficiencies):
-            return None
+        if len(efficiencies) == 0:
+            raise ValueError("No efficiency measurements to aggregate")
         elif any(efficiency is None for efficiency in efficiencies):
-            raise ValueError("Some efficiency measurements are missing")
+            raise ValueError("Some efficiency measurements are None")
 
-        return reduce(lambda x, y: x + y, efficiencies)
+        unit = efficiencies[0].unit
+        value = sum(efficiency.value for efficiency in efficiencies) / len(efficiencies)
+
+        return Efficiency(value=value, unit=unit)
 
     @staticmethod
     def from_energy(energy: "Energy", volume: int, unit: str) -> "Efficiency":

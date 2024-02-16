@@ -1,10 +1,11 @@
 import os
+from typing import Callable
 from logging import getLogger
-from typing import Callable, Dict, Any
 
 from ..base import Launcher
 from .config import InlineConfig
 from ..isolation_utils import device_isolation
+from ...benchmarks.report import BenchmarkReport
 
 LOGGER = getLogger("inline")
 
@@ -15,12 +16,12 @@ class InlineLauncher(Launcher[InlineConfig]):
     def __init__(self, config: InlineConfig):
         super().__init__(config)
 
-    def launch(self, worker: Callable, *worker_args) -> Dict[str, Any]:
+    def launch(self, worker: Callable, *worker_args) -> BenchmarkReport:
         with device_isolation(
             benchmark_pid=os.getpid(),
             enabled=self.config.device_isolation,
         ):
             LOGGER.info("\t+ Launching inline experiment (no process isolation)")
-            report: Dict[str, Any] = worker(*worker_args)
+            report = worker(*worker_args)
 
         return report

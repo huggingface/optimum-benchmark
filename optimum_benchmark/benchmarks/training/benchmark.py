@@ -5,9 +5,9 @@ from dataclasses import dataclass
 from ..base import Benchmark
 from .config import TrainingConfig
 from ...trackers.memory import MemoryTracker
-from ...report import BenchmarkReport, Measurements
 from ...backends.base import Backend, BackendConfigT
 from ...trackers.energy import EnergyTracker, Efficiency
+from ..report import BenchmarkReport, BenchmarkMeasurements
 from ...generators.dataset_generator import DatasetGenerator
 from ...trackers.latency import LatencyTrainerCallback, Throughput
 
@@ -21,9 +21,9 @@ TRAIN_EFFICIENCY_UNIT = "samples/kWh"
 
 @dataclass
 class TrainingReport(BenchmarkReport):
-    overall: Measurements = Measurements()
-    warmup: Measurements = Measurements()
-    train: Measurements = Measurements()
+    overall: BenchmarkMeasurements = BenchmarkMeasurements()
+    warmup: BenchmarkMeasurements = BenchmarkMeasurements()
+    train: BenchmarkMeasurements = BenchmarkMeasurements()
 
 
 class TrainingBenchmark(Benchmark[TrainingConfig]):
@@ -81,8 +81,6 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
             self.report.warmup.memory = memory_tracker.get_max_memory()
             self.report.train.memory = memory_tracker.get_max_memory()
 
-            self.report.log_memory()
-
         if self.config.latency:
             self.report.overall.latency = latency_callback.get_latency()
             self.report.overall.throughput = Throughput.from_latency(
@@ -103,9 +101,6 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
                 unit=TRAIN_THROUGHPUT_UNIT,
             )
 
-            self.report.log_latency()
-            self.report.log_throughput()
-
         if self.config.energy:
             # can only get overall energy consumption
             self.report.overall.energy = energy_tracker.get_energy()
@@ -114,9 +109,6 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
                 volume=self.overall_volume,
                 unit=TRAIN_EFFICIENCY_UNIT,
             )
-
-            self.report.log_energy()
-            self.report.log_efficiency()
 
     @property
     def overall_volume(self) -> int:

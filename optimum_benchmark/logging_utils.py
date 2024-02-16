@@ -36,12 +36,9 @@ API_JOB_LOGGING = {
 
 
 def setup_logging(level: str = "INFO", prefix: Optional[str] = None):
-    if os.environ.get("BENCHMARK_CLI", "0") == "1":
+    if os.environ.get("BENCHMARK_INTERFACE", "API") == "CLI":
         hydra_config = OmegaConf.load(".hydra/hydra.yaml")
-        job_logging = OmegaConf.to_container(
-            hydra_config.hydra.job_logging,
-            resolve=True,
-        )
+        job_logging = OmegaConf.to_container(hydra_config.hydra.job_logging, resolve=True)
     else:
         job_logging = API_JOB_LOGGING.copy()
 
