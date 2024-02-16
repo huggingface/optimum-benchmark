@@ -63,7 +63,16 @@ test_cli_rocm_pytorch:
 	--entrypoint /bin/bash \
 	--volume $(PWD):/workspace \
 	--workdir /workspace \
-	opt-bench-rocm:5.6.1 -c "pip install -e .[testing,diffusers,timm] && pytest tests/ -k 'cli and cuda and pytorch' -x"
+	opt-bench-rocm:5.6.1 -c "pip install -e .[testing,diffusers,timm,deepspeed] && pytest tests/ -k 'cli and cuda and pytorch' -x"
+
+test_cli_cuda_pytorch:
+	docker run \
+	--rm \
+	--gpus '"device=0,1"' \
+	--entrypoint /bin/bash \
+	--volume $(PWD):/workspace \
+	--workdir /workspace \
+	opt-bench-cuda:11.8.0 -c "pip install -e .[testing,diffusers,timm,deepspeed] && pytest tests/ -k 'cli and cuda and pytorch' -x"
 
 test_api_cpu:
 	docker run \
