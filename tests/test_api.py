@@ -165,8 +165,6 @@ def test_api_dataset_generator(library, task, model):
 def test_api_launch(benchmark_config, launcher_config, device):
     if launcher_config.name == "torchrun" and device == "cuda":
         device_ids = ",".join(str(i) for i in range(torch.cuda.device_count()))
-    elif device == "cuda":
-        device_ids = "0"
     else:
         device_ids = None
 
