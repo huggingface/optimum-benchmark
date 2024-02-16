@@ -28,5 +28,5 @@ hydra:
   # we're having ccorrect benchmarks is not important while testing
   # to force sequential execution, uncomment the following three lines
   # launcher:
-  #   n_jobs: 1 # for debugging
-  #   batch_size: 1 # for debugging
+  #   n_jobs: -1 # 1 for debugging
+  #   batch_size: auto # 1 for debugging
