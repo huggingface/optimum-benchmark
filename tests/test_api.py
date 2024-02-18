@@ -2,6 +2,7 @@ import gc
 import time
 from logging import getLogger
 
+from optimum_benchmark.system_utils import is_rocm_system
 from optimum_benchmark.trackers.memory import MemoryTracker
 from optimum_benchmark.trackers.latency import LatencyTracker
 from optimum_benchmark.experiment import ExperimentConfig, launch
@@ -12,7 +13,6 @@ from optimum_benchmark.launchers.torchrun.config import TorchrunConfig
 from optimum_benchmark.benchmarks.inference.config import INPUT_SHAPES
 from optimum_benchmark.benchmarks.training.config import DATASET_SHAPES
 from optimum_benchmark.generators.input_generator import InputGenerator
-from optimum_benchmark.benchmarks.training.config import TrainingConfig
 from optimum_benchmark.benchmarks.inference.config import InferenceConfig
 from optimum_benchmark.generators.dataset_generator import DatasetGenerator
 from optimum_benchmark.task_utils import TEXT_GENERATION_TASKS, IMAGE_DIFFUSION_TASKS
@@ -22,6 +22,7 @@ from optimum_benchmark.backends.transformers_utils import (
     get_transformers_pretrained_config,
 )
 
+import numpy as np
 import pytest
 import torch
 
@@ -39,17 +40,20 @@ LIBRARIES_TASKS_MODELS = [
     ("transformers", "image-classification", "google/vit-base-patch16-224"),
     ("transformers", "semantic-segmentation", "google/vit-base-patch16-224"),
 ]
-BENCHMARK_CONFIGS = [
-    InferenceConfig(latency=True, memory=True),
-    TrainingConfig(latency=True, memory=True),
-]
 LAUNCHER_CONFIGS = [
-    TorchrunConfig(nproc_per_node=2, device_isolation=False),
-    ProcessConfig(device_isolation=False),
     InlineConfig(device_isolation=False),
+    ProcessConfig(device_isolation=False),
+    TorchrunConfig(nproc_per_node=2, device_isolation=False),
 ]
 BACKENDS = ["pytorch", "none"]
 DEVICES = ["cpu", "cuda"]
+
+
+def clear_memory(array):
+    del array
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
 
 @pytest.mark.parametrize("device", DEVICES)
@@ -86,7 +90,10 @@ def test_api_memory_tracker(device, backend):
     tracker.reset()
     with tracker.track():
         time.sleep(1)
-        array = torch.randn((10000, 10000), dtype=torch.float64, device=device)
+        if backend == "pytorch":
+            array = torch.randn((10000, 10000), dtype=torch.float64, device=device)
+        else:
+            array = np.random.randn(10000, 10000)
         expected_memory = array.nbytes / 1e6
         time.sleep(1)
 
@@ -107,10 +114,7 @@ def test_api_memory_tracker(device, backend):
     assert measured_memory < expected_memory * 1.1
     assert measured_memory > expected_memory * 0.9
 
-    del array
-    gc.collect()
-    if device == "cuda":
-        torch.cuda.empty_cache()
+    clear_memory(array)
 
 
 @pytest.mark.parametrize("library,task,model", LIBRARIES_TASKS_MODELS)
@@ -159,23 +163,29 @@ def test_api_dataset_generator(library, task, model):
     _ = generator()
 
 
-@pytest.mark.parametrize("benchmark_config", BENCHMARK_CONFIGS)
 @pytest.mark.parametrize("launcher_config", LAUNCHER_CONFIGS)
 @pytest.mark.parametrize("device", DEVICES)
-def test_api_launch(benchmark_config, launcher_config, device):
-    if launcher_config.name == "torchrun" and device == "cuda":
+def test_api_launch(launcher_config, device):
+    if device == "cuda":
         device_ids = ",".join(str(i) for i in range(torch.cuda.device_count()))
     else:
         device_ids = None
 
+    # only inference cuz training is slow
+    benchmark_config = InferenceConfig(
+        energy=not is_rocm_system(),
+        latency=True,
+        memory=True,
+    )
+    # only pytorch backend cuz default
     backend_config = PyTorchConfig(
-        no_weights=True,
         model="bert-base-uncased",
         device_ids=device_ids,
+        no_weights=True,
         device=device,
     )
     experiment_config = ExperimentConfig(
-        experiment_name="",
+        experiment_name="api-experiment",
         benchmark=benchmark_config,
         launcher=launcher_config,
         backend=backend_config,

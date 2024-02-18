@@ -1,7 +1,6 @@
-import os
 import multiprocessing as mp
 from logging import getLogger
-from multiprocessing import Queue
+from multiprocessing import Queue, Lock
 from typing import Callable, Dict, Any, List
 
 from ..base import Launcher
@@ -11,7 +10,6 @@ from ..isolation_utils import device_isolation
 from ...logging_utils import setup_logging
 
 import torch.distributed
-from torch.distributed import FileStore
 from torch.distributed.elastic.multiprocessing import Std
 from torch.distributed.elastic.multiprocessing.errors import record
 from torch.distributed.launcher.api import LaunchConfig, launch_agent
@@ -49,19 +47,17 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             local_addr=self.config.local_addr,
             log_dir=self.config.log_dir,
         )
-        queue = Queue()
-        current_log_level = getLogger().getEffectiveLevel()
+        lock = Lock()
+        queue = Queue(1)
+        log_level = getLogger().getEffectiveLevel()
 
-        with device_isolation(enabled=self.config.device_isolation, benchmark_pid=os.getpid()):
+        with device_isolation(enabled=self.config.device_isolation):
             LOGGER.info(f"\t+ Launching torchrun agent with {self.config.nproc_per_node} workers processes")
             launch_agent(
-                config=launch_config,
-                entrypoint=entrypoint,
-                args=(worker, queue, current_log_level, *worker_args),
+                entrypoint=entrypoint, args=(worker, queue, lock, log_level, *worker_args), config=launch_config
             )
 
         outputs: List[BenchmarkReport] = []
-
         while not queue.empty():
             outputs.append(queue.get())
 
@@ -79,16 +75,16 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
 
 
 @record
-def entrypoint(fn, q, log_level, *args):
+def entrypoint(fn, queue, lock, log_level, *args):
     """
     This a pickalable function that correctly sets up the logging configuration
     """
-    # if not torch.distributed.is_initialized():
-    #     # initialize the process group if not already initialized
-    #     backend = "nccl" if torch.cuda.is_available() else "gloo"
-    #     torch.distributed.init_process_group(backend=backend)
+    if not torch.distributed.is_initialized():
+        # initialize the process group if not already initialized
+        backend = "nccl" if torch.cuda.is_available() else "gloo"
+        torch.distributed.init_process_group(backend=backend)
 
-    rank = int(os.environ.get("RANK", "0"))
+    rank = torch.distributed.get_rank()
 
     if torch.cuda.is_available():
         torch.cuda.set_device(rank)
@@ -98,9 +94,8 @@ def entrypoint(fn, q, log_level, *args):
     else:
         setup_logging(level="ERROR")
 
-    # TODO: use a tcp store instead
-    store = FileStore("torchrun.filestore")
-    store.set(f"rank_{rank}", str(os.getpid()))
-
     output = fn(*args)
-    q.put(output)
+
+    lock.acquire()
+    queue.put(output)
+    lock.release()

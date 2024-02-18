@@ -11,7 +11,7 @@ TEST_CONFIG_DIR = "/".join(__file__.split("/")[:-1] + ["configs"])
 TEST_CONFIG_NAMES = [
     config.split(".")[0]
     for config in os.listdir(TEST_CONFIG_DIR)
-    if config.endswith(".yaml") and not (config.startswith("_") or config.endswith("_") or "ds_tp" in config)
+    if config.endswith(".yaml") and not (config.startswith("_") or config.endswith("_"))  # or "ds_tp" in config)
 ]
 
 

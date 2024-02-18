@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from contextlib import contextmanager
 from typing import Optional, Literal, List
 
-from ..env_utils import get_cuda_device_ids
+from ..system_utils import get_gpu_device_ids
 from ..import_utils import is_codecarbon_available
 
 if is_codecarbon_available():
@@ -86,7 +86,7 @@ class EnergyTracker:
         if self.device == "cuda":
             if self.device_ids is None:
                 LOGGER.warning("\t+ `device=cuda` but `device_ids` not provided. Using all available CUDA devices.")
-                self.device_ids = get_cuda_device_ids()
+                self.device_ids = get_gpu_device_ids()
 
             self.device_ids = list(map(int, self.device_ids.split(",")))
             LOGGER.info(f"\t+ Tracking GPU energy on devices {self.device_ids}")

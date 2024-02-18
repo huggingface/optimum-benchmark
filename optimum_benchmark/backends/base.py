@@ -7,7 +7,6 @@ from typing import Optional, ClassVar, Generic, Dict, Any
 
 from .config import BackendConfigT
 from ..task_utils import get_automodel_class_for_task
-
 from .diffusers_utils import extract_diffusers_shapes_from_config, get_diffusers_pretrained_config
 from .timm_utils import extract_timm_shapes_from_config, get_timm_pretrained_config, get_timm_pre_processor
 from .transformers_utils import (

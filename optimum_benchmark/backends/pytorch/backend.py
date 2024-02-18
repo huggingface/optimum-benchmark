@@ -20,10 +20,10 @@ import transformers.utils.logging as transformers_logging
 from transformers import TrainerCallback, TrainerState, Trainer, TrainingArguments
 
 if is_peft_available():
-    from peft import get_peft_model
+    from peft import get_peft_model  # type: ignore
 
 if is_deepspeed_available():
-    from deepspeed import init_inference
+    from deepspeed import init_inference  # type: ignore
 
 # disable other loggers
 datasets_logging.set_verbosity_error()
@@ -328,12 +328,20 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
     @torch.inference_mode()
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
-        with torch.autocast(device_type=self.config.device, dtype=self.amp_dtype, enabled=self.config.amp_autocast):
+        with torch.autocast(
+            device_type=self.config.device,
+            dtype=self.amp_dtype,
+            enabled=self.config.amp_autocast,
+        ):
             return self.pretrained_model.forward(**inputs, **kwargs)
 
     @torch.inference_mode()
     def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
-        with torch.autocast(device_type=self.config.device, dtype=self.amp_dtype, enabled=self.config.amp_autocast):
+        with torch.autocast(
+            device_type=self.config.device,
+            dtype=self.amp_dtype,
+            enabled=self.config.amp_autocast,
+        ):
             return self.pretrained_model.generate(**inputs, **kwargs)
 
     @torch.inference_mode()

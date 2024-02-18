@@ -4,7 +4,7 @@ from tempfile import TemporaryDirectory
 from dataclasses import dataclass, field, asdict
 from typing import Any, Dict, Type, Optional, Union, TYPE_CHECKING
 
-from .env_utils import get_system_info
+from .system_utils import get_system_info
 from .import_utils import get_hf_libs_info
 from .benchmarks.report import BenchmarkReport
 from .benchmarks.config import BenchmarkConfig

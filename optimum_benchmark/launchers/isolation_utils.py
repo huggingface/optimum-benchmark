@@ -7,7 +7,7 @@ from multiprocessing import Process
 from contextlib import contextmanager
 
 from ..logging_utils import setup_logging
-from ..env_utils import is_nvidia_system, is_rocm_system, get_rocm_version
+from ..system_utils import is_nvidia_system, is_rocm_system, get_rocm_version
 from ..import_utils import is_amdsmi_available, is_pynvml_available, is_psutil_available
 
 if is_psutil_available():
@@ -130,29 +130,28 @@ def get_pids_running_on_system_device() -> Set[int]:
     return all_devices_pids
 
 
-def assert_system_devices_isolation(benchmark_pid: int) -> None:
+def assert_system_devices_isolation(main_pid: int) -> None:
     setup_logging("ERROR")
-
     isolation_pid = os.getpid()
 
-    while psutil.pid_exists(benchmark_pid):
+    while psutil.pid_exists(main_pid):
         child_processes = set()
         non_permitted_pids = set()
 
         all_devices_pids = get_pids_running_on_system_device()
 
         for pid in list(all_devices_pids):
-            if pid == benchmark_pid or pid == isolation_pid:
+            if pid == main_pid or pid == isolation_pid:
                 continue
 
             try:
                 info = psutil.Process(pid)
                 parent_pid = info.ppid()
             except Exception as e:
-                LOGGER.error(f"Failed to get info for process {pid} with error {e}")
+                LOGGER.error(f"Failed to get parent pid for process {pid} with error {e}")
                 parent_pid = None
 
-            if parent_pid == benchmark_pid or parent_pid == isolation_pid:
+            if parent_pid == main_pid or parent_pid == isolation_pid:
                 child_processes.add(pid)
             else:
                 non_permitted_pids.add(pid)
@@ -161,27 +160,27 @@ def assert_system_devices_isolation(benchmark_pid: int) -> None:
             LOGGER.error(f"Found non-permitted process(es) running on system device(s): {non_permitted_pids}")
             for pid in child_processes:
                 try:
-                    LOGGER.error(f"Terminating child process {pid}")
-                    os.kill(pid, signal.SIGTERM)
+                    LOGGER.error(f"Interrupting child process {pid} of main process {main_pid}")
+                    os.kill(pid, signal.SIGINT)
                 except Exception as e:
                     LOGGER.error(f"Failed to terminate child process {pid} with error {e}")
 
-            LOGGER.error(f"Terminating benchmark process {benchmark_pid}")
-            os.kill(benchmark_pid, signal.SIGTERM)
-            break
+            LOGGER.error(f"Interrupting main process {main_pid}...")
+            os.kill(main_pid, signal.SIGINT)
+            exit(1)
 
         time.sleep(1)
 
 
 @contextmanager
-def device_isolation(benchmark_pid: int, enabled: bool):
+def device_isolation(enabled: bool):
     if not enabled:
         yield
         return
 
     isolation_process = Process(
         target=assert_system_devices_isolation,
-        kwargs={"benchmark_pid": benchmark_pid},
+        kwargs={"main_pid": os.getpid()},
         daemon=True,
     )
     isolation_process.start()

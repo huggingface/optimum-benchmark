@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
 from ..config import BackendConfig
-from ...env_utils import is_rocm_system
+from ...system_utils import is_rocm_system
 from ...import_utils import torch_version
 from ..peft_utils import PEFT_CONFIGS, PEFT_TASKS_TYPES
 

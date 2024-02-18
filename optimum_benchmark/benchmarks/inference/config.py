@@ -2,7 +2,7 @@ from logging import getLogger
 from typing import Any, Dict, Optional
 from dataclasses import dataclass, field
 
-from ...env_utils import is_rocm_system
+from ...system_utils import is_rocm_system
 from ..config import BenchmarkConfig
 
 LOGGER = getLogger("inference")

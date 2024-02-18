@@ -6,7 +6,7 @@ from multiprocessing import Pipe, Process
 from typing import List, Optional, Literal
 from multiprocessing.connection import Connection
 
-from ..env_utils import get_cuda_device_ids, is_nvidia_system, is_rocm_system, get_rocm_version
+from ..system_utils import get_gpu_device_ids, is_nvidia_system, is_rocm_system, get_rocm_version
 from ..import_utils import is_pynvml_available, is_amdsmi_available, is_torch_available
 
 if is_nvidia_system() and is_pynvml_available():
@@ -75,20 +75,15 @@ class MemoryTracker:
         self.backend = backend
         self.device_ids = device_ids
 
-        self.max_ram_memory: float = 0
-        self.max_vram_memory: float = 0
-        self.max_reserved_memory: float = 0
-        self.max_allocated_memory: float = 0
-
-        LOGGER.info("\t\t+ Tracking RAM memory")
+        LOGGER.info("\t+ Tracking RAM memory")
 
         if self.device == "cuda":
             if self.device_ids is None:
-                LOGGER.warning("\t\t+ `device=cuda` but `device_ids` not provided. Using all available CUDA devices.")
-                self.device_ids = get_cuda_device_ids()
+                LOGGER.warning("\t+ `device=cuda` but `device_ids` not provided. Using all available CUDA devices.")
+                self.device_ids = get_gpu_device_ids()
 
             self.device_ids = list(map(int, self.device_ids.split(",")))
-            LOGGER.info(f"\t\t+ Tracking VRAM memory of CUDA devices: {self.device_ids}")
+            LOGGER.info(f"\t+ Tracking VRAM memory of CUDA devices: {self.device_ids}")
 
             if self.backend == "pytorch":
                 num_pytorch_devices = torch.cuda.device_count()
@@ -97,7 +92,9 @@ class MemoryTracker:
                         "The number of CUDA devices and Pytorch CUDA devices must be the same. "
                         f"Got {len(self.device_ids)} and {num_pytorch_devices} respectively."
                     )
-                LOGGER.info(f"\t\t+ Tracking Allocated/Reserved memory of {num_pytorch_devices} Pytorch CUDA devices")
+                LOGGER.info(f"\t+ Tracking Allocated/Reserved memory of {num_pytorch_devices} Pytorch CUDA devices")
+
+        self.reset()
 
     def reset(self):
         self.max_ram_memory = 0
@@ -200,7 +197,12 @@ def monitor_cpu_ram_memory(process_id: int, connection: Connection, interval: fl
     connection.close()
 
 
-def monitor_gpu_vram_memory(process_id: int, device_ids: List[int], connection: Connection, interval: float = 0.01):
+def monitor_gpu_vram_memory(
+    process_id: int,
+    device_ids: List[int],
+    connection: Connection,
+    interval: float = 0.01,
+):
     stop = False
     max_memory = 0
     connection.send(0)

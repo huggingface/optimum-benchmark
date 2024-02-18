@@ -9,39 +9,7 @@ from .import_utils import is_pynvml_available, is_amdsmi_available
 import psutil
 
 
-def is_nvidia_system():
-    try:
-        subprocess.check_output("nvidia-smi")
-        return True
-    except Exception:
-        return False
-
-
-def is_rocm_system():
-    try:
-        subprocess.check_output("rocm-smi")
-        return True
-    except Exception:
-        return False
-
-
-if is_nvidia_system():
-    if is_pynvml_available():
-        import pynvml as pynvml
-
-if is_rocm_system():
-    if is_amdsmi_available():
-        import amdsmi as amdsmi
-
-
-def get_rocm_version():
-    for folder in os.listdir("/opt/"):
-        if "rocm" in folder and "rocm" != folder:
-            return folder.split("-")[-1]
-
-    raise ValueError("No ROCm version found.")
-
-
+## CPU related stuff
 def get_cpu() -> Optional[str]:
     if platform.system() == "Windows":
         return platform.processor()
@@ -64,6 +32,42 @@ def get_cpu() -> Optional[str]:
 
 def get_cpu_ram_mb():
     return psutil.virtual_memory().total / 1e6
+
+
+## GPU related stuff
+try:
+    subprocess.check_output("nvidia-smi")
+    _nvidia_system = True
+except Exception:
+    _nvidia_system = False
+
+try:
+    subprocess.check_output("rocm-smi")
+    _rocm_system = True
+except Exception:
+    _rocm_system = False
+
+
+def is_nvidia_system():
+    return _nvidia_system
+
+
+def is_rocm_system():
+    return _rocm_system
+
+
+if is_nvidia_system() and is_pynvml_available():
+    import pynvml
+
+if is_rocm_system() and is_amdsmi_available():
+    import amdsmi
+
+
+def get_rocm_version():
+    for folder in os.listdir("/opt/"):
+        if "rocm" in folder and "rocm" != folder:
+            return folder.split("-")[-1]
+    raise ValueError("Could not find ROCm version.")
 
 
 def get_gpus():
@@ -91,7 +95,6 @@ def get_gpus():
         gpus = []
         amdsmi.amdsmi_init()
         rocm_version = get_rocm_version()
-
         if rocm_version >= "5.7":
             devices_handles = amdsmi.amdsmi_get_processor_handles()
             for device_handle in devices_handles:
@@ -100,7 +103,6 @@ def get_gpus():
             devices_handles = amdsmi.amdsmi_get_device_handles()
             for device_handle in devices_handles:
                 gpus.append(amdsmi.amdsmi_dev_get_vendor_name(device_handle))
-
         amdsmi.amdsmi_shut_down()
     else:
         raise ValueError("No NVIDIA or ROCm GPUs found.")
@@ -153,44 +155,50 @@ def get_gpu_vram_mb() -> List[int]:
     return sum(vrams)
 
 
-def get_cuda_device_ids() -> str:
+def get_gpu_device_ids() -> str:
     if os.environ.get("CUDA_VISIBLE_DEVICES", None) is not None:
         device_ids = os.environ["CUDA_VISIBLE_DEVICES"]
-    else:
-        if is_nvidia_system():
-            if not is_pynvml_available():
-                raise ValueError(
-                    "The library pynvml is required to run memory benchmark on NVIDIA GPUs, but is not installed. "
-                    "Please install the official and NVIDIA maintained PyNVML library through `pip install nvidia-ml-py`."
-                )
+    elif os.environ.get("GPU_DEVICE_ORDINAL", None) is not None:
+        device_ids = os.environ["GPU_DEVICE_ORDINAL"]
+    elif os.environ.get("HIP_VISIBLE_DEVICES", None) is not None:
+        device_ids = os.environ["HIP_VISIBLE_DEVICES"]
+    elif os.environ.get("ROCR_VISIBLE_DEVICES", None) is not None:
+        device_ids = os.environ["ROCR_VISIBLE_DEVICES"]
+    elif is_nvidia_system():
+        if not is_pynvml_available():
+            raise ValueError(
+                "The library pynvml is required to run memory benchmark on NVIDIA GPUs, but is not installed. "
+                "Please install the official and NVIDIA maintained PyNVML library through `pip install nvidia-ml-py`."
+            )
 
-            pynvml.nvmlInit()
-            device_ids = list(range(pynvml.nvmlDeviceGetCount()))
-            pynvml.nvmlShutdown()
-        elif is_rocm_system():
-            if not is_amdsmi_available():
-                raise ValueError(
-                    "The library amdsmi is required to run memory benchmark on AMD GPUs, but is not installed. "
-                    "Please install the official and AMD maintained amdsmi library from https://github.com/ROCm/amdsmi."
-                )
+        pynvml.nvmlInit()
+        device_ids = list(range(pynvml.nvmlDeviceGetCount()))
+        device_ids = ",".join(str(i) for i in device_ids)
+        pynvml.nvmlShutdown()
+    elif is_rocm_system():
+        if not is_amdsmi_available():
+            raise ValueError(
+                "The library amdsmi is required to run memory benchmark on AMD GPUs, but is not installed. "
+                "Please install the official and AMD maintained amdsmi library from https://github.com/ROCm/amdsmi."
+            )
 
-            amdsmi.amdsmi_init()
-            rocm_version = get_rocm_version()
+        amdsmi.amdsmi_init()
+        rocm_version = get_rocm_version()
 
-            if rocm_version >= "5.7":
-                device_ids = list(range(len(amdsmi.amdsmi_get_processor_handles())))
-            else:
-                device_ids = list(range(len(amdsmi.amdsmi_get_device_handles())))
-
-            amdsmi.amdsmi_shut_down()
+        if rocm_version >= "5.7":
+            device_ids = list(range(len(amdsmi.amdsmi_get_processor_handles())))
         else:
-            raise ValueError("No NVIDIA or ROCm GPUs found.")
+            device_ids = list(range(len(amdsmi.amdsmi_get_device_handles())))
 
         device_ids = ",".join(str(i) for i in device_ids)
+        amdsmi.amdsmi_shut_down()
+    else:
+        raise ValueError("Couldn't infer GPU device ids.")
 
     return device_ids
 
 
+## System related stuff
 def get_system_info() -> dict:
     system_dict = {
         "cpu": get_cpu(),

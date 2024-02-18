@@ -1,8 +1,8 @@
-import os
 from typing import Callable
 import multiprocessing as mp
 from logging import getLogger
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue, Lock
+from multiprocessing.synchronize import Lock as LockType
 
 from ..base import Launcher
 from .config import ProcessConfig
@@ -25,34 +25,37 @@ class ProcessLauncher(Launcher[ProcessConfig]):
             mp.set_start_method(self.config.start_method, force=True)
 
     def launch(self, worker: Callable, *worker_args) -> BenchmarkReport:
-        # worker process can't be daemon since it might spawn its own processes
-        queue = Queue()
+        lock = Lock()
+        queue = Queue(1000)
         current_log_level = getLogger().getEffectiveLevel()
         worker_process = Process(
-            daemon=False,
-            target=target,
-            args=(worker, queue, current_log_level, *worker_args),
+            target=target, args=(worker, queue, lock, current_log_level, *worker_args), daemon=False
         )
-        worker_process.start()
-        LOGGER.info(f"\t+ Launched worker process with PID {worker_process.pid}.")
 
-        with device_isolation(enabled=self.config.device_isolation, benchmark_pid=os.getpid()):
+        with device_isolation(enabled=self.config.device_isolation):
+            worker_process.start()
+            LOGGER.info(f"\t+ Launched worker process with PID {worker_process.pid}.")
             worker_process.join()
 
-        if worker_process.exitcode != 0:
+        try:
+            report = queue.get()
+        except EOFError:
             LOGGER.error(f"\t+ Worker process exited with code {worker_process.exitcode}, forwarding...")
             exit(worker_process.exitcode)
-
-        report = queue.get()
 
         return report
 
 
-def target(fn, q, log_level, *args):
-    """This a pickalable function that correctly sets up the logging configuration for the worker process."""
+def target(fn: Callable, queue: Queue, lock: LockType, log_level: str, *args):
+    """
+    This a pickalable function that correctly sets up the logging configuration for the worker process,
+    and puts the output of the worker function into a lock-protected queue.
+    """
 
     setup_logging(log_level)
 
     out = fn(*args)
 
-    q.put(out)
+    lock.acquire()
+    queue.put(out)
+    lock.release()

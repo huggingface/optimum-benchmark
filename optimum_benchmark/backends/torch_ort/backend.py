@@ -6,6 +6,7 @@ from typing import Any, Callable, Dict, List
 
 from ..transformers_utils import randomize_weights
 from ..peft_utils import get_peft_config_class
+from ...import_utils import is_peft_available
 from .config import TorchORTConfig
 from ..base import Backend
 
@@ -16,6 +17,9 @@ from transformers import TrainerCallback, TrainerState
 from transformers.modeling_utils import no_init_weights
 from transformers.utils.logging import set_verbosity_error
 from optimum.onnxruntime import ORTTrainer, ORTTrainingArguments
+
+if is_peft_available():
+    from peft import get_peft_model  # type: ignore
 
 # disable transformers logging
 set_verbosity_error()
@@ -39,9 +43,7 @@ class TorchORTBackend(Backend[TorchORTConfig]):
             self.load_automodel_from_pretrained()
 
         if self.config.peft_strategy is not None:
-            LOGGER.info("\t+ Applying PEFT")
-            from peft import get_peft_model
-
+            LOGGER.info("\t+ Using PEFT")
             peft_config_class = get_peft_config_class(self.config.peft_strategy)
             peft_config = peft_config_class(**self.config.peft_config)
             self.pretrained_model = get_peft_model(self.pretrained_model, peft_config=peft_config)

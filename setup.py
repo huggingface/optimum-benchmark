@@ -12,13 +12,10 @@ INSTALL_REQUIRES = [
     "hydra_colorlog",
     "hydra-core",
     "omegaconf",
-    # Other
+    # CPU Memory
     "psutil",
-    "pandas",
     # Reporting
-    "rich",
-    "tabulate",
-    "matplotlib",
+    "pandas",
     "flatten_dict",
 ]
 
@@ -76,6 +73,6 @@ setup(
     install_requires=INSTALL_REQUIRES,
     extras_require=EXTRAS_REQUIRE,
     packages=find_packages(),
-    version="0.0.2",
+    version="0.1.0",
     entry_points={"console_scripts": ["optimum-benchmark=optimum_benchmark.cli:benchmark_cli"]},
 )

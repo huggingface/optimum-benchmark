@@ -75,6 +75,8 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
                     "The batch size must be divisible by the number of processes in a distributed environment"
                 )
             self.config.input_shapes["batch_size"] //= torch.distributed.get_world_size()
+            if backend.config.device == "cuda" and backend.config.task in TEXT_GENERATION_TASKS:
+                TEXT_GENERATION_TASKS["synced_gpus"] = True
 
         LOGGER.info("\t+ Creating input generator")
         self.input_generator = InputGenerator(
