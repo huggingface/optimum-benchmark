@@ -1,3 +1,4 @@
+import os
 from logging import getLogger
 from typing import Callable, Dict, Any, List
 
@@ -81,15 +82,12 @@ def entrypoint(worker, queue, lock, log_level, *worker_args):
     """
     This a pickalable function that correctly sets up the logging configuration
     """
-    torch.distributed.init_process_group()
 
-    rank = torch.distributed.get_rank()
+    rank = int(os.environ.get("RANK", "0"))
+    setup_logging(level=log_level, prefix=f"RANK-{rank}") if rank == 0 else None
 
-    if rank == 0:
-        setup_logging(level=log_level, prefix=f"RANK-{rank}")
-
-    if torch.cuda.is_available():
-        torch.cuda.set_device(rank)
+    torch.distributed.init_process_group(backend="nccl" if torch.cuda.is_available() else "gloo")
+    torch.cuda.set_device(rank % torch.cuda.device_count()) if torch.cuda.is_available() else None
 
     output = worker(*worker_args)
 
