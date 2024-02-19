@@ -18,8 +18,8 @@ jobs:
       matrix:
         image:
           [
-            { torch_cuda: cu121, cuda_version: 12.1.1 },
-            { torch_cuda: cu118, cuda_version: 11.8.0 },
+            { torch_cuda: cu118, torch_pre_release: 0, cuda_version: 11.8.0 },
+            { torch_cuda: cu121, torch_pre_release: 1, cuda_version: 12.1.1 },
           ]
 
     runs-on: nvidia-gpu
@@ -40,8 +40,6 @@ jobs:
       - name: Run tests
         run: docker run
           --rm
-          --net host
-          --pid host
           --shm-size 64G
           --env USE_CUDA="1"
           --volume $(pwd):/workspace/optimum-benchmark

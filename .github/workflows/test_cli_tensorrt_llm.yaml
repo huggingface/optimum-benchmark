@@ -29,12 +29,8 @@ jobs:
       - name: Run tests
         run: docker run
           --rm
-          --net host
-          --pid host
           --shm-size 64G
           --env USE_CUDA="1"
-          --env USER_ID=$(id -u)
-          --env GROUP_ID=$(id -g)
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
           --gpus '"device=0,1"'

@@ -31,8 +31,6 @@ jobs:
       - name: Run tests
         run: docker run
           --rm
-          --net host
-          --pid host
           --shm-size 64G
           --env USE_CUDA="1"
           --volume $(pwd):/workspace/optimum-benchmark
