@@ -167,8 +167,7 @@ sweeps/
 data/
 version.txt
 
+.engine/
 actions-runner/
 experiments/
-examples/
-.engine/
-amdsmi
+amdsmi/

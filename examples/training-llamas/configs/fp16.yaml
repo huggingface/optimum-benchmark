@@ -1,6 +1,0 @@
-defaults:
-  - _base_
-  - _self_
-  - override launcher: process
-
-experiment_name: fp16

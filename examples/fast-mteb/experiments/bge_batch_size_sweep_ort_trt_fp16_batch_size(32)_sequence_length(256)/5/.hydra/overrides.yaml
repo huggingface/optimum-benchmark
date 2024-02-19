@@ -1,2 +1,0 @@
-- benchmark.input_shapes.batch_size=32
-- benchmark.input_shapes.sequence_length=256

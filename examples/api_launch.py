@@ -4,7 +4,6 @@ from optimum_benchmark.experiment import ExperimentConfig, launch
 from optimum_benchmark.launchers.torchrun.config import TorchrunConfig
 from optimum_benchmark.logging_utils import setup_logging
 
-
 if __name__ == "__main__":
     setup_logging(level="INFO")
     launcher_config = TorchrunConfig(nproc_per_node=2)

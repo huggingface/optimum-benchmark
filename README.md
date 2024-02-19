@@ -1,8 +1,8 @@
 <p align="center"><img src="logo.png" alt="Optimum-Benchmark Logo" width="350" style="max-width: 100%;" /></p>
-<p align="center"><q>All benchmarks are wrong, some will cost you less than the others.</q></p>
+<p align="center"><q>All benchmarks are wrong, some will cost you less than others.</q></p>
 <h1 align="center">Optimum-Benchmark 🏋️</h1>
 
-Optimum-Benchmark is a unified [multi-backend & multi-device](#backends--devices-) utility for benchmarking [Transformers](https://github.com/huggingface/transformers), [Diffusers](https://github.com/huggingface/diffusers), [PEFT](https://github.com/huggingface/peft), [TIMM](https://github.com/huggingface/pytorch-image-models) and [Optimum](https://github.com/huggingface/optimum) flavors, along with all their supported [optimizations & quantization schemes](#backend-features-), for [inference & training](#benchmark-features-%EF%B8%8F), in [distributed & non-distributed settings](#backend-features-), in the most correct and scalable way possible (no need to even download model weights).
+Optimum-Benchmark is a unified [multi-backend & multi-device](#backends--devices-) utility for benchmarking [Transformers](https://github.com/huggingface/transformers), [Diffusers](https://github.com/huggingface/diffusers), [PEFT](https://github.com/huggingface/peft), [TIMM](https://github.com/huggingface/pytorch-image-models) and [Optimum](https://github.com/huggingface/optimum) flavors, along with all their supported [optimizations & quantization schemes](#backend-features-), for [inference & training](#benchmark-features-%EF%B8%8F), in [distributed & non-distributed settings](#backend-features-), in the most correct, efficient and scalable way possible (you don't even need to download the weights).
 
 *News* 📰
 - PYPI release soon.
@@ -128,7 +128,7 @@ optimum-benchmark --config-dir examples --config-name pytorch_bert -m backend.de
 
 ### Configurations structure 📁
 
-You can create custom configuration files following the [examples here]([examples](https://github.com/IlyasMoutawwakil/optimum-benchmark-examples)).
+You can create custom and more complex configuration files following these [examples]([examples](https://github.com/IlyasMoutawwakil/optimum-benchmark-examples)).
 
 ## Features 🎨
 

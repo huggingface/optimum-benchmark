@@ -1,9 +1,0 @@
-,Model,GPUs,Experiment Name,Per Process Batch Size,Sequence Length,Decode Latency (s),Prefill Latency (s),Decode Throughput (tokens/s),Prefill Throughput (samples/s),Generate Max Memory Allocated (MB),Generate Max Memory Reserved (MB),GPU Name,Num GPUs,Effective Batch Size,Group
-0,TheBloke/LLaMa-65B-GPTQ,['NVIDIA A100-SXM4-80GB'],fp16+gptq+exllamav2,1,256,36.0,0.348,14.2,2.87,39404,40544,1xA100,1,1,1xA100-fp16+gptq+exllamav2
-1,TheBloke/LLaMa-65B-GPTQ,['NVIDIA A100-SXM4-80GB'],fp16+gptq+exllamav2,4,256,40.4,0.957,50.6,4.18,51488,84401,1xA100,1,4,1xA100-fp16+gptq+exllamav2
-2,TheBloke/LLaMa-65B-GPTQ,['NVIDIA A100-SXM4-80GB'],fp16+gptq+exllamav2,8,256,65.2,1.77,62.7,4.52,67597,84408,1xA100,1,8,1xA100-fp16+gptq+exllamav2
-3,TheBloke/LLaMa-65B-GPTQ,['NVIDIA A100-SXM4-80GB'],fp16+gptq+exllamav2,2,256,38.7,0.56,26.4,3.57,43434,65601,1xA100,1,2,1xA100-fp16+gptq+exllamav2
-4,TheBloke/LLaMa-65B-GPTQ,['NVIDIA A100-SXM4-80GB'],fp16+gptq+exllamav1,1,256,48.7,0.355,10.5,2.82,38052,39197,1xA100,1,1,1xA100-fp16+gptq+exllamav1
-5,TheBloke/LLaMa-65B-GPTQ,['NVIDIA A100-SXM4-80GB'],fp16+gptq+exllamav1,4,256,135.0,0.967,15.1,4.14,50136,84397,1xA100,1,4,1xA100-fp16+gptq+exllamav1
-6,TheBloke/LLaMa-65B-GPTQ,['NVIDIA A100-SXM4-80GB'],fp16+gptq+exllamav1,8,256,137.0,1.78,29.8,4.49,66244,84391,1xA100,1,8,1xA100-fp16+gptq+exllamav1
-7,TheBloke/LLaMa-65B-GPTQ,['NVIDIA A100-SXM4-80GB'],fp16+gptq+exllamav1,2,256,76.4,0.574,13.4,3.48,42082,64246,1xA100,1,2,1xA100-fp16+gptq+exllamav1
