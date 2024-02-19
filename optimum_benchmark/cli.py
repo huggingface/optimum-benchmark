@@ -52,9 +52,7 @@ def benchmark_cli(experiment_config: DictConfig) -> None:
     os.environ["BENCHMARK_INTERFACE"] = "CLI"
 
     if glob.glob("benchmark_report.json") and os.environ.get("OVERRIDE_BENCHMARKS", "0") != "1":
-        LOGGER.warning(
-            "Benchmark report already exists. If you want to override it, set the environment variable OVERRIDE_BENCHMARKS=1"
-        )
+        LOGGER.warning("Benchmark report already exists. If you want to override it, set the environment variable OVERRIDE_BENCHMARKS=1")
         return
 
     # Instantiate the experiment configuration and trigger its __post_init__

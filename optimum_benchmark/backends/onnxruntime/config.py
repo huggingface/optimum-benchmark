@@ -18,14 +18,11 @@ CALIBRATION_CONFIG = {
 }
 
 AUTO_QUANTIZATION_CONFIG = {
-    "is_static": False,
+    "is_static": False
     # is_static is mandatory
 }
 
-TRT_PROVIDER_OPTIONS = {
-    "trt_engine_cache_enable": True,
-    "trt_engine_cache_path": "/tmp/trt_cache",
-}
+TRT_PROVIDER_OPTIONS = {"trt_engine_cache_enable": True, "trt_engine_cache_path": "/tmp/trt_cache"}
 
 IO_BINDING_LIBRARIES = ["transformers", "timm"]
 IO_BINDING_PROVIDERS = ["CPUExecutionProvider", "CUDAExecutionProvider"]
@@ -103,26 +100,18 @@ class ORTConfig(BackendConfig):
             os.makedirs(self.provider_options["trt_engine_cache_path"], exist_ok=True)
 
         if self.quantization:
-            self.quantization_config = {
-                **QUANTIZATION_CONFIG,
-                **self.quantization_config,
-            }
+            self.quantization_config = {**QUANTIZATION_CONFIG, **self.quantization_config}
             # raise ValueError if the quantization is static but calibration is not enabled
             if self.quantization_config["is_static"] and self.auto_calibration is None and not self.calibration:
                 raise ValueError(
-                    "Quantization is static but calibration is not enabled. "
-                    "Please enable calibration or disable static quantization."
+                    "Quantization is static but calibration is not enabled. " "Please enable calibration or disable static quantization."
                 )
 
         if self.auto_quantization is not None:
-            self.auto_quantization_config = {
-                **AUTO_QUANTIZATION_CONFIG,
-                **self.auto_quantization_config,
-            }
+            self.auto_quantization_config = {**AUTO_QUANTIZATION_CONFIG, **self.auto_quantization_config}
             if self.auto_quantization_config["is_static"] and self.auto_calibration is None and not self.calibration:
                 raise ValueError(
-                    "Quantization is static but calibration is not enabled. "
-                    "Please enable calibration or disable static quantization."
+                    "Quantization is static but calibration is not enabled. " "Please enable calibration or disable static quantization."
                 )
 
         if self.calibration:
@@ -130,9 +119,7 @@ class ORTConfig(BackendConfig):
 
         if self.peft_strategy is not None:
             if self.peft_strategy not in PEFT_CONFIGS:
-                raise ValueError(
-                    f"`peft_strategy` must be one of {list(PEFT_CONFIGS.keys())}. Got {self.peft_strategy} instead."
-                )
+                raise ValueError(f"`peft_strategy` must be one of {list(PEFT_CONFIGS.keys())}. Got {self.peft_strategy} instead.")
             PEFT_CONFIG = PEFT_CONFIGS[self.peft_strategy]
             self.peft_config = {**PEFT_CONFIG, **self.peft_config}
 

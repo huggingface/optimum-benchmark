@@ -53,9 +53,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
 
         with device_isolation(enabled=self.config.device_isolation):
             LOGGER.info(f"\t+ Launching torchrun agent with {self.config.nproc_per_node} workers processes")
-            launch_agent(
-                entrypoint=entrypoint, args=(worker, queue, lock, log_level, *worker_args), config=launch_config
-            )
+            launch_agent(entrypoint=entrypoint, args=(worker, queue, lock, log_level, *worker_args), config=launch_config)
 
         outputs: List[BenchmarkReport] = []
         while not queue.empty():

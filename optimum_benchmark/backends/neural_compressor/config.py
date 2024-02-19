@@ -7,20 +7,10 @@ from ..config import BackendConfig
 from ...import_utils import neural_compressor_version
 
 # https://github.com/intel/neural-compressor/blob/master/neural_compressor/config.py#L490
-ACCURACY_CRITERION_CONFIG = {
-    "higher_is_better": True,
-    "criterion": "relative",
-    "tolerable_loss": 0.01,
-}
+ACCURACY_CRITERION_CONFIG = {"higher_is_better": True, "criterion": "relative", "tolerable_loss": 0.01}
 
 # https://github.com/intel/neural-compressor/blob/master/neural_compressor/config.py#L593
-TUNING_CRITERION_CONFIG = {
-    "strategy": "basic",
-    "strategy_kwargs": None,
-    "timeout": 0,
-    "max_trials": 100,
-    "objective": "performance",
-}
+TUNING_CRITERION_CONFIG = {"strategy": "basic", "strategy_kwargs": None, "timeout": 0, "max_trials": 100, "objective": "performance"}
 
 # https://github.com/intel/neural-compressor/blob/master/neural_compressor/config.py#L1242
 PTQ_QUANTIZATION_CONFIG = {
@@ -69,8 +59,6 @@ class INCConfig(BackendConfig):
             raise ValueError(f"INCBackend only supports CPU devices, got {self.device}")
 
         if self.ptq_quantization:
-            self.ptq_quantization_config = OmegaConf.to_object(
-                OmegaConf.merge(PTQ_QUANTIZATION_CONFIG, self.ptq_quantization_config)
-            )
+            self.ptq_quantization_config = OmegaConf.to_object(OmegaConf.merge(PTQ_QUANTIZATION_CONFIG, self.ptq_quantization_config))
             if self.ptq_quantization_config["approach"] == "static" and not self.calibration:
                 raise ValueError("Calibration must be enabled when using static quantization.")

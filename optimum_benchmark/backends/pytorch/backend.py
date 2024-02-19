@@ -93,16 +93,10 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             if self.config.library == "diffusers":
                 LOGGER.info("\t+ Using torch.compile on unet forward pass")
                 # TODO: should we compile vae and/or clip as well ?
-                self.pretrained_model.unet.forward = torch.compile(
-                    self.pretrained_model.unet.forward,
-                    **self.config.torch_compile_config,
-                )
+                self.pretrained_model.unet.forward = torch.compile(self.pretrained_model.unet.forward, **self.config.torch_compile_config)
             else:
                 LOGGER.info("\t+ Using torch.compile on forward pass")
-                self.pretrained_model.forward = torch.compile(
-                    self.pretrained_model.forward,
-                    **self.config.torch_compile_config,
-                )
+                self.pretrained_model.forward = torch.compile(self.pretrained_model.forward, **self.config.torch_compile_config)
 
         if self.config.peft_strategy is not None:
             LOGGER.info("\t+ Using PEFT")
@@ -113,9 +107,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         if self.config.deepspeed_inference:
             LOGGER.info("\t+ Using DeepSpeed-Inference")
             self.pretrained_model = init_inference(
-                self.pretrained_model,
-                config=self.config.deepspeed_inference_config,
-                dtype=getattr(self.pretrained_model, "dtype", None),
+                self.pretrained_model, config=self.config.deepspeed_inference_config, dtype=getattr(self.pretrained_model, "dtype", None)
             )
 
     def validate_library(self) -> None:
@@ -176,9 +168,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             LOGGER.info(f"\t+ Loading model directly on device: {self.config.device}")
             with torch.device(self.config.device):
                 self.pretrained_model = self.automodel_class.from_pretrained(
-                    pretrained_model_name_or_path=self.config.model,
-                    **self.config.hub_kwargs,
-                    **self.automodel_kwargs,
+                    pretrained_model_name_or_path=self.config.model, **self.config.hub_kwargs, **self.automodel_kwargs
                 )
 
     def create_no_weights_model(self) -> None:
@@ -206,11 +196,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
 
         LOGGER.info("\t+ Saving no weights model state_dict")
-        save_file(
-            filename=os.path.join(self.no_weights_model, "model.safetensors"),
-            metadata={"format": "pt"},
-            tensors=state_dict,
-        )
+        save_file(filename=os.path.join(self.no_weights_model, "model.safetensors"), metadata={"format": "pt"}, tensors=state_dict)
 
     def load_model_with_no_weights(self) -> None:
         self.create_no_weights_model()
@@ -233,30 +219,21 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             from transformers import GPTQConfig
 
             self.quantization_config = GPTQConfig(
-                **dict(
-                    getattr(self.pretrained_config, "quantization_config", {}),
-                    **self.config.quantization_config,
-                )
+                **dict(getattr(self.pretrained_config, "quantization_config", {}), **self.config.quantization_config)
             )
         elif self.is_awq_quantized:
             LOGGER.info("\t+ Processing AWQ config")
             from transformers import AwqConfig
 
             self.quantization_config = AwqConfig(
-                **dict(
-                    getattr(self.pretrained_config, "quantization_config", {}),
-                    **self.config.quantization_config,
-                )
+                **dict(getattr(self.pretrained_config, "quantization_config", {}), **self.config.quantization_config)
             )
         elif self.is_bnb_quantized:
             LOGGER.info("\t+ Processing BitsAndBytes config")
             from transformers import BitsAndBytesConfig
 
             self.quantization_config = BitsAndBytesConfig(
-                **dict(
-                    getattr(self.pretrained_config, "quantization_config", {}),
-                    **self.config.quantization_config,
-                )
+                **dict(getattr(self.pretrained_config, "quantization_config", {}), **self.config.quantization_config)
             )
         else:
             self.quantization_config = None
@@ -328,20 +305,12 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
     @torch.inference_mode()
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
-        with torch.autocast(
-            device_type=self.config.device,
-            dtype=self.amp_dtype,
-            enabled=self.config.amp_autocast,
-        ):
+        with torch.autocast(device_type=self.config.device, dtype=self.amp_dtype, enabled=self.config.amp_autocast):
             return self.pretrained_model.forward(**inputs, **kwargs)
 
     @torch.inference_mode()
     def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
-        with torch.autocast(
-            device_type=self.config.device,
-            dtype=self.amp_dtype,
-            enabled=self.config.amp_autocast,
-        ):
+        with torch.autocast(device_type=self.config.device, dtype=self.amp_dtype, enabled=self.config.amp_autocast):
             return self.pretrained_model.generate(**inputs, **kwargs)
 
     @torch.inference_mode()

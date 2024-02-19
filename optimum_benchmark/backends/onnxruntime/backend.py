@@ -27,14 +27,7 @@ from optimum.onnxruntime.configuration import (
     QuantizationConfig,
     CalibrationConfig,
 )
-from optimum.onnxruntime import (
-    ONNX_DECODER_WITH_PAST_NAME,
-    ONNX_DECODER_NAME,
-    ORTTrainingArguments,
-    ORTOptimizer,
-    ORTQuantizer,
-    ORTTrainer,
-)
+from optimum.onnxruntime import ONNX_DECODER_WITH_PAST_NAME, ONNX_DECODER_NAME, ORTTrainingArguments, ORTOptimizer, ORTQuantizer, ORTTrainer
 
 # disable transformers logging
 set_verbosity_error()
@@ -112,11 +105,7 @@ class ORTBackend(Backend[ORTConfig]):
         state_dict = torch.nn.Linear(1, 1).state_dict()
 
         LOGGER.info("\t+ Saving no weights model state dict")
-        save_file(
-            filename=os.path.join(self.no_weights_model, "model.safetensors"),
-            metadata={"format": "pt"},
-            tensors=state_dict,
-        )
+        save_file(filename=os.path.join(self.no_weights_model, "model.safetensors"), metadata={"format": "pt"}, tensors=state_dict)
 
     def load_ortmodel_with_no_weights(self) -> None:
         self.create_no_weights_model()
@@ -198,10 +187,7 @@ class ORTBackend(Backend[ORTConfig]):
                 **self.config.auto_optimization_config,
             )
         elif self.config.optimization:
-            optimization_config = OptimizationConfig(
-                optimize_for_gpu=(self.config.device == "cuda"),
-                **self.config.optimization_config,
-            )
+            optimization_config = OptimizationConfig(optimize_for_gpu=(self.config.device == "cuda"), **self.config.optimization_config)
         LOGGER.info("\t+ Creating optimizer")
         optimizer = ORTOptimizer.from_pretrained(self.config.model, file_names=self.onnx_files_names)
         LOGGER.info("\t+ Optimizing ORTModel")
@@ -243,16 +229,8 @@ class ORTBackend(Backend[ORTConfig]):
 
         if self.is_calibrated:
             LOGGER.info("\t+ Generating calibration dataset")
-            dataset_shapes = {
-                "dataset_size": 1,
-                "sequence_length": 1,
-                **self.model_shapes,
-            }
-            calibration_dataset = DatasetGenerator(
-                task=self.config.task,
-                dataset_shapes=dataset_shapes,
-                model_shapes=self.model_shapes,
-            )()
+            dataset_shapes = {"dataset_size": 1, "sequence_length": 1, **self.model_shapes}
+            calibration_dataset = DatasetGenerator(task=self.config.task, dataset_shapes=dataset_shapes, model_shapes=self.model_shapes)()
             columns_to_be_removed = list(set(calibration_dataset.column_names) - set(self.inputs_names))
             calibration_dataset = calibration_dataset.remove_columns(columns_to_be_removed)
 
@@ -260,10 +238,7 @@ class ORTBackend(Backend[ORTConfig]):
             if self.config.auto_calibration is not None:
                 LOGGER.info("\t+ Processing calibration config")
                 auto_calibration_method = getattr(AutoCalibrationConfig, self.config.auto_calibration)
-                calibration_config = auto_calibration_method(
-                    calibration_dataset,
-                    **self.config.auto_calibration_config,
-                )
+                calibration_config = auto_calibration_method(calibration_dataset, **self.config.auto_calibration_config)
             elif self.config.calibration:
                 LOGGER.info("\t+ Processing calibration config")
                 calibration_config = format_calibration_config(self.config.calibration_config)

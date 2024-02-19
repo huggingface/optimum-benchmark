@@ -35,9 +35,7 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
     def run(self, backend: Backend[BackendConfigT]) -> None:
         LOGGER.info("\t+ Creating dataset generator")
         dataset_generator = DatasetGenerator(
-            task=backend.config.task,
-            model_shapes=backend.model_shapes,
-            dataset_shapes=self.config.dataset_shapes,
+            task=backend.config.task, model_shapes=backend.model_shapes, dataset_shapes=self.config.dataset_shapes
         )
 
         LOGGER.info("\t+ Generating training dataset")
@@ -55,9 +53,7 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
         training_trackers = []
         if self.config.memory:
             LOGGER.info("\t+ Adding memory tracking context manager")
-            memory_tracker = MemoryTracker(
-                device=backend.config.device, backend=backend.config.name, device_ids=backend.config.device_ids
-            )
+            memory_tracker = MemoryTracker(device=backend.config.device, backend=backend.config.name, device_ids=backend.config.device_ids)
             training_trackers.append(memory_tracker.track())
 
         if self.config.energy:
@@ -84,30 +80,22 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
         if self.config.latency:
             self.report.overall.latency = latency_callback.get_latency()
             self.report.overall.throughput = Throughput.from_latency(
-                self.report.overall.latency,
-                volume=self.overall_volume,
-                unit=TRAIN_THROUGHPUT_UNIT,
+                self.report.overall.latency, volume=self.overall_volume, unit=TRAIN_THROUGHPUT_UNIT
             )
             self.report.warmup.latency = self.report.overall.latency[: self.config.warmup_steps]
             self.report.warmup.throughput = Throughput.from_latency(
-                self.report.warmup.latency,
-                volume=self.warmup_volume,
-                unit=TRAIN_THROUGHPUT_UNIT,
+                self.report.warmup.latency, volume=self.warmup_volume, unit=TRAIN_THROUGHPUT_UNIT
             )
             self.report.train.latency = self.report.overall.latency[self.config.warmup_steps :]
             self.report.train.throughput = Throughput.from_latency(
-                self.report.train.latency,
-                volume=self.train_volume,
-                unit=TRAIN_THROUGHPUT_UNIT,
+                self.report.train.latency, volume=self.train_volume, unit=TRAIN_THROUGHPUT_UNIT
             )
 
         if self.config.energy:
             # can only get overall energy consumption
             self.report.overall.energy = energy_tracker.get_energy()
             self.report.overall.efficiency = Efficiency.from_energy(
-                self.report.overall.energy,
-                volume=self.overall_volume,
-                unit=TRAIN_EFFICIENCY_UNIT,
+                self.report.overall.energy, volume=self.overall_volume, unit=TRAIN_EFFICIENCY_UNIT
             )
 
     @property

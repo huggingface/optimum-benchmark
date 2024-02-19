@@ -178,11 +178,7 @@ def device_isolation(enabled: bool):
         yield
         return
 
-    isolation_process = Process(
-        target=assert_system_devices_isolation,
-        kwargs={"main_pid": os.getpid()},
-        daemon=True,
-    )
+    isolation_process = Process(target=assert_system_devices_isolation, kwargs={"main_pid": os.getpid()}, daemon=True)
     isolation_process.start()
     LOGGER.info(f"\t+ Launched device(s) isolation process {isolation_process.pid}.")
 

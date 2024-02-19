@@ -1,4 +1,3 @@
-import os
 from typing import Callable
 from logging import getLogger
 
@@ -17,11 +16,8 @@ class InlineLauncher(Launcher[InlineConfig]):
         super().__init__(config)
 
     def launch(self, worker: Callable, *worker_args) -> BenchmarkReport:
-        with device_isolation(
-            benchmark_pid=os.getpid(),
-            enabled=self.config.device_isolation,
-        ):
-            LOGGER.info("\t+ Launching inline experiment (no process isolation)")
+        with device_isolation(enabled=self.config.device_isolation):
+            LOGGER.info("\t+ Launching inline worker (no process isolation)")
             report = worker(*worker_args)
 
         return report

@@ -28,27 +28,17 @@ class InputGenerator:
         if mode == "generate":
             if "pixel_values" in task_input:
                 # image input
-                task_input = {
-                    "inputs": task_input["pixel_values"],
-                }
+                task_input = {"inputs": task_input["pixel_values"]}
             elif "input_values" in task_input:
                 # speech input
-                task_input = {
-                    "inputs": task_input["input_values"],
-                }
+                task_input = {"inputs": task_input["input_values"]}
             elif "input_features" in task_input:
                 # waveform input
-                task_input = {
-                    "inputs": task_input["input_features"],
-                }
+                task_input = {"inputs": task_input["input_features"]}
             elif "input_ids" in task_input:
                 # text input
-                task_input = {
-                    "inputs": task_input["input_ids"],
-                }
+                task_input = {"inputs": task_input["input_ids"]}
         elif mode == "call":
-            task_input = {
-                "prompt": task_input["prompt"],
-            }
+            task_input = {"prompt": task_input["prompt"]}
 
         return task_input

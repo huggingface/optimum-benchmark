@@ -66,11 +66,7 @@ class TorchORTBackend(Backend[TorchORTConfig]):
         state_dict = torch.nn.Linear(1, 1).state_dict()
 
         LOGGER.info("\t+ Saving no weights model state_dict")
-        save_file(
-            filename=os.path.join(self.no_weights_model, "model.safetensors"),
-            metadata={"format": "pt"},
-            tensors=state_dict,
-        )
+        save_file(filename=os.path.join(self.no_weights_model, "model.safetensors"), metadata={"format": "pt"}, tensors=state_dict)
 
     def load_automodel_with_no_weights(self) -> None:
         self.create_no_weights_model()
@@ -89,9 +85,7 @@ class TorchORTBackend(Backend[TorchORTConfig]):
 
     def load_automodel_from_pretrained(self) -> None:
         self.pretrained_model = self.automodel_class.from_pretrained(
-            self.config.model,
-            **self.automodel_kwargs,
-            **self.config.hub_kwargs,
+            self.config.model, **self.automodel_kwargs, **self.config.hub_kwargs
         ).to(self.config.device)
 
     @property

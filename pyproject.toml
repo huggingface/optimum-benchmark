@@ -1,5 +1,10 @@
 [tool.ruff]
-line-length = 119
+line-length = 140
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = true
 
 [tool.pytest.ini_options]
 log_cli = true

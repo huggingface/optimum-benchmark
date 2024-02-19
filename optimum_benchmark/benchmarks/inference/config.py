@@ -7,11 +7,7 @@ from ..config import BenchmarkConfig
 
 LOGGER = getLogger("inference")
 
-INPUT_SHAPES = {
-    "batch_size": 2,
-    "num_choices": 2,
-    "sequence_length": 16,
-}
+INPUT_SHAPES = {"batch_size": 2, "num_choices": 2, "sequence_length": 16}
 
 
 @dataclass
@@ -25,12 +21,10 @@ class InferenceConfig(BenchmarkConfig):
 
     # input/output shapes
     input_shapes: Dict[str, Any] = field(
-        default_factory=dict,
-        metadata={"help": "Input shapes for the model. Missing keys will be filled with default values."},
+        default_factory=dict, metadata={"help": "Input shapes for the model. Missing keys will be filled with default values."}
     )
     new_tokens: Optional[int] = field(
-        default=None,
-        metadata={"help": "Deprecated. If set, `max_new_tokens` and `min_new_tokens` will be set to this value."},
+        default=None, metadata={"help": "Deprecated. If set, `max_new_tokens` and `min_new_tokens` will be set to this value."}
     )
 
     # tracking options
@@ -40,16 +34,13 @@ class InferenceConfig(BenchmarkConfig):
 
     # methods kwargs
     forward_kwargs: Dict[str, Any] = field(
-        default_factory=dict,
-        metadata={"help": "Keyword arguments to pass to the forward method of the model."},
+        default_factory=dict, metadata={"help": "Keyword arguments to pass to the forward method of the model."}
     )
     generate_kwargs: Dict[str, Any] = field(
-        default_factory=dict,
-        metadata={"help": "Keyword arguments to pass to the generate method of the model."},
+        default_factory=dict, metadata={"help": "Keyword arguments to pass to the generate method of the model."}
     )
     call_kwargs: Dict[str, Any] = field(
-        default_factory=dict,
-        metadata={"help": "Keyword arguments to pass to the __call__ method of the pipeline."},
+        default_factory=dict, metadata={"help": "Keyword arguments to pass to the __call__ method of the pipeline."}
     )
 
     def __post_init__(self):
@@ -70,9 +61,7 @@ class InferenceConfig(BenchmarkConfig):
             and "min_new_tokens" in self.generate_kwargs
             and self.generate_kwargs["max_new_tokens"] != self.generate_kwargs["min_new_tokens"]
         ):
-            raise ValueError(
-                "Setting `min_new_tokens` and `max_new_tokens` to different values results in non-deterministic behavior."
-            )
+            raise ValueError("Setting `min_new_tokens` and `max_new_tokens` to different values results in non-deterministic behavior.")
 
         elif "max_new_tokens" in self.generate_kwargs and "min_new_tokens" not in self.generate_kwargs:
             LOGGER.warning(

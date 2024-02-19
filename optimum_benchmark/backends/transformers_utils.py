@@ -18,12 +18,7 @@ if is_transformers_available():
         AutoConfig,
     )
 
-    PretrainedProcessor = Union[
-        FeatureExtractionMixin,
-        ImageProcessingMixin,
-        PreTrainedTokenizer,
-        ProcessorMixin,
-    ]
+    PretrainedProcessor = Union[FeatureExtractionMixin, ImageProcessingMixin, PreTrainedTokenizer, ProcessorMixin]
 
 
 def get_transformers_cache_dir() -> str:
@@ -52,8 +47,7 @@ def get_transformers_pre_processor(model: str, **kwargs) -> Optional["Pretrained
 
 
 def extract_transformers_shapes_from_artifacts(
-    config: "PretrainedConfig",
-    processor: Optional["PretrainedProcessor"] = None,
+    config: "PretrainedConfig", processor: Optional["PretrainedProcessor"] = None
 ) -> Dict[str, Any]:
     artifacts_dict = {}
 

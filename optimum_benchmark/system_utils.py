@@ -120,9 +120,7 @@ def get_gpu_vram_mb() -> List[int]:
 
         pynvml.nvmlInit()
         device_count = pynvml.nvmlDeviceGetCount()
-        vrams = [
-            pynvml.nvmlDeviceGetMemoryInfo(pynvml.nvmlDeviceGetHandleByIndex(i)).total for i in range(device_count)
-        ]
+        vrams = [pynvml.nvmlDeviceGetMemoryInfo(pynvml.nvmlDeviceGetHandleByIndex(i)).total for i in range(device_count)]
         pynvml.nvmlShutdown()
     elif is_rocm_system():
         if not is_amdsmi_available():
@@ -137,14 +135,12 @@ def get_gpu_vram_mb() -> List[int]:
         if rocm_version >= "5.7":
             device_handles = amdsmi.amdsmi_get_processor_handles()
             vrams = [
-                amdsmi.amdsmi_get_gpu_memory_total(device_handle, mem_type=amdsmi.AmdSmiMemoryType.VRAM)
-                for device_handle in device_handles
+                amdsmi.amdsmi_get_gpu_memory_total(device_handle, mem_type=amdsmi.AmdSmiMemoryType.VRAM) for device_handle in device_handles
             ]
         else:
             device_handles = amdsmi.amdsmi_get_device_handles()
             vrams = [
-                amdsmi.amdsmi_dev_get_memory_total(device_handle, mem_type=amdsmi.AmdSmiMemoryType.VRAM)
-                for device_handle in device_handles
+                amdsmi.amdsmi_dev_get_memory_total(device_handle, mem_type=amdsmi.AmdSmiMemoryType.VRAM) for device_handle in device_handles
             ]
 
         amdsmi.amdsmi_shut_down()

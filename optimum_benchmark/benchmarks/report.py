@@ -27,16 +27,8 @@ class BenchmarkMeasurements:
 
     @staticmethod
     def aggregate(benchmark_measurements: List["BenchmarkMeasurements"]) -> "BenchmarkMeasurements":
-        memory = (
-            Memory.aggregate([m.memory for m in benchmark_measurements])
-            if benchmark_measurements[0].memory is not None
-            else None
-        )
-        latency = (
-            Latency.aggregate([m.latency for m in benchmark_measurements])
-            if benchmark_measurements[0].latency is not None
-            else None
-        )
+        memory = Memory.aggregate([m.memory for m in benchmark_measurements]) if benchmark_measurements[0].memory is not None else None
+        latency = Latency.aggregate([m.latency for m in benchmark_measurements]) if benchmark_measurements[0].latency is not None else None
         throughput = (
             Throughput.aggregate([m.throughput for m in benchmark_measurements if m.throughput is not None])
             if benchmark_measurements[0].throughput is not None
@@ -53,13 +45,7 @@ class BenchmarkMeasurements:
             else None
         )
 
-        return BenchmarkMeasurements(
-            memory=memory,
-            latency=latency,
-            throughput=throughput,
-            energy=energy,
-            efficiency=efficiency,
-        )
+        return BenchmarkMeasurements(memory=memory, latency=latency, throughput=throughput, energy=energy, efficiency=efficiency)
 
 
 @dataclass
@@ -93,13 +79,7 @@ class BenchmarkReport(PushToHubMixin):
         self.to_json(output_config_file, flat=False)
 
         if push_to_hub:
-            self._upload_modified_files(
-                save_directory,
-                repo_id,
-                files_timestamps,
-                commit_message=commit_message,
-                token=kwargs.get("token"),
-            )
+            self._upload_modified_files(save_directory, repo_id, files_timestamps, commit_message=commit_message, token=kwargs.get("token"))
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -118,7 +98,7 @@ class BenchmarkReport(PushToHubMixin):
 
     def to_dataframe(self) -> pd.DataFrame:
         flat_report_dict = self.to_flat_dict()
-        return pd.DataFrame(flat_report_dict, index=[0])
+        return pd.DataFrame.from_dict(flat_report_dict, orient="index")
 
     def to_csv(self, path: str) -> None:
         self.to_dataframe().to_csv(path, index=False)

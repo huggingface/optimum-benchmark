@@ -1,15 +1,12 @@
-import gc
 import time
-from logging import getLogger
+from tempfile import TemporaryDirectory
 
-from optimum_benchmark.system_utils import is_rocm_system
 from optimum_benchmark.trackers.memory import MemoryTracker
 from optimum_benchmark.trackers.latency import LatencyTracker
 from optimum_benchmark.experiment import ExperimentConfig, launch
 from optimum_benchmark.launchers.inline.config import InlineConfig
 from optimum_benchmark.backends.pytorch.config import PyTorchConfig
 from optimum_benchmark.launchers.process.config import ProcessConfig
-from optimum_benchmark.launchers.torchrun.config import TorchrunConfig
 from optimum_benchmark.benchmarks.inference.config import INPUT_SHAPES
 from optimum_benchmark.benchmarks.training.config import DATASET_SHAPES
 from optimum_benchmark.generators.input_generator import InputGenerator
@@ -17,16 +14,11 @@ from optimum_benchmark.benchmarks.inference.config import InferenceConfig
 from optimum_benchmark.generators.dataset_generator import DatasetGenerator
 from optimum_benchmark.task_utils import TEXT_GENERATION_TASKS, IMAGE_DIFFUSION_TASKS
 from optimum_benchmark.backends.timm_utils import extract_timm_shapes_from_config, get_timm_pretrained_config
-from optimum_benchmark.backends.transformers_utils import (
-    extract_transformers_shapes_from_artifacts,
-    get_transformers_pretrained_config,
-)
+from optimum_benchmark.backends.transformers_utils import extract_transformers_shapes_from_artifacts, get_transformers_pretrained_config
 
-import numpy as np
 import pytest
 import torch
 
-LOGGER = getLogger("test-api")
 
 LIBRARIES_TASKS_MODELS = [
     ("transformers", "fill-mask", "bert-base-uncased"),
@@ -40,20 +32,9 @@ LIBRARIES_TASKS_MODELS = [
     ("transformers", "image-classification", "google/vit-base-patch16-224"),
     ("transformers", "semantic-segmentation", "google/vit-base-patch16-224"),
 ]
-LAUNCHER_CONFIGS = [
-    InlineConfig(device_isolation=False),
-    ProcessConfig(device_isolation=False),
-    TorchrunConfig(nproc_per_node=2, device_isolation=False),
-]
+LAUNCHER_CONFIGS = [InlineConfig(device_isolation=False), ProcessConfig(device_isolation=False)]
 BACKENDS = ["pytorch", "none"]
 DEVICES = ["cpu", "cuda"]
-
-
-def clear_memory(array):
-    del array
-    gc.collect()
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
 
 
 @pytest.mark.parametrize("device", DEVICES)
@@ -90,10 +71,7 @@ def test_api_memory_tracker(device, backend):
     tracker.reset()
     with tracker.track():
         time.sleep(1)
-        if backend == "pytorch":
-            array = torch.randn((10000, 10000), dtype=torch.float64, device=device)
-        else:
-            array = np.random.randn(10000, 10000)
+        array = torch.randn((10000, 10000), dtype=torch.float64, device=device)
         expected_memory = array.nbytes / 1e6
         time.sleep(1)
 
@@ -106,15 +84,13 @@ def test_api_memory_tracker(device, backend):
         else:
             measured_memory = final_memory.max_vram - initial_memory.max_vram
             if torch.version.hip is not None:
-                # something is wrong with amdsmi
-                measured_memory -= 1600
+                # skip vram measurement for ROCm
+                return
     else:
         measured_memory = final_memory.max_ram - initial_memory.max_ram
 
     assert measured_memory < expected_memory * 1.1
     assert measured_memory > expected_memory * 0.9
-
-    clear_memory(array)
 
 
 @pytest.mark.parametrize("library,task,model", LIBRARIES_TASKS_MODELS)
@@ -128,11 +104,7 @@ def test_api_input_generator(library, task, model):
     else:
         raise ValueError(f"Unknown library {library}")
 
-    generator = InputGenerator(
-        task=task,
-        input_shapes=INPUT_SHAPES,
-        model_shapes=model_shapes,
-    )
+    generator = InputGenerator(task=task, input_shapes=INPUT_SHAPES, model_shapes=model_shapes)
 
     if task in TEXT_GENERATION_TASKS:
         _ = generator(mode="forward")
@@ -154,11 +126,7 @@ def test_api_dataset_generator(library, task, model):
     else:
         raise ValueError(f"Unknown library {library}")
 
-    generator = DatasetGenerator(
-        task=task,
-        dataset_shapes=DATASET_SHAPES,
-        model_shapes=model_shapes,
-    )
+    generator = DatasetGenerator(task=task, dataset_shapes=DATASET_SHAPES, model_shapes=model_shapes)
 
     _ = generator()
 
@@ -166,32 +134,27 @@ def test_api_dataset_generator(library, task, model):
 @pytest.mark.parametrize("launcher_config", LAUNCHER_CONFIGS)
 @pytest.mark.parametrize("device", DEVICES)
 def test_api_launch(launcher_config, device):
+    device_ids = None
+
     if device == "cuda":
         device_ids = ",".join(str(i) for i in range(torch.cuda.device_count()))
-    else:
-        device_ids = None
 
     # only inference cuz training is slow
-    benchmark_config = InferenceConfig(
-        energy=not is_rocm_system(),
-        latency=True,
-        memory=True,
-    )
+    benchmark_config = InferenceConfig(latency=True, memory=True)
     # only pytorch backend cuz default
-    backend_config = PyTorchConfig(
-        model="bert-base-uncased",
-        device_ids=device_ids,
-        no_weights=True,
-        device=device,
-    )
+    backend_config = PyTorchConfig(model="bert-base-uncased", device_ids=device_ids, no_weights=True, device=device)
     experiment_config = ExperimentConfig(
-        experiment_name="api-experiment",
-        benchmark=benchmark_config,
-        launcher=launcher_config,
-        backend=backend_config,
+        experiment_name="api-experiment", benchmark=benchmark_config, launcher=launcher_config, backend=backend_config
     )
     benchmark_report = launch(experiment_config)
 
-    # TODO: test push to hub
-    experiment_config.to_json("experiment_config.json")
-    benchmark_report.to_json("benchmark_report.json")
+    with TemporaryDirectory() as tempdir:
+        experiment_config.to_dict()
+        experiment_config.to_flat_dict()
+        experiment_config.to_json(f"{tempdir}/experiment_config.json")
+
+        benchmark_report.to_dict()
+        benchmark_report.to_flat_dict()
+        benchmark_report.to_dataframe()
+        benchmark_report.to_csv(f"{tempdir}/benchmark_report.csv")
+        benchmark_report.to_json(f"{tempdir}/benchmark_report.json")

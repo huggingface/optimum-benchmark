@@ -111,9 +111,7 @@ class INCBackend(Backend[INCConfig]):
         quantized_model_path = f"{self.tmpdir.name}/quantized"
         LOGGER.info("\t+ Processing quantization config")
         ptq_quantization_config = self.config.ptq_quantization_config.copy()
-        ptq_quantization_config["accuracy_criterion"] = AccuracyCriterion(
-            **ptq_quantization_config["accuracy_criterion"]
-        )
+        ptq_quantization_config["accuracy_criterion"] = AccuracyCriterion(**ptq_quantization_config["accuracy_criterion"])
         ptq_quantization_config["tuning_criterion"] = TuningCriterion(**ptq_quantization_config["tuning_criterion"])
         ptq_quantization_config = PostTrainingQuantConfig(**ptq_quantization_config)
         LOGGER.info("\t+ Creating quantizer")
@@ -128,16 +126,8 @@ class INCBackend(Backend[INCConfig]):
 
         if self.config.calibration:
             LOGGER.info("\t+ Generating calibration dataset")
-            dataset_shapes = {
-                "dataset_size": 1,
-                "sequence_length": 1,
-                **self.model_shapes,
-            }
-            calibration_dataset = DatasetGenerator(
-                task=self.config.task,
-                dataset_shapes=dataset_shapes,
-                model_shapes=self.model_shapes,
-            )()
+            dataset_shapes = {"dataset_size": 1, "sequence_length": 1, **self.model_shapes}
+            calibration_dataset = DatasetGenerator(task=self.config.task, dataset_shapes=dataset_shapes, model_shapes=self.model_shapes)()
             columns_to_be_removed = list(set(calibration_dataset.column_names) - set(quantizer._signature_columns))
             calibration_dataset = calibration_dataset.remove_columns(columns_to_be_removed)
         else:

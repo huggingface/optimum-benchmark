@@ -11,12 +11,7 @@ from psutil import cpu_count
 
 LOGGER = getLogger("backend")
 
-HUB_KWARGS = {
-    "revision": "main",
-    "force_download": False,
-    "local_files_only": False,
-    "trust_remote_code": False,
-}
+HUB_KWARGS = {"revision": "main", "force_download": False, "local_files_only": False, "trust_remote_code": False}
 
 
 @dataclass

@@ -80,11 +80,7 @@ class OVBackend(Backend[OVConfig]):
         state_dict = torch.nn.Linear(1, 1).state_dict()
 
         LOGGER.info("\t+ Saving no weights model state dict")
-        save_file(
-            filename=os.path.join(self.no_weights_model, "model.safetensors"),
-            metadata={"format": "pt"},
-            tensors=state_dict,
-        )
+        save_file(filename=os.path.join(self.no_weights_model, "model.safetensors"), metadata={"format": "pt"}, tensors=state_dict)
 
     def load_automodel_with_no_weights(self) -> None:
         self.create_no_weights_model()
@@ -143,16 +139,8 @@ class OVBackend(Backend[OVConfig]):
 
         if self.config.calibration:
             LOGGER.info("\t+ Generating calibration dataset")
-            dataset_shapes = {
-                "dataset_size": 1,
-                "sequence_length": 1,
-                **self.model_shapes,
-            }
-            calibration_dataset = DatasetGenerator(
-                task=self.config.task,
-                dataset_shapes=dataset_shapes,
-                model_shapes=self.model_shapes,
-            )()
+            dataset_shapes = {"dataset_size": 1, "sequence_length": 1, **self.model_shapes}
+            calibration_dataset = DatasetGenerator(task=self.config.task, dataset_shapes=dataset_shapes, model_shapes=self.model_shapes)()
             columns_to_be_removed = list(set(calibration_dataset.column_names) - set(quantizer._export_input_names))
             calibration_dataset = calibration_dataset.remove_columns(columns_to_be_removed)
         else:
@@ -175,9 +163,7 @@ class OVBackend(Backend[OVConfig]):
     def prepare_for_inference(self, **kwargs) -> None:
         if self.config.reshape:
             static_shapes = {
-                key: value
-                for key, value in kwargs.items()
-                if key in inspect.getfullargspec(self.pretrained_model.reshape).args
+                key: value for key, value in kwargs.items() if key in inspect.getfullargspec(self.pretrained_model.reshape).args
             }
             if (static_shapes.get("height", None) is not None) and ("sequence_length" in static_shapes):
                 static_shapes["sequence_length"] = kwargs.get("num_channels", 3)

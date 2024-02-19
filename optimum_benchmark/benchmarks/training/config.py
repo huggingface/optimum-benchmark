@@ -25,11 +25,7 @@ TRAINING_ARGUMENT = {
     "ddp_find_unused_parameters": False,
 }
 
-DATASET_SHAPES = {
-    "dataset_size": 500,
-    "sequence_length": 16,
-    "num_choices": 1,
-}
+DATASET_SHAPES = {"dataset_size": 500, "sequence_length": 16, "num_choices": 1}
 
 
 @dataclass

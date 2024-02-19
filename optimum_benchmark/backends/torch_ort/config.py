@@ -28,9 +28,7 @@ class TorchORTConfig(BackendConfig):
 
         if self.peft_strategy is not None:
             if self.peft_strategy not in PEFT_CONFIGS:
-                raise ValueError(
-                    f"`peft_strategy` must be one of {list(PEFT_CONFIGS.keys())}. Got {self.peft_strategy} instead."
-                )
+                raise ValueError(f"`peft_strategy` must be one of {list(PEFT_CONFIGS.keys())}. Got {self.peft_strategy} instead.")
             PEFT_CONFIG = PEFT_CONFIGS[self.peft_strategy]
             self.peft_config = {**PEFT_CONFIG, **self.peft_config}
 

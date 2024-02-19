@@ -61,10 +61,7 @@ class Backend(Generic[BackendConfigT], ABC):
             self.model_type = self.pretrained_config.model_type
 
         self.automodel_class = get_automodel_class_for_task(
-            model_type=self.model_type,
-            library=self.config.library,
-            task=self.config.task,
-            framework="pt",
+            model_type=self.model_type, library=self.config.library, task=self.config.task, framework="pt"
         )
 
     def seed(self) -> None:

@@ -52,11 +52,7 @@ EXTRAS_REQUIRE = {
     "onnxruntime": [f"optimum[onnxruntime]>={MIN_OPTIMUM_VERSION}"],
     "neural-compressor": [f"optimum[neural-compressor]>={MIN_OPTIMUM_VERSION}"],
     "onnxruntime-gpu": [f"optimum[onnxruntime-gpu]>={MIN_OPTIMUM_VERSION}"],
-    "torch-ort": [
-        f"optimum>={MIN_OPTIMUM_VERSION}",
-        "onnxruntime-training",
-        "torch-ort",
-    ],
+    "torch-ort": [f"optimum>={MIN_OPTIMUM_VERSION}", "onnxruntime-training", "torch-ort"],
     # docker-based backends
     "text-generation-inference": ["docker"],
     # specific settings

@@ -146,9 +146,7 @@ class LatencyTracker:
             self.start_events[-1].synchronize()
             self.end_events[-1].synchronize()
 
-            latencies_list = [
-                self.start_events[i].elapsed_time(self.end_events[i]) / 1e3 for i in range(len(self.start_events))
-            ]
+            latencies_list = [self.start_events[i].elapsed_time(self.end_events[i]) / 1e3 for i in range(len(self.start_events))]
         else:
             latencies_list = [(self.end_events[i] - self.start_events[i]) for i in range(len(self.start_events))]
 
@@ -189,9 +187,7 @@ class LatencyTrainerCallback(TrainerCallback):
         if self.device == "cuda" and self.backend == "pytorch":
             # synchronize the device to make sure all events have been recorded
             torch.cuda.synchronize()
-            latencies_list = [
-                self.events[i - 1].elapsed_time(self.events[i]) / 1e3 for i in range(1, len(self.events))
-            ]
+            latencies_list = [self.events[i - 1].elapsed_time(self.events[i]) / 1e3 for i in range(1, len(self.events))]
         else:
             latencies_list = [(self.events[i] - self.events[i - 1]) for i in range(1, len(self.events))]
 
@@ -229,9 +225,7 @@ class LatencyLogitsProcessor(LogitsProcessor):
         if self.device == "cuda" and self.backend == "pytorch":
             # synchronize the device to make sure all events have been recorded
             torch.cuda.synchronize()
-            latencies_list = [
-                self.events[i - 1].elapsed_time(self.events[i]) / 1e3 for i in range(1, len(self.events))
-            ]
+            latencies_list = [self.events[i - 1].elapsed_time(self.events[i]) / 1e3 for i in range(1, len(self.events))]
         else:
             latencies_list = [(self.events[i] - self.events[i - 1]) for i in range(1, len(self.events))]
 

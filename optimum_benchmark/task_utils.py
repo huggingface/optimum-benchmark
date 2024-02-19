@@ -16,10 +16,7 @@ _TRANSFORMERS_TASKS_TO_MODEL_LOADERS = {
     "feature-extraction": "AutoModel",
     "fill-mask": "AutoModelForMaskedLM",
     "image-classification": "AutoModelForImageClassification",
-    "image-segmentation": (
-        "AutoModelForImageSegmentation",
-        "AutoModelForSemanticSegmentation",
-    ),
+    "image-segmentation": ("AutoModelForImageSegmentation", "AutoModelForSemanticSegmentation"),
     "image-to-image": "AutoModelForImageToImage",
     "image-to-text": "AutoModelForVision2Seq",
     "mask-generation": "AutoModel",
@@ -64,12 +61,8 @@ _DIFFUSERS_TASKS_TO_MODEL_LOADERS = {
     "stable-diffusion": "StableDiffusionPipeline",
     "stable-diffusion-xl": "StableDiffusionXLImg2ImgPipeline",
 }
-_TIMM_TASKS_TO_MODEL_LOADERS = {
-    "image-classification": "create_model",
-}
-_LIBRARY_TO_TF_TASKS_TO_MODEL_LOADER_MAP = {
-    "transformers": _TRANSFORMERS_TASKS_TO_TF_MODEL_LOADERS,
-}
+_TIMM_TASKS_TO_MODEL_LOADERS = {"image-classification": "create_model"}
+_LIBRARY_TO_TF_TASKS_TO_MODEL_LOADER_MAP = {"transformers": _TRANSFORMERS_TASKS_TO_TF_MODEL_LOADERS}
 _LIBRARY_TO_TASKS_TO_MODEL_LOADER_MAP = {
     "transformers": _TRANSFORMERS_TASKS_TO_MODEL_LOADERS,
     "diffusers": _DIFFUSERS_TASKS_TO_MODEL_LOADERS,
@@ -96,35 +89,15 @@ _SYNONYM_TASK_MAP = {
     "zero-shot-classification": "text-classification",
 }
 _CUSTOM_CLASSES = {
-    ("pt", "pix2struct", "image-to-text"): (
-        "transformers",
-        "Pix2StructForConditionalGeneration",
-    ),
-    ("pt", "pix2struct", "visual-question-answering"): (
-        "transformers",
-        "Pix2StructForConditionalGeneration",
-    ),
-    ("pt", "visual-bert", "question-answering"): (
-        "transformers",
-        "VisualBertForQuestionAnswering",
-    ),
-    ("pt", "vision-encoder-decoder", "document-question-answering"): (
-        "transformers",
-        "VisionEncoderDecoderModel",
-    ),
+    ("pt", "pix2struct", "image-to-text"): ("transformers", "Pix2StructForConditionalGeneration"),
+    ("pt", "pix2struct", "visual-question-answering"): ("transformers", "Pix2StructForConditionalGeneration"),
+    ("pt", "visual-bert", "question-answering"): ("transformers", "VisualBertForQuestionAnswering"),
+    ("pt", "vision-encoder-decoder", "document-question-answering"): ("transformers", "VisionEncoderDecoderModel"),
 }
 
-IMAGE_DIFFUSION_TASKS = [
-    "stable-diffusion",
-    "stable-diffusion-xl",
-]
+IMAGE_DIFFUSION_TASKS = ["stable-diffusion", "stable-diffusion-xl"]
 
-TEXT_GENERATION_TASKS = [
-    "image-to-text",
-    "text-generation",
-    "text2text-generation",
-    "automatic-speech-recognition",
-]
+TEXT_GENERATION_TASKS = ["image-to-text", "text-generation", "text2text-generation", "automatic-speech-recognition"]
 
 
 def map_from_synonym(task: str) -> str:
@@ -166,10 +139,7 @@ def infer_task_from_model_name_or_path(model_name_or_path: str, revision: Option
         else:
             pipeline_tag = getattr(model_info, "pipeline_tag", None)
             # conversational is not a supported task per se, just an alias that may map to text-generaton or text2text-generation
-            if pipeline_tag is not None and pipeline_tag not in [
-                "conversational",
-                "object-detection",
-            ]:
+            if pipeline_tag is not None and pipeline_tag not in ["conversational", "object-detection"]:
                 inferred_task_name = map_from_synonym(model_info.pipeline_tag)
             else:
                 transformers_info = model_info.transformersInfo

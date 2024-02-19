@@ -14,22 +14,10 @@ API_JOB_LOGGING = {
         "colorlog": {
             "()": "colorlog.ColoredFormatter",
             "format": "[%(cyan)s%(asctime)s%(reset)s][%(blue)s%(name)s%(reset)s][%(log_color)s%(levelname)s%(reset)s] - %(message)s",
-            "log_colors": {
-                "DEBUG": "purple",
-                "INFO": "green",
-                "WARNING": "yellow",
-                "CRITICAL": "red",
-                "ERROR": "red",
-            },
+            "log_colors": {"DEBUG": "purple", "INFO": "green", "WARNING": "yellow", "CRITICAL": "red", "ERROR": "red"},
         },
     },
-    "handlers": {
-        "console": {
-            "formatter": "colorlog",
-            "stream": "ext://sys.stdout",
-            "class": "logging.StreamHandler",
-        },
-    },
+    "handlers": {"console": {"formatter": "colorlog", "stream": "ext://sys.stdout", "class": "logging.StreamHandler"}},
     "root": {"level": "INFO", "handlers": ["console"]},
     "disable_existing_loggers": False,
 }
@@ -46,9 +34,7 @@ def setup_logging(level: str = "INFO", prefix: Optional[str] = None):
 
     if prefix is not None:
         job_logging["formatters"]["simple"]["format"] = f"[{prefix}]" + job_logging["formatters"]["simple"]["format"]
-        job_logging["formatters"]["colorlog"]["format"] = (
-            f"[{prefix}]" + job_logging["formatters"]["colorlog"]["format"]
-        )
+        job_logging["formatters"]["colorlog"]["format"] = f"[{prefix}]" + job_logging["formatters"]["colorlog"]["format"]
 
     logging.config.dictConfig(job_logging)
 

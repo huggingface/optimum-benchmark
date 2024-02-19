@@ -45,19 +45,9 @@ class Memory:
         unit = memories[0].unit
         max_ram = sum(memory.max_ram for memory in memories)
         max_vram = sum(memory.max_vram for memory in memories) if memories[0].max_vram is not None else None
-        max_reserved = (
-            sum(memory.max_reserved for memory in memories) if memories[0].max_reserved is not None else None
-        )
-        max_allocated = (
-            sum(memory.max_allocated for memory in memories) if memories[0].max_allocated is not None else None
-        )
-        return Memory(
-            unit=unit,
-            max_ram=max_ram,
-            max_vram=max_vram,
-            max_reserved=max_reserved,
-            max_allocated=max_allocated,
-        )
+        max_reserved = sum(memory.max_reserved for memory in memories) if memories[0].max_reserved is not None else None
+        max_allocated = sum(memory.max_allocated for memory in memories) if memories[0].max_allocated is not None else None
+        return Memory(unit=unit, max_ram=max_ram, max_vram=max_vram, max_reserved=max_reserved, max_allocated=max_allocated)
 
     def log(self, prefix: str = "forward"):
         LOGGER.info(f"\t\t+ {prefix} max RAM memory: {self.max_ram:f} ({self.unit})")
@@ -122,20 +112,12 @@ class MemoryTracker:
 
         yield from self._cuda_memory()
 
-        self.max_allocated_memory = sum(
-            torch.cuda.max_memory_allocated(device=device) / 1e6 for device in range(torch.cuda.device_count())
-        )
-        self.max_reserved_memory = sum(
-            torch.cuda.max_memory_reserved(device=device) / 1e6 for device in range(torch.cuda.device_count())
-        )
+        self.max_allocated_memory = sum(torch.cuda.max_memory_allocated(device=device) / 1e6 for device in range(torch.cuda.device_count()))
+        self.max_reserved_memory = sum(torch.cuda.max_memory_reserved(device=device) / 1e6 for device in range(torch.cuda.device_count()))
 
     def _cuda_memory(self):
         child_connection, parent_connection = Pipe()
-        memory_process = Process(
-            target=monitor_gpu_vram_memory,
-            args=(os.getpid(), self.device_ids, child_connection),
-            daemon=True,
-        )
+        memory_process = Process(target=monitor_gpu_vram_memory, args=(os.getpid(), self.device_ids, child_connection), daemon=True)
         memory_process.start()
         parent_connection.recv()  # wait for memory process to be ready
 
@@ -146,11 +128,7 @@ class MemoryTracker:
 
     def _cpu_memory(self):
         child_connection, parent_connection = Pipe()
-        memory_process = Process(
-            target=monitor_cpu_ram_memory,
-            args=(os.getpid(), child_connection),
-            daemon=True,
-        )
+        memory_process = Process(target=monitor_cpu_ram_memory, args=(os.getpid(), child_connection), daemon=True)
         memory_process.start()
         parent_connection.recv()  # wait for memory process to be ready
 
@@ -169,16 +147,9 @@ class MemoryTracker:
                 max_allocated=self.max_allocated_memory,
             )
         elif self.device == "cuda":
-            return Memory(
-                unit=MEMORY_UNIT,
-                max_ram=self.max_ram_memory,
-                max_vram=self.max_vram_memory,
-            )
+            return Memory(unit=MEMORY_UNIT, max_ram=self.max_ram_memory, max_vram=self.max_vram_memory)
         else:
-            return Memory(
-                unit=MEMORY_UNIT,
-                max_ram=self.max_ram_memory,
-            )
+            return Memory(unit=MEMORY_UNIT, max_ram=self.max_ram_memory)
 
 
 def monitor_cpu_ram_memory(process_id: int, connection: Connection, interval: float = 0.001):
@@ -197,12 +168,7 @@ def monitor_cpu_ram_memory(process_id: int, connection: Connection, interval: fl
     connection.close()
 
 
-def monitor_gpu_vram_memory(
-    process_id: int,
-    device_ids: List[int],
-    connection: Connection,
-    interval: float = 0.01,
-):
+def monitor_gpu_vram_memory(process_id: int, device_ids: List[int], connection: Connection, interval: float = 0.01):
     stop = False
     max_memory = 0
     connection.send(0)
@@ -274,11 +240,9 @@ def monitor_gpu_vram_memory(
                             try:
                                 cpu_process_info = psutil.Process(gpu_process_info["pid"])
                             except Exception as e:
-                                LOGGER.warning(
-                                    f"\t\t+ Could not get process info for process {gpu_process_info['pid']}: {e}"
-                                )
+                                LOGGER.warning(f"\t\t+ Could not get process info for process {gpu_process_info['pid']}: {e}")
                                 continue
-                            if cpu_process_info.parent() is not None and cpu_process_info.parent().pid == process_id:
+                            if cpu_process_info.parent() is not None and cpu_process_info.ppid() == process_id:
                                 current_used_memory += gpu_process_info["memory_usage"]["vram_mem"]
 
                 max_memory = max(max_memory, current_used_memory)
@@ -307,11 +271,9 @@ def monitor_gpu_vram_memory(
                             try:
                                 cpu_process_info = psutil.Process(gpu_process_info["pid"])
                             except Exception as e:
-                                LOGGER.warning(
-                                    f"\t\t+ Could not get process info for process {gpu_process_info['pid']}: {e}"
-                                )
+                                LOGGER.warning(f"\t\t+ Could not get process info for process {gpu_process_info['pid']}: {e}")
                                 continue
-                            if cpu_process_info.parent() is not None and cpu_process_info.parent().pid == process_id:
+                            if cpu_process_info.parent() is not None and cpu_process_info.ppid() == process_id:
                                 current_used_memory += gpu_process_info["memory_usage"]["vram_mem"]
 
                 max_memory = max(max_memory, current_used_memory)

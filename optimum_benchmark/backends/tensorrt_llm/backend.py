@@ -47,9 +47,7 @@ class TRTLLMBackend(Backend[TRTLLMConfig]):
 
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:
         return self.pretrained_model.generate(
-            input_ids=inputs.get("input_ids", None),
-            attention_mask=inputs.get("attention_mask", None),
-            max_new_tokens=1,
+            input_ids=inputs.get("input_ids", None), attention_mask=inputs.get("attention_mask", None), max_new_tokens=1
         )
 
     def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:
