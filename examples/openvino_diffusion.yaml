@@ -7,10 +7,9 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-model: stabilityai/stable-diffusion-2-1
-
 backend:
   device: cpu
+  model: stabilityai/stable-diffusion-2-1
   experiment_name: openvino_diffusion
   reshape: true
   export: true
