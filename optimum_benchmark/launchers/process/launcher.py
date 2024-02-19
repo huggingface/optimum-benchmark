@@ -28,7 +28,9 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         lock = Lock()
         queue = Queue(1000)
         current_log_level = getLogger().getEffectiveLevel()
-        worker_process = Process(target=target, args=(worker, queue, lock, current_log_level, *worker_args), daemon=False)
+        worker_process = Process(
+            target=target, args=(worker, queue, lock, current_log_level, *worker_args), daemon=False
+        )
 
         with device_isolation(enabled=self.config.device_isolation):
             worker_process.start()

@@ -58,7 +58,9 @@ class TGIBackend(Backend[TGIConfig]):
         model_cache_folder = f"models/{self.config.model}".replace("/", "--")
         model_cache_path = f"{self.config.volume}/{model_cache_folder}"
 
-        snapshot_ref = open(f"{model_cache_path}/refs/{self.config.hub_kwargs.get('revision', 'main')}", "r").read().strip()
+        snapshot_ref = (
+            open(f"{model_cache_path}/refs/{self.config.hub_kwargs.get('revision', 'main')}", "r").read().strip()
+        )
 
         model_snapshot_path = f"{model_cache_path}/snapshots/{snapshot_ref}"
         self.pretrained_generation_config.save_pretrained(save_directory=model_snapshot_path)
@@ -78,7 +80,9 @@ class TGIBackend(Backend[TGIConfig]):
 
         LOGGER.info("\t+ Saving no weights model")
         save_model(
-            filename=os.path.join(self.no_weights_model, "model.safetensors"), model=torch.nn.Linear(1, 1), metadata={"format": "pt"}
+            filename=os.path.join(self.no_weights_model, "model.safetensors"),
+            model=torch.nn.Linear(1, 1),
+            metadata={"format": "pt"},
         )
         # unlike transformers api, TGI won't accept an empty model.safetensors
         # so we need to materialize the model and resave it
@@ -203,7 +207,11 @@ class TGIBackend(Backend[TGIConfig]):
         with ThreadPoolExecutor(max_workers=len(inputs["prompt"])) as executor:
             futures = [
                 executor.submit(
-                    self.client.text_generation, decoder_input_details=True, prompt=inputs["prompt"][i], max_new_tokens=1, details=True
+                    self.client.text_generation,
+                    decoder_input_details=True,
+                    prompt=inputs["prompt"][i],
+                    max_new_tokens=1,
+                    details=True,
                 )
                 for i in range(len(inputs["prompt"]))
             ]

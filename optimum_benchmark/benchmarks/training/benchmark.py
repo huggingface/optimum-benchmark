@@ -53,7 +53,9 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
         training_trackers = []
         if self.config.memory:
             LOGGER.info("\t+ Adding memory tracking context manager")
-            memory_tracker = MemoryTracker(device=backend.config.device, backend=backend.config.name, device_ids=backend.config.device_ids)
+            memory_tracker = MemoryTracker(
+                device=backend.config.device, backend=backend.config.name, device_ids=backend.config.device_ids
+            )
             training_trackers.append(memory_tracker.track())
 
         if self.config.energy:

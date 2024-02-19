@@ -93,7 +93,9 @@ class ExperimentConfig(PushToHubMixin):
         self.to_json(output_config_file, flat=False)
 
         if push_to_hub:
-            self._upload_modified_files(save_directory, repo_id, files_timestamps, commit_message=commit_message, token=kwargs.get("token"))
+            self._upload_modified_files(
+                save_directory, repo_id, files_timestamps, commit_message=commit_message, token=kwargs.get("token")
+            )
 
 
 def run(benchmark_config: BenchmarkConfig, backend_config: BackendConfig) -> BenchmarkReport:

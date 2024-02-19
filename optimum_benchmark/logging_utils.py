@@ -34,7 +34,9 @@ def setup_logging(level: str = "INFO", prefix: Optional[str] = None):
 
     if prefix is not None:
         job_logging["formatters"]["simple"]["format"] = f"[{prefix}]" + job_logging["formatters"]["simple"]["format"]
-        job_logging["formatters"]["colorlog"]["format"] = f"[{prefix}]" + job_logging["formatters"]["colorlog"]["format"]
+        job_logging["formatters"]["colorlog"]["format"] = (
+            f"[{prefix}]" + job_logging["formatters"]["colorlog"]["format"]
+        )
 
     logging.config.dictConfig(job_logging)
 

@@ -104,14 +104,16 @@ class ORTConfig(BackendConfig):
             # raise ValueError if the quantization is static but calibration is not enabled
             if self.quantization_config["is_static"] and self.auto_calibration is None and not self.calibration:
                 raise ValueError(
-                    "Quantization is static but calibration is not enabled. " "Please enable calibration or disable static quantization."
+                    "Quantization is static but calibration is not enabled. "
+                    "Please enable calibration or disable static quantization."
                 )
 
         if self.auto_quantization is not None:
             self.auto_quantization_config = {**AUTO_QUANTIZATION_CONFIG, **self.auto_quantization_config}
             if self.auto_quantization_config["is_static"] and self.auto_calibration is None and not self.calibration:
                 raise ValueError(
-                    "Quantization is static but calibration is not enabled. " "Please enable calibration or disable static quantization."
+                    "Quantization is static but calibration is not enabled. "
+                    "Please enable calibration or disable static quantization."
                 )
 
         if self.calibration:
@@ -119,7 +121,9 @@ class ORTConfig(BackendConfig):
 
         if self.peft_strategy is not None:
             if self.peft_strategy not in PEFT_CONFIGS:
-                raise ValueError(f"`peft_strategy` must be one of {list(PEFT_CONFIGS.keys())}. Got {self.peft_strategy} instead.")
+                raise ValueError(
+                    f"`peft_strategy` must be one of {list(PEFT_CONFIGS.keys())}. Got {self.peft_strategy} instead."
+                )
             PEFT_CONFIG = PEFT_CONFIGS[self.peft_strategy]
             self.peft_config = {**PEFT_CONFIG, **self.peft_config}
 

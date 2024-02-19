@@ -11,7 +11,14 @@ AMP_DTYPES = ["bfloat16", "float16"]
 TORCH_DTYPES = ["bfloat16", "float16", "float32", "auto"]
 
 QUANTIZATION_CONFIGS = {"bnb": {"llm_int8_threshold": 0.0}, "gptq": {}, "awq": {}}
-COMPILE_CONFIG = {"fullgraph": False, "dynamic": False, "backend": "inductor", "mode": None, "options": None, "disable": False}
+COMPILE_CONFIG = {
+    "fullgraph": False,
+    "dynamic": False,
+    "backend": "inductor",
+    "mode": None,
+    "options": None,
+    "disable": False,
+}
 
 
 @dataclass
@@ -82,7 +89,9 @@ class PyTorchConfig(BackendConfig):
 
         if self.peft_strategy is not None:
             if self.peft_strategy not in PEFT_CONFIGS:
-                raise ValueError(f"`peft_strategy` must be one of {list(PEFT_CONFIGS.keys())}. Got {self.peft_strategy} instead.")
+                raise ValueError(
+                    f"`peft_strategy` must be one of {list(PEFT_CONFIGS.keys())}. Got {self.peft_strategy} instead."
+                )
             PEFT_CONFIG = PEFT_CONFIGS[self.peft_strategy]
             self.peft_config = {**PEFT_CONFIG, **self.peft_config}
 

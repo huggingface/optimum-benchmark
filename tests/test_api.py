@@ -1,3 +1,4 @@
+import gc
 import time
 from tempfile import TemporaryDirectory
 
@@ -14,7 +15,10 @@ from optimum_benchmark.benchmarks.inference.config import InferenceConfig
 from optimum_benchmark.generators.dataset_generator import DatasetGenerator
 from optimum_benchmark.task_utils import TEXT_GENERATION_TASKS, IMAGE_DIFFUSION_TASKS
 from optimum_benchmark.backends.timm_utils import extract_timm_shapes_from_config, get_timm_pretrained_config
-from optimum_benchmark.backends.transformers_utils import extract_transformers_shapes_from_artifacts, get_transformers_pretrained_config
+from optimum_benchmark.backends.transformers_utils import (
+    extract_transformers_shapes_from_artifacts,
+    get_transformers_pretrained_config,
+)
 
 import pytest
 import torch
@@ -91,6 +95,11 @@ def test_api_memory_tracker(device, backend):
 
     assert measured_memory < expected_memory * 1.1
     assert measured_memory > expected_memory * 0.9
+
+    del array
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    gc.collect()
 
 
 @pytest.mark.parametrize("library,task,model", LIBRARIES_TASKS_MODELS)

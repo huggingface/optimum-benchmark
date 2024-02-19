@@ -93,10 +93,14 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             if self.config.library == "diffusers":
                 LOGGER.info("\t+ Using torch.compile on unet forward pass")
                 # TODO: should we compile vae and/or clip as well ?
-                self.pretrained_model.unet.forward = torch.compile(self.pretrained_model.unet.forward, **self.config.torch_compile_config)
+                self.pretrained_model.unet.forward = torch.compile(
+                    self.pretrained_model.unet.forward, **self.config.torch_compile_config
+                )
             else:
                 LOGGER.info("\t+ Using torch.compile on forward pass")
-                self.pretrained_model.forward = torch.compile(self.pretrained_model.forward, **self.config.torch_compile_config)
+                self.pretrained_model.forward = torch.compile(
+                    self.pretrained_model.forward, **self.config.torch_compile_config
+                )
 
         if self.config.peft_strategy is not None:
             LOGGER.info("\t+ Using PEFT")
@@ -107,7 +111,9 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         if self.config.deepspeed_inference:
             LOGGER.info("\t+ Using DeepSpeed-Inference")
             self.pretrained_model = init_inference(
-                self.pretrained_model, config=self.config.deepspeed_inference_config, dtype=getattr(self.pretrained_model, "dtype", None)
+                self.pretrained_model,
+                config=self.config.deepspeed_inference_config,
+                dtype=getattr(self.pretrained_model, "dtype", None),
             )
 
     def validate_library(self) -> None:
@@ -196,7 +202,11 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
 
         LOGGER.info("\t+ Saving no weights model state_dict")
-        save_file(filename=os.path.join(self.no_weights_model, "model.safetensors"), metadata={"format": "pt"}, tensors=state_dict)
+        save_file(
+            filename=os.path.join(self.no_weights_model, "model.safetensors"),
+            metadata={"format": "pt"},
+            tensors=state_dict,
+        )
 
     def load_model_with_no_weights(self) -> None:
         self.create_no_weights_model()

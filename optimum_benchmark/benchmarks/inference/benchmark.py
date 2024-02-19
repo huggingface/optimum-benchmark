@@ -68,7 +68,9 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         if is_torch_distributed_available() and torch.distributed.is_initialized():
             LOGGER.info("\t+ Distributing batch size across processes")
             if self.config.input_shapes["batch_size"] % torch.distributed.get_world_size() != 0:
-                raise ValueError("The batch size must be divisible by the number of processes in a distributed environment")
+                raise ValueError(
+                    "The batch size must be divisible by the number of processes in a distributed environment"
+                )
             self.config.input_shapes["batch_size"] //= torch.distributed.get_world_size()
             if backend.config.device == "cuda" and backend.config.task in TEXT_GENERATION_TASKS:
                 TEXT_GENERATION_TASKS["synced_gpus"] = True
@@ -107,7 +109,10 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
 
         LOGGER.info("\t+ Preparing backend for Inference")
         backend.prepare_for_inference(
-            **backend.model_shapes, **self.config.input_shapes, **self.config.forward_kwargs, **self.config.generate_kwargs
+            **backend.model_shapes,
+            **self.config.input_shapes,
+            **self.config.forward_kwargs,
+            **self.config.generate_kwargs,
         )
 
         LOGGER.info("\t+ Warming up backend for Inference")
@@ -201,7 +206,9 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
                 _ = backend.forward(self.forward_inputs, self.config.forward_kwargs)
 
         self.report.prefill.latency = self.latency_tracker.get_latency()
-        self.report.prefill.throughput = self.latency_tracker.get_throughput(volume=self.prefill_volume, unit=PREFILL_THROUGHPUT_UNIT)
+        self.report.prefill.throughput = self.latency_tracker.get_throughput(
+            volume=self.prefill_volume, unit=PREFILL_THROUGHPUT_UNIT
+        )
 
         self.latency_tracker.reset()
         while self.latency_tracker.get_elapsed_time() < self.config.duration:
@@ -209,7 +216,9 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
                 _ = backend.generate(self.generate_input, self.config.generate_kwargs)
 
         self.report.decode.latency = self.latency_tracker.get_latency() - self.report.prefill.latency.mean
-        self.report.decode.throughput = Throughput.from_latency(self.report.decode.latency, self.decode_volume, unit=DECODE_THROUGHPUT_UNIT)
+        self.report.decode.throughput = Throughput.from_latency(
+            self.report.decode.latency, self.decode_volume, unit=DECODE_THROUGHPUT_UNIT
+        )
 
     def run_image_diffusion_latency_tracking(self, backend: Backend):
         LOGGER.info("\t+ Running latency tracking")
@@ -219,7 +228,9 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
                 _ = backend.call(self.diffuse_input, self.config.forward_kwargs)
 
         self.report.call.latency = self.latency_tracker.get_latency()
-        self.report.call.throughput = Throughput.from_latency(self.report.call.latency, self.call_volume, unit=CALL_THROUGHPUT_UNIT)
+        self.report.call.throughput = Throughput.from_latency(
+            self.report.call.latency, self.call_volume, unit=CALL_THROUGHPUT_UNIT
+        )
 
     def run_latency_inference_tracking(self, backend: Backend):
         LOGGER.info("\t+ Running latency tracking")
@@ -229,7 +240,9 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
                 _ = backend.forward(self.forward_inputs, self.config.forward_kwargs)
 
         self.report.forward.latency = self.latency_tracker.get_latency()
-        self.report.forward.throughput = Throughput.from_latency(self.report.forward.latency, self.forward_volume, unit=THROUGHPUT_UNIT)
+        self.report.forward.throughput = Throughput.from_latency(
+            self.report.forward.latency, self.forward_volume, unit=THROUGHPUT_UNIT
+        )
 
     ## Energy tracking
     def run_text_generation_energy_tracking(self, backend: Backend):
@@ -248,7 +261,9 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             _ = backend.generate(self.generate_input, self.config.generate_kwargs)
 
         self.report.decode.energy = self.energy_tracker.get_energy() - self.report.prefill.energy
-        self.report.decode.efficiency = Efficiency.from_energy(self.report.decode.energy, self.decode_volume, unit=DECODE_EFFICIENCY_UNIT)
+        self.report.decode.efficiency = Efficiency.from_energy(
+            self.report.decode.energy, self.decode_volume, unit=DECODE_EFFICIENCY_UNIT
+        )
 
     def run_image_diffusion_energy_tracking(self, backend: Backend):
         LOGGER.info("\t+ Running energy tracking")
@@ -257,7 +272,9 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             _ = backend.call(self.diffuse_input, self.config.forward_kwargs)
 
         self.report.call.energy = self.energy_tracker.get_energy()
-        self.report.call.efficiency = Efficiency.from_energy(self.report.call.energy, self.call_volume, unit=CALL_EFFICIENCY_UNIT)
+        self.report.call.efficiency = Efficiency.from_energy(
+            self.report.call.energy, self.call_volume, unit=CALL_EFFICIENCY_UNIT
+        )
 
     def run_inference_energy_tracking(self, backend: Backend):
         LOGGER.info("\t+ Running energy tracking")
@@ -266,7 +283,9 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             _ = backend.forward(self.forward_inputs, self.config.forward_kwargs)
 
         self.report.forward.energy = self.energy_tracker.get_energy()
-        self.report.forward.efficiency = Efficiency.from_energy(self.report.forward.energy, self.forward_volume, unit=EFFICIENCY_UNIT)
+        self.report.forward.efficiency = Efficiency.from_energy(
+            self.report.forward.energy, self.forward_volume, unit=EFFICIENCY_UNIT
+        )
 
     @property
     def forward_volume(self) -> int:  # in samples

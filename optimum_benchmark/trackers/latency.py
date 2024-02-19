@@ -146,7 +146,9 @@ class LatencyTracker:
             self.start_events[-1].synchronize()
             self.end_events[-1].synchronize()
 
-            latencies_list = [self.start_events[i].elapsed_time(self.end_events[i]) / 1e3 for i in range(len(self.start_events))]
+            latencies_list = [
+                self.start_events[i].elapsed_time(self.end_events[i]) / 1e3 for i in range(len(self.start_events))
+            ]
         else:
             latencies_list = [(self.end_events[i] - self.start_events[i]) for i in range(len(self.start_events))]
 

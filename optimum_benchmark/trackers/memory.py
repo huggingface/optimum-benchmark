@@ -46,8 +46,12 @@ class Memory:
         max_ram = sum(memory.max_ram for memory in memories)
         max_vram = sum(memory.max_vram for memory in memories) if memories[0].max_vram is not None else None
         max_reserved = sum(memory.max_reserved for memory in memories) if memories[0].max_reserved is not None else None
-        max_allocated = sum(memory.max_allocated for memory in memories) if memories[0].max_allocated is not None else None
-        return Memory(unit=unit, max_ram=max_ram, max_vram=max_vram, max_reserved=max_reserved, max_allocated=max_allocated)
+        max_allocated = (
+            sum(memory.max_allocated for memory in memories) if memories[0].max_allocated is not None else None
+        )
+        return Memory(
+            unit=unit, max_ram=max_ram, max_vram=max_vram, max_reserved=max_reserved, max_allocated=max_allocated
+        )
 
     def log(self, prefix: str = "forward"):
         LOGGER.info(f"\t\t+ {prefix} max RAM memory: {self.max_ram:f} ({self.unit})")
@@ -112,12 +116,18 @@ class MemoryTracker:
 
         yield from self._cuda_memory()
 
-        self.max_allocated_memory = sum(torch.cuda.max_memory_allocated(device=device) / 1e6 for device in range(torch.cuda.device_count()))
-        self.max_reserved_memory = sum(torch.cuda.max_memory_reserved(device=device) / 1e6 for device in range(torch.cuda.device_count()))
+        self.max_allocated_memory = sum(
+            torch.cuda.max_memory_allocated(device=device) / 1e6 for device in range(torch.cuda.device_count())
+        )
+        self.max_reserved_memory = sum(
+            torch.cuda.max_memory_reserved(device=device) / 1e6 for device in range(torch.cuda.device_count())
+        )
 
     def _cuda_memory(self):
         child_connection, parent_connection = Pipe()
-        memory_process = Process(target=monitor_gpu_vram_memory, args=(os.getpid(), self.device_ids, child_connection), daemon=True)
+        memory_process = Process(
+            target=monitor_gpu_vram_memory, args=(os.getpid(), self.device_ids, child_connection), daemon=True
+        )
         memory_process.start()
         parent_connection.recv()  # wait for memory process to be ready
 
@@ -240,7 +250,9 @@ def monitor_gpu_vram_memory(process_id: int, device_ids: List[int], connection: 
                             try:
                                 cpu_process_info = psutil.Process(gpu_process_info["pid"])
                             except Exception as e:
-                                LOGGER.warning(f"\t\t+ Could not get process info for process {gpu_process_info['pid']}: {e}")
+                                LOGGER.warning(
+                                    f"\t\t+ Could not get process info for process {gpu_process_info['pid']}: {e}"
+                                )
                                 continue
                             if cpu_process_info.parent() is not None and cpu_process_info.ppid() == process_id:
                                 current_used_memory += gpu_process_info["memory_usage"]["vram_mem"]
@@ -271,7 +283,9 @@ def monitor_gpu_vram_memory(process_id: int, device_ids: List[int], connection: 
                             try:
                                 cpu_process_info = psutil.Process(gpu_process_info["pid"])
                             except Exception as e:
-                                LOGGER.warning(f"\t\t+ Could not get process info for process {gpu_process_info['pid']}: {e}")
+                                LOGGER.warning(
+                                    f"\t\t+ Could not get process info for process {gpu_process_info['pid']}: {e}"
+                                )
                                 continue
                             if cpu_process_info.parent() is not None and cpu_process_info.ppid() == process_id:
                                 current_used_memory += gpu_process_info["memory_usage"]["vram_mem"]

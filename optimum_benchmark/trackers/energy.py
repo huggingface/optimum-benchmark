@@ -145,4 +145,6 @@ class EnergyTracker:
         return self.emission_tracker._last_measured_time - self.emission_tracker._start_time
 
     def get_energy(self) -> Energy:
-        return Energy(unit=ENERGY_UNIT, cpu=self.cpu_energy, gpu=self.gpu_energy, ram=self.ram_energy, total=self.total_energy)
+        return Energy(
+            unit=ENERGY_UNIT, cpu=self.cpu_energy, gpu=self.gpu_energy, ram=self.ram_energy, total=self.total_energy
+        )
