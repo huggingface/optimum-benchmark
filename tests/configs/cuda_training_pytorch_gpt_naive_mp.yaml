@@ -1,10 +1,10 @@
 defaults:
-  - backend: torch-ort
+  - backend: pytorch
   # order of inheritance, last one overrides previous ones
   - _base_ # inherits from base config
   - _training_ # inherits from training config
-  - _lm_peft_ # inherits from language modeling peft config
+  - _gpt_naive_mp_ # inherits from lm naive mp config
   - _cuda_ # inherits from cpu config
   - _self_ # hydra 1.1 compatibility
 
-experiment_name: cuda_training_torch_ort_lm_peft
+experiment_name: cuda_training_pytorch_gpt_naive_mp

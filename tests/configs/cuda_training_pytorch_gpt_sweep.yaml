@@ -3,8 +3,8 @@ defaults:
   # order of inheritance, last one overrides previous ones
   - _base_ # inherits from base config
   - _training_ # inherits from training config
-  - _lm_sweep_ # inherits from language modeling sweep config
+  - _gpt_sweep_ # inherits from language modeling sweep config
   - _cuda_ # inherits from cpu config
   - _self_ # hydra 1.1 compatibility
 
-experiment_name: cuda_training_pytorch_lm_sweep
+experiment_name: cuda_training_pytorch_gpt_sweep

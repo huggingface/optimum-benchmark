@@ -1,10 +1,10 @@
 defaults:
-  - backend: pytorch
+  - backend: neural-compressor
   # order of inheritance, last one overrides previous ones
   - _base_ # inherits from base config
   - _inference_ # inherits from inference config
-  - _lm_sweep_ # inherits from gpt_sweep config
+  - _gpt_sweep_ # inherits from gpt_sweep config
   - _cpu_ # inherits from cpu config
   - _self_ # hydra 1.1 compatibility
 
-experiment_name: cpu_inference_pytorch_lm_sweep
+experiment_name: cpu_inference_neural_compressor_gpt_sweep
