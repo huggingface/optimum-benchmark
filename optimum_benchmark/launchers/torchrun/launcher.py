@@ -57,9 +57,6 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
                 entrypoint=entrypoint, args=(worker, queue, lock, log_level, *worker_args), config=launch_config
             )
 
-        # restore the original logging configuration
-        setup_logging(log_level)
-
         reports: List[BenchmarkReport] = []
         while not queue.empty():
             reports.append(queue.get())

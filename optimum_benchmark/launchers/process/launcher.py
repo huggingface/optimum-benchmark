@@ -42,9 +42,6 @@ class ProcessLauncher(Launcher[ProcessConfig]):
             while not process_context.join():
                 pass
 
-        # restore the original logging configuration
-        setup_logging(log_level)
-
         report: BenchmarkReport = queue.get()
 
         return report
