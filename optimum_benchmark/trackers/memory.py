@@ -7,7 +7,10 @@ from typing import List, Optional, Literal
 from multiprocessing.connection import Connection
 
 from ..system_utils import get_gpu_device_ids, is_nvidia_system, is_rocm_system, get_rocm_version
-from ..import_utils import is_pynvml_available, is_amdsmi_available, is_torch_available
+from ..import_utils import is_pynvml_available, is_amdsmi_available, is_torch_available, is_torch_distributed_available
+
+if is_torch_distributed_available():
+    import torch.distributed
 
 if is_nvidia_system() and is_pynvml_available():
     import pynvml
@@ -87,6 +90,9 @@ class MemoryTracker:
                         f"Got {len(self.device_ids)} and {num_pytorch_devices} respectively."
                     )
                 LOGGER.info(f"\t+ Tracking Allocated/Reserved memory of {num_pytorch_devices} Pytorch CUDA devices")
+
+        if is_torch_distributed_available() and torch.distributed.is_initialized():
+            torch.distributed.barrier()
 
         self.reset()
 

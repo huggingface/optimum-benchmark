@@ -9,7 +9,7 @@ from ..base import Backend
 from .config import PyTorchConfig
 from ..peft_utils import get_peft_config_class
 from ..transformers_utils import randomize_weights
-from ...import_utils import is_deepspeed_available, is_peft_available
+from ...import_utils import is_deepspeed_available, is_peft_available, is_torch_distributed_available
 
 import torch
 from datasets import Dataset
@@ -22,8 +22,12 @@ from transformers import TrainerCallback, TrainerState, Trainer, TrainingArgumen
 if is_peft_available():
     from peft import get_peft_model  # type: ignore
 
+if is_torch_distributed_available():
+    import torch.distributed
+
 if is_deepspeed_available():
     from deepspeed import init_inference  # type: ignore
+
 
 # disable other loggers
 datasets_logging.set_verbosity_error()
@@ -277,8 +281,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
     def is_exllamav2(self) -> bool:
         return (
             self.is_gptq_quantized
-            and "exllama_config" in self.quantization_config
-            and self.quantization_config["exllama_config"].get("version", None) == 2
+            and hasattr(self.quantization_config, "exllama_config")
+            and self.quantization_config.exllama_config.get("version", None) == 2
         )
 
     @property
@@ -356,6 +360,10 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             torch.cuda.manual_seed_all(self.config.seed)
 
     def clean(self) -> None:
+        if is_torch_distributed_available() and torch.distributed.is_initialized():
+            LOGGER.info("\t+ Waiting for distributed processes to finish before cleaning backend")
+            torch.distributed.barrier()
+
         super().clean()
 
         if hasattr(self, "tmpdir"):

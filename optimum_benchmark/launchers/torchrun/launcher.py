@@ -1,6 +1,4 @@
-import multiprocessing as mp
 from logging import getLogger
-from multiprocessing import Queue, Lock
 from typing import Callable, Dict, Any, List
 
 from ..base import Launcher
@@ -10,6 +8,7 @@ from ..isolation_utils import device_isolation
 from ...logging_utils import setup_logging
 
 import torch.distributed
+import torch.multiprocessing as mp
 from torch.distributed.elastic.multiprocessing import Std
 from torch.distributed.elastic.multiprocessing.errors import record
 from torch.distributed.launcher.api import LaunchConfig, launch_agent
@@ -29,6 +28,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             mp.set_start_method(self.config.start_method, force=True)
 
     def launch(self, worker: Callable, *worker_args) -> Dict[str, Any]:
+        log_level = getLogger().getEffectiveLevel()
         launch_config = LaunchConfig(
             min_nodes=self.config.min_nodes,
             max_nodes=self.config.max_nodes,
@@ -47,9 +47,10 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             local_addr=self.config.local_addr,
             log_dir=self.config.log_dir,
         )
-        lock = Lock()
-        queue = Queue(1)
-        log_level = getLogger().getEffectiveLevel()
+
+        ctx = mp.get_context(self.config.start_method)
+        queue = ctx.Queue()
+        lock = ctx.Lock()
 
         with device_isolation(enabled=self.config.device_isolation):
             LOGGER.info(f"\t+ Launching torchrun agent with {self.config.nproc_per_node} workers processes")
@@ -69,32 +70,28 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
         else:
             raise ValueError("No benchmark report was returned by the workers")
 
+        setup_logging(level=log_level)
         report.log()
 
         return report
 
 
 @record
-def entrypoint(fn, queue, lock, log_level, *args):
+def entrypoint(worker, queue, lock, log_level, *worker_args):
     """
     This a pickalable function that correctly sets up the logging configuration
     """
-    if not torch.distributed.is_initialized():
-        # initialize the process group if not already initialized
-        backend = "nccl" if torch.cuda.is_available() else "gloo"
-        torch.distributed.init_process_group(backend=backend)
+    torch.distributed.init_process_group()
 
     rank = torch.distributed.get_rank()
+
+    if rank == 0:
+        setup_logging(level=log_level, prefix=f"RANK-{rank}")
 
     if torch.cuda.is_available():
         torch.cuda.set_device(rank)
 
-    if rank == 0:
-        setup_logging(level=log_level, prefix="RANK-0")
-    else:
-        setup_logging(level="ERROR")
-
-    output = fn(*args)
+    output = worker(*worker_args)
 
     lock.acquire()
     queue.put(output)

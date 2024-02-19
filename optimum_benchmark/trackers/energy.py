@@ -5,7 +5,10 @@ from contextlib import contextmanager
 from typing import Optional, Literal, List
 
 from ..system_utils import get_gpu_device_ids
-from ..import_utils import is_codecarbon_available
+from ..import_utils import is_codecarbon_available, is_torch_distributed_available
+
+if is_torch_distributed_available():
+    import torch.distributed
 
 if is_codecarbon_available():
     from codecarbon import EmissionsTracker, OfflineEmissionsTracker  # type: ignore
@@ -78,11 +81,6 @@ class EnergyTracker:
         self.device = device
         self.device_ids = device_ids
 
-        self.cpu_energy: float = 0
-        self.gpu_energy: float = 0
-        self.ram_energy: float = 0
-        self.total_energy: float = 0
-
         if self.device == "cuda":
             if self.device_ids is None:
                 LOGGER.warning("\t+ `device=cuda` but `device_ids` not provided. Using all available CUDA devices.")
@@ -90,6 +88,11 @@ class EnergyTracker:
 
             self.device_ids = list(map(int, self.device_ids.split(",")))
             LOGGER.info(f"\t+ Tracking GPU energy on devices {self.device_ids}")
+
+        if is_torch_distributed_available() and torch.distributed.is_initialized():
+            torch.distributed.barrier()
+
+        self.reset()
 
     def reset(self):
         self.cpu_energy = 0

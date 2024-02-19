@@ -1,5 +1,9 @@
 # List of targets that are not associated with files
-.PHONY:	quality style install install_dev_cpu install_dev_gpu, build_docker_cpu, build_docker_cuda, build_docker_rocm, test_cli_cpu_neural_compressor, test_cli_cpu_onnxruntime, test_cli_cpu_openvino, test_cli_cpu_pytorch, test_cli_rocm_pytorch, test_api_cpu, test_api_cuda, test_api_rocm, test_api_misc
+.PHONY:	quality style install \
+		build_docker_cpu, build_docker_cuda, build_docker_rocm, \ 
+		test_cli_cpu_pytorch, test_cli_rocm_pytorch, \
+		test_cli_cpu_neural_compressor, test_cli_cpu_onnxruntime, test_cli_cpu_openvino, \
+		test_api_cpu, test_api_cuda, test_api_rocm, test_api_misc
 
 quality:
 	ruff check .

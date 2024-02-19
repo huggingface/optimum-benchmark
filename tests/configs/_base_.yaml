@@ -2,9 +2,8 @@ defaults:
   - launcher: process # isolated process launcher
   - experiment # inheriting experiment schema
   - _self_ # for hydra 1.1 compatibility
-  - override hydra/hydra_logging: colorlog # colorful logging
-  - override hydra/job_logging: colorlog # colorful logging
-  - override hydra/launcher: joblib # for parallelization
+  - override hydra/hydra_logging: colorlog
+  - override hydra/job_logging: colorlog
 
 experiment_name: ${device}_${benchmark.name}_${backend.name}_${task}
 
@@ -20,13 +19,5 @@ hydra:
     # change working directory to the run directory
     chdir: true
     env_set:
-      # set environment variable OVERRIDE_BENCHMARKS to 1
-      # to not skip benchmarks that have been run before
+      # to not skip benchmarks if results already exist
       OVERRIDE_BENCHMARKS: 1
-
-  # we are using joblib launcher to parallelize testing since
-  # we're having ccorrect benchmarks is not important while testing
-  # to force sequential execution, uncomment the following three lines
-  # launcher:
-  #   n_jobs: -1 # 1 for debugging
-  #   batch_size: auto # 1 for debugging

@@ -8,6 +8,7 @@ from optimum_benchmark.experiment import ExperimentConfig, launch
 from optimum_benchmark.launchers.inline.config import InlineConfig
 from optimum_benchmark.backends.pytorch.config import PyTorchConfig
 from optimum_benchmark.launchers.process.config import ProcessConfig
+from optimum_benchmark.launchers.torchrun.config import TorchrunConfig
 from optimum_benchmark.benchmarks.inference.config import INPUT_SHAPES
 from optimum_benchmark.benchmarks.training.config import DATASET_SHAPES
 from optimum_benchmark.generators.input_generator import InputGenerator
@@ -36,7 +37,11 @@ LIBRARIES_TASKS_MODELS = [
     ("transformers", "image-classification", "google/vit-base-patch16-224"),
     ("transformers", "semantic-segmentation", "google/vit-base-patch16-224"),
 ]
-LAUNCHER_CONFIGS = [InlineConfig(device_isolation=False), ProcessConfig(device_isolation=False)]
+LAUNCHER_CONFIGS = [
+    InlineConfig(device_isolation=False),
+    ProcessConfig(device_isolation=False),
+    TorchrunConfig(device_isolation=False, nproc_per_node=2),
+]
 BACKENDS = ["pytorch", "none"]
 DEVICES = ["cpu", "cuda"]
 
@@ -88,8 +93,7 @@ def test_api_memory_tracker(device, backend):
         else:
             measured_memory = final_memory.max_vram - initial_memory.max_vram
             if torch.version.hip is not None:
-                # skip vram measurement for ROCm
-                return
+                return  # skip vram measurement for ROCm
     else:
         measured_memory = final_memory.max_ram - initial_memory.max_ram
 

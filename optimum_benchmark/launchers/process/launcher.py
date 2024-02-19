@@ -1,8 +1,5 @@
 from typing import Callable
-import multiprocessing as mp
 from logging import getLogger
-from multiprocessing import Process, Queue, Lock
-from multiprocessing.synchronize import Lock as LockType
 
 from ..base import Launcher
 from .config import ProcessConfig
@@ -10,6 +7,7 @@ from ...logging_utils import setup_logging
 from ..isolation_utils import device_isolation
 from ...benchmarks.report import BenchmarkReport
 
+import torch.multiprocessing as mp
 
 LOGGER = getLogger("process")
 
@@ -25,28 +23,34 @@ class ProcessLauncher(Launcher[ProcessConfig]):
             mp.set_start_method(self.config.start_method, force=True)
 
     def launch(self, worker: Callable, *worker_args) -> BenchmarkReport:
-        lock = Lock()
-        queue = Queue(1000)
-        current_log_level = getLogger().getEffectiveLevel()
-        worker_process = Process(
-            target=target, args=(worker, queue, lock, current_log_level, *worker_args), daemon=False
-        )
+        log_level = getLogger().getEffectiveLevel()
+
+        ctx = mp.get_context(self.config.start_method)
+        queue = ctx.Queue()
+        lock = ctx.Lock()
 
         with device_isolation(enabled=self.config.device_isolation):
-            worker_process.start()
-            LOGGER.info(f"\t+ Launched worker process with PID {worker_process.pid}.")
-            worker_process.join()
+            process_context = mp.start_processes(
+                entrypoint,
+                args=(worker, queue, lock, log_level, *worker_args),
+                start_method=self.config.start_method,
+                daemon=False,
+                join=False,
+                nprocs=1,
+            )
+            LOGGER.info(f"\t+ Launched worker process(es) with PID(s): {process_context.pids()}")
+            while not process_context.join():
+                pass
 
         try:
-            report = queue.get()
+            report: BenchmarkReport = queue.get()
         except EOFError:
-            LOGGER.error(f"\t+ Worker process exited with code {worker_process.exitcode}, forwarding...")
-            exit(worker_process.exitcode)
+            raise RuntimeError("Worker process did not return a report")
 
         return report
 
 
-def target(fn: Callable, queue: Queue, lock: LockType, log_level: str, *args):
+def entrypoint(_, worker, queue, lock, log_level, *worker_args):
     """
     This a pickalable function that correctly sets up the logging configuration for the worker process,
     and puts the output of the worker function into a lock-protected queue.
@@ -54,8 +58,8 @@ def target(fn: Callable, queue: Queue, lock: LockType, log_level: str, *args):
 
     setup_logging(log_level)
 
-    out = fn(*args)
+    worker_output = worker(*worker_args)
 
     lock.acquire()
-    queue.put(out)
+    queue.put(worker_output)
     lock.release()
