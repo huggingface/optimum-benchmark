@@ -1,16 +1,16 @@
-from typing import Optional, Union, List, Dict, Any
-from dataclasses import dataclass, asdict
-from logging import getLogger
-from json import dump
 import os
+from dataclasses import asdict, dataclass
+from json import dump
+from logging import getLogger
+from typing import Any, Dict, List, Optional, Union
 
-from ..trackers.latency import Latency, Throughput
-from ..trackers.energy import Energy, Efficiency
-from ..trackers.memory import Memory
-
-from transformers.configuration_utils import PushToHubMixin
-from flatten_dict import flatten
 import pandas as pd
+from flatten_dict import flatten
+from transformers.configuration_utils import PushToHubMixin
+
+from ..trackers.energy import Efficiency, Energy
+from ..trackers.latency import Latency, Throughput
+from ..trackers.memory import Memory
 
 LOGGER = getLogger("report")
 

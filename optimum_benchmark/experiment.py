@@ -1,26 +1,27 @@
 import os
+from dataclasses import asdict, dataclass, field
 from logging import getLogger
 from tempfile import TemporaryDirectory
-from dataclasses import dataclass, field, asdict
-from typing import Any, Dict, Type, Optional, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Optional, Type, Union
 
-from .system_utils import get_system_info
-from .import_utils import get_hf_libs_info
-from .benchmarks.report import BenchmarkReport
-from .benchmarks.config import BenchmarkConfig
-from .launchers.config import LauncherConfig
 from .backends.config import BackendConfig
+from .benchmarks.config import BenchmarkConfig
+from .benchmarks.report import BenchmarkReport
+from .import_utils import get_hf_libs_info
+from .launchers.config import LauncherConfig
+from .system_utils import get_system_info
 
 if TYPE_CHECKING:
     # avoid importing any torch to be able to set
     # the CUDA_VISIBLE_DEVICES environment variable
     # in BackendConfig __post_init__
+    from .backends.base import Backend
     from .benchmarks.base import Benchmark
     from .launchers.base import Launcher
-    from .backends.base import Backend
+
+from json import dump
 
 import pandas as pd
-from json import dump
 from flatten_dict import flatten
 from hydra.utils import get_class
 from transformers.configuration_utils import PushToHubMixin

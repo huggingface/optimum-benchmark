@@ -1,12 +1,12 @@
 from logging import getLogger
 from typing import Any, Dict
 
+from hydra.utils import get_class
+from transformers.utils import ModelOutput
+
 from ..base import Backend
 from .config import TRTLLMConfig
 from .utils import MODEL_TYPE_TO_TRTLLMMODEL
-
-from hydra.utils import get_class
-from transformers.utils import ModelOutput
 
 LOGGER = getLogger("tensorrt-llm")
 

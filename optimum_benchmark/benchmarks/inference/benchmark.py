@@ -1,16 +1,16 @@
-from logging import getLogger
 from dataclasses import dataclass
+from logging import getLogger
 
-from ..base import Benchmark
-from .config import InferenceConfig
-from ...trackers.memory import MemoryTracker
 from ...backends.base import Backend, BackendConfigT
 from ...generators.input_generator import InputGenerator
-from ...trackers.energy import EnergyTracker, Efficiency
-from ...trackers.latency import LatencyTracker, Throughput
 from ...import_utils import is_torch_distributed_available
-from ..report import BenchmarkReport, BenchmarkMeasurements
-from ...task_utils import TEXT_GENERATION_TASKS, IMAGE_DIFFUSION_TASKS
+from ...task_utils import IMAGE_DIFFUSION_TASKS, TEXT_GENERATION_TASKS
+from ...trackers.energy import Efficiency, EnergyTracker
+from ...trackers.latency import LatencyTracker, Throughput
+from ...trackers.memory import MemoryTracker
+from ..base import Benchmark
+from ..report import BenchmarkMeasurements, BenchmarkReport
+from .config import InferenceConfig
 
 if is_torch_distributed_available():
     import torch.distributed

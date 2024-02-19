@@ -1,21 +1,21 @@
 import os
 from typing import Any, Dict, Optional, Union
 
-from ..import_utils import is_transformers_available, is_torch_available
+from ..import_utils import is_torch_available, is_transformers_available
 
 if is_torch_available():
     import torch
 
 if is_transformers_available():
     from transformers import (
-        FeatureExtractionMixin,
-        ImageProcessingMixin,
-        PreTrainedTokenizer,
-        GenerationConfig,
-        PretrainedConfig,
-        ProcessorMixin,
-        AutoProcessor,
         AutoConfig,
+        AutoProcessor,
+        FeatureExtractionMixin,
+        GenerationConfig,
+        ImageProcessingMixin,
+        PretrainedConfig,
+        PreTrainedTokenizer,
+        ProcessorMixin,
     )
 
     PretrainedProcessor = Union[FeatureExtractionMixin, ImageProcessingMixin, PreTrainedTokenizer, ProcessorMixin]

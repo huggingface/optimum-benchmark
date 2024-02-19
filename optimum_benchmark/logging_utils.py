@@ -1,9 +1,9 @@
-import os
 import logging
 import logging.config
+import os
 from logging import Logger
+from subprocess import PIPE, STDOUT, Popen
 from typing import Optional
-from subprocess import Popen, PIPE, STDOUT
 
 from omegaconf import OmegaConf
 

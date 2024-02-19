@@ -1,10 +1,18 @@
+# [tool.isort]
+# profile = "ruff"
+# lines_after_imports = 2
+# known_first_party = "optimum_benchmark"
+
 [tool.ruff]
 line-length = 120
+ignore = ["C901", "E501", "E741", "W605"]
+select = ["C", "E", "F", "I", "W", "I001"]
 
 [tool.ruff.format]
+line-ending = "auto"
 quote-style = "double"
 indent-style = "space"
-skip-magic-trailing-comma = true
+skip-magic-trailing-comma = false
 
 [tool.pytest.ini_options]
 log_cli = true

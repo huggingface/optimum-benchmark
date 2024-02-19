@@ -1,13 +1,13 @@
 import os
 from abc import ABC
-from logging import getLogger
 from dataclasses import dataclass, field
-from typing import Optional, TypeVar, Dict, Any
+from logging import getLogger
+from typing import Any, Dict, Optional, TypeVar
+
+from psutil import cpu_count
 
 from ..system_utils import get_gpu_device_ids, is_nvidia_system, is_rocm_system
 from ..task_utils import infer_library_from_model_name_or_path, infer_task_from_model_name_or_path
-
-from psutil import cpu_count
 
 LOGGER = getLogger("backend")
 

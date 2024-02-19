@@ -4,10 +4,10 @@ from ..import_utils import is_peft_available
 
 if is_peft_available():
     from peft import (
+        AdaLoraConfig,
         IA3Config,
         LoraConfig,
         PeftConfig,
-        AdaLoraConfig,
         PrefixTuningConfig,
         PromptEncoderConfig,
         PromptLearningConfig,

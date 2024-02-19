@@ -1,8 +1,8 @@
 from typing import Dict
 
-from ..import_utils import is_diffusers_available
-
 from hydra.utils import get_class
+
+from ..import_utils import is_diffusers_available
 
 if is_diffusers_available():
     import diffusers  # type: ignore

@@ -59,7 +59,8 @@ class TrainingConfig(BenchmarkConfig):
         if self.max_steps != self.training_arguments["max_steps"]:
             LOGGER.warning(
                 f"`benchmark.max_steps` ({self.max_steps}) and `benchmark.training_arguments.max_steps` "
-                f"({self.training_arguments['max_steps']}) are different. Using `benchmark.training_arguments.max_steps`."
+                f"({self.training_arguments['max_steps']}) are different. "
+                "Using `benchmark.training_arguments.max_steps`."
             )
             self.max_steps = self.training_arguments["max_steps"]
 

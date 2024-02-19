@@ -1,10 +1,10 @@
-from typing import Callable
 from logging import getLogger
+from typing import Callable
 
-from ..base import Launcher
-from .config import InlineConfig
-from ..isolation_utils import device_isolation
 from ...benchmarks.report import BenchmarkReport
+from ..base import Launcher
+from ..isolation_utils import device_isolation
+from .config import InlineConfig
 
 LOGGER = getLogger("inline")
 

@@ -2,28 +2,26 @@ import gc
 import time
 from tempfile import TemporaryDirectory
 
-from optimum_benchmark.trackers.memory import MemoryTracker
-from optimum_benchmark.trackers.latency import LatencyTracker
-from optimum_benchmark.experiment import ExperimentConfig, launch
-from optimum_benchmark.launchers.inline.config import InlineConfig
+import pytest
+import torch
+
 from optimum_benchmark.backends.pytorch.config import PyTorchConfig
-from optimum_benchmark.launchers.process.config import ProcessConfig
-from optimum_benchmark.launchers.torchrun.config import TorchrunConfig
-from optimum_benchmark.benchmarks.inference.config import INPUT_SHAPES
-from optimum_benchmark.benchmarks.training.config import DATASET_SHAPES
-from optimum_benchmark.generators.input_generator import InputGenerator
-from optimum_benchmark.benchmarks.inference.config import InferenceConfig
-from optimum_benchmark.generators.dataset_generator import DatasetGenerator
-from optimum_benchmark.task_utils import TEXT_GENERATION_TASKS, IMAGE_DIFFUSION_TASKS
 from optimum_benchmark.backends.timm_utils import extract_timm_shapes_from_config, get_timm_pretrained_config
 from optimum_benchmark.backends.transformers_utils import (
     extract_transformers_shapes_from_artifacts,
     get_transformers_pretrained_config,
 )
-
-import pytest
-import torch
-
+from optimum_benchmark.benchmarks.inference.config import INPUT_SHAPES, InferenceConfig
+from optimum_benchmark.benchmarks.training.config import DATASET_SHAPES
+from optimum_benchmark.experiment import ExperimentConfig, launch
+from optimum_benchmark.generators.dataset_generator import DatasetGenerator
+from optimum_benchmark.generators.input_generator import InputGenerator
+from optimum_benchmark.launchers.inline.config import InlineConfig
+from optimum_benchmark.launchers.process.config import ProcessConfig
+from optimum_benchmark.launchers.torchrun.config import TorchrunConfig
+from optimum_benchmark.task_utils import IMAGE_DIFFUSION_TASKS, TEXT_GENERATION_TASKS
+from optimum_benchmark.trackers.latency import LatencyTracker
+from optimum_benchmark.trackers.memory import MemoryTracker
 
 LIBRARIES_TASKS_MODELS = [
     ("transformers", "fill-mask", "bert-base-uncased"),

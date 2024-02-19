@@ -1,14 +1,14 @@
 import os
-import time
 import signal
-from typing import Dict, Set
+import time
+from contextlib import contextmanager
 from logging import getLogger
 from multiprocessing import Process
-from contextlib import contextmanager
+from typing import Dict, Set
 
+from ..import_utils import is_amdsmi_available, is_psutil_available, is_pynvml_available
 from ..logging_utils import setup_logging
-from ..system_utils import is_nvidia_system, is_rocm_system, get_rocm_version
-from ..import_utils import is_amdsmi_available, is_pynvml_available, is_psutil_available
+from ..system_utils import get_rocm_version, is_nvidia_system, is_rocm_system
 
 if is_psutil_available():
     import psutil

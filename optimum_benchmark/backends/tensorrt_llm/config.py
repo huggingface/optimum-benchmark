@@ -1,9 +1,8 @@
-from typing import Optional
 from dataclasses import dataclass
+from typing import Optional
 
-from ..config import BackendConfig
 from ...import_utils import tesnorrt_llm_version
-
+from ..config import BackendConfig
 
 SUPPORTED_DTYPES = ["float16", "bfloat16", "float32"]
 

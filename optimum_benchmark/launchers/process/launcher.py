@@ -1,13 +1,13 @@
-from typing import Callable
 from logging import getLogger
-
-from ..base import Launcher
-from .config import ProcessConfig
-from ...logging_utils import setup_logging
-from ..isolation_utils import device_isolation
-from ...benchmarks.report import BenchmarkReport
+from typing import Callable
 
 import torch.multiprocessing as mp
+
+from ...benchmarks.report import BenchmarkReport
+from ...logging_utils import setup_logging
+from ..base import Launcher
+from ..isolation_utils import device_isolation
+from .config import ProcessConfig
 
 LOGGER = getLogger("process")
 

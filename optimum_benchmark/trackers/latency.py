@@ -1,16 +1,16 @@
-from typing import List, Literal, Union
+import time
 from contextlib import contextmanager
 from dataclasses import dataclass
 from logging import getLogger
-import time
+from typing import List, Literal, Union
 
 from ..import_utils import is_torch_distributed_available
 
 if is_torch_distributed_available():
     import torch.distributed
 
-from transformers import TrainerCallback, LogitsProcessor
 import torch
+from transformers import LogitsProcessor, TrainerCallback
 
 LOGGER = getLogger("latency")
 

@@ -1,7 +1,7 @@
 import uuid
+from dataclasses import dataclass, field
 from logging import getLogger
 from typing import Any, Dict, Optional
-from dataclasses import dataclass, field
 
 from ..config import LauncherConfig
 

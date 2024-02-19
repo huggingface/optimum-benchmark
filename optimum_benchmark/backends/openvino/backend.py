@@ -1,26 +1,26 @@
 import gc
-import os
 import inspect
-from typing import Any, Dict
-from logging import getLogger
+import os
 from collections import OrderedDict
+from logging import getLogger
 from tempfile import TemporaryDirectory
-
-from ..base import Backend
-from .config import OVConfig
-from .utils import TASKS_TO_OVMODEL
-from ...task_utils import TEXT_GENERATION_TASKS
-from ..transformers_utils import randomize_weights
-from ...generators.dataset_generator import DatasetGenerator
+from typing import Any, Dict
 
 import torch
 from hydra.utils import get_class
 from openvino.runtime import properties
-from safetensors.torch import save_file
+from optimum.intel.openvino import OVConfig as OVQuantizationConfig  # naming conflict
 from optimum.intel.openvino import OVQuantizer
+from safetensors.torch import save_file
 from transformers.modeling_utils import no_init_weights
 from transformers.utils.logging import set_verbosity_error
-from optimum.intel.openvino import OVConfig as OVQuantizationConfig  # naming conflict
+
+from ...generators.dataset_generator import DatasetGenerator
+from ...task_utils import TEXT_GENERATION_TASKS
+from ..base import Backend
+from ..transformers_utils import randomize_weights
+from .config import OVConfig
+from .utils import TASKS_TO_OVMODEL
 
 # disable transformers logging
 set_verbosity_error()

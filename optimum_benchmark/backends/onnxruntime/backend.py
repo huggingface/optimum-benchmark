@@ -1,40 +1,40 @@
 import gc
 import os
-from logging import getLogger
 from collections import OrderedDict
+from logging import getLogger
 from tempfile import TemporaryDirectory
 from typing import Any, Callable, Dict, List
-
-from ..base import Backend
-from .config import ORTConfig
-from ...task_utils import TEXT_GENERATION_TASKS
-from ...generators.dataset_generator import DatasetGenerator
-from .utils import format_calibration_config, format_quantization_config, TASKS_TO_ORTMODELS, TASKS_TO_ORTSD
 
 import torch
 from datasets import Dataset
 from hydra.utils import get_class
 from onnxruntime import SessionOptions
+from optimum.onnxruntime import (
+    ONNX_DECODER_NAME,
+    ONNX_DECODER_WITH_PAST_NAME,
+    ORTOptimizer,
+    ORTQuantizer,
+    ORTTrainer,
+    ORTTrainingArguments,
+)
+from optimum.onnxruntime.configuration import (
+    AutoCalibrationConfig,
+    AutoOptimizationConfig,
+    AutoQuantizationConfig,
+    CalibrationConfig,
+    OptimizationConfig,
+    QuantizationConfig,
+)
 from safetensors.torch import save_file
 from transformers import TrainerCallback
 from transformers.modeling_utils import no_init_weights
 from transformers.utils.logging import set_verbosity_error
-from optimum.onnxruntime.configuration import (
-    AutoOptimizationConfig,
-    AutoQuantizationConfig,
-    AutoCalibrationConfig,
-    OptimizationConfig,
-    QuantizationConfig,
-    CalibrationConfig,
-)
-from optimum.onnxruntime import (
-    ONNX_DECODER_WITH_PAST_NAME,
-    ONNX_DECODER_NAME,
-    ORTTrainingArguments,
-    ORTOptimizer,
-    ORTQuantizer,
-    ORTTrainer,
-)
+
+from ...generators.dataset_generator import DatasetGenerator
+from ...task_utils import TEXT_GENERATION_TASKS
+from ..base import Backend
+from .config import ORTConfig
+from .utils import TASKS_TO_ORTMODELS, TASKS_TO_ORTSD, format_calibration_config, format_quantization_config
 
 # disable transformers logging
 set_verbosity_error()

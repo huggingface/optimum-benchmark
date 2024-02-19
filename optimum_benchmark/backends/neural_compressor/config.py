@@ -1,10 +1,10 @@
-from typing import Any, Dict, Optional
 from dataclasses import dataclass, field
+from typing import Any, Dict, Optional
 
 from omegaconf import OmegaConf
 
-from ..config import BackendConfig
 from ...import_utils import neural_compressor_version
+from ..config import BackendConfig
 
 # https://github.com/intel/neural-compressor/blob/master/neural_compressor/config.py#L490
 ACCURACY_CRITERION_CONFIG = {"higher_is_better": True, "criterion": "relative", "tolerable_loss": 0.01}

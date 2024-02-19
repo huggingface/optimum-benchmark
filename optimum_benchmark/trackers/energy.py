@@ -1,17 +1,20 @@
 import os
-from logging import getLogger
-from dataclasses import dataclass
 from contextlib import contextmanager
-from typing import Optional, Literal, List
+from dataclasses import dataclass
+from logging import getLogger
+from typing import List, Literal, Optional
 
-from ..system_utils import get_gpu_device_ids
 from ..import_utils import is_codecarbon_available, is_torch_distributed_available
+from ..system_utils import get_gpu_device_ids
 
 if is_torch_distributed_available():
     import torch.distributed
 
 if is_codecarbon_available():
-    from codecarbon import EmissionsTracker, OfflineEmissionsTracker  # type: ignore
+    from codecarbon import (
+        EmissionsTracker,  # type: ignore
+        OfflineEmissionsTracker,
+    )
 
 LOGGER = getLogger("energy")
 

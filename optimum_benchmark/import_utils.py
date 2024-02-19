@@ -1,7 +1,7 @@
-from typing import Optional
 import importlib.metadata
 import importlib.util
 import subprocess
+from typing import Optional
 
 _transformers_available = importlib.util.find_spec("transformers") is not None
 _accelerate_available = importlib.util.find_spec("accelerate") is not None

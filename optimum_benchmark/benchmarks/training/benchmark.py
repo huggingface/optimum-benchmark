@@ -1,17 +1,17 @@
-from logging import getLogger
 from contextlib import ExitStack
 from dataclasses import dataclass
-
-from ..base import Benchmark
-from .config import TrainingConfig
-from ...trackers.memory import MemoryTracker
-from ...backends.base import Backend, BackendConfigT
-from ...trackers.energy import EnergyTracker, Efficiency
-from ..report import BenchmarkReport, BenchmarkMeasurements
-from ...generators.dataset_generator import DatasetGenerator
-from ...trackers.latency import LatencyTrainerCallback, Throughput
+from logging import getLogger
 
 from transformers import default_data_collator
+
+from ...backends.base import Backend, BackendConfigT
+from ...generators.dataset_generator import DatasetGenerator
+from ...trackers.energy import Efficiency, EnergyTracker
+from ...trackers.latency import LatencyTrainerCallback, Throughput
+from ...trackers.memory import MemoryTracker
+from ..base import Benchmark
+from ..report import BenchmarkMeasurements, BenchmarkReport
+from .config import TrainingConfig
 
 LOGGER = getLogger("training")
 

@@ -1,12 +1,12 @@
 import os
-import re
 import platform
+import re
 import subprocess
-from typing import Optional, List
-
-from .import_utils import is_pynvml_available, is_amdsmi_available
+from typing import List, Optional
 
 import psutil
+
+from .import_utils import is_amdsmi_available, is_pynvml_available
 
 
 ## CPU related stuff

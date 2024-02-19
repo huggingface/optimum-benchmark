@@ -1,11 +1,5 @@
 from logging import getLogger
-from typing import Callable, Dict, Any, List
-
-from ..base import Launcher
-from .config import TorchrunConfig
-from ...benchmarks.report import BenchmarkReport
-from ..isolation_utils import device_isolation
-from ...logging_utils import setup_logging
+from typing import Any, Callable, Dict, List
 
 import torch.distributed
 import torch.multiprocessing as mp
@@ -13,6 +7,11 @@ from torch.distributed.elastic.multiprocessing import Std
 from torch.distributed.elastic.multiprocessing.errors import record
 from torch.distributed.launcher.api import LaunchConfig, launch_agent
 
+from ...benchmarks.report import BenchmarkReport
+from ...logging_utils import setup_logging
+from ..base import Launcher
+from ..isolation_utils import device_isolation
+from .config import TorchrunConfig
 
 LOGGER = getLogger("torchrun")
 

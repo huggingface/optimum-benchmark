@@ -1,8 +1,9 @@
-from optimum_benchmark.logging_utils import setup_logging
-from optimum_benchmark.experiment import launch, ExperimentConfig
 from optimum_benchmark.backends.pytorch.config import PyTorchConfig
-from optimum_benchmark.launchers.torchrun.config import TorchrunConfig
 from optimum_benchmark.benchmarks.inference.config import InferenceConfig
+from optimum_benchmark.experiment import ExperimentConfig, launch
+from optimum_benchmark.launchers.torchrun.config import TorchrunConfig
+from optimum_benchmark.logging_utils import setup_logging
+
 
 if __name__ == "__main__":
     setup_logging(level="INFO")
