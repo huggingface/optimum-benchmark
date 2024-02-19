@@ -13,12 +13,12 @@
 # limitations under the License.
 
 ARG CUDNN_VERSION=8
-ARG CUDA_VERSION=12.1.1
+ARG CUDA_VERSION=11.8.0
 ARG UBUNTU_VERSION=22.04
 
 FROM nvidia/cuda:${CUDA_VERSION}-cudnn${CUDNN_VERSION}-devel-ubuntu${UBUNTU_VERSION}
 
-ARG TORCH_CUDA=cu121
+ARG TORCH_CUDA=cu118
 ARG TORCH_PRE_RELEASE=0
 
 # Ignore interactive questions during `docker build`
