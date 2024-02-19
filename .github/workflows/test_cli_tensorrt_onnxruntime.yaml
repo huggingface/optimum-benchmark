@@ -23,9 +23,7 @@ jobs:
           --file docker/tensorrt.dockerfile
           --build-arg USER_ID=$(id -u)
           --build-arg GROUP_ID=$(id -g)
-          --build-arg TENSORRT_VERSION=22.12
-          --build-arg TORCH_CUDA=cu118
-          --tag opt-bench-tensorrt:22.12
+          --tag opt-bench-tensorrt:latest
           .
 
       - name: Run tests
@@ -38,5 +36,5 @@ jobs:
           --workdir /workspace/optimum-benchmark
           --gpus '"device=0,1"'
           --entrypoint /bin/bash
-          opt-bench-tensorrt:22.12
+          opt-bench-tensorrt:latest
           -c "pip install -e .[testing,onnxruntime-gpu,diffusers,timm] && pytest -k 'cli and tensorrt and onnxruntime' -x"

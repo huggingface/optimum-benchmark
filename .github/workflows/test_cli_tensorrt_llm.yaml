@@ -26,15 +26,20 @@ jobs:
           --tag opt-bench-tensorrt-llm:latest
           .
 
+      - name: Get GPUs with most free memory
+        id: get_devices
+        run: |
+          echo "::set-output name=devices::$(nvidia-smi --query-gpu=memory.free,index --format=csv,noheader,nounits | sort -n -k1 | tail -n 2 | awk -F', ' '{print $2}' | xargs echo -n | sed 's/ /,/g' | awk '{print $0}')"
+
       - name: Run tests
         run: docker run
           --rm
           --pid host
           --shm-size 64G
           --env USE_CUDA="1"
+          --gpus '"device=${{ steps.get_devices.outputs.devices }}"'
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
-          --gpus '"device=0,1"'
           --entrypoint /bin/bash
           opt-bench-tensorrt-llm:latest
           -c "pip install -e .[testing] && pip uninstall -y nvidia-ml-py && pytest -k 'cli and tensorrt_llm' -x"
