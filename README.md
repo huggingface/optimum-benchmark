@@ -1,17 +1,20 @@
-<p align="center">
-  <img src="logo.png" alt="Optimum-Benchmark Logo" width="350" style="max-width: 100%;" />
-</p>
+<p align="center"><img src="logo.png" alt="Optimum-Benchmark Logo" width="350" style="max-width: 100%;" /></p>
+<p align="center"><q>All benchmarks are wrong, some will cost you less than the others.</q></p>
 <h1 align="center">Optimum-Benchmark 🏋️</h1>
 
-Optimum-Benchmark is a unified [multi-backend & multi-device](#backends--devices-) utility for benchmarking [Transformers](https://github.com/huggingface/transformers), [Diffusers](https://github.com/huggingface/diffusers), [PEFT](https://github.com/huggingface/peft), [TIMM](https://github.com/huggingface/pytorch-image-models) and [Optimum](https://github.com/huggingface/optimum) flavors, along with all their supported [optimizations & quantization schemes](#backend-features-), for [inference & training](#benchmark-features-%EF%B8%8F), in [distributed & non-distributed settings](#backend-features-).
+Optimum-Benchmark is a unified [multi-backend & multi-device](#backends--devices-) utility for benchmarking [Transformers](https://github.com/huggingface/transformers), [Diffusers](https://github.com/huggingface/diffusers), [PEFT](https://github.com/huggingface/peft), [TIMM](https://github.com/huggingface/pytorch-image-models) and [Optimum](https://github.com/huggingface/optimum) flavors, along with all their supported [optimizations & quantization schemes](#backend-features-), for [inference & training](#benchmark-features-%EF%B8%8F), in [distributed & non-distributed settings](#backend-features-), in the most correct and scalable way possible (no need to even download model weights).
 
-*Motivation* 🤔
+*News* 📰
+- PYPI release soon.
+- Added a simple Python API to run benchmarks with all isolation and tracking features supported by the CLI.
+
+*Motivations* 🤔
 - HF hardware partners wanting to know how their hardware performs compared to another hardware on the same models.
 - HF ecosystem users wanting to know how their chosen model performs in terms of latency, throughput, memory usage, energy consumption, etc compared to another model.
 - Experimenting with hardware & backend specific optimizations & quantization schemes that can be applied to models and improve their computational/memory/energy efficiency.
 
-*Latest News* 📰
-- Added a simple Python API to run benchmarks with all isolation and tracking features supported by the CLI.
+*Notes* 📝
+- If you were using `optimum-benchmark` before and want to keep using the old CLI only version, you can still do so by installing from this branch [`0.0.1`](https://github.com/huggingface/optimum-benchmark/tree/0.0.1).
 
 ## Current status 📈
 
