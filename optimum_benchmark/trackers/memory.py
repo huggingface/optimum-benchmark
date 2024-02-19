@@ -71,6 +71,7 @@ class MemoryTracker:
         self.device = device
         self.backend = backend
         self.device_ids = device_ids
+        self.distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
         LOGGER.info("\t+ Tracking RAM memory")
 
@@ -91,9 +92,6 @@ class MemoryTracker:
                     )
                 LOGGER.info(f"\t+ Tracking Allocated/Reserved memory of {num_pytorch_devices} Pytorch CUDA devices")
 
-        if is_torch_distributed_available() and torch.distributed.is_initialized():
-            torch.distributed.barrier()
-
         self.reset()
 
     def reset(self):
@@ -104,12 +102,18 @@ class MemoryTracker:
 
     @contextmanager
     def track(self):
+        if self.distributed:
+            torch.distributed.barrier()
+
         if self.device == "cuda" and self.backend == "pytorch":
             yield from self._cuda_pytorch_memory()
         elif self.device == "cuda":
             yield from self._cuda_memory()
         else:
             yield from self._cpu_memory()
+
+        if self.distributed:
+            torch.distributed.barrier()
 
     def _cuda_pytorch_memory(self):
         torch.cuda.empty_cache()
@@ -128,6 +132,8 @@ class MemoryTracker:
         self.max_reserved_memory = sum(
             torch.cuda.max_memory_reserved(device=device) / 1e6 for device in range(torch.cuda.device_count())
         )
+
+        torch.cuda.empty_cache()
 
     def _cuda_memory(self):
         child_connection, parent_connection = Pipe()

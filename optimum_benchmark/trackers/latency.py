@@ -92,14 +92,12 @@ class LatencyTracker:
     def __init__(self, device: str, backend: str):
         self.device = device
         self.backend = backend
+        self.distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
         if self.backend == "pytorch" and self.device == "cuda":
             LOGGER.info("\t+ Tracking Pytorch CUDA latency")
         else:
             LOGGER.info("\t+ Tracking CPU latency")
-
-        if is_torch_distributed_available() and torch.distributed.is_initialized():
-            torch.distributed.barrier()
 
         self.reset()
 
@@ -110,10 +108,16 @@ class LatencyTracker:
 
     @contextmanager
     def track(self):
+        if self.distributed:
+            torch.distributed.barrier()
+
         if self.backend == "pytorch" and self.device == "cuda":
             yield from self._pytorch_cuda_latency()
         else:
             yield from self._cpu_latency()
+
+        if self.distributed:
+            torch.distributed.barrier()
 
     def _pytorch_cuda_latency(self):
         start = torch.cuda.Event(enable_timing=True)

@@ -80,6 +80,7 @@ class EnergyTracker:
     def __init__(self, device: str, device_ids: Optional[str] = None):
         self.device = device
         self.device_ids = device_ids
+        self.distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
         if self.device == "cuda":
             if self.device_ids is None:
@@ -88,9 +89,6 @@ class EnergyTracker:
 
             self.device_ids = list(map(int, self.device_ids.split(",")))
             LOGGER.info(f"\t+ Tracking GPU energy on devices {self.device_ids}")
-
-        if is_torch_distributed_available() and torch.distributed.is_initialized():
-            torch.distributed.barrier()
 
         self.reset()
 
@@ -135,9 +133,15 @@ class EnergyTracker:
                 country_iso_code=os.environ.get("COUNTRY_ISO_CODE", "FRA"),
             )
 
+        if self.distributed:
+            torch.distributed.barrier()
+
         self.emission_tracker.start()
         yield
         self.emission_tracker.stop()
+
+        if self.distributed:
+            torch.distributed.barrier()
 
         self.cpu_energy = self.emission_tracker._total_cpu_energy.kWh
         self.gpu_energy = self.emission_tracker._total_gpu_energy.kWh
