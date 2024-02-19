@@ -332,13 +332,14 @@ class ORTBackend(Backend[ORTConfig]):
 
     def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         if self.config.library == "diffusers":
-            return {"prompt": inputs["prompt"]}
+            return inputs
 
         LOGGER.info(f"\t+ Moving inputs tensors to device {self.config.device}")
         for key, value in list(inputs.items()):
             if key in self.inputs_names:
                 inputs[key] = value.to(self.config.device)
             else:
+                LOGGER.warning(f"Input {key} is not in expected inputs names. Removing it.")
                 inputs.pop(key)
 
         return inputs

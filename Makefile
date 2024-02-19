@@ -28,6 +28,7 @@ build_docker_rocm:
 test_cli_cpu_neural_compressor:
 	docker run \
 	--rm \
+	--pid=host \
 	--entrypoint /bin/bash \
 	--volume $(PWD):/workspace \
 	--workdir /workspace \
@@ -36,6 +37,7 @@ test_cli_cpu_neural_compressor:
 test_cli_cpu_onnxruntime:
 	docker run \
 	--rm \
+	--pid=host \
 	--entrypoint /bin/bash \
 	--volume $(PWD):/workspace \
 	--workdir /workspace \
@@ -44,6 +46,7 @@ test_cli_cpu_onnxruntime:
 test_cli_cpu_openvino:
 	docker run \
 	--rm \
+	--pid=host \
 	--entrypoint /bin/bash \
 	--volume $(PWD):/workspace \
 	--workdir /workspace \
@@ -52,6 +55,7 @@ test_cli_cpu_openvino:
 test_cli_cpu_pytorch:
 	docker run \
 	--rm \
+	--pid=host \
 	--entrypoint /bin/bash \
 	--volume $(PWD):/workspace \
 	--workdir /workspace \
@@ -60,6 +64,7 @@ test_cli_cpu_pytorch:
 test_cli_rocm_pytorch:
 	docker run \
 	--rm \
+	--pid=host \
 	--device=/dev/kfd \
 	--device /dev/dri/renderD128 \
 	--device /dev/dri/renderD129 \
@@ -72,6 +77,7 @@ test_cli_rocm_pytorch:
 test_cli_cuda_pytorch:
 	docker run \
 	--rm \
+	--pid=host \
 	--gpus '"device=0,1"' \
 	--entrypoint /bin/bash \
 	--volume $(PWD):/workspace \
@@ -81,6 +87,7 @@ test_cli_cuda_pytorch:
 test_api_cpu:
 	docker run \
 	--rm \
+	--pid=host \
 	--entrypoint /bin/bash \
 	--volume $(PWD):/workspace \
 	--workdir /workspace \
@@ -89,6 +96,7 @@ test_api_cpu:
 test_api_cuda:
 	docker run \
 	--rm \
+	--pid=host \
 	--gpus '"device=0,1"' \
 	--entrypoint /bin/bash \
 	--volume $(PWD):/workspace \
@@ -98,6 +106,7 @@ test_api_cuda:
 test_api_rocm:
 	docker run \
 	--rm \
+	--pid=host \
 	--device=/dev/kfd \
 	--device /dev/dri/renderD128 \
 	--device /dev/dri/renderD129 \
@@ -110,6 +119,7 @@ test_api_rocm:
 test_api_misc:
 	docker run \
 	--rm \
+	--pid=host \
 	--entrypoint /bin/bash \
 	--volume $(PWD):/workspace \
 	--workdir /workspace \

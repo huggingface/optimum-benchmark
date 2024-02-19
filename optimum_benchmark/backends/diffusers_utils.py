@@ -12,7 +12,7 @@ def get_diffusers_pretrained_config(model: str, **kwargs) -> Dict[str, int]:
     return diffusers.DiffusionPipeline.load_config(model, **kwargs)
 
 
-def extract_diffusers_shapes_from_config(model: str, **kwargs) -> Dict[str, int]:
+def extract_diffusers_shapes_from_model(model: str, **kwargs) -> Dict[str, int]:
     config = diffusers.DiffusionPipeline.load_config(model, **kwargs)
 
     shapes = {}

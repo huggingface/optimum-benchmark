@@ -5,6 +5,10 @@ from tempfile import TemporaryDirectory
 import pytest
 import torch
 
+from optimum_benchmark.backends.diffusers_utils import (
+    extract_diffusers_shapes_from_model,
+    get_diffusers_pretrained_config,
+)
 from optimum_benchmark.backends.pytorch.config import PyTorchConfig
 from optimum_benchmark.backends.timm_utils import extract_timm_shapes_from_config, get_timm_pretrained_config
 from optimum_benchmark.backends.transformers_utils import (
@@ -19,7 +23,6 @@ from optimum_benchmark.generators.input_generator import InputGenerator
 from optimum_benchmark.launchers.inline.config import InlineConfig
 from optimum_benchmark.launchers.process.config import ProcessConfig
 from optimum_benchmark.launchers.torchrun.config import TorchrunConfig
-from optimum_benchmark.task_utils import IMAGE_DIFFUSION_TASKS, TEXT_GENERATION_TASKS
 from optimum_benchmark.trackers.latency import LatencyTracker
 from optimum_benchmark.trackers.memory import MemoryTracker
 
@@ -112,18 +115,17 @@ def test_api_input_generator(library, task, model):
     elif library == "timm":
         model_config = get_timm_pretrained_config(model)
         model_shapes = extract_timm_shapes_from_config(model_config)
-    else:
-        raise ValueError(f"Unknown library {library}")
+    elif library == "diffusers":
+        model_config = get_diffusers_pretrained_config(model)
+        model_shapes = extract_diffusers_shapes_from_model(model)
 
-    generator = InputGenerator(task=task, input_shapes=INPUT_SHAPES, model_shapes=model_shapes)
+    input_generator = InputGenerator(task=task, input_shapes=INPUT_SHAPES, model_shapes=model_shapes)
+    generated_inputs = input_generator()
 
-    if task in TEXT_GENERATION_TASKS:
-        _ = generator(mode="forward")
-        _ = generator(mode="generate")
-    elif task in IMAGE_DIFFUSION_TASKS:
-        _ = generator(mode="call")
-    else:
-        _ = generator(mode="forward")
+    assert len(generated_inputs) > 0, "No inputs were generated"
+
+    for key in generated_inputs:
+        assert len(generated_inputs[key]) == INPUT_SHAPES["batch_size"], "Incorrect batch size"
 
 
 @pytest.mark.parametrize("library,task,model", LIBRARIES_TASKS_MODELS)
