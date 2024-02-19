@@ -1,4 +1,3 @@
-import os
 from logging import getLogger
 from typing import Callable, Dict, Any, List
 
@@ -62,15 +61,15 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
         # restore the original logging configuration
         setup_logging(log_level)
 
-        outputs: List[BenchmarkReport] = []
+        reports: List[BenchmarkReport] = []
         while not queue.empty():
-            outputs.append(queue.get())
+            reports.append(queue.get())
 
-        if len(outputs) > 1:
-            LOGGER.info(f"\t+ Merging benchmark reports from {len(outputs)} workers")
-            report = outputs[0].aggregate(outputs)
-        elif len(outputs) == 1:
-            report = outputs[0]
+        if len(reports) > 1:
+            LOGGER.info(f"\t+ Merging benchmark reports from {len(reports)} workers")
+            report = reports[0].aggregate(reports)
+        elif len(reports) == 1:
+            report = reports[0]
         else:
             raise ValueError("No benchmark report was returned by the workers")
 
@@ -85,11 +84,11 @@ def entrypoint(worker, queue, lock, log_level, *worker_args):
     This a pickalable function that correctly sets up the logging configuration
     """
 
-    rank = int(os.environ.get("RANK", "0"))
-    setup_logging(level=log_level, prefix=f"RANK-{rank}") if rank == 0 else None
-
     torch.distributed.init_process_group(backend="nccl" if torch.cuda.is_available() else "gloo")
-    torch.cuda.set_device(rank % torch.cuda.device_count()) if torch.cuda.is_available() else None
+
+    rank = torch.distributed.get_rank()
+    torch.cuda.set_device(rank) if torch.cuda.is_available() else None
+    setup_logging(level=log_level, prefix=f"RANK-{rank}") if rank == 0 else None
 
     output = worker(*worker_args)
 

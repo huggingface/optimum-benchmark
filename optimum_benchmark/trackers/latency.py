@@ -109,7 +109,7 @@ class LatencyTracker:
     @contextmanager
     def track(self):
         if self.distributed:
-            torch.distributed.barrier(device_ids=[torch.distributed.get_rank() % torch.cuda.device_count()])
+            torch.distributed.barrier(device_ids=[torch.cuda.current_device()] if self.device == "cuda" else None)
 
         if self.backend == "pytorch" and self.device == "cuda":
             yield from self._pytorch_cuda_latency()
@@ -117,7 +117,7 @@ class LatencyTracker:
             yield from self._cpu_latency()
 
         if self.distributed:
-            torch.distributed.barrier(device_ids=[torch.distributed.get_rank() % torch.cuda.device_count()])
+            torch.distributed.barrier(device_ids=[torch.cuda.current_device()] if self.device == "cuda" else None)
 
     def _pytorch_cuda_latency(self):
         start = torch.cuda.Event(enable_timing=True)
@@ -166,10 +166,10 @@ class LatencyTrainerCallback(TrainerCallback):
         self.device = device
         self.backend = backend
 
-        self.events: List[Union[float, torch.cuda.Event]] = []
+        self.reset()
 
     def reset(self):
-        self.events = []
+        self.events: List[Union[float, torch.cuda.Event]] = []
 
     def on_step_begin(self, *args, **kwargs):
         if self.device == "cuda" and self.backend == "pytorch":
@@ -206,6 +206,7 @@ class LatencyLogitsProcessor(LogitsProcessor):
     def __init__(self, device: str, backend: str):
         self.device = device
         self.backend = backend
+
         self.reset()
 
     def reset(self):

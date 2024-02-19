@@ -45,10 +45,7 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         # restore the original logging configuration
         setup_logging(log_level)
 
-        try:
-            report: BenchmarkReport = queue.get()
-        except EOFError:
-            raise RuntimeError("Worker process did not return a report")
+        report: BenchmarkReport = queue.get()
 
         return report
 
