@@ -79,25 +79,25 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         )
 
         if backend.config.task in TEXT_GENERATION_TASKS:
-            LOGGER.info("\t+ Generating and preparing Text Generation input")
+            LOGGER.info("\t+ Generating and preparing Text Generation inputs")
             self.text_generation_inputs = self.input_generator()
             self.text_generation_inputs = backend.prepare_inputs(self.text_generation_inputs)
+            self.text_generation_inputs = {"input_ids": self.text_generation_inputs["input_ids"]}
             LOGGER.info("\t+ Updating Text Generation kwargs with default values")
             self.config.generate_kwargs = {**TEXT_GENERATION_KWARGS, **self.config.generate_kwargs}
             LOGGER.info("\t+ Initializing Text Generation report")
             self.report = TextGenerationReport(prefill=BenchmarkMeasurements(), decode=BenchmarkMeasurements())
 
         elif backend.config.task in IMAGE_DIFFUSION_TASKS:
-            LOGGER.info("\t+ Generating and preparing Image Diffusion input")
+            LOGGER.info("\t+ Generating Image Diffusion inputs")
             self.image_diffusion_inputs = self.input_generator()
-            self.image_diffusion_inputs = backend.prepare_inputs(self.image_diffusion_inputs)
             LOGGER.info("\t+ Updating Image Diffusion kwargs with default values")
             self.config.call_kwargs = {**IMAGE_DIFFUSION_KWARGS, **self.config.call_kwargs}
             LOGGER.info("\t+ Initializing Image Diffusion report")
             self.report = ImageDiffusionReport(call=BenchmarkMeasurements())
 
         else:
-            LOGGER.info("\t+ Generating and preparing Inference input")
+            LOGGER.info("\t+ Generating and preparing Inference inputs")
             self.inference_inputs = self.input_generator()
             self.inference_inputs = backend.prepare_inputs(self.inference_inputs)
             LOGGER.info("\t+ Initializing Inference report")
@@ -180,7 +180,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         LOGGER.info("\t+ Running memory tracking")
         self.memory_tracker.reset()
         with self.memory_tracker.track():
-            _ = backend.call(self.image_diffusion_inputs, self.config.forward_kwargs)
+            _ = backend.call(self.image_diffusion_inputs, self.config.call_kwargs)
 
         self.report.call.memory = self.memory_tracker.get_max_memory()
 
@@ -224,7 +224,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         self.latency_tracker.reset()
         while self.latency_tracker.get_elapsed_time() < self.config.duration:
             with self.latency_tracker.track():
-                _ = backend.call(self.image_diffusion_inputs, self.config.forward_kwargs)
+                _ = backend.call(self.image_diffusion_inputs, self.config.call_kwargs)
 
         self.report.call.latency = self.latency_tracker.get_latency()
         self.report.call.throughput = Throughput.from_latency(
@@ -268,7 +268,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         LOGGER.info("\t+ Running energy tracking")
         self.energy_tracker.reset()
         with self.energy_tracker.track():
-            _ = backend.call(self.image_diffusion_inputs, self.config.forward_kwargs)
+            _ = backend.call(self.image_diffusion_inputs, self.config.call_kwargs)
 
         self.report.call.energy = self.energy_tracker.get_energy()
         self.report.call.efficiency = Efficiency.from_energy(
@@ -296,7 +296,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
 
     @property
     def call_volume(self) -> int:  # in images
-        return self.config.input_shapes["batch_size"] * self.config.forward_kwargs["num_images_per_prompt"]
+        return self.config.input_shapes["batch_size"] * self.config.call_kwargs["num_images_per_prompt"]
 
     @property
     def decode_volume(self) -> int:  # in tokens
