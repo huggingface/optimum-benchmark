@@ -42,6 +42,9 @@ class ProcessLauncher(Launcher[ProcessConfig]):
             while not process_context.join():
                 pass
 
+        # restore the original logging configuration
+        setup_logging(log_level)
+
         try:
             report: BenchmarkReport = queue.get()
         except EOFError:
@@ -50,13 +53,13 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         return report
 
 
-def entrypoint(_, worker, queue, lock, log_level, *worker_args):
+def entrypoint(i, worker, queue, lock, log_level, *worker_args):
     """
     This a pickalable function that correctly sets up the logging configuration for the worker process,
     and puts the output of the worker function into a lock-protected queue.
     """
 
-    setup_logging(log_level)
+    setup_logging(log_level, prefix=f"PROC-{i}")
 
     worker_output = worker(*worker_args)
 

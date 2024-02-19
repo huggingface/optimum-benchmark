@@ -134,14 +134,14 @@ class EnergyTracker:
             )
 
         if self.distributed:
-            torch.distributed.barrier()
+            torch.distributed.monitored_barrier()
 
         self.emission_tracker.start()
         yield
         self.emission_tracker.stop()
 
         if self.distributed:
-            torch.distributed.barrier()
+            torch.distributed.monitored_barrier()
 
         self.cpu_energy = self.emission_tracker._total_cpu_energy.kWh
         self.gpu_energy = self.emission_tracker._total_gpu_energy.kWh

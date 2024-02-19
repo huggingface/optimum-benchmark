@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from .launchers.base import Launcher
     from .backends.base import Backend
 
+import pandas as pd
 from json import dump
 from flatten_dict import flatten
 from hydra.utils import get_class
@@ -63,6 +64,13 @@ class ExperimentConfig(PushToHubMixin):
         else:
             with open(path, "w") as f:
                 dump(self.to_dict(), f, indent=4)
+
+    def to_dataframe(self) -> pd.DataFrame:
+        flat_report_dict = self.to_flat_dict()
+        return pd.DataFrame.from_dict(flat_report_dict, orient="index")
+
+    def to_csv(self, path: str) -> None:
+        self.to_dataframe().to_csv(path, index=False)
 
     def save_pretrained(
         self,

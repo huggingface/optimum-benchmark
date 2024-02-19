@@ -147,14 +147,8 @@ def test_api_dataset_generator(library, task, model):
 @pytest.mark.parametrize("launcher_config", LAUNCHER_CONFIGS)
 @pytest.mark.parametrize("device", DEVICES)
 def test_api_launch(launcher_config, device):
-    device_ids = None
-
-    if device == "cuda":
-        device_ids = ",".join(str(i) for i in range(torch.cuda.device_count()))
-
-    # only inference cuz training is slow
     benchmark_config = InferenceConfig(latency=True, memory=True)
-    # only pytorch backend cuz default
+    device_ids = ",".join(str(i) for i in range(torch.cuda.device_count())) if device == "cuda" else None
     backend_config = PyTorchConfig(model="bert-base-uncased", device_ids=device_ids, no_weights=True, device=device)
     experiment_config = ExperimentConfig(
         experiment_name="api-experiment", benchmark=benchmark_config, launcher=launcher_config, backend=backend_config
@@ -164,6 +158,8 @@ def test_api_launch(launcher_config, device):
     with TemporaryDirectory() as tempdir:
         experiment_config.to_dict()
         experiment_config.to_flat_dict()
+        experiment_config.to_dataframe()
+        experiment_config.to_csv(f"{tempdir}/experiment_config.csv")
         experiment_config.to_json(f"{tempdir}/experiment_config.json")
 
         benchmark_report.to_dict()
