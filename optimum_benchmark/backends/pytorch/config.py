@@ -1,20 +1,16 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
-from ..config import BackendConfig
-from ...env_utils import is_rocm_system
 from ...import_utils import torch_version
+from ...system_utils import is_rocm_system
+from ..config import BackendConfig
 from ..peft_utils import PEFT_CONFIGS, PEFT_TASKS_TYPES
 
 DEVICE_MAPS = ["auto", "sequential"]
 AMP_DTYPES = ["bfloat16", "float16"]
 TORCH_DTYPES = ["bfloat16", "float16", "float32", "auto"]
 
-QUANTIZATION_CONFIGS = {
-    "bnb": {"llm_int8_threshold": 0.0},
-    "gptq": {},
-    "awq": {},
-}
+QUANTIZATION_CONFIGS = {"bnb": {"llm_int8_threshold": 0.0}, "gptq": {}, "awq": {}}
 COMPILE_CONFIG = {
     "fullgraph": False,
     "dynamic": False,
@@ -89,10 +85,7 @@ class PyTorchConfig(BackendConfig):
 
             if self.quantization_config:
                 QUANTIZATION_CONFIG = QUANTIZATION_CONFIGS[self.quantization_scheme]
-                self.quantization_config = {
-                    **QUANTIZATION_CONFIG,
-                    **self.quantization_config,
-                }
+                self.quantization_config = {**QUANTIZATION_CONFIG, **self.quantization_config}
 
         if self.peft_strategy is not None:
             if self.peft_strategy not in PEFT_CONFIGS:

@@ -1,29 +1,24 @@
 import os
 from typing import Any, Dict, Optional, Union
 
-from ..import_utils import is_transformers_available, is_torch_available
+from ..import_utils import is_torch_available, is_transformers_available
 
 if is_torch_available():
     import torch
 
 if is_transformers_available():
     from transformers import (
-        FeatureExtractionMixin,
-        ImageProcessingMixin,
-        PreTrainedTokenizer,
-        GenerationConfig,
-        PretrainedConfig,
-        ProcessorMixin,
-        AutoProcessor,
         AutoConfig,
+        AutoProcessor,
+        FeatureExtractionMixin,
+        GenerationConfig,
+        ImageProcessingMixin,
+        PretrainedConfig,
+        PreTrainedTokenizer,
+        ProcessorMixin,
     )
 
-    PretrainedProcessor = Union[
-        FeatureExtractionMixin,
-        ImageProcessingMixin,
-        PreTrainedTokenizer,
-        ProcessorMixin,
-    ]
+    PretrainedProcessor = Union[FeatureExtractionMixin, ImageProcessingMixin, PreTrainedTokenizer, ProcessorMixin]
 
 
 def get_transformers_cache_dir() -> str:
@@ -52,8 +47,7 @@ def get_transformers_pre_processor(model: str, **kwargs) -> Optional["Pretrained
 
 
 def extract_transformers_shapes_from_artifacts(
-    config: "PretrainedConfig",
-    processor: Optional["PretrainedProcessor"] = None,
+    config: "PretrainedConfig", processor: Optional["PretrainedProcessor"] = None
 ) -> Dict[str, Any]:
     artifacts_dict = {}
 

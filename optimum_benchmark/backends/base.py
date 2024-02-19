@@ -1,25 +1,24 @@
 import gc
 import random
 from abc import ABC
-from logging import getLogger
 from collections import OrderedDict
-from typing import Optional, ClassVar, Generic, Dict, Any
-
-from .config import BackendConfigT
-from ..task_utils import get_automodel_class_for_task
-
-from .diffusers_utils import extract_diffusers_shapes_from_config, get_diffusers_pretrained_config
-from .timm_utils import extract_timm_shapes_from_config, get_timm_pretrained_config, get_timm_pre_processor
-from .transformers_utils import (
-    extract_transformers_shapes_from_artifacts,
-    get_transformers_generation_config,
-    get_transformers_pretrained_config,
-    get_transformers_pre_processor,
-    PretrainedProcessor,
-)
+from logging import getLogger
+from typing import Any, ClassVar, Dict, Generic, Optional
 
 import numpy as np
 from transformers import GenerationConfig, PretrainedConfig, PreTrainedModel, TrainerState
+
+from ..task_utils import get_automodel_class_for_task
+from .config import BackendConfigT
+from .diffusers_utils import extract_diffusers_shapes_from_config, get_diffusers_pretrained_config
+from .timm_utils import extract_timm_shapes_from_config, get_timm_pre_processor, get_timm_pretrained_config
+from .transformers_utils import (
+    PretrainedProcessor,
+    extract_transformers_shapes_from_artifacts,
+    get_transformers_generation_config,
+    get_transformers_pre_processor,
+    get_transformers_pretrained_config,
+)
 
 LOGGER = getLogger("backend")
 
@@ -62,10 +61,7 @@ class Backend(Generic[BackendConfigT], ABC):
             self.model_type = self.pretrained_config.model_type
 
         self.automodel_class = get_automodel_class_for_task(
-            model_type=self.model_type,
-            library=self.config.library,
-            task=self.config.task,
-            framework="pt",
+            model_type=self.model_type, library=self.config.library, task=self.config.task, framework="pt"
         )
 
     def seed(self) -> None:

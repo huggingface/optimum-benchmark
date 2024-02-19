@@ -1,40 +1,40 @@
 import gc
 import os
-from logging import getLogger
 from collections import OrderedDict
+from logging import getLogger
 from tempfile import TemporaryDirectory
 from typing import Any, Callable, Dict, List
-
-from ..base import Backend
-from .config import ORTConfig
-from ...task_utils import TEXT_GENERATION_TASKS
-from ...generators.dataset_generator import DatasetGenerator
-from .utils import format_calibration_config, format_quantization_config, TASKS_TO_ORTMODELS, TASKS_TO_ORTSD
 
 import torch
 from datasets import Dataset
 from hydra.utils import get_class
 from onnxruntime import SessionOptions
+from optimum.onnxruntime import (
+    ONNX_DECODER_NAME,
+    ONNX_DECODER_WITH_PAST_NAME,
+    ORTOptimizer,
+    ORTQuantizer,
+    ORTTrainer,
+    ORTTrainingArguments,
+)
+from optimum.onnxruntime.configuration import (
+    AutoCalibrationConfig,
+    AutoOptimizationConfig,
+    AutoQuantizationConfig,
+    CalibrationConfig,
+    OptimizationConfig,
+    QuantizationConfig,
+)
 from safetensors.torch import save_file
 from transformers import TrainerCallback
 from transformers.modeling_utils import no_init_weights
 from transformers.utils.logging import set_verbosity_error
-from optimum.onnxruntime.configuration import (
-    AutoOptimizationConfig,
-    AutoQuantizationConfig,
-    AutoCalibrationConfig,
-    OptimizationConfig,
-    QuantizationConfig,
-    CalibrationConfig,
-)
-from optimum.onnxruntime import (
-    ONNX_DECODER_WITH_PAST_NAME,
-    ONNX_DECODER_NAME,
-    ORTTrainingArguments,
-    ORTOptimizer,
-    ORTQuantizer,
-    ORTTrainer,
-)
+
+from ...generators.dataset_generator import DatasetGenerator
+from ...task_utils import TEXT_GENERATION_TASKS
+from ..base import Backend
+from .config import ORTConfig
+from .utils import TASKS_TO_ORTMODELS, TASKS_TO_ORTSD, format_calibration_config, format_quantization_config
 
 # disable transformers logging
 set_verbosity_error()
@@ -199,8 +199,7 @@ class ORTBackend(Backend[ORTConfig]):
             )
         elif self.config.optimization:
             optimization_config = OptimizationConfig(
-                optimize_for_gpu=(self.config.device == "cuda"),
-                **self.config.optimization_config,
+                optimize_for_gpu=(self.config.device == "cuda"), **self.config.optimization_config
             )
         LOGGER.info("\t+ Creating optimizer")
         optimizer = ORTOptimizer.from_pretrained(self.config.model, file_names=self.onnx_files_names)
@@ -243,15 +242,9 @@ class ORTBackend(Backend[ORTConfig]):
 
         if self.is_calibrated:
             LOGGER.info("\t+ Generating calibration dataset")
-            dataset_shapes = {
-                "dataset_size": 1,
-                "sequence_length": 1,
-                **self.model_shapes,
-            }
+            dataset_shapes = {"dataset_size": 1, "sequence_length": 1, **self.model_shapes}
             calibration_dataset = DatasetGenerator(
-                task=self.config.task,
-                dataset_shapes=dataset_shapes,
-                model_shapes=self.model_shapes,
+                task=self.config.task, dataset_shapes=dataset_shapes, model_shapes=self.model_shapes
             )()
             columns_to_be_removed = list(set(calibration_dataset.column_names) - set(self.inputs_names))
             calibration_dataset = calibration_dataset.remove_columns(columns_to_be_removed)
@@ -260,10 +253,7 @@ class ORTBackend(Backend[ORTConfig]):
             if self.config.auto_calibration is not None:
                 LOGGER.info("\t+ Processing calibration config")
                 auto_calibration_method = getattr(AutoCalibrationConfig, self.config.auto_calibration)
-                calibration_config = auto_calibration_method(
-                    calibration_dataset,
-                    **self.config.auto_calibration_config,
-                )
+                calibration_config = auto_calibration_method(calibration_dataset, **self.config.auto_calibration_config)
             elif self.config.calibration:
                 LOGGER.info("\t+ Processing calibration config")
                 calibration_config = format_calibration_config(self.config.calibration_config)

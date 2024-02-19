@@ -1,17 +1,13 @@
+from dataclasses import dataclass, field
 from logging import getLogger
 from typing import Any, Dict, Optional
-from dataclasses import dataclass, field
 
-from ...env_utils import is_rocm_system
+from ...system_utils import is_rocm_system
 from ..config import BenchmarkConfig
 
 LOGGER = getLogger("inference")
 
-INPUT_SHAPES = {
-    "batch_size": 2,
-    "sequence_length": 16,
-    "num_choices": 2,
-}
+INPUT_SHAPES = {"batch_size": 2, "num_choices": 2, "sequence_length": 16}
 
 
 @dataclass
@@ -40,16 +36,13 @@ class InferenceConfig(BenchmarkConfig):
 
     # methods kwargs
     forward_kwargs: Dict[str, Any] = field(
-        default_factory=dict,
-        metadata={"help": "Keyword arguments to pass to the forward method of the model."},
+        default_factory=dict, metadata={"help": "Keyword arguments to pass to the forward method of the model."}
     )
     generate_kwargs: Dict[str, Any] = field(
-        default_factory=dict,
-        metadata={"help": "Keyword arguments to pass to the generate method of the model."},
+        default_factory=dict, metadata={"help": "Keyword arguments to pass to the generate method of the model."}
     )
     call_kwargs: Dict[str, Any] = field(
-        default_factory=dict,
-        metadata={"help": "Keyword arguments to pass to the __call__ method of the pipeline."},
+        default_factory=dict, metadata={"help": "Keyword arguments to pass to the __call__ method of the pipeline."}
     )
 
     def __post_init__(self):

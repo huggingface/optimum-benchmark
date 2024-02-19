@@ -1,5 +1,6 @@
 import os
 import subprocess
+
 from setuptools import find_packages, setup
 
 MIN_OPTIMUM_VERSION = "1.16.0"
@@ -12,13 +13,10 @@ INSTALL_REQUIRES = [
     "hydra_colorlog",
     "hydra-core",
     "omegaconf",
-    # Other
+    # CPU Memory
     "psutil",
-    "pandas",
     # Reporting
-    "rich",
-    "tabulate",
-    "matplotlib",
+    "pandas",
     "flatten_dict",
 ]
 
@@ -28,20 +26,21 @@ USE_CUDA = os.environ.get("USE_CUDA", None) == "1"
 USE_ROCM = os.environ.get("USE_ROCM", None) == "1"
 
 if USE_CUDA:
-    INSTALL_REQUIRES.append("py3nvml")
+    INSTALL_REQUIRES.append("nvidia-ml-py")
 else:
     try:
         subprocess.run(["nvidia-smi"], stdout=subprocess.DEVNULL)
-        INSTALL_REQUIRES.append("py3nvml")
+        INSTALL_REQUIRES.append("nvidia-ml-py")
     except FileNotFoundError:
         pass
 
+# we keep this as a check that amdsmi is installed since it's not available on pypi
 if USE_ROCM:
-    INSTALL_REQUIRES.append("pyrsmi@git+https://github.com/RadeonOpenCompute/pyrsmi.git")
+    INSTALL_REQUIRES.append("amdsmi")
 else:
     try:
-        subprocess.run(["nvidia-smi"], stdout=subprocess.DEVNULL)
-        INSTALL_REQUIRES.append("pyrsmi@git+https://github.com/RadeonOpenCompute/pyrsmi.git")
+        subprocess.run(["rocm-smi"], stdout=subprocess.DEVNULL)
+        INSTALL_REQUIRES.append("amdsmi")
     except FileNotFoundError:
         pass
 
@@ -54,11 +53,7 @@ EXTRAS_REQUIRE = {
     "onnxruntime": [f"optimum[onnxruntime]>={MIN_OPTIMUM_VERSION}"],
     "neural-compressor": [f"optimum[neural-compressor]>={MIN_OPTIMUM_VERSION}"],
     "onnxruntime-gpu": [f"optimum[onnxruntime-gpu]>={MIN_OPTIMUM_VERSION}"],
-    "torch-ort": [
-        f"optimum>={MIN_OPTIMUM_VERSION}",
-        "onnxruntime-training",
-        "torch-ort",
-    ],
+    "torch-ort": [f"optimum>={MIN_OPTIMUM_VERSION}", "onnxruntime-training", "torch-ort"],
     # docker-based backends
     "text-generation-inference": ["docker"],
     # specific settings
@@ -75,6 +70,6 @@ setup(
     install_requires=INSTALL_REQUIRES,
     extras_require=EXTRAS_REQUIRE,
     packages=find_packages(),
-    version="0.0.2",
+    version="0.1.0",
     entry_points={"console_scripts": ["optimum-benchmark=optimum_benchmark.cli:benchmark_cli"]},
 )

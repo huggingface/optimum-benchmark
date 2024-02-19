@@ -1,22 +1,22 @@
-import os
 import gc
-from typing import Any, Dict
+import os
 from logging import getLogger
 from tempfile import TemporaryDirectory
-
-from ...generators.dataset_generator import DatasetGenerator
-from ..transformers_utils import randomize_weights
-from .utils import TASKS_TO_INCMODELS
-from .config import INCConfig
-from ..base import Backend
+from typing import Any, Dict
 
 import torch
 from hydra.utils import get_class
-from transformers.utils import ModelOutput
-from transformers.modeling_utils import no_init_weights
-from transformers.utils.logging import set_verbosity_error
+from neural_compressor.config import AccuracyCriterion, PostTrainingQuantConfig, TuningCriterion
 from optimum.intel.neural_compressor.quantization import INCQuantizer
-from neural_compressor.config import PostTrainingQuantConfig, AccuracyCriterion, TuningCriterion
+from transformers.modeling_utils import no_init_weights
+from transformers.utils import ModelOutput
+from transformers.utils.logging import set_verbosity_error
+
+from ...generators.dataset_generator import DatasetGenerator
+from ..base import Backend
+from ..transformers_utils import randomize_weights
+from .config import INCConfig
+from .utils import TASKS_TO_INCMODELS
 
 # disable transformers logging
 set_verbosity_error()
@@ -128,15 +128,9 @@ class INCBackend(Backend[INCConfig]):
 
         if self.config.calibration:
             LOGGER.info("\t+ Generating calibration dataset")
-            dataset_shapes = {
-                "dataset_size": 1,
-                "sequence_length": 1,
-                **self.model_shapes,
-            }
+            dataset_shapes = {"dataset_size": 1, "sequence_length": 1, **self.model_shapes}
             calibration_dataset = DatasetGenerator(
-                task=self.config.task,
-                dataset_shapes=dataset_shapes,
-                model_shapes=self.model_shapes,
+                task=self.config.task, dataset_shapes=dataset_shapes, model_shapes=self.model_shapes
             )()
             columns_to_be_removed = list(set(calibration_dataset.column_names) - set(quantizer._signature_columns))
             calibration_dataset = calibration_dataset.remove_columns(columns_to_be_removed)

@@ -1,13 +1,7 @@
 from typing import Any, Dict
 
+from onnxruntime.quantization import CalibrationMethod, QuantFormat, QuantizationMode, QuantType
 from optimum.pipelines import ORT_SUPPORTED_TASKS
-from onnxruntime.quantization import (
-    CalibrationMethod,
-    QuantizationMode,
-    QuantFormat,
-    QuantType,
-)
-
 
 TASKS_TO_ORTSD = {
     "stable-diffusion": "optimum.onnxruntime.ORTStableDiffusionPipeline",

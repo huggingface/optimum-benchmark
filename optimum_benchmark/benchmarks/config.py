@@ -1,8 +1,7 @@
 from abc import ABC
-from typing import TypeVar
-from logging import getLogger
 from dataclasses import dataclass
-
+from logging import getLogger
+from typing import TypeVar
 
 LOGGER = getLogger("benchmark")
 

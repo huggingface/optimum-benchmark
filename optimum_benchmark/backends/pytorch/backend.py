@@ -1,29 +1,33 @@
 import gc
 import os
-from logging import getLogger
 from collections import OrderedDict
+from logging import getLogger
 from tempfile import TemporaryDirectory
 from typing import Any, Callable, Dict, List
 
-from ..base import Backend
-from .config import PyTorchConfig
-from ..peft_utils import get_peft_config_class
-from ..transformers_utils import randomize_weights
-from ...import_utils import is_deepspeed_available, is_peft_available
-
+import datasets.utils.logging as datasets_logging
 import torch
+import transformers.utils.logging as transformers_logging
 from datasets import Dataset
 from safetensors.torch import save_file
-import datasets.utils.logging as datasets_logging
+from transformers import Trainer, TrainerCallback, TrainerState, TrainingArguments
 from transformers.modeling_utils import no_init_weights
-import transformers.utils.logging as transformers_logging
-from transformers import TrainerCallback, TrainerState, Trainer, TrainingArguments
+
+from ...import_utils import is_deepspeed_available, is_peft_available, is_torch_distributed_available
+from ..base import Backend
+from ..peft_utils import get_peft_config_class
+from ..transformers_utils import randomize_weights
+from .config import PyTorchConfig
 
 if is_peft_available():
-    from peft import get_peft_model
+    from peft import get_peft_model  # type: ignore
+
+if is_torch_distributed_available():
+    import torch.distributed
 
 if is_deepspeed_available():
-    from deepspeed import init_inference
+    from deepspeed import init_inference  # type: ignore
+
 
 # disable other loggers
 datasets_logging.set_verbosity_error()
@@ -94,14 +98,12 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 LOGGER.info("\t+ Using torch.compile on unet forward pass")
                 # TODO: should we compile vae and/or clip as well ?
                 self.pretrained_model.unet.forward = torch.compile(
-                    self.pretrained_model.unet.forward,
-                    **self.config.torch_compile_config,
+                    self.pretrained_model.unet.forward, **self.config.torch_compile_config
                 )
             else:
                 LOGGER.info("\t+ Using torch.compile on forward pass")
                 self.pretrained_model.forward = torch.compile(
-                    self.pretrained_model.forward,
-                    **self.config.torch_compile_config,
+                    self.pretrained_model.forward, **self.config.torch_compile_config
                 )
 
         if self.config.peft_strategy is not None:
@@ -176,9 +178,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             LOGGER.info(f"\t+ Loading model directly on device: {self.config.device}")
             with torch.device(self.config.device):
                 self.pretrained_model = self.automodel_class.from_pretrained(
-                    pretrained_model_name_or_path=self.config.model,
-                    **self.config.hub_kwargs,
-                    **self.automodel_kwargs,
+                    pretrained_model_name_or_path=self.config.model, **self.config.hub_kwargs, **self.automodel_kwargs
                 )
 
     def create_no_weights_model(self) -> None:
@@ -233,30 +233,21 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             from transformers import GPTQConfig
 
             self.quantization_config = GPTQConfig(
-                **dict(
-                    getattr(self.pretrained_config, "quantization_config", {}),
-                    **self.config.quantization_config,
-                )
+                **dict(getattr(self.pretrained_config, "quantization_config", {}), **self.config.quantization_config)
             )
         elif self.is_awq_quantized:
             LOGGER.info("\t+ Processing AWQ config")
             from transformers import AwqConfig
 
             self.quantization_config = AwqConfig(
-                **dict(
-                    getattr(self.pretrained_config, "quantization_config", {}),
-                    **self.config.quantization_config,
-                )
+                **dict(getattr(self.pretrained_config, "quantization_config", {}), **self.config.quantization_config)
             )
         elif self.is_bnb_quantized:
             LOGGER.info("\t+ Processing BitsAndBytes config")
             from transformers import BitsAndBytesConfig
 
             self.quantization_config = BitsAndBytesConfig(
-                **dict(
-                    getattr(self.pretrained_config, "quantization_config", {}),
-                    **self.config.quantization_config,
-                )
+                **dict(getattr(self.pretrained_config, "quantization_config", {}), **self.config.quantization_config)
             )
         else:
             self.quantization_config = None
@@ -290,8 +281,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
     def is_exllamav2(self) -> bool:
         return (
             self.is_gptq_quantized
-            and "exllama_config" in self.quantization_config
-            and self.quantization_config["exllama_config"].get("version", None) == 2
+            and hasattr(self.quantization_config, "exllama_config")
+            and self.quantization_config.exllama_config.get("version", None) == 2
         )
 
     @property
@@ -369,6 +360,10 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             torch.cuda.manual_seed_all(self.config.seed)
 
     def clean(self) -> None:
+        if is_torch_distributed_available() and torch.distributed.is_initialized():
+            LOGGER.info("\t+ Waiting for distributed processes to finish before cleaning backend")
+            torch.distributed.barrier()
+
         super().clean()
 
         if hasattr(self, "tmpdir"):

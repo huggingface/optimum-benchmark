@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
-from ..config import BackendConfig
 from ...import_utils import openvino_version
+from ..config import BackendConfig
 
 
 @dataclass

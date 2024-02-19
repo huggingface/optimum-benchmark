@@ -1,6 +1,6 @@
 from typing import Any, Dict, Optional
 
-from ..import_utils import is_timm_available, is_transformers_available, is_torch_available
+from ..import_utils import is_timm_available, is_torch_available, is_transformers_available
 
 if is_torch_available():
     import torch

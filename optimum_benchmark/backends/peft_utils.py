@@ -4,23 +4,16 @@ from ..import_utils import is_peft_available
 
 if is_peft_available():
     from peft import (
+        AdaLoraConfig,
         IA3Config,
         LoraConfig,
         PeftConfig,
-        AdaLoraConfig,
         PrefixTuningConfig,
         PromptEncoderConfig,
         PromptLearningConfig,
     )
 
-PEFT_TASKS_TYPES = [
-    "SEQ_CLS",
-    "SEQ_2_SEQ_LM",
-    "CAUSAL_LM",
-    "TOKEN_CLS",
-    "QUESTION_ANS",
-    "FEATURE_EXTRACTION",
-]
+PEFT_TASKS_TYPES = ["SEQ_CLS", "SEQ_2_SEQ_LM", "CAUSAL_LM", "TOKEN_CLS", "QUESTION_ANS", "FEATURE_EXTRACTION"]
 
 PEFT_CONFIG = {
     "base_model_name_or_path": None,

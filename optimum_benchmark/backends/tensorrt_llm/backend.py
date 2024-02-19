@@ -1,12 +1,12 @@
 from logging import getLogger
 from typing import Any, Dict
 
+from hydra.utils import get_class
+from transformers.utils import ModelOutput
+
 from ..base import Backend
 from .config import TRTLLMConfig
 from .utils import MODEL_TYPE_TO_TRTLLMMODEL
-
-from hydra.utils import get_class
-from transformers.utils import ModelOutput
 
 LOGGER = getLogger("tensorrt-llm")
 
@@ -47,9 +47,7 @@ class TRTLLMBackend(Backend[TRTLLMConfig]):
 
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:
         return self.pretrained_model.generate(
-            input_ids=inputs.get("input_ids", None),
-            attention_mask=inputs.get("attention_mask", None),
-            max_new_tokens=1,
+            input_ids=inputs.get("input_ids", None), attention_mask=inputs.get("attention_mask", None), max_new_tokens=1
         )
 
     def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:

@@ -25,11 +25,7 @@ TRAINING_ARGUMENT = {
     "ddp_find_unused_parameters": False,
 }
 
-DATASET_SHAPES = {
-    "dataset_size": 500,
-    "sequence_length": 16,
-    "num_choices": 1,
-}
+DATASET_SHAPES = {"dataset_size": 500, "sequence_length": 16, "num_choices": 1}
 
 
 @dataclass
@@ -63,7 +59,8 @@ class TrainingConfig(BenchmarkConfig):
         if self.max_steps != self.training_arguments["max_steps"]:
             LOGGER.warning(
                 f"`benchmark.max_steps` ({self.max_steps}) and `benchmark.training_arguments.max_steps` "
-                f"({self.training_arguments['max_steps']}) are different. Using `benchmark.training_arguments.max_steps`."
+                f"({self.training_arguments['max_steps']}) are different. "
+                "Using `benchmark.training_arguments.max_steps`."
             )
             self.max_steps = self.training_arguments["max_steps"]
 

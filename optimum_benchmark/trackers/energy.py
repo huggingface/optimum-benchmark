@@ -1,35 +1,99 @@
 import os
-from logging import getLogger
 from contextlib import contextmanager
-from typing import Optional, Dict
+from dataclasses import dataclass
+from logging import getLogger
+from typing import List, Literal, Optional
 
-from ..env_utils import get_cuda_device_ids
-from ..import_utils import is_codecarbon_available
+from ..import_utils import is_codecarbon_available, is_torch_distributed_available
+from ..system_utils import get_gpu_device_ids
+
+if is_torch_distributed_available():
+    import torch.distributed
 
 if is_codecarbon_available():
-    from codecarbon import EmissionsTracker, OfflineEmissionsTracker
-
+    from codecarbon import (
+        EmissionsTracker,  # type: ignore
+        OfflineEmissionsTracker,
+    )
 
 LOGGER = getLogger("energy")
+
+ENERGY_UNIT = "kWh"
+Energy_Unit_Literal = Literal["kWh"]
+Efficiency_Unit_Literal = Literal["samples/kWh", "tokens/kWh", "images/kWh"]
+
+
+@dataclass
+class Energy:
+    unit: Energy_Unit_Literal
+
+    cpu: float
+    ram: float
+    gpu: float
+    total: float
+
+    @staticmethod
+    def aggregate(energies: List["Energy"]) -> "Energy":
+        if len(energies) == 0 or all(energy is None for energy in energies):
+            return None
+        elif any(energy is None for energy in energies):
+            raise ValueError("Some energy measurements are missing")
+
+        cpu = sum(energy.cpu for energy in energies)
+        gpu = sum(energy.gpu for energy in energies)
+        ram = sum(energy.ram for energy in energies)
+        total = sum(energy.total for energy in energies)
+
+        return Energy(cpu=cpu, gpu=gpu, ram=ram, total=total, unit=ENERGY_UNIT)
+
+    def log(self, prefix: str = "forward"):
+        LOGGER.info(f"\t\t+ {prefix} CPU energy: {self.cpu:f} ({self.unit})")
+        LOGGER.info(f"\t\t+ {prefix} GPU energy: {self.gpu:f} ({self.unit})")
+        LOGGER.info(f"\t\t+ {prefix} RAM energy: {self.ram:f} ({self.unit})")
+        LOGGER.info(f"\t\t+ {prefix} total energy: {self.total:f} ({self.unit})")
+
+
+@dataclass
+class Efficiency:
+    unit: Efficiency_Unit_Literal
+
+    value: float
+
+    @staticmethod
+    def aggregate(efficiencies: List["Efficiency"]) -> "Efficiency":
+        if len(efficiencies) == 0:
+            raise ValueError("No efficiency measurements to aggregate")
+        elif any(efficiency is None for efficiency in efficiencies):
+            raise ValueError("Some efficiency measurements are None")
+
+        unit = efficiencies[0].unit
+        value = sum(efficiency.value for efficiency in efficiencies) / len(efficiencies)
+
+        return Efficiency(value=value, unit=unit)
+
+    @staticmethod
+    def from_energy(energy: "Energy", volume: int, unit: str) -> "Efficiency":
+        return Efficiency(value=volume / energy.total if energy.total > 0 else 0, unit=unit)
+
+    def log(self, prefix: str = "forward"):
+        LOGGER.info(f"\t\t+ {prefix} efficiency: {self.value:f} ({self.unit})")
 
 
 class EnergyTracker:
     def __init__(self, device: str, device_ids: Optional[str] = None):
         self.device = device
-
-        self.cpu_energy: float = 0
-        self.gpu_energy: float = 0
-        self.ram_energy: float = 0
-        self.total_energy: float = 0
+        self.device_ids = device_ids
+        self.distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
         if self.device == "cuda":
-            if device_ids is None:
+            if self.device_ids is None:
                 LOGGER.warning("\t+ `device=cuda` but `device_ids` not provided. Using all available CUDA devices.")
-                self.device_ids = list(map(int, get_cuda_device_ids().split(",")))
-            else:
-                self.device_ids = list(map(int, device_ids.split(",")))
-        else:
-            self.device_ids = []
+                self.device_ids = get_gpu_device_ids()
+
+            self.device_ids = list(map(int, self.device_ids.split(",")))
+            LOGGER.info(f"\t+ Tracking GPU energy on devices {self.device_ids}")
+
+        self.reset()
 
     def reset(self):
         self.cpu_energy = 0
@@ -72,9 +136,15 @@ class EnergyTracker:
                 country_iso_code=os.environ.get("COUNTRY_ISO_CODE", "FRA"),
             )
 
+        if self.distributed:
+            torch.distributed.barrier(device_ids=[torch.cuda.current_device()] if self.device == "cuda" else None)
+
         self.emission_tracker.start()
         yield
         self.emission_tracker.stop()
+
+        if self.distributed:
+            torch.distributed.barrier(device_ids=[torch.cuda.current_device()] if self.device == "cuda" else None)
 
         self.cpu_energy = self.emission_tracker._total_cpu_energy.kWh
         self.gpu_energy = self.emission_tracker._total_gpu_energy.kWh
@@ -84,10 +154,7 @@ class EnergyTracker:
     def get_elapsed_time(self) -> float:
         return self.emission_tracker._last_measured_time - self.emission_tracker._start_time
 
-    def get_energies_dict(self) -> Dict[str, float]:
-        return {
-            "cpu_energy(kHh)": self.cpu_energy,
-            "gpu_energy(kHh)": self.gpu_energy,
-            "ram_energy(kHh)": self.ram_energy,
-            "total(kHh)": self.total_energy,
-        }
+    def get_energy(self) -> Energy:
+        return Energy(
+            unit=ENERGY_UNIT, cpu=self.cpu_energy, gpu=self.gpu_energy, ram=self.ram_energy, total=self.total_energy
+        )

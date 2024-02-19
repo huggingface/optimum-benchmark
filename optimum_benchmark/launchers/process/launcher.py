@@ -1,13 +1,13 @@
-import os
-import multiprocessing as mp
 from logging import getLogger
-from typing import Callable, Dict, Any
-from multiprocessing import Process, Queue
+from typing import Callable
 
-from ..isolation_utils import device_isolation
+import torch.multiprocessing as mp
+
+from ...benchmarks.report import BenchmarkReport
 from ...logging_utils import setup_logging
-from .config import ProcessConfig
 from ..base import Launcher
+from ..isolation_utils import device_isolation
+from .config import ProcessConfig
 
 LOGGER = getLogger("process")
 
@@ -22,35 +22,44 @@ class ProcessLauncher(Launcher[ProcessConfig]):
             LOGGER.info(f"\t+ Setting multiprocessing start method to {self.config.start_method}.")
             mp.set_start_method(self.config.start_method, force=True)
 
-    def launch(self, worker: Callable, *worker_args) -> Dict[str, Any]:
-        # worker process can't be daemon since it might spawn its own processes
-        queue = Queue()
-        current_log_level = getLogger().getEffectiveLevel()
-        worker_process = Process(
-            daemon=False,
-            target=target,
-            args=(worker, queue, current_log_level, *worker_args),
-        )
-        worker_process.start()
-        LOGGER.info(f"\t+ Launched worker process with PID {worker_process.pid}.")
+    def launch(self, worker: Callable, *worker_args) -> BenchmarkReport:
+        log_level = getLogger().getEffectiveLevel()
 
-        with device_isolation(enabled=self.config.device_isolation, benchmark_pid=os.getpid()):
-            worker_process.join()
+        ctx = mp.get_context(self.config.start_method)
+        queue = ctx.Queue()
+        lock = ctx.Lock()
 
-        if worker_process.exitcode != 0:
-            LOGGER.error(f"\t+ Worker process exited with code {worker_process.exitcode}, forwarding...")
-            exit(worker_process.exitcode)
+        with device_isolation(enabled=self.config.device_isolation):
+            process_context = mp.start_processes(
+                entrypoint,
+                args=(worker, queue, lock, log_level, *worker_args),
+                start_method=self.config.start_method,
+                daemon=False,
+                join=False,
+                nprocs=1,
+            )
+            LOGGER.info(f"\t+ Launched worker process(es) with PID(s): {process_context.pids()}")
+            while not process_context.join():
+                pass
 
-        report = queue.get()
+        # restore the original logging configuration
+        setup_logging(log_level)
+
+        report: BenchmarkReport = queue.get()
 
         return report
 
 
-def target(fn, q, log_level, *args):
-    """This a pickalable function that correctly sets up the logging configuration for the worker process."""
+def entrypoint(i, worker, queue, lock, log_level, *worker_args):
+    """
+    This a pickalable function that correctly sets up the logging configuration for the worker process,
+    and puts the output of the worker function into a lock-protected queue.
+    """
 
-    setup_logging(log_level)
+    setup_logging(log_level, prefix=f"PROC-{i}")
 
-    out = fn(*args)
+    worker_output = worker(*worker_args)
 
-    q.put(out)
+    lock.acquire()
+    queue.put(worker_output)
+    lock.release()

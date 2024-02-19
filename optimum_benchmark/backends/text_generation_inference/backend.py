@@ -1,23 +1,24 @@
 import gc
 import os
 import time
-from logging import getLogger
-from typing import Any, Dict, List
-from tempfile import TemporaryDirectory
 from concurrent.futures import ThreadPoolExecutor
-
-from ..base import Backend
-from .config import TGIConfig
-from ...task_utils import TEXT_GENERATION_TASKS
-from ..transformers_utils import randomize_weights
+from logging import getLogger
+from tempfile import TemporaryDirectory
+from typing import Any, Dict, List
 
 import torch
-import docker
-import docker.types
-import docker.errors
-from safetensors.torch import save_model
 from huggingface_hub import InferenceClient, snapshot_download
 from huggingface_hub.inference._text_generation import TextGenerationResponse
+from safetensors.torch import save_model
+
+import docker
+import docker.errors
+import docker.types
+
+from ...task_utils import TEXT_GENERATION_TASKS
+from ..base import Backend
+from ..transformers_utils import randomize_weights
+from .config import TGIConfig
 
 # bachend logger
 LOGGER = getLogger("text-generation-inference")
@@ -59,12 +60,7 @@ class TGIBackend(Backend[TGIConfig]):
         model_cache_path = f"{self.config.volume}/{model_cache_folder}"
 
         snapshot_ref = (
-            open(
-                f"{model_cache_path}/refs/{self.config.hub_kwargs.get('revision', 'main')}",
-                "r",
-            )
-            .read()
-            .strip()
+            open(f"{model_cache_path}/refs/{self.config.hub_kwargs.get('revision', 'main')}", "r").read().strip()
         )
 
         model_snapshot_path = f"{model_cache_path}/snapshots/{snapshot_ref}"
@@ -133,12 +129,7 @@ class TGIBackend(Backend[TGIConfig]):
             env["HUGGING_FACE_HUB_TOKEN"] = os.environ["HUGGING_FACE_HUB_TOKEN"]
 
         LOGGER.info("\t+ Building TGI command")
-        self.command = [
-            "--model-id",
-            self.config.model,
-            "--revision",
-            self.config.hub_kwargs.get("revision", "main"),
-        ]
+        self.command = ["--model-id", self.config.model, "--revision", self.config.hub_kwargs.get("revision", "main")]
 
         if self.config.sharded is not None:
             self.command.extend(["--sharded", str(self.config.sharded).lower()])

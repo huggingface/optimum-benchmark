@@ -1,36 +1,28 @@
-from logging import getLogger
+import gc
 import time
+from tempfile import TemporaryDirectory
 
-import torch
 import pytest
+import torch
 
-from optimum_benchmark.trackers.memory import MemoryTracker
-from optimum_benchmark.trackers.latency import LatencyTracker
-from optimum_benchmark.experiment import ExperimentConfig, launch
-from optimum_benchmark.launchers.inline.config import InlineConfig
 from optimum_benchmark.backends.pytorch.config import PyTorchConfig
-from optimum_benchmark.launchers.process.config import ProcessConfig
-from optimum_benchmark.launchers.torchrun.config import TorchrunConfig
-from optimum_benchmark.benchmarks.inference.config import INPUT_SHAPES
-from optimum_benchmark.benchmarks.training.config import DATASET_SHAPES
-from optimum_benchmark.generators.input_generator import InputGenerator
-from optimum_benchmark.benchmarks.training.config import TrainingConfig
-from optimum_benchmark.benchmarks.inference.config import InferenceConfig
-from optimum_benchmark.generators.dataset_generator import DatasetGenerator
-from optimum_benchmark.task_utils import TEXT_GENERATION_TASKS, IMAGE_DIFFUSION_TASKS
 from optimum_benchmark.backends.timm_utils import extract_timm_shapes_from_config, get_timm_pretrained_config
 from optimum_benchmark.backends.transformers_utils import (
     extract_transformers_shapes_from_artifacts,
     get_transformers_pretrained_config,
 )
+from optimum_benchmark.benchmarks.inference.config import INPUT_SHAPES, InferenceConfig
+from optimum_benchmark.benchmarks.training.config import DATASET_SHAPES
+from optimum_benchmark.experiment import ExperimentConfig, launch
+from optimum_benchmark.generators.dataset_generator import DatasetGenerator
+from optimum_benchmark.generators.input_generator import InputGenerator
+from optimum_benchmark.launchers.inline.config import InlineConfig
+from optimum_benchmark.launchers.process.config import ProcessConfig
+from optimum_benchmark.launchers.torchrun.config import TorchrunConfig
+from optimum_benchmark.task_utils import IMAGE_DIFFUSION_TASKS, TEXT_GENERATION_TASKS
+from optimum_benchmark.trackers.latency import LatencyTracker
+from optimum_benchmark.trackers.memory import MemoryTracker
 
-
-LOGGER = getLogger("test-api")
-
-DEVICES_BACKENDS = [
-    ("cpu", "none"),
-    ("cuda", "pytorch"),
-]
 LIBRARIES_TASKS_MODELS = [
     ("transformers", "fill-mask", "bert-base-uncased"),
     ("timm", "image-classification", "timm/resnet50.a1_in1k"),
@@ -43,18 +35,17 @@ LIBRARIES_TASKS_MODELS = [
     ("transformers", "image-classification", "google/vit-base-patch16-224"),
     ("transformers", "semantic-segmentation", "google/vit-base-patch16-224"),
 ]
-BENCHMARK_CONFIGS = [
-    InferenceConfig(latency=True, memory=True),
-    TrainingConfig(latency=True, memory=True),
-]
 LAUNCHER_CONFIGS = [
-    TorchrunConfig(nproc_per_node=2, device_isolation=False),
-    ProcessConfig(device_isolation=False),
     InlineConfig(device_isolation=False),
+    ProcessConfig(device_isolation=False),
+    TorchrunConfig(device_isolation=False, nproc_per_node=2),
 ]
+BACKENDS = ["pytorch", "none"]
+DEVICES = ["cpu", "cuda"]
 
 
-@pytest.mark.parametrize("device,backend", DEVICES_BACKENDS)
+@pytest.mark.parametrize("device", DEVICES)
+@pytest.mark.parametrize("backend", BACKENDS)
 def test_api_latency_tracker(device, backend):
     expected_latency = 1
     tracker = LatencyTracker(device=device, backend=backend)
@@ -63,39 +54,54 @@ def test_api_latency_tracker(device, backend):
         with tracker.track():
             time.sleep(1)
 
-    latencies_list = tracker.get_latencies_list()
+    latency = tracker.get_latency()
+    latency.log()
 
-    assert len(latencies_list) == 2
-    assert latencies_list[0] > expected_latency * 0.9
-    assert latencies_list[0] < expected_latency * 1.1
+    assert latency.mean < expected_latency * 1.1
+    assert latency.mean > expected_latency * 0.9
 
 
-@pytest.mark.parametrize("device,backend", DEVICES_BACKENDS)
+@pytest.mark.parametrize("device", DEVICES)
+@pytest.mark.parametrize("backend", BACKENDS)
 def test_api_memory_tracker(device, backend):
     tracker = MemoryTracker(device=device, backend=backend)
 
+    tracker.reset()
     with tracker.track():
+        time.sleep(1)
         pass
 
     # the process consumes memory that we can't control
-    if backend == "pytorch":
-        initial_process_memory = tracker.get_max_memory_allocated_mb()
-    else:
-        initial_process_memory = tracker.get_max_memory_used_mb()
+    initial_memory = tracker.get_max_memory()
+    initial_memory.log()
 
+    tracker.reset()
     with tracker.track():
-        array = torch.ones((10000, 10000), dtype=torch.float64, device=device)
-        expected_memory = array.nbytes / 1e6  # around 800 MB
+        time.sleep(1)
+        array = torch.randn((10000, 10000), dtype=torch.float64, device=device)
+        expected_memory = array.nbytes / 1e6
+        time.sleep(1)
 
-    if backend == "pytorch":
-        final_process_memory = tracker.get_max_memory_allocated_mb()
+    final_memory = tracker.get_max_memory()
+    final_memory.log()
+
+    if device == "cuda":
+        if backend == "pytorch":
+            measured_memory = final_memory.max_allocated - initial_memory.max_allocated
+        else:
+            measured_memory = final_memory.max_vram - initial_memory.max_vram
+            if torch.version.hip is not None:
+                return  # skip vram measurement for ROCm
     else:
-        final_process_memory = tracker.get_max_memory_used_mb()
-
-    measured_memory = final_process_memory - initial_process_memory
+        measured_memory = final_memory.max_ram - initial_memory.max_ram
 
     assert measured_memory < expected_memory * 1.1
     assert measured_memory > expected_memory * 0.9
+
+    del array
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    gc.collect()
 
 
 @pytest.mark.parametrize("library,task,model", LIBRARIES_TASKS_MODELS)
@@ -109,11 +115,7 @@ def test_api_input_generator(library, task, model):
     else:
         raise ValueError(f"Unknown library {library}")
 
-    generator = InputGenerator(
-        task=task,
-        input_shapes=INPUT_SHAPES,
-        model_shapes=model_shapes,
-    )
+    generator = InputGenerator(task=task, input_shapes=INPUT_SHAPES, model_shapes=model_shapes)
 
     if task in TEXT_GENERATION_TASKS:
         _ = generator(mode="forward")
@@ -135,23 +137,31 @@ def test_api_dataset_generator(library, task, model):
     else:
         raise ValueError(f"Unknown library {library}")
 
-    generator = DatasetGenerator(
-        task=task,
-        dataset_shapes=DATASET_SHAPES,
-        model_shapes=model_shapes,
-    )
+    generator = DatasetGenerator(task=task, dataset_shapes=DATASET_SHAPES, model_shapes=model_shapes)
 
     _ = generator()
 
 
-@pytest.mark.parametrize("benchmark_config", BENCHMARK_CONFIGS)
 @pytest.mark.parametrize("launcher_config", LAUNCHER_CONFIGS)
-def test_api_launch_cpu(benchmark_config, launcher_config):
-    backend_config = PyTorchConfig(model="bert-base-uncased", no_weights=True, device="cpu")
+@pytest.mark.parametrize("device", DEVICES)
+def test_api_launch(launcher_config, device):
+    benchmark_config = InferenceConfig(latency=True, memory=True)
+    device_ids = ",".join(str(i) for i in range(torch.cuda.device_count())) if device == "cuda" else None
+    backend_config = PyTorchConfig(model="bert-base-uncased", device_ids=device_ids, no_weights=True, device=device)
     experiment_config = ExperimentConfig(
-        experiment_name="",
-        benchmark=benchmark_config,
-        launcher=launcher_config,
-        backend=backend_config,
+        experiment_name="api-experiment", benchmark=benchmark_config, launcher=launcher_config, backend=backend_config
     )
-    _ = launch(experiment_config)
+    benchmark_report = launch(experiment_config)
+
+    with TemporaryDirectory() as tempdir:
+        experiment_config.to_dict()
+        experiment_config.to_flat_dict()
+        experiment_config.to_dataframe()
+        experiment_config.to_csv(f"{tempdir}/experiment_config.csv")
+        experiment_config.to_json(f"{tempdir}/experiment_config.json")
+
+        benchmark_report.to_dict()
+        benchmark_report.to_flat_dict()
+        benchmark_report.to_dataframe()
+        benchmark_report.to_csv(f"{tempdir}/benchmark_report.csv")
+        benchmark_report.to_json(f"{tempdir}/benchmark_report.json")

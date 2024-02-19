@@ -13,10 +13,11 @@
 # limitations under the License.
 
 ARG ROCM_VERSION=5.7
-ARG UBUNTU_VERSION=22.04
 ARG PYTHON_VERSION=3.10
+ARG UBUNTU_VERSION=22.04
+ARG PYTORCH_VERSION=2.0.1
 
-FROM rocm/pytorch:rocm${ROCM_VERSION}_ubuntu${UBUNTU_VERSION}_py${PYTHON_VERSION}_pytorch_2.0.1
+FROM rocm/pytorch:rocm${ROCM_VERSION}_ubuntu${UBUNTU_VERSION}_py${PYTHON_VERSION}_pytorch_${PYTORCH_VERSION}
 
 # Ignore interactive questions during `docker build`
 ENV DEBIAN_FRONTEND noninteractive

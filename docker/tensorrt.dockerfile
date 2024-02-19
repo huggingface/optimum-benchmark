@@ -16,7 +16,7 @@ ARG TENSORRT_VERSION=23.09
 
 FROM nvcr.io/nvidia/tensorrt:${TENSORRT_VERSION}-py3
 
-ARG TORCH_CUDA=cu121
+ARG TORCH_CUDA=cu118
 
 # Ignore interactive questions during `docker build`
 ENV DEBIAN_FRONTEND noninteractive

@@ -1,6 +1,5 @@
 FROM ubuntu:latest
 
-
 # Ignore interactive questions during `docker build`
 ENV DEBIAN_FRONTEND noninteractive
 

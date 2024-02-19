@@ -5,7 +5,7 @@ from hydra.utils import get_class
 from ..import_utils import is_diffusers_available
 
 if is_diffusers_available():
-    import diffusers
+    import diffusers  # type: ignore
 
 
 def get_diffusers_pretrained_config(model: str, **kwargs) -> Dict[str, int]:

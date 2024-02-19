@@ -1,11 +1,61 @@
-from dataclasses import dataclass, asdict
-from typing import Union, Optional
-from json import dump
 import os
+from dataclasses import asdict, dataclass
+from json import dump
+from logging import getLogger
+from typing import Any, Dict, List, Optional, Union
 
-from transformers.configuration_utils import PushToHubMixin
-from flatten_dict import flatten
 import pandas as pd
+from flatten_dict import flatten
+from transformers.configuration_utils import PushToHubMixin
+
+from ..trackers.energy import Efficiency, Energy
+from ..trackers.latency import Latency, Throughput
+from ..trackers.memory import Memory
+
+LOGGER = getLogger("report")
+
+REPORT_FILE_NAME = "benchmark_report.json"
+
+
+@dataclass
+class BenchmarkMeasurements:
+    memory: Optional[Memory] = None
+    latency: Optional[Latency] = None
+    throughput: Optional[Throughput] = None
+    energy: Optional[Energy] = None
+    efficiency: Optional[Efficiency] = None
+
+    @staticmethod
+    def aggregate(benchmark_measurements: List["BenchmarkMeasurements"]) -> "BenchmarkMeasurements":
+        memory = (
+            Memory.aggregate([m.memory for m in benchmark_measurements])
+            if benchmark_measurements[0].memory is not None
+            else None
+        )
+        latency = (
+            Latency.aggregate([m.latency for m in benchmark_measurements])
+            if benchmark_measurements[0].latency is not None
+            else None
+        )
+        throughput = (
+            Throughput.aggregate([m.throughput for m in benchmark_measurements if m.throughput is not None])
+            if benchmark_measurements[0].throughput is not None
+            else None
+        )
+        energy = (
+            Energy.aggregate([m.energy for m in benchmark_measurements if m.energy is not None])
+            if benchmark_measurements[0].energy is not None
+            else None
+        )
+        efficiency = (
+            Efficiency.aggregate([m.efficiency for m in benchmark_measurements if m.efficiency is not None])
+            if benchmark_measurements[0].efficiency is not None
+            else None
+        )
+
+        return BenchmarkMeasurements(
+            memory=memory, latency=latency, throughput=throughput, energy=energy, efficiency=efficiency
+        )
 
 
 @dataclass
@@ -22,7 +72,7 @@ class BenchmarkReport(PushToHubMixin):
         if use_auth_token is not None:
             kwargs["token"] = use_auth_token
 
-        config_file_name = config_file_name if config_file_name is not None else "benchmark_report.json"
+        config_file_name = config_file_name if config_file_name is not None else REPORT_FILE_NAME
 
         if os.path.isfile(save_directory):
             raise AssertionError(f"Provided path ({save_directory}) should be a directory, not a file")
@@ -36,21 +86,17 @@ class BenchmarkReport(PushToHubMixin):
             files_timestamps = self._get_files_timestamps(save_directory)
 
         output_config_file = os.path.join(save_directory, config_file_name)
-        self.to_json(output_config_file)
+        self.to_json(output_config_file, flat=False)
 
         if push_to_hub:
             self._upload_modified_files(
-                save_directory,
-                repo_id,
-                files_timestamps,
-                commit_message=commit_message,
-                token=kwargs.get("token"),
+                save_directory, repo_id, files_timestamps, commit_message=commit_message, token=kwargs.get("token")
             )
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
 
-    def to_flat_dict(self) -> dict:
+    def to_flat_dict(self) -> Dict[str, Any]:
         report_dict = self.to_dict()
         return flatten(report_dict, reducer="dot")
 
@@ -64,10 +110,60 @@ class BenchmarkReport(PushToHubMixin):
 
     def to_dataframe(self) -> pd.DataFrame:
         flat_report_dict = self.to_flat_dict()
-        return pd.DataFrame(flat_report_dict, index=[0])
+        return pd.DataFrame.from_dict(flat_report_dict, orient="index")
 
     def to_csv(self, path: str) -> None:
         self.to_dataframe().to_csv(path, index=False)
 
-    def log_all(self) -> None:
-        raise NotImplementedError("`log_all` method must be implemented in the child class")
+    def log_memory(self):
+        for target in self.to_dict().keys():
+            benchmark_measurements: BenchmarkMeasurements = getattr(self, target)
+            if benchmark_measurements.memory is not None:
+                benchmark_measurements.memory.log(prefix=target)
+
+    def log_latency(self):
+        for target in self.to_dict().keys():
+            benchmark_measurements: BenchmarkMeasurements = getattr(self, target)
+            if benchmark_measurements.latency is not None:
+                benchmark_measurements.latency.log(prefix=target)
+
+    def log_throughput(self):
+        for target in self.to_dict().keys():
+            benchmark_measurements: BenchmarkMeasurements = getattr(self, target)
+            if benchmark_measurements.throughput is not None:
+                benchmark_measurements.throughput.log(prefix=target)
+
+    def log_energy(self):
+        for target in self.to_dict().keys():
+            benchmark_measurements: BenchmarkMeasurements = getattr(self, target)
+            if benchmark_measurements.energy is not None:
+                benchmark_measurements.energy.log(prefix=target)
+
+    def log_efficiency(self):
+        for target in self.to_dict().keys():
+            benchmark_measurements: BenchmarkMeasurements = getattr(self, target)
+            if benchmark_measurements.efficiency is not None:
+                benchmark_measurements.efficiency.log(prefix=target)
+
+    def log(self):
+        for target in self.to_dict().keys():
+            benchmark_measurements: BenchmarkMeasurements = getattr(self, target)
+            if benchmark_measurements.memory is not None:
+                benchmark_measurements.memory.log(prefix=target)
+            if benchmark_measurements.latency is not None:
+                benchmark_measurements.latency.log(prefix=target)
+            if benchmark_measurements.throughput is not None:
+                benchmark_measurements.throughput.log(prefix=target)
+            if benchmark_measurements.energy is not None:
+                benchmark_measurements.energy.log(prefix=target)
+            if benchmark_measurements.efficiency is not None:
+                benchmark_measurements.efficiency.log(prefix=target)
+
+    @classmethod
+    def aggregate(cls, reports: List["BenchmarkReport"]) -> "BenchmarkReport":
+        aggregated_measurements = {}
+        for target in reports[0].to_dict().keys():
+            benchmark_measurements = [getattr(report, target) for report in reports]
+            aggregated_measurements[target] = BenchmarkMeasurements.aggregate(benchmark_measurements)
+
+        return cls(**aggregated_measurements)
