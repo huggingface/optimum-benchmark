@@ -134,14 +134,14 @@ class EnergyTracker:
             )
 
         if self.distributed:
-            torch.distributed.monitored_barrier()
+            torch.distributed.barrier(device_ids=[torch.distributed.get_rank() % torch.cuda.device_count()])
 
         self.emission_tracker.start()
         yield
         self.emission_tracker.stop()
 
         if self.distributed:
-            torch.distributed.monitored_barrier()
+            torch.distributed.barrier(device_ids=[torch.distributed.get_rank() % torch.cuda.device_count()])
 
         self.cpu_energy = self.emission_tracker._total_cpu_energy.kWh
         self.gpu_energy = self.emission_tracker._total_gpu_energy.kWh
