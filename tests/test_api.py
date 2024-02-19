@@ -142,15 +142,23 @@ def test_api_dataset_generator(library, task, model):
     _ = generator()
 
 
-@pytest.mark.parametrize("launcher_config", LAUNCHER_CONFIGS)
 @pytest.mark.parametrize("device", DEVICES)
-def test_api_launch(launcher_config, device):
+@pytest.mark.parametrize("launcher_config", LAUNCHER_CONFIGS)
+def test_api_launch(device, launcher_config):
     benchmark_config = InferenceConfig(latency=True, memory=True)
-    device_ids = ",".join(str(i) for i in range(torch.cuda.device_count())) if device == "cuda" else None
-    backend_config = PyTorchConfig(model="bert-base-uncased", device_ids=device_ids, no_weights=True, device=device)
-    experiment_config = ExperimentConfig(
-        experiment_name="api-experiment", benchmark=benchmark_config, launcher=launcher_config, backend=backend_config
+    backend_config = PyTorchConfig(
+        model="bert-base-uncased",
+        device_ids="0,1" if device == "cuda" else None,
+        no_weights=True,
+        device=device,
     )
+    experiment_config = ExperimentConfig(
+        experiment_name="api-experiment",
+        benchmark=benchmark_config,
+        launcher=launcher_config,
+        backend=backend_config,
+    )
+
     benchmark_report = launch(experiment_config)
 
     with TemporaryDirectory() as tempdir:
