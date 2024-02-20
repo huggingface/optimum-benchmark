@@ -140,14 +140,13 @@ class LatencyTracker:
         self.end_events.append(end)
 
     def get_elapsed_time(self) -> float:
-        # we measured in cpu to not synchronize all events
+        # we measure it in cpu to not synchronize all events
         return time.perf_counter() - self.start_time
 
     def get_latency(self) -> Latency:
         if self.backend == "pytorch" and self.device == "cuda":
-            # synchronize the last event to make sure it has been recorded
-            self.start_events[-1].synchronize()
-            self.end_events[-1].synchronize()
+            # synchronize the device to make sure all events have been recorded
+            torch.cuda.synchronize()
 
             latencies_list = [
                 self.start_events[i].elapsed_time(self.end_events[i]) / 1e3 for i in range(len(self.start_events))
@@ -210,12 +209,7 @@ class LatencyLogitsProcessor(LogitsProcessor):
         self.reset()
 
     def reset(self):
-        if self.device == "cuda" and self.backend == "pytorch":
-            event = torch.cuda.Event(enable_timing=True)
-            event.record()
-            self.events = [event]
-        else:
-            self.events = [time.perf_counter()]
+        self.events: List[Union[float, torch.cuda.Event]] = []
 
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor):
         if self.device == "cuda" and self.backend == "pytorch":

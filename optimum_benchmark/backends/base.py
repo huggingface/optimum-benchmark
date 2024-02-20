@@ -10,7 +10,7 @@ from transformers import GenerationConfig, PretrainedConfig, PreTrainedModel, Tr
 
 from ..task_utils import get_automodel_class_for_task
 from .config import BackendConfigT
-from .diffusers_utils import extract_diffusers_shapes_from_config, get_diffusers_pretrained_config
+from .diffusers_utils import extract_diffusers_shapes_from_model, get_diffusers_pretrained_config
 from .timm_utils import extract_timm_shapes_from_config, get_timm_pre_processor, get_timm_pretrained_config
 from .transformers_utils import (
     PretrainedProcessor,
@@ -41,7 +41,7 @@ class Backend(Generic[BackendConfigT], ABC):
 
         if self.config.library == "diffusers":
             self.pretrained_config = get_diffusers_pretrained_config(self.config.model, **self.config.hub_kwargs)
-            self.model_shapes = extract_diffusers_shapes_from_config(self.config.model, **self.config.hub_kwargs)
+            self.model_shapes = extract_diffusers_shapes_from_model(self.config.model, **self.config.hub_kwargs)
             self.model_type = self.config.task
             self.generation_config = None
             self.pre_processor = None

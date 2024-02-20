@@ -1,12 +1,7 @@
-# [tool.isort]
-# profile = "ruff"
-# lines_after_imports = 2
-# known_first_party = "optimum_benchmark"
-
 [tool.ruff]
 line-length = 120
-ignore = ["C901", "E501", "E741", "W605"]
-select = ["C", "E", "F", "I", "W", "I001"]
+lint.ignore = ["C901", "E501"]
+lint.select = ["C", "E", "F", "I", "W", "I001"]
 
 [tool.ruff.format]
 line-ending = "auto"

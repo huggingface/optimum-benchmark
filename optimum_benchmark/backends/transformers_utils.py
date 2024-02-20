@@ -42,7 +42,7 @@ def get_transformers_pre_processor(model: str, **kwargs) -> Optional["Pretrained
     try:
         # sometimes contains information about the model's input shapes that are not available in the config
         return AutoProcessor.from_pretrained(model, **kwargs)
-    except ValueError:
+    except Exception:
         return None
 
 
