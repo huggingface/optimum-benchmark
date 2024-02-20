@@ -1,6 +1,7 @@
 import importlib.metadata
 import importlib.util
 import subprocess
+from pathlib import Path
 from typing import Optional
 
 _transformers_available = importlib.util.find_spec("transformers") is not None
@@ -188,7 +189,7 @@ def get_git_revision_hash(package_name: str) -> Optional[str]:
     """
 
     try:
-        path = importlib.util.find_spec(package_name).origin
+        path = Path(importlib.util.find_spec(package_name).origin).parent
     except Exception:
         return None
 
