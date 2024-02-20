@@ -47,13 +47,15 @@ class TRTLLMBackend(Backend[TRTLLMConfig]):
 
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:
         return self.pretrained_model.generate(
-            input_ids=inputs.get("input_ids", None), attention_mask=inputs.get("attention_mask", None), max_new_tokens=1
+            input_ids=inputs.get("input_ids"),
+            attention_mask=inputs.get("attention_mask"),
+            max_new_tokens=1,
         )
 
     def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:
         return self.pretrained_model.generate(
-            input_ids=inputs.get("inputs", None),  # diff names
-            attention_mask=inputs.get("attention_mask", None),
+            input_ids=inputs.get("input_ids"),
+            attention_mask=inputs.get("attention_mask"),
             # important for benchmarking
             max_new_tokens=kwargs.get("max_new_tokens", -1),
             min_length=kwargs.get("min_new_tokens", -1),  # why different ?

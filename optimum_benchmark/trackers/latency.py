@@ -33,11 +33,11 @@ class Latency:
         else:
             return Latency.from_values(values=[self.values[index]], unit=self.unit)
 
-    def __sub__(self, scalar: float) -> "Latency":
-        if not isinstance(scalar, (int, float)):
-            raise ValueError(f"Cannot subtract non-scalar value from latency: {scalar}")
+    def __sub__(self, latency: "Latency") -> "Latency":
+        if not isinstance(latency, Latency):
+            raise ValueError(f"Cannot subtract {type(latency)} from Latency")
 
-        latencies = [lat - scalar for lat in self.values]
+        latencies = [lat - latency.mean for lat in self.values]
         return Latency.from_values(values=latencies, unit=self.unit)
 
     @staticmethod
@@ -156,9 +156,6 @@ class LatencyTracker:
 
         return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
 
-    def get_throughput(self, volume: int, unit: str) -> Throughput:
-        return Throughput.from_latency(self.get_latency(), volume, unit)
-
 
 class LatencyTrainerCallback(TrainerCallback):
     def __init__(self, device: str, backend: str) -> None:
@@ -197,39 +194,71 @@ class LatencyTrainerCallback(TrainerCallback):
 
         return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
 
-    def get_throughput(self, volume: int, unit: str) -> Throughput:
-        return Throughput.from_latency(self.get_latency(), volume, unit)
-
 
 class LatencyLogitsProcessor(LogitsProcessor):
     def __init__(self, device: str, backend: str):
         self.device = device
         self.backend = backend
+        self.distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
         self.reset()
 
     def reset(self):
-        self.events: List[Union[float, torch.cuda.Event]] = []
+        # for each generate (run) pass, we store the time of each token
+        self.run_events: List[List[Union[float, torch.cuda.Event]]] = []
+        self.start_time: float = time.perf_counter()
+
+    def get_elapsed_time(self) -> float:
+        return time.perf_counter() - self.start_time
+
+    @contextmanager
+    def track(self):
+        if self.distributed:
+            torch.distributed.barrier(device_ids=[torch.cuda.current_device()] if self.device == "cuda" else None)
+
+        self.tok_events: List[Union[float, torch.cuda.Event]] = []
+
+        yield  # this is where generate is called, and for each token, we record an event
+
+        self.run_events.append(self.tok_events)
+
+        if self.distributed:
+            torch.distributed.barrier(device_ids=[torch.cuda.current_device()] if self.device == "cuda" else None)
 
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor):
         if self.device == "cuda" and self.backend == "pytorch":
             event = torch.cuda.Event(enable_timing=True)
             event.record()
-            self.events.append(event)
+            self.tok_events.append(event)
         else:
-            self.events.append(time.perf_counter())
+            self.tok_events.append(time.perf_counter())
 
         return scores
 
-    def get_latency(self) -> Latency:
-        if self.device == "cuda" and self.backend == "pytorch":
-            # synchronize the device to make sure all events have been recorded
-            torch.cuda.synchronize()
-            latencies_list = [self.events[i - 1].elapsed_time(self.events[i]) / 1e3 for i in range(1, len(self.events))]
-        else:
-            latencies_list = [(self.events[i] - self.events[i - 1]) for i in range(1, len(self.events))]
+    def get_per_token_latency(self) -> Latency:
+        latencies_list = []
+        for tok_events in self.run_events:
+            if self.device == "cuda" and self.backend == "pytorch":
+                # synchronize the device to make sure all events have been recorded
+                torch.cuda.synchronize()
+                latencies_list.extend(
+                    [tok_events[i - 1].elapsed_time(tok_events[i]) / 1e3 for i in range(1, len(tok_events))]
+                )
+            else:
+                latencies_list.extend([(tok_events[i] - tok_events[i - 1]) for i in range(1, len(tok_events))])
 
         return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
 
-    def get_throughput(self, volume: int, unit: str) -> Throughput:
-        return Throughput.from_latency(self.get_latency(), volume, unit)
+    def get_decode_latency(self) -> Latency:
+        latencies_list = []
+        for tok_events in self.run_events:
+            if self.device == "cuda" and self.backend == "pytorch":
+                # synchronize the device to make sure all events have been recorded
+                torch.cuda.synchronize()
+                latencies_list.append(
+                    sum([tok_events[i - 1].elapsed_time(tok_events[i]) / 1e3 for i in range(1, len(tok_events))])
+                )
+            else:
+                latencies_list.append(sum([(tok_events[i] - tok_events[i - 1]) for i in range(1, len(tok_events))]))
+
+        return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
