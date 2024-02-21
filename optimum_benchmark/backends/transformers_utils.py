@@ -38,7 +38,7 @@ def get_transformers_generation_config(model: str, **kwargs) -> Optional["Genera
         return None
 
 
-def get_transformers_pre_processor(model: str, **kwargs) -> Optional["PretrainedProcessor"]:
+def get_transformers_pretrained_processor(model: str, **kwargs) -> Optional["PretrainedProcessor"]:
     try:
         # sometimes contains information about the model's input shapes that are not available in the config
         return AutoProcessor.from_pretrained(model, **kwargs)
