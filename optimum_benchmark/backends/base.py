@@ -11,13 +11,13 @@ from transformers import GenerationConfig, PretrainedConfig, PreTrainedModel, Tr
 from ..task_utils import get_automodel_class_for_task
 from .config import BackendConfigT
 from .diffusers_utils import extract_diffusers_shapes_from_model, get_diffusers_pretrained_config
-from .timm_utils import extract_timm_shapes_from_config, get_timm_pre_processor, get_timm_pretrained_config
+from .timm_utils import extract_timm_shapes_from_config, get_timm_pretrained_config
 from .transformers_utils import (
     PretrainedProcessor,
     extract_transformers_shapes_from_artifacts,
     get_transformers_generation_config,
-    get_transformers_pre_processor,
     get_transformers_pretrained_config,
+    get_transformers_pretrained_processor,
 )
 
 LOGGER = getLogger("backend")
@@ -32,7 +32,7 @@ class Backend(Generic[BackendConfigT], ABC):
     pretrained_model: PreTrainedModel
     pretrained_config: Optional[PretrainedConfig]
     generation_config: Optional[GenerationConfig]
-    pre_processor: Optional[PretrainedProcessor]
+    pretrained_processor: Optional[PretrainedProcessor]
 
     def __init__(self, config: BackendConfigT):
         LOGGER.info(f"َAllocating {self.NAME} backend")
@@ -43,21 +43,25 @@ class Backend(Generic[BackendConfigT], ABC):
             self.pretrained_config = get_diffusers_pretrained_config(self.config.model, **self.config.hub_kwargs)
             self.model_shapes = extract_diffusers_shapes_from_model(self.config.model, **self.config.hub_kwargs)
             self.model_type = self.config.task
+            self.pretrained_processor = None
             self.generation_config = None
-            self.pre_processor = None
 
         elif self.config.library == "timm":
-            self.pre_processor = get_timm_pre_processor(self.config.model)
             self.pretrained_config = get_timm_pretrained_config(self.config.model)
-            self.model_shapes = extract_timm_shapes_from_config(config=self.pretrained_config)
+            self.model_shapes = extract_timm_shapes_from_config(self.pretrained_config)
             self.model_type = self.pretrained_config.architecture
+            self.pretrained_processor = None
             self.generation_config = None
 
         else:
-            self.pre_processor = get_transformers_pre_processor(self.config.model, **self.config.hub_kwargs)
+            self.pretrained_processor = get_transformers_pretrained_processor(
+                self.config.model, **self.config.hub_kwargs
+            )
             self.generation_config = get_transformers_generation_config(self.config.model, **self.config.hub_kwargs)
             self.pretrained_config = get_transformers_pretrained_config(self.config.model, **self.config.hub_kwargs)
-            self.model_shapes = extract_transformers_shapes_from_artifacts(self.pretrained_config, self.pre_processor)
+            self.model_shapes = extract_transformers_shapes_from_artifacts(
+                self.pretrained_config, self.pretrained_processor
+            )
             self.model_type = self.pretrained_config.model_type
 
         self.automodel_class = get_automodel_class_for_task(
