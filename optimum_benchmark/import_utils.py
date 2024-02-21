@@ -1,7 +1,7 @@
 import importlib.metadata
 import importlib.util
-import subprocess
 from pathlib import Path
+from subprocess import STDOUT, check_output
 from typing import Optional
 
 _transformers_available = importlib.util.find_spec("transformers") is not None
@@ -194,7 +194,8 @@ def get_git_revision_hash(package_name: str) -> Optional[str]:
         return None
 
     try:
-        git_hash = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=path).decode().strip()
+        git_hash = check_output(["git", "rev-parse", "HEAD"], cwd=path, stderr=STDOUT).strip().decode("utf-8")
+
     except Exception:
         return None
 

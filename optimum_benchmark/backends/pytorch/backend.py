@@ -13,7 +13,7 @@ from safetensors.torch import save_file
 from transformers import Trainer, TrainerCallback, TrainerState, TrainingArguments
 from transformers.modeling_utils import no_init_weights
 
-from ...import_utils import is_deepspeed_available, is_peft_available, is_torch_distributed_available
+from ...import_utils import is_deepspeed_available, is_peft_available
 from ..base import Backend
 from ..peft_utils import get_peft_config_class
 from ..transformers_utils import randomize_weights
@@ -21,9 +21,6 @@ from .config import PyTorchConfig
 
 if is_peft_available():
     from peft import get_peft_model  # type: ignore
-
-if is_torch_distributed_available():
-    import torch.distributed
 
 if is_deepspeed_available():
     from deepspeed import init_inference  # type: ignore
@@ -360,10 +357,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             torch.cuda.manual_seed_all(self.config.seed)
 
     def clean(self) -> None:
-        if is_torch_distributed_available() and torch.distributed.is_initialized():
-            LOGGER.info("\t+ Waiting for distributed processes to finish before cleaning backend")
-            torch.distributed.barrier()
-
         super().clean()
 
         if hasattr(self, "tmpdir"):
