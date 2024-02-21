@@ -62,7 +62,7 @@ if is_nvidia_system() and is_pynvml_available():
 if is_rocm_system() and is_amdsmi_available():
     import amdsmi
 
-if is_rocm_system() and not is_pyrsmi_available():
+if is_rocm_system() and is_pyrsmi_available():
     from pyrsmi import rocml
 
 

@@ -1,3 +1,4 @@
+import importlib.util
 import os
 import subprocess
 
@@ -37,14 +38,20 @@ else:
         pass
 
 # we keep this as a check that amdsmi is installed since it's not available on pypi
+PYRSMI = "pyrsmi@git+https://github.com/ROCm/pyrsmi.git"
 if USE_ROCM:
-    INSTALL_REQUIRES.append("amdsmi")
+    if not importlib.util.find_spec("amdsmi"):
+        INSTALL_REQUIRES.append(PYRSMI)
 else:
     try:
         subprocess.run(["rocm-smi"], stdout=subprocess.DEVNULL)
-        INSTALL_REQUIRES.append("amdsmi")
+        if not importlib.util.find_spec("amdsmi"):
+            INSTALL_REQUIRES.append(PYRSMI)
     except FileNotFoundError:
         pass
+
+if PYRSMI in INSTALL_REQUIRES:
+    print("ROCm GPU detected without amdsmi installed. Using pyrsmi instead but some features may not work.")
 
 
 EXTRAS_REQUIRE = {
