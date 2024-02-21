@@ -20,6 +20,7 @@ from optimum_benchmark.benchmarks.training.config import DATASET_SHAPES
 from optimum_benchmark.experiment import ExperimentConfig, launch
 from optimum_benchmark.generators.dataset_generator import DatasetGenerator
 from optimum_benchmark.generators.input_generator import InputGenerator
+from optimum_benchmark.import_utils import get_git_revision_hash
 from optimum_benchmark.launchers.inline.config import InlineConfig
 from optimum_benchmark.launchers.process.config import ProcessConfig
 from optimum_benchmark.launchers.torchrun.config import TorchrunConfig
@@ -107,6 +108,39 @@ def test_api_memory_tracker(device, backend):
     gc.collect()
 
 
+@pytest.mark.parametrize("device", DEVICES)
+@pytest.mark.parametrize("launcher_config", LAUNCHER_CONFIGS)
+def test_api_launch(device, launcher_config):
+    benchmark_config = InferenceConfig(latency=True, memory=True)
+    backend_config = PyTorchConfig(
+        model="bert-base-uncased",
+        device_ids="0,1" if device == "cuda" else None,
+        no_weights=True,
+        device=device,
+    )
+    experiment_config = ExperimentConfig(
+        experiment_name="api-experiment",
+        benchmark=benchmark_config,
+        launcher=launcher_config,
+        backend=backend_config,
+    )
+
+    benchmark_report = launch(experiment_config)
+
+    with TemporaryDirectory() as tempdir:
+        experiment_config.to_dict()
+        experiment_config.to_flat_dict()
+        experiment_config.to_dataframe()
+        experiment_config.to_csv(f"{tempdir}/experiment_config.csv")
+        experiment_config.to_json(f"{tempdir}/experiment_config.json")
+
+        benchmark_report.to_dict()
+        benchmark_report.to_flat_dict()
+        benchmark_report.to_dataframe()
+        benchmark_report.to_csv(f"{tempdir}/benchmark_report.csv")
+        benchmark_report.to_json(f"{tempdir}/benchmark_report.json")
+
+
 @pytest.mark.parametrize("library,task,model", LIBRARIES_TASKS_MODELS)
 def test_api_input_generator(library, task, model):
     if library == "transformers":
@@ -140,38 +174,13 @@ def test_api_dataset_generator(library, task, model):
         raise ValueError(f"Unknown library {library}")
 
     generator = DatasetGenerator(task=task, dataset_shapes=DATASET_SHAPES, model_shapes=model_shapes)
+    generated_dataset = generator()
 
-    _ = generator()
+    assert len(generated_dataset) > 0, "No dataset was generated"
+
+    for key in generated_dataset:
+        assert len(generated_dataset[key]) == DATASET_SHAPES["dataset_size"], "Incorrect dataset size"
 
 
-@pytest.mark.parametrize("device", DEVICES)
-@pytest.mark.parametrize("launcher_config", LAUNCHER_CONFIGS)
-def test_api_launch(device, launcher_config):
-    benchmark_config = InferenceConfig(latency=True, memory=True)
-    backend_config = PyTorchConfig(
-        model="bert-base-uncased",
-        device_ids="0,1" if device == "cuda" else None,
-        no_weights=True,
-        device=device,
-    )
-    experiment_config = ExperimentConfig(
-        experiment_name="api-experiment",
-        benchmark=benchmark_config,
-        launcher=launcher_config,
-        backend=backend_config,
-    )
-
-    benchmark_report = launch(experiment_config)
-
-    with TemporaryDirectory() as tempdir:
-        experiment_config.to_dict()
-        experiment_config.to_flat_dict()
-        experiment_config.to_dataframe()
-        experiment_config.to_csv(f"{tempdir}/experiment_config.csv")
-        experiment_config.to_json(f"{tempdir}/experiment_config.json")
-
-        benchmark_report.to_dict()
-        benchmark_report.to_flat_dict()
-        benchmark_report.to_dataframe()
-        benchmark_report.to_csv(f"{tempdir}/benchmark_report.csv")
-        benchmark_report.to_json(f"{tempdir}/benchmark_report.json")
+def test_git_revision_hash_detection():
+    assert get_git_revision_hash("optimum_benchmark") is not None
