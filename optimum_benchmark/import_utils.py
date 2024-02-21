@@ -27,6 +27,16 @@ _deepspeed_available = importlib.util.find_spec("deepspeed") is not None
 _tensorrt_llm_available = importlib.util.find_spec("tensorrt_llm") is not None
 _psutil_available = importlib.util.find_spec("psutil") is not None
 _optimum_benchmark_available = importlib.util.find_spec("optimum_benchmark") is not None
+_py_tgi_available = importlib.util.find_spec("py_tgi") is not None
+_pyrsmi_available = importlib.util.find_spec("pyrsmi") is not None
+
+
+def is_pyrsmi_available():
+    return _pyrsmi_available
+
+
+def is_py_tgi_available():
+    return _py_tgi_available
 
 
 def is_psutil_available():
@@ -181,6 +191,11 @@ def tesnorrt_llm_version():
 def optimum_benchmark_version():
     if _optimum_benchmark_available:
         return importlib.metadata.version("optimum_benchmark")
+
+
+def py_tgi_version():
+    if _py_tgi_available:
+        return importlib.metadata.version("py_tgi")
 
 
 def get_git_revision_hash(package_name: str) -> Optional[str]:

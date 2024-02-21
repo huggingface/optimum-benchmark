@@ -3,6 +3,8 @@ import subprocess
 
 from setuptools import find_packages, setup
 
+OPTIMUM_BENCHMARK_VERSION = "0.2.0"
+
 MIN_OPTIMUM_VERSION = "1.16.0"
 INSTALL_REQUIRES = [
     # Mandatory HF dependencies
@@ -16,8 +18,8 @@ INSTALL_REQUIRES = [
     # CPU Memory
     "psutil",
     # Reporting
-    "pandas",
     "flatten_dict",
+    "pandas",
 ]
 
 # We may allow to install CUDA or RoCm dependencies even
@@ -52,10 +54,10 @@ EXTRAS_REQUIRE = {
     "openvino": [f"optimum[openvino,nncf]>={MIN_OPTIMUM_VERSION}"],
     "onnxruntime": [f"optimum[onnxruntime]>={MIN_OPTIMUM_VERSION}"],
     "neural-compressor": [f"optimum[neural-compressor]>={MIN_OPTIMUM_VERSION}"],
-    "onnxruntime-gpu": [f"optimum[onnxruntime-gpu]>={MIN_OPTIMUM_VERSION}"],
     "torch-ort": [f"optimum>={MIN_OPTIMUM_VERSION}", "onnxruntime-training", "torch-ort"],
+    "onnxruntime-gpu": [f"optimum[onnxruntime-gpu]>={MIN_OPTIMUM_VERSION}"],
     # docker-based backends
-    "text-generation-inference": ["docker"],
+    "text-generation-inference": ["py-tgi"],
     # specific settings
     "codecarbon": ["codecarbon"],
     "deepspeed": ["deepspeed"],
@@ -67,9 +69,9 @@ EXTRAS_REQUIRE = {
 
 setup(
     name="optimum-benchmark",
+    version=OPTIMUM_BENCHMARK_VERSION,
     install_requires=INSTALL_REQUIRES,
     extras_require=EXTRAS_REQUIRE,
     packages=find_packages(),
-    version="0.1.0",
     entry_points={"console_scripts": ["optimum-benchmark=optimum_benchmark.cli:benchmark_cli"]},
 )
