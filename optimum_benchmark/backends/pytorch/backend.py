@@ -1,4 +1,5 @@
 import gc
+import json
 import os
 from collections import OrderedDict
 from logging import getLogger
@@ -70,8 +71,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         LOGGER.info("\t+ Creating backend temporary directory")
         self.tmpdir = TemporaryDirectory()
 
-        if self.config.no_weights and self.config.library == "diffusers":
-            raise ValueError("Diffusion pipelines are not supported with no_weights=True")
+        if self.config.no_weights and (self.config.library == "diffusers" or self.config.library == "timm"):
+            raise ValueError("Diffusion pipelines and Timm models don't support no weights")
         elif self.config.no_weights:
             LOGGER.info("\t+ Loading model with random weights")
             self.load_model_with_no_weights()
@@ -179,7 +180,10 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 )
 
     def create_no_weights_model(self) -> None:
-        self.no_weights_model = os.path.join(self.tmpdir.name, "no_weights")
+        if self.pretrained_config is None:
+            raise ValueError("Can't create no weights model without a pretrained config")
+
+        self.no_weights_model = os.path.join(self.tmpdir.name, "no_weights_model")
         LOGGER.info("\t+ Creating no weights model directory")
         os.makedirs(self.no_weights_model, exist_ok=True)
         LOGGER.info("\t+ Creating no weights model state dict")
@@ -202,8 +206,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.pretrained_config.quantization_config = self.quantization_config.to_dict()
             # tricking from_pretrained to load the model as if it was quantized
 
+        LOGGER.info("\t+ Saving no weights model pretrained config")
         if self.config.library == "transformers":
-            LOGGER.info("\t+ Saving no weights model pretrained config")
             self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
 
     def load_model_with_no_weights(self) -> None:
