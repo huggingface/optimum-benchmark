@@ -1,5 +1,4 @@
 import gc
-import json
 import os
 from collections import OrderedDict
 from logging import getLogger
