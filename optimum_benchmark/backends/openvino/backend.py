@@ -83,8 +83,10 @@ class OVBackend(Backend[OVConfig]):
         LOGGER.info("\t+ Saving no weights model safetensors")
         safetensors = os.path.join(self.no_weights_model, "model.safetensors")
         save_file(tensors=state_dict, filename=safetensors, metadata={"format": "pt"})
-        LOGGER.info("\t+ Saving no weights model pretrained config")
-        self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
+
+        if self.config.library == "transformers":
+            LOGGER.info("\t+ Saving no weights model pretrained config")
+            self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
 
     def load_automodel_with_no_weights(self) -> None:
         LOGGER.info("\t+ Creating no weights model")

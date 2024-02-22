@@ -1,7 +1,10 @@
+import os
 from logging import getLogger
 from typing import Any, Dict
 
+import torch
 from hydra.utils import get_class
+from safetensors.torch import save_file
 from transformers.utils import ModelOutput
 
 from ..base import Backend
@@ -27,6 +30,18 @@ class TRTLLMBackend(Backend[TRTLLMConfig]):
 
         self.trtmodel_class = get_class(MODEL_TYPE_TO_TRTLLMMODEL[self.model_type])
         LOGGER.info(f"\t+ Using TRTLLMModel class {self.trtmodel_class.__name__}")
+
+    def create_no_weights_model(self) -> None:
+        self.no_weights_model = os.path.join(self.tmpdir.name, "no_weights_model")
+        LOGGER.info("\t+ Creating no weights model state dict")
+        state_dict = torch.nn.Linear(1, 1).state_dict()
+        LOGGER.info("\t+ Saving no weights model safetensors")
+        safetensors = os.path.join(self.no_weights_model, "model.safetensors")
+        save_file(tensors=state_dict, filename=safetensors, metadata={"format": "pt"})
+
+        if self.config.library == "transformers":
+            LOGGER.info("\t+ Saving no weights model pretrained config")
+            self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
 
     def load_trtmodel_from_pretrained(self) -> None:
         self.pretrained_model = self.trtmodel_class.from_pretrained(

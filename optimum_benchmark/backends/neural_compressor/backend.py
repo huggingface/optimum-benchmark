@@ -73,8 +73,10 @@ class INCBackend(Backend[INCConfig]):
         state_dict = torch.nn.Linear(1, 1).state_dict()
         LOGGER.info("\t+ Saving no weights model pytorch_model.bin")
         torch.save(state_dict, os.path.join(self.no_weights_model, "pytorch_model.bin"))
-        LOGGER.info("\t+ Saving no weights model pretrained config")
-        self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
+
+        if self.config.library == "transformers":
+            LOGGER.info("\t+ Saving no weights model pretrained config")
+            self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
 
     def load_automodel_with_no_weights(self) -> None:
         LOGGER.info("\t+ Creating no weights model")

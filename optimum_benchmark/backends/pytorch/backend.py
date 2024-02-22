@@ -202,8 +202,9 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.pretrained_config.quantization_config = self.quantization_config.to_dict()
             # tricking from_pretrained to load the model as if it was quantized
 
-        LOGGER.info("\t+ Saving no weights model pretrained config")
-        self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
+        if self.config.library == "transformers":
+            LOGGER.info("\t+ Saving no weights model pretrained config")
+            self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
 
     def load_model_with_no_weights(self) -> None:
         LOGGER.info("\t+ Creating no weights model")
