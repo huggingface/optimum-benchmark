@@ -2,7 +2,11 @@ defaults:
   - benchmark: inference
 
 benchmark:
+  memory: true
+  latency: true
+
   duration: 1
   warmup_runs: 1
-  new_tokens: 2
-  memory: true
+  generate_kwargs:
+    max_new_tokens: 5
+    min_new_tokens: 5

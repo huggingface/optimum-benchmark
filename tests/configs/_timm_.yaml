@@ -1,5 +1,7 @@
 backend:
-  library: timm
-  task: image-classification
   model: timm/tiny_vit_21m_224.in1k
 
+hydra:
+  sweeper:
+    params:
+      backend.no_weights: true,false
