@@ -97,7 +97,6 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             LOGGER.info("\t+ Generating Image Diffusion inputs")
             self.call_inputs = self.input_generator()
             self.call_inputs = backend.prepare_inputs(self.call_inputs)
-            self.call_inputs = {"prompt": self.call_inputs["prompt"]}
             LOGGER.info("\t+ Updating Image Diffusion kwargs with default values")
             self.config.call_kwargs = {**IMAGE_DIFFUSION_KWARGS, **self.config.call_kwargs}
             LOGGER.info("\t+ Initializing Image Diffusion report")

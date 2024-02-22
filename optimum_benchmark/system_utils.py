@@ -6,7 +6,7 @@ from typing import List, Optional
 
 import psutil
 
-from .import_utils import is_amdsmi_available, is_pynvml_available
+from .import_utils import is_amdsmi_available, is_pynvml_available, is_pyrsmi_available
 
 
 ## CPU related stuff
@@ -62,6 +62,9 @@ if is_nvidia_system() and is_pynvml_available():
 if is_rocm_system() and is_amdsmi_available():
     import amdsmi
 
+if is_rocm_system() and is_pyrsmi_available():
+    from pyrsmi import rocml
+
 
 def get_rocm_version():
     for folder in os.listdir("/opt/"):
@@ -86,24 +89,32 @@ def get_gpus():
             gpus.append(pynvml.nvmlDeviceGetName(handle))
         pynvml.nvmlShutdown()
     elif is_rocm_system():
-        if not is_amdsmi_available():
+        if not is_amdsmi_available() and not is_pyrsmi_available():
             raise ValueError(
-                "The library amdsmi is required to run memory benchmark on AMD GPUs, but is not installed. "
-                "Please install the official and AMD maintained amdsmi library from https://github.com/ROCm/amdsmi."
+                "Either the library amdsmi or pyrsmi is required to run memory benchmark on AMD GPUs, but is not installed. "
             )
 
         gpus = []
-        amdsmi.amdsmi_init()
-        rocm_version = get_rocm_version()
-        if rocm_version >= "5.7":
-            devices_handles = amdsmi.amdsmi_get_processor_handles()
-            for device_handle in devices_handles:
-                gpus.append(amdsmi.amdsmi_get_gpu_vendor_name(device_handle))
-        else:
-            devices_handles = amdsmi.amdsmi_get_device_handles()
-            for device_handle in devices_handles:
-                gpus.append(amdsmi.amdsmi_dev_get_vendor_name(device_handle))
-        amdsmi.amdsmi_shut_down()
+
+        if is_amdsmi_available():
+            amdsmi.amdsmi_init()
+            rocm_version = get_rocm_version()
+            if rocm_version >= "5.7":
+                devices_handles = amdsmi.amdsmi_get_processor_handles()
+                for device_handle in devices_handles:
+                    gpus.append(amdsmi.amdsmi_get_gpu_vendor_name(device_handle))
+            else:
+                devices_handles = amdsmi.amdsmi_get_device_handles()
+                for device_handle in devices_handles:
+                    gpus.append(amdsmi.amdsmi_dev_get_vendor_name(device_handle))
+            amdsmi.amdsmi_shut_down()
+
+        elif is_pyrsmi_available():
+            rocml.smi_initialize()
+            for i in range(rocml.smi_get_device_count()):
+                gpus.append(rocml.smi_get_device_name(i))
+            rocml.smi_shutdown()
+
     else:
         raise ValueError("No NVIDIA or ROCm GPUs found.")
 
@@ -124,30 +135,34 @@ def get_gpu_vram_mb() -> List[int]:
             pynvml.nvmlDeviceGetMemoryInfo(pynvml.nvmlDeviceGetHandleByIndex(i)).total for i in range(device_count)
         ]
         pynvml.nvmlShutdown()
+
     elif is_rocm_system():
-        if not is_amdsmi_available():
+        if not is_amdsmi_available() and not is_pyrsmi_available():
             raise ValueError(
-                "The library amdsmi is required to run memory benchmark on AMD GPUs, but is not installed. "
-                "Please install the official and AMD maintained amdsmi library from https://github.com/ROCm/amdsmi."
+                "Either the library amdsmi or pyrsmi is required to run memory benchmark on AMD GPUs, but is not installed. "
             )
 
-        amdsmi.amdsmi_init()
-        rocm_version = get_rocm_version()
+        if is_amdsmi_available():
+            amdsmi.amdsmi_init()
+            rocm_version = get_rocm_version()
+            if rocm_version >= "5.7":
+                device_handles = amdsmi.amdsmi_get_processor_handles()
+                vrams = [
+                    amdsmi.amdsmi_get_gpu_memory_total(device_handle, mem_type=amdsmi.AmdSmiMemoryType.VRAM)
+                    for device_handle in device_handles
+                ]
+            else:
+                device_handles = amdsmi.amdsmi_get_device_handles()
+                vrams = [
+                    amdsmi.amdsmi_dev_get_memory_total(device_handle, mem_type=amdsmi.AmdSmiMemoryType.VRAM)
+                    for device_handle in device_handles
+                ]
+            amdsmi.amdsmi_shut_down()
 
-        if rocm_version >= "5.7":
-            device_handles = amdsmi.amdsmi_get_processor_handles()
-            vrams = [
-                amdsmi.amdsmi_get_gpu_memory_total(device_handle, mem_type=amdsmi.AmdSmiMemoryType.VRAM)
-                for device_handle in device_handles
-            ]
-        else:
-            device_handles = amdsmi.amdsmi_get_device_handles()
-            vrams = [
-                amdsmi.amdsmi_dev_get_memory_total(device_handle, mem_type=amdsmi.AmdSmiMemoryType.VRAM)
-                for device_handle in device_handles
-            ]
-
-        amdsmi.amdsmi_shut_down()
+        elif is_pyrsmi_available():
+            rocml.smi_initialize()
+            vrams = [rocml.smi_get_device_memory_total(i) for i in range(rocml.smi_get_device_count())]
+            rocml.smi_shutdown()
 
     else:
         raise ValueError("No NVIDIA or ROCm GPUs found.")

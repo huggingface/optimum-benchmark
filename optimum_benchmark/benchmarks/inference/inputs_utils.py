@@ -1,5 +1,8 @@
 def extract_text_generation_inputs(inputs):
-    if "pixel_values" in inputs:
+    if "prompt" in inputs:
+        # text input
+        text_generation_inputs = {"prompt": inputs["prompt"]}
+    elif "pixel_values" in inputs:
         # image input
         text_generation_inputs = {"pixel_values": inputs["pixel_values"]}
     elif "input_values" in inputs:
