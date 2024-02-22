@@ -1,9 +1,27 @@
 # List of targets that are not associated with files
 .PHONY:	quality style install build_docker_cpu build_docker_cuda build_docker_rocm build_docker_tensorrt test_api_misc test_api_cpu test_api_cuda test_api_rocm test_api_tensorrt test_cli_misc test_cli_cpu_pytorch test_cli_cpu_neural_compressor test_cli_cpu_onnxruntime test_cli_cpu_openvino test_cli_cuda_pytorch test_cli_rocm_pytorch test_cli_tensorrt_onnxruntime test_cli_tensorrt_llm
 
+, := ,
 PWD := $(shell pwd)
 USER_ID := $(shell id -u)
 GROUP_ID := $(shell id -g)
+
+API_MISC_REQS := testing
+API_CPU_REQS := testing,timm,diffusers
+API_CUDA_REQS := testing,timm,diffusers
+API_ROCM_REQS := testing,timm,diffusers
+
+CLI_MISC_REQS := testing
+
+CLI_CUDA_ONNXRUNTIME_REQS := testing,timm,diffusers
+CLI_ROCM_ONNXRUNTIME_REQS := testing,timm,diffusers
+CLI_CUDA_PYTORCH_REQS := testing,timm,diffusers,deepspeed,peft
+CLI_ROCM_PYTORCH_REQS := testing,timm,diffusers,deepspeed,peft
+
+CLI_CPU_OPENVINO_REQS := testing,openvino,timm,diffusers
+CLI_CPU_PYTORCH_REQS := testing,timm,diffusers,deepspeed,peft
+CLI_CPU_ONNXRUNTIME_REQS := testing,onnxruntime,timm,diffusers
+CLI_CPU_NEURAL_COMPRESSOR_REQS := testing,neural-compressor,timm,diffusers
 
 quality:
 	ruff check .
@@ -18,49 +36,44 @@ install:
 
 ## Docker builds
 
+define build_docker
+	docker build -f docker/$(1).dockerfile  --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t opt-bench-$(1):local .
+endef
+
 build_docker_cpu:
-	docker build -f docker/cpu.dockerfile  --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t opt-bench-cpu:local .
+	$(call build_docker,cpu)
 
 build_docker_cuda:
-	docker build -f docker/cuda.dockerfile  --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t opt-bench-cuda:local . 
+	$(call build_docker,cuda)
 
 build_docker_rocm:
-	docker build -f docker/rocm.dockerfile  --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t opt-bench-rocm:local . 
+	$(call build_docker,rocm)
 
-build_docker_tensorrt:
-	docker build -f docker/tensorrt.dockerfile  --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t opt-bench-tensorrt:local .
+## Tests
 
-## API tests
-
-test_api_misc:
+define test_ubuntu
 	docker run \
 	--rm \
 	--pid host \
 	--entrypoint /bin/bash \
 	--volume $(PWD):/workspace \
 	--workdir /workspace \
-	opt-bench-cpu:local -c "pip install -e .[testing,timm,diffusers] && pytest tests/ -k 'api and not (cpu or cuda or rocm or tensorrt)' -x"
+	opt-bench-$(1):local -c "pip install -e .[$(2)] && pytest tests/ -k '$(3)' -x"
+endef
 
-test_api_cpu:
+define test_nvidia
 	docker run \
 	--rm \
 	--pid host \
-	--entrypoint /bin/bash \
-	--volume $(PWD):/workspace \
-	--workdir /workspace \
-	opt-bench-cpu:local -c "pip install -e .[testing,timm,diffusers] && pytest tests/ -k 'api and cpu' -x"
-
-test_api_cuda:
-	docker run \
-	--rm \
-	--pid host \
+	--shm-size 64G \
 	--gpus '"device=0,1"' \
 	--entrypoint /bin/bash \
 	--volume $(PWD):/workspace \
 	--workdir /workspace \
-	opt-bench-cuda:local -c "pip install -e .[testing,timm,diffusers] && pytest tests/ -k 'api and cuda' -x"
+	opt-bench-$(1):local -c "pip install -e .[$(2)] && pytest tests/ -k '$(3)' -x"
+endef
 
-test_api_rocm:
+define test_amdgpu
 	docker run \
 	--rm \
 	--pid host \
@@ -71,101 +84,44 @@ test_api_rocm:
 	--entrypoint /bin/bash \
 	--volume $(PWD):/workspace \
 	--workdir /workspace \
-	opt-bench-rocm:local -c "pip install -e .[testing,timm,diffusers] && pytest tests/ -k 'api and cuda' -x"
+	opt-bench-$(1):local -c "pip install -e .$(2) && pytest tests/ -k '$(3)' -x"
+endef
+
+# group the extra
+test_api_cpu:
+	$(call test_ubuntu,cpu,$(API_CPU_REQS),api and cpu)
+
+test_api_cuda:
+	$(call test_nvidia,cuda,$(API_CUDA_REQS),api and cuda)
+
+test_api_rocm:
+	$(call test_amdgpu,rocm,$(API_ROCM_REQS),api and rocm)
+
+test_api_misc:
+	$(call test_ubuntu,cpu,$(API_MISC_REQS),api and not (cpu or cuda or rocm or tensorrt))
 
 ## CLI tests
 
-### CLI CPU tests
-
-test_cli_misc:
-	docker run \
-	--rm \
-	--pid host \
-	--entrypoint /bin/bash \
-	--volume $(PWD):/workspace \
-	--workdir /workspace \
-	opt-bench-cpu:local -c "pip install -e .[testing,diffusers,timm] && pytest tests/ -k 'cli and not (cpu or cuda or rocm or tensorrt)' -x"
-
-test_cli_cpu_pytorch:
-	docker run \
-	--rm \
-	--pid host \
-	--entrypoint /bin/bash \
-	--volume $(PWD):/workspace \
-	--workdir /workspace \
-	opt-bench-cpu:local -c "pip install -e .[testing,diffusers,timm] && pytest tests/ -k 'cli and cpu and pytorch' -x"
-
-test_cli_cpu_neural_compressor:
-	docker run \
-	--rm \
-	--pid host \
-	--entrypoint /bin/bash \
-	--volume $(PWD):/workspace \
-	--workdir /workspace \
-	opt-bench-cpu:local -c "pip install -e .[testing,neural-compressor,diffusers,timm] && pytest tests/ -k 'cli and cpu and neural_compressor' -x"
-
-test_cli_cpu_onnxruntime:
-	docker run \
-	--rm \
-	--pid host \
-	--entrypoint /bin/bash \
-	--volume $(PWD):/workspace \
-	--workdir /workspace \
-	opt-bench-cpu:local -c "pip install -e .[testing,onnxruntime,diffusers,timm] && pytest tests/ -k 'cli and cpu and onnxruntime' -x"
-
-test_cli_cpu_openvino:
-	docker run \
-	--rm \
-	--pid host \
-	--entrypoint /bin/bash \
-	--volume $(PWD):/workspace \
-	--workdir /workspace \
-	opt-bench-cpu:local -c "pip install -e .[testing,openvino,diffusers,timm] && pytest tests/ -k 'cli and cpu and openvino' -x"
-
-### CLI GPU tests
-
 test_cli_cuda_pytorch:
-	docker run \
-	--rm \
-	--pid host \
-	--shm-size 64G \
-	--gpus '"device=0,1"' \
-	--entrypoint /bin/bash \
-	--volume $(PWD):/workspace \
-	--workdir /workspace \
-	opt-bench-cuda:local -c "pip install -e .[testing,diffusers,timm,deepspeed,peft] && pytest tests/ -k 'cli and cuda and pytorch' -x"
+	$(call test_nvidia,cuda,$(CLI_CUDA_PYTORCH_REQS),cli and cuda and pytorch)
 
 test_cli_rocm_pytorch:
-	docker run \
-	--rm \
-	--pid host \
-	--shm-size 64G \
-	--device /dev/kfd \
-	--device /dev/dri/renderD128 \
-	--device /dev/dri/renderD129 \
-	--entrypoint /bin/bash \
-	--volume $(PWD):/workspace \
-	--workdir /workspace \
-	opt-bench-rocm:local -c "pip install -e .[testing,diffusers,timm,deepspeed,peft] && pytest tests/ -k 'cli and cuda and pytorch' -x"
+	$(call test_amdgpu,rocm,$(CLI_ROCM_PYTORCH_REQS),cli and rocm and pytorch)
 
-test_cli_tensorrt_onnxruntime:
-	docker run \
-	--rm \
-	--pid host \
-	--shm-size 64G \
-	--gpus '"device=0,1"' \
-	--entrypoint /bin/bash \
-	--volume $(PWD):/workspace \
-	--workdir /workspace \
-	opt-bench-tensorrt:local -c "pip install -e .[testing,onnxruntime-gpu,diffusers,timm] && pytest tests/ -k 'cli and tensorrt and onnxruntime' -x"
+test_cli_cuda_onnxruntime:
+	$(call test_nvidia,cuda,$(CLI_CUDA_ONNXRUNTIME_REQS),cli and cuda and onnxruntime)
 
-test_cli_tensorrt_llm:
-	docker run \
-	--rm \
-	--pid host \
-	--shm-size 64G \
-	--gpus '"device=0,1"' \
-	--entrypoint /bin/bash \
-	--volume $(PWD):/workspace \
-	--workdir /workspace \
-	opt-bench-tensorrt-llm:local -c "pip install -e .[testing] && pip uninstall -y nvidia-ml-py && pytest tests/ -k 'cli and tensorrt and llm' -x"
+test_cli_rocm_onnxruntime:
+	$(call test_amdgpu,rocm,$(CLI_ROCM_ONNXRUNTIME_REQS),cli and rocm and onnxruntime)
+
+test_cli_cpu_pytorch:
+	$(call test_ubuntu,cpu,$(CLI_CPU_PYTORCH_REQS),cli and cpu and pytorch)
+
+test_cli_cpu_openvino:
+	$(call test_ubuntu,cpu,$(CLI_CPU_OPENVINO_REQS),cli and cpu and openvino)
+
+test_cli_cpu_onnxruntime:
+	$(call test_ubuntu,cpu,$(CLI_CPU_ONNXRUNTIME_REQS),cli and cpu and onnxruntime)
+
+test_cli_cpu_neural_compressor:
+	$(call test_ubuntu,cpu,$(CLI_CPU_NEURAL_COMPRESSOR_REQS),cli and cpu and neural-compressor)
