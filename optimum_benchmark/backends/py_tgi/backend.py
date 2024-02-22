@@ -15,7 +15,7 @@ from ..transformers_utils import random_init_weights
 from .config import PyTGIConfig
 
 # bachend logger
-LOGGER = getLogger("text-generation-inference")
+LOGGER = getLogger("py-tgi")
 
 
 class PyTGIBackend(Backend[PyTGIConfig]):

@@ -4,7 +4,6 @@ from typing import Any, Dict, Optional
 from ...import_utils import torch_version
 from ...system_utils import is_rocm_system
 from ..config import BackendConfig
-from ..peft_utils import PEFT_CONFIGS, PEFT_TASKS_TYPES
 
 DEVICE_MAPS = ["auto", "sequential"]
 AMP_DTYPES = ["bfloat16", "float16"]
@@ -56,7 +55,7 @@ class PyTorchConfig(BackendConfig):
     deepspeed_inference_config: Dict[str, Any] = field(default_factory=dict)
 
     # peft options
-    peft_strategy: Optional[str] = None
+    peft_type: Optional[str] = None
     peft_config: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
@@ -86,14 +85,3 @@ class PyTorchConfig(BackendConfig):
             if self.quantization_config:
                 QUANTIZATION_CONFIG = QUANTIZATION_CONFIGS[self.quantization_scheme]
                 self.quantization_config = {**QUANTIZATION_CONFIG, **self.quantization_config}
-
-        if self.peft_strategy is not None:
-            if self.peft_strategy not in PEFT_CONFIGS:
-                raise ValueError(
-                    f"`peft_strategy` must be one of {list(PEFT_CONFIGS.keys())}. Got {self.peft_strategy} instead."
-                )
-            PEFT_CONFIG = PEFT_CONFIGS[self.peft_strategy]
-            self.peft_config = {**PEFT_CONFIG, **self.peft_config}
-
-            if self.peft_config["task_type"] is None:
-                raise ValueError(f"`peft_config.task_type` must be set to one of the following {PEFT_TASKS_TYPES}")

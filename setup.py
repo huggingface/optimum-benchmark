@@ -57,15 +57,15 @@ if PYRSMI in INSTALL_REQUIRES:
 EXTRAS_REQUIRE = {
     "quality": ["ruff"],
     "testing": ["pytest", "hydra-joblib-launcher"],
-    # api-based backends
+    # optimum backends
     "openvino": [f"optimum[openvino,nncf]>={MIN_OPTIMUM_VERSION}"],
     "onnxruntime": [f"optimum[onnxruntime]>={MIN_OPTIMUM_VERSION}"],
     "neural-compressor": [f"optimum[neural-compressor]>={MIN_OPTIMUM_VERSION}"],
     "torch-ort": [f"optimum>={MIN_OPTIMUM_VERSION}", "onnxruntime-training", "torch-ort"],
     "onnxruntime-gpu": [f"optimum[onnxruntime-gpu]>={MIN_OPTIMUM_VERSION}"],
     # docker-based backends
-    "text-generation-inference": ["py-tgi"],
-    # specific settings
+    "py-tgi": ["py-tgi"],
+    # third-party features
     "codecarbon": ["codecarbon"],
     "deepspeed": ["deepspeed"],
     "diffusers": ["diffusers"],

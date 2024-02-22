@@ -1,10 +1,9 @@
-import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
 from ...import_utils import onnxruntime_version
+from ...task_utils import TEXT_GENERATION_TASKS
 from ..config import BackendConfig
-from ..peft_utils import PEFT_CONFIGS, PEFT_TASKS_TYPES
 
 QUANTIZATION_CONFIG = {
     "is_static": False,
@@ -21,8 +20,6 @@ AUTO_QUANTIZATION_CONFIG = {
     "is_static": False
     # is_static is mandatory
 }
-
-TRT_PROVIDER_OPTIONS = {"trt_engine_cache_enable": True, "trt_engine_cache_path": "/tmp/trt_cache"}
 
 IO_BINDING_LIBRARIES = ["transformers", "timm"]
 IO_BINDING_PROVIDERS = ["CPUExecutionProvider", "CUDAExecutionProvider"]
@@ -46,7 +43,7 @@ class ORTConfig(BackendConfig):
 
     # provider options
     provider: Optional[str] = None
-    provider_options: Dict[str, Any] = field(default_factory=lambda: {})
+    provider_options: Dict[str, Any] = field(default_factory=dict)
 
     # inference options
     use_io_binding: Optional[bool] = None
@@ -76,10 +73,6 @@ class ORTConfig(BackendConfig):
     calibration: bool = False
     calibration_config: Dict[str, Any] = field(default_factory=dict)
 
-    # peft options
-    peft_strategy: Optional[str] = None
-    peft_config: Dict[str, Any] = field(default_factory=dict)
-
     def __post_init__(self):
         super().__post_init__()
 
@@ -95,9 +88,8 @@ class ORTConfig(BackendConfig):
         if self.use_io_binding is None:
             self.use_io_binding = self.provider in IO_BINDING_PROVIDERS and self.library in IO_BINDING_LIBRARIES
 
-        if self.provider == "TensorrtExecutionProvider":
-            self.provider_options = {**TRT_PROVIDER_OPTIONS, **self.provider_options}
-            os.makedirs(self.provider_options["trt_engine_cache_path"], exist_ok=True)
+        if self.provider == "TensorrtExecutionProvider" and self.task in TEXT_GENERATION_TASKS:
+            raise NotImplementedError("we don't support TensorRT for text generation tasks")
 
         if self.quantization:
             self.quantization_config = {**QUANTIZATION_CONFIG, **self.quantization_config}
@@ -118,14 +110,3 @@ class ORTConfig(BackendConfig):
 
         if self.calibration:
             self.calibration_config = {**CALIBRATION_CONFIG, **self.calibration_config}
-
-        if self.peft_strategy is not None:
-            if self.peft_strategy not in PEFT_CONFIGS:
-                raise ValueError(
-                    f"`peft_strategy` must be one of {list(PEFT_CONFIGS.keys())}. Got {self.peft_strategy} instead."
-                )
-            PEFT_CONFIG = PEFT_CONFIGS[self.peft_strategy]
-            self.peft_config = {**PEFT_CONFIG, **self.peft_config}
-
-            if self.peft_config["task_type"] is None:
-                raise ValueError(f"`peft_config.task_type` must be set to one of the following {PEFT_TASKS_TYPES}")

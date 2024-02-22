@@ -84,7 +84,7 @@ define test_amdgpu
 	--entrypoint /bin/bash \
 	--volume $(PWD):/workspace \
 	--workdir /workspace \
-	opt-bench-$(1):local -c "pip install -e .$(2) && pytest tests/ -k '$(3)' -x"
+	opt-bench-$(1):local -c "pip install -e .[$(2)] && pytest tests/ -k '$(3)' -x"
 endef
 
 # group the extra
@@ -106,7 +106,7 @@ test_cli_cuda_pytorch:
 	$(call test_nvidia,cuda,$(CLI_CUDA_PYTORCH_REQS),cli and cuda and pytorch)
 
 test_cli_rocm_pytorch:
-	$(call test_amdgpu,rocm,$(CLI_ROCM_PYTORCH_REQS),cli and rocm and pytorch)
+	$(call test_amdgpu,rocm,$(CLI_ROCM_PYTORCH_REQS),cli and cuda and pytorch and peft)
 
 test_cli_cuda_onnxruntime:
 	$(call test_nvidia,cuda,$(CLI_CUDA_ONNXRUNTIME_REQS),cli and cuda and onnxruntime)

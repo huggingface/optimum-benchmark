@@ -1,7 +1,0 @@
-backend:
-  model: gpt2
-  task: text-generation
-  library: transformers
-  peft_strategy: lora
-  peft_config:
-    task_type: CAUSAL_LM

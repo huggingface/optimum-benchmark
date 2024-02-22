@@ -5,7 +5,8 @@ from collections import OrderedDict
 from logging import getLogger
 from typing import Any, ClassVar, Dict, Generic, Optional
 
-import numpy as np
+import datasets.utils.logging as datasets_logging
+import transformers.utils.logging as transformers_logging
 from transformers import GenerationConfig, PretrainedConfig, PreTrainedModel, TrainerState
 
 from ..task_utils import get_automodel_class_for_task
@@ -19,6 +20,9 @@ from .transformers_utils import (
     get_transformers_pretrained_config,
     get_transformers_pretrained_processor,
 )
+
+datasets_logging.set_verbosity_error()
+transformers_logging.set_verbosity_error()
 
 LOGGER = getLogger("backend")
 
@@ -71,7 +75,6 @@ class Backend(Generic[BackendConfigT], ABC):
     def seed(self) -> None:
         LOGGER.info(f"\t+ Setting random seed to {self.config.seed}")
         random.seed(self.config.seed)
-        np.random.seed(self.config.seed)
 
     def prepare_for_inference(self, **kwargs) -> None:
         """

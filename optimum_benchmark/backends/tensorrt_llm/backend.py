@@ -18,6 +18,7 @@ class TRTLLMBackend(Backend[TRTLLMConfig]):
         super().__init__(config)
         self.validate_model_type()
 
+        LOGGER.info("\t+ Loading pretrained TRTLLMModel")
         self.load_trtmodel_from_pretrained()
 
     def validate_model_type(self) -> None:
