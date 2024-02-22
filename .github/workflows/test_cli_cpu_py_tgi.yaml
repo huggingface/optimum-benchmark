@@ -28,5 +28,8 @@ jobs:
           pip install --upgrade pip
           pip install -e .[testing,py-tgi]
 
+      - name: Pull TGI docker image
+        run: docker pull ghcr.io/huggingface/text-generation-inference:latest
+
       - name: Run tests
         run: pytest -k "cli and cpu and py_tgi"
