@@ -157,13 +157,10 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             LOGGER.info("\t+ Loading Quantized model")
             self.pretrained_model = self.automodel_class.from_pretrained(
                 pretrained_model_name_or_path=self.config.model,
-                device_map=self.config.device_map,
+                device_map=self.config.device_map or torch.device(self.config.device),
                 **self.config.hub_kwargs,
                 **self.automodel_kwargs,
             )
-            if self.config.device_map is None and self.config.device != "cpu":
-                LOGGER.info(f"\t+ Moving model to device: {self.config.device}")
-                self.pretrained_model.to(self.config.device)
         elif self.config.device_map is not None:
             # we can't use device context manager since device_map is specified
             LOGGER.info(f"\t+ Loading model with device map: {self.config.device_map}")
@@ -268,13 +265,19 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
     @property
     def is_exllamav2(self) -> bool:
-        dummy_exllama = {"exllama_version": None}
         return (self.is_gptq_quantized or self.is_awq_quantized) and (
-            getattr(self.quantization_config, "exllama_config", dummy_exllama)["exllama_version"]
-            or getattr(self.pretrained_config, "quantization_config", {}).get("exllama_config", dummy_exllama)[
-                "exllama_version"
-            ]
-        ) == 2
+            (
+                hasattr(self.pretrained_config, "quantization_config")
+                and hasattr(self.pretrained_config.quantization_config, "exllama_config")
+                and "exllama_version" in self.pretrained_config.quantization_config.exllama_config
+                and self.pretrained_config.quantization_config.exllama_config["exllama_version"] == 2
+            )
+            or (
+                hasattr(self.quantization_config, "exllama_config")
+                and "exllama_version" in self.quantization_config.exllama_config
+                and self.quantization_config.exllama_config["exllama_version"] == 2
+            )
+        )
 
     @property
     def automodel_kwargs(self) -> Dict[str, Any]:
