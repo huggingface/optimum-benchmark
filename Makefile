@@ -49,6 +49,45 @@ build_docker_cuda:
 build_docker_rocm:
 	$(call build_docker,rocm)
 
+
+# Docker run
+
+run_docker_cpu:
+	docker run \
+	-it \
+	--rm \
+	--pid host \
+	--entrypoint /bin/bash \
+	--volume $(PWD):/workspace \
+	--workdir /workspace \
+	opt-bench-cpu:local
+
+run_docker_cuda:
+	docker run \
+	-it \
+	--rm \
+	--pid host \
+	--shm-size 64G \
+	--gpus '"device=0,1"' \
+	--entrypoint /bin/bash \
+	--volume $(PWD):/workspace \
+	--workdir /workspace \
+	opt-bench-cuda:local
+
+run_docker_rocm:
+	docker run \
+	-it \
+	--rm \
+	--pid host \
+	--shm-size 64G \
+	--device /dev/kfd \
+	--device /dev/dri/renderD128 \
+	--device /dev/dri/renderD129 \
+	--entrypoint /bin/bash \
+	--volume $(PWD):/workspace \
+	--workdir /workspace \
+	opt-bench-rocm:local
+
 ## Tests
 
 define test_ubuntu
