@@ -58,8 +58,8 @@ _TRANSFORMERS_TASKS_TO_TF_MODEL_LOADERS = {
     "zero-shot-object-detection": "TFAutoModelForZeroShotObjectDetection",
 }
 _DIFFUSERS_TASKS_TO_MODEL_LOADERS = {
-    "stable-diffusion": "StableDiffusionPipeline",
-    "stable-diffusion-xl": "StableDiffusionXLImg2ImgPipeline",
+    "stable-diffusion": "AutoPipelineForText2Image",
+    "stable-diffusion-xl": "AutoPipelineForText2Image",
 }
 _TIMM_TASKS_TO_MODEL_LOADERS = {"image-classification": "create_model"}
 _LIBRARY_TO_TF_TASKS_TO_MODEL_LOADER_MAP = {"transformers": _TRANSFORMERS_TASKS_TO_TF_MODEL_LOADERS}

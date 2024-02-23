@@ -1,6 +1,0 @@
-backend:
-  model: gpt2
-  task: text-generation
-  library: transformers
-  device_ids: 0,1
-  device_map: auto

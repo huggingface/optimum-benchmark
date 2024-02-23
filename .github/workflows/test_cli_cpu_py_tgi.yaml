@@ -1,4 +1,4 @@
-name: CLI Misc Tests
+name: CLI CPU Py-TGI Tests
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  run_misc_cli_tests:
+  run_cli_cpu_py_tgi_tests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -26,7 +26,10 @@ jobs:
       - name: Install requirements
         run: |
           pip install --upgrade pip
-          pip install -e .[testing]
+          pip install -e .[testing,py-tgi]
+
+      - name: Pull TGI docker image
+        run: docker pull ghcr.io/huggingface/text-generation-inference:latest
 
       - name: Run tests
-        run: pytest -k "cli and not (cpu or cuda or rocm or tensorrt)"
+        run: pytest -k "cli and cpu and py_tgi"

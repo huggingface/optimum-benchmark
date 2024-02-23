@@ -9,9 +9,9 @@ from omegaconf import DictConfig, OmegaConf
 from .backends.neural_compressor.config import INCConfig
 from .backends.onnxruntime.config import ORTConfig
 from .backends.openvino.config import OVConfig
+from .backends.py_tgi.config import PyTGIConfig
 from .backends.pytorch.config import PyTorchConfig
 from .backends.tensorrt_llm.config import TRTLLMConfig
-from .backends.text_generation_inference.config import TGIConfig
 from .backends.torch_ort.config import TorchORTConfig
 from .benchmarks.inference.config import InferenceConfig
 from .benchmarks.report import BenchmarkReport
@@ -33,7 +33,7 @@ cs.store(group="backend", name=ORTConfig.name, node=ORTConfig)
 cs.store(group="backend", name=TorchORTConfig.name, node=TorchORTConfig)
 cs.store(group="backend", name=TRTLLMConfig.name, node=TRTLLMConfig)
 cs.store(group="backend", name=INCConfig.name, node=INCConfig)
-cs.store(group="backend", name=TGIConfig.name, node=TGIConfig)
+cs.store(group="backend", name=PyTGIConfig.name, node=PyTGIConfig)
 # benchmarks configurations
 cs.store(group="benchmark", name=TrainingConfig.name, node=TrainingConfig)
 cs.store(group="benchmark", name=InferenceConfig.name, node=InferenceConfig)

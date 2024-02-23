@@ -1,24 +1,21 @@
 import os
+from contextlib import contextmanager
 from typing import Any, Dict, Optional, Union
 
-from ..import_utils import is_torch_available, is_transformers_available
+import torch
+from transformers import (
+    AutoConfig,
+    AutoProcessor,
+    AutoTokenizer,
+    FeatureExtractionMixin,
+    GenerationConfig,
+    ImageProcessingMixin,
+    PretrainedConfig,
+    PreTrainedTokenizer,
+    ProcessorMixin,
+)
 
-if is_torch_available():
-    import torch
-
-if is_transformers_available():
-    from transformers import (
-        AutoConfig,
-        AutoProcessor,
-        FeatureExtractionMixin,
-        GenerationConfig,
-        ImageProcessingMixin,
-        PretrainedConfig,
-        PreTrainedTokenizer,
-        ProcessorMixin,
-    )
-
-    PretrainedProcessor = Union[FeatureExtractionMixin, ImageProcessingMixin, PreTrainedTokenizer, ProcessorMixin]
+PretrainedProcessor = Union[FeatureExtractionMixin, ImageProcessingMixin, PreTrainedTokenizer, ProcessorMixin]
 
 
 def get_transformers_cache_dir() -> str:
@@ -43,7 +40,10 @@ def get_transformers_pretrained_processor(model: str, **kwargs) -> Optional["Pre
         # sometimes contains information about the model's input shapes that are not available in the config
         return AutoProcessor.from_pretrained(model, **kwargs)
     except Exception:
-        return None
+        try:
+            return AutoTokenizer.from_pretrained(model, **kwargs)
+        except Exception:
+            return None
 
 
 def extract_transformers_shapes_from_artifacts(
@@ -119,20 +119,37 @@ def extract_transformers_shapes_from_artifacts(
     return shapes
 
 
-def randomize_weights(model: "torch.nn.Module") -> None:
-    for param in model.parameters():
-        if param.data.is_floating_point():
-            if torch.cuda.is_available() and param.device.type != "cuda":
-                param.data.cuda().normal_(mean=0.0, std=0.2).cpu()
-            elif torch.backends.mps.is_available() and param.device.type != "mps":
-                param.data.to("mps").normal_(mean=0.0, std=0.2).cpu()
-            else:
-                param.data.normal_(mean=0.0, std=0.2)
+TORCH_INIT_FUNCTIONS = {
+    "normal_": torch.nn.init.normal_,
+    "uniform_": torch.nn.init.uniform_,
+    "trunc_normal_": torch.nn.init.trunc_normal_,
+    "xavier_normal_": torch.nn.init.xavier_normal_,
+    "xavier_uniform_": torch.nn.init.xavier_uniform_,
+    "kaiming_normal_": torch.nn.init.kaiming_normal_,
+    "kaiming_uniform_": torch.nn.init.kaiming_uniform_,
+    "normal": torch.nn.init.normal,
+    "uniform": torch.nn.init.uniform,
+    "xavier_normal": torch.nn.init.xavier_normal,
+    "xavier_uniform": torch.nn.init.xavier_uniform,
+    "kaiming_normal": torch.nn.init.kaiming_normal,
+    "kaiming_uniform": torch.nn.init.kaiming_uniform,
+}
 
-        elif param.data.dtype in (torch.int32, torch.int16, torch.int8):
-            if torch.cuda.is_available() and param.device.type != "cuda":
-                param.data.copy_(torch.randint(-127, 127, param.data.shape, device="cuda"))
-            elif torch.backends.mps.is_available() and param.device.type != "mps":
-                param.data.copy_(torch.randint(-127, 127, param.data.shape, device="mps"))
-            else:
-                param.data.copy_(torch.randint(-127, 127, param.data.shape))
+
+def fast_rand(tensor: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:
+    return torch.nn.init.uniform_(tensor)
+
+
+@contextmanager
+def random_init_weights():
+    # Replace the initialization functions
+    for name, init_func in TORCH_INIT_FUNCTIONS.items():
+        if name != "uniform_":
+            setattr(torch.nn.init, name, fast_rand)
+    try:
+        yield
+    finally:
+        # Restore the original initialization functions
+        for name, init_func in TORCH_INIT_FUNCTIONS.items():
+            if name != "uniform_":
+                setattr(torch.nn.init, name, init_func)

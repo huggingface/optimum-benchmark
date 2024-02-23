@@ -91,7 +91,7 @@ def get_gpus():
     elif is_rocm_system():
         if not is_amdsmi_available() and not is_pyrsmi_available():
             raise ValueError(
-                "Either the library amdsmi or pyrsmi is required to run memory benchmark on AMD GPUs, but is not installed. "
+                "Either the library amdsmi or pyrsmi is required to run memory benchmark on AMD GPUs, but neither is installed."
             )
 
         gpus = []
@@ -139,7 +139,7 @@ def get_gpu_vram_mb() -> List[int]:
     elif is_rocm_system():
         if not is_amdsmi_available() and not is_pyrsmi_available():
             raise ValueError(
-                "Either the library amdsmi or pyrsmi is required to run memory benchmark on AMD GPUs, but is not installed. "
+                "Either the library amdsmi or pyrsmi is required to run memory benchmark on AMD GPUs, but neither is installed."
             )
 
         if is_amdsmi_available():
@@ -182,7 +182,7 @@ def get_gpu_device_ids() -> str:
     elif is_nvidia_system():
         if not is_pynvml_available():
             raise ValueError(
-                "The library pynvml is required to run memory benchmark on NVIDIA GPUs, but is not installed. "
+                "The library pynvml is required to get GPU device ids, but is not installed. "
                 "Please install the official and NVIDIA maintained PyNVML library through `pip install nvidia-ml-py`."
             )
 
@@ -191,22 +191,26 @@ def get_gpu_device_ids() -> str:
         device_ids = ",".join(str(i) for i in device_ids)
         pynvml.nvmlShutdown()
     elif is_rocm_system():
-        if not is_amdsmi_available():
+        if not is_amdsmi_available() or not is_pyrsmi_available():
             raise ValueError(
-                "The library amdsmi is required to run memory benchmark on AMD GPUs, but is not installed. "
-                "Please install the official and AMD maintained amdsmi library from https://github.com/ROCm/amdsmi."
+                "Either the library amdsmi or pyrsmi is required to get GPU device ids, but neither is installed."
             )
 
-        amdsmi.amdsmi_init()
-        rocm_version = get_rocm_version()
+        if is_amdsmi_available():
+            amdsmi.amdsmi_init()
+            rocm_version = get_rocm_version()
+            if rocm_version >= "5.7":
+                device_ids = list(range(len(amdsmi.amdsmi_get_processor_handles())))
+            else:
+                device_ids = list(range(len(amdsmi.amdsmi_get_device_handles())))
+            device_ids = ",".join(str(i) for i in device_ids)
+            amdsmi.amdsmi_shut_down()
 
-        if rocm_version >= "5.7":
-            device_ids = list(range(len(amdsmi.amdsmi_get_processor_handles())))
-        else:
-            device_ids = list(range(len(amdsmi.amdsmi_get_device_handles())))
-
-        device_ids = ",".join(str(i) for i in device_ids)
-        amdsmi.amdsmi_shut_down()
+        elif is_pyrsmi_available():
+            rocml.smi_initialize()
+            device_ids = list(range(rocml.smi_get_device_count()))
+            device_ids = ",".join(str(i) for i in device_ids)
+            rocml.smi_shutdown()
     else:
         raise ValueError("Couldn't infer GPU device ids.")
 

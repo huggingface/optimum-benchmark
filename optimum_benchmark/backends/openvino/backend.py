@@ -12,13 +12,12 @@ from openvino.runtime import properties
 from optimum.intel.openvino import OVConfig as OVQuantizationConfig  # naming conflict
 from optimum.intel.openvino import OVQuantizer
 from safetensors.torch import save_file
-from transformers.modeling_utils import no_init_weights
 from transformers.utils.logging import set_verbosity_error
 
 from ...generators.dataset_generator import DatasetGenerator
 from ...task_utils import TEXT_GENERATION_TASKS
 from ..base import Backend
-from ..transformers_utils import randomize_weights
+from ..transformers_utils import random_init_weights
 from .config import OVConfig
 from .utils import TASKS_TO_OVMODEL
 
@@ -35,27 +34,35 @@ class OVBackend(Backend[OVConfig]):
         super().__init__(config)
         self.validate_task()
 
-        self.ovmodel_class = get_class(TASKS_TO_OVMODEL[self.config.task])
-        LOGGER.info(f"\t+ Using OVModel class {self.ovmodel_class.__name__}")
-
         if self.config.inter_op_num_threads is not None:
-            self.set_inter_op_num_threads()
+            LOGGER.info(f"\t+ Setting inter_op_num_threads to {self.config.inter_op_num_threads}")
+            self.config.openvino_config[properties.inference_num_threads()] = self.config.inter_op_num_threads
 
+        LOGGER.info("\t+ Creating backend temporary directory")
         self.tmpdir = TemporaryDirectory()
 
         if self.config.quantization:
             if self.config.no_weights:
+                LOGGER.info("\t+ Loading no weights AutoModel")
                 self.load_automodel_with_no_weights()
             else:
+                LOGGER.info("\t+ Loading pretrained AutoModel")
                 self.load_automodel_from_pretrained()
-            original_export = self.config.export
-            self.config.export = False
+
+            LOGGER.info("\t+ Applying post-training quantization")
             self.quantize_automodel()
+
+            original_model, self.config.model = self.config.model, self.quantized_model
+            original_export, self.config.export = self.config.export, False
+            LOGGER.info("\t+ Loading quantized OVModel")
             self.load_ovmodel_from_pretrained()
-            self.config.export = original_export
+            self.config.model, self.config.export = original_model, original_export
+
         elif self.config.no_weights:
+            LOGGER.info("\t+ Loading no weights OVModel")
             self.load_ovmodel_with_no_weights()
         else:
+            LOGGER.info("\t+ Loading pretrained OVModel")
             self.load_ovmodel_from_pretrained()
 
         self.tmpdir.cleanup()
@@ -64,40 +71,33 @@ class OVBackend(Backend[OVConfig]):
         if self.config.task not in TASKS_TO_OVMODEL:
             raise NotImplementedError(f"OVBackend does not support task {self.config.task}")
 
-    def set_inter_op_num_threads(self) -> None:
-        LOGGER.info(f"\t+ Setting inter_op_num_threads to {self.config.inter_op_num_threads}")
-        self.config.openvino_config[properties.inference_num_threads()] = self.config.inter_op_num_threads
+        self.ovmodel_class = get_class(TASKS_TO_OVMODEL[self.config.task])
+        LOGGER.info(f"\t+ Using OVModel class {self.ovmodel_class.__name__}")
 
     def create_no_weights_model(self) -> None:
+        self.no_weights_model = os.path.join(self.tmpdir.name, "no_weights_model")
         LOGGER.info("\t+ Creating no weights model directory")
-        self.no_weights_model = os.path.join(self.tmpdir.name, "no_weights")
         os.makedirs(self.no_weights_model, exist_ok=True)
-
-        LOGGER.info("\t+ Saving pretrained config")
-        self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
-
         LOGGER.info("\t+ Creating no weights model state dict")
         state_dict = torch.nn.Linear(1, 1).state_dict()
+        LOGGER.info("\t+ Saving no weights model safetensors")
+        safetensors = os.path.join(self.no_weights_model, "model.safetensors")
+        save_file(tensors=state_dict, filename=safetensors, metadata={"format": "pt"})
 
-        LOGGER.info("\t+ Saving no weights model state dict")
-        save_file(
-            filename=os.path.join(self.no_weights_model, "model.safetensors"),
-            metadata={"format": "pt"},
-            tensors=state_dict,
-        )
+        if self.config.library == "transformers":
+            LOGGER.info("\t+ Saving no weights model pretrained config")
+            self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
 
     def load_automodel_with_no_weights(self) -> None:
+        LOGGER.info("\t+ Creating no weights model")
         self.create_no_weights_model()
 
-        with no_init_weights():
-            original_model = self.config.model
-            self.config.model = self.no_weights_model
-            LOGGER.info("\t+ Loading no weights model")
+        with random_init_weights():
+            original_model, self.config.model = self.config.model, self.no_weights_model
+            LOGGER.info("\t+ Loading no weights AutoModel")
             self.load_automodel_from_pretrained()
             self.config.model = original_model
 
-        LOGGER.info("\t+ Randomizing weights")
-        randomize_weights(self.pretrained_model)
         LOGGER.info("\t+ Tying model weights")
         self.pretrained_model.tie_weights()
 
@@ -105,14 +105,16 @@ class OVBackend(Backend[OVConfig]):
         self.pretrained_model = self.automodel_class.from_pretrained(self.config.model, **self.config.hub_kwargs)
 
     def load_ovmodel_with_no_weights(self) -> None:
+        LOGGER.info("\t+ Creating no weights model")
         self.create_no_weights_model()
 
-        with no_init_weights():
-            original_model = self.config.model
-            self.config.model = self.no_weights_model
-            LOGGER.info("\t+ Loading OVModel with no weights")
+        with random_init_weights():
+            original_model, self.config.model = self.config.model, self.no_weights_model
+            original_export, self.config.export = self.config.export, True
+            LOGGER.info("\t+ Loading no weights OVModel")
             self.load_ovmodel_from_pretrained()
             self.config.model = original_model
+            self.config.export = original_export
 
     def load_ovmodel_from_pretrained(self) -> None:
         self.pretrained_model = self.ovmodel_class.from_pretrained(
@@ -135,7 +137,7 @@ class OVBackend(Backend[OVConfig]):
 
     def quantize_automodel(self) -> None:
         LOGGER.info("\t+ Attempting quantization")
-        quantized_model_path = f"{self.tmpdir.name}/quantized"
+        self.quantized_model = f"{self.tmpdir.name}/quantized_model"
         LOGGER.info("\t+ Processing quantization config")
         quantization_config = OVQuantizationConfig(**self.config.quantization_config)
         LOGGER.info("\t+ Creating quantizer")
@@ -154,7 +156,7 @@ class OVBackend(Backend[OVConfig]):
 
         LOGGER.info("\t+ Quantizing model")
         quantizer.quantize(
-            save_directory=quantized_model_path,
+            save_directory=self.quantized_model,
             quantization_config=quantization_config,
             calibration_dataset=calibration_dataset,
             # TODO: add support for these (maybe)
@@ -164,7 +166,6 @@ class OVBackend(Backend[OVConfig]):
             file_name=None,
             batch_size=1,
         )
-        self.config.model = quantized_model_path
 
     def prepare_for_inference(self, **kwargs) -> None:
         if self.config.reshape:
@@ -188,6 +189,8 @@ class OVBackend(Backend[OVConfig]):
             self.pretrained_model.compile()
 
     def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        inputs = super().prepare_inputs(inputs)
+
         if self.config.library == "diffusers":
             return {"prompt": inputs["prompt"]}
 

@@ -83,7 +83,7 @@ def entrypoint(worker, queue, lock, log_level, *worker_args):
 
     rank = int(os.environ["RANK"])
     torch.cuda.set_device(rank) if torch.cuda.is_available() else None
-    setup_logging(level=log_level, prefix=f"RANK-{rank}") if rank == 0 else None
+    setup_logging(level=log_level, prefix=f"RANK-{rank}") if rank == 0 else setup_logging(level="ERROR")
 
     torch.distributed.init_process_group(backend="nccl" if torch.cuda.is_available() else "gloo")
     torch.distributed.barrier()

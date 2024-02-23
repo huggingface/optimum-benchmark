@@ -3,20 +3,12 @@ import os
 from collections import OrderedDict
 from logging import getLogger
 from tempfile import TemporaryDirectory
-from typing import Any, Callable, Dict, List
+from typing import Any, Dict, List
 
 import torch
-from datasets import Dataset
 from hydra.utils import get_class
 from onnxruntime import SessionOptions
-from optimum.onnxruntime import (
-    ONNX_DECODER_NAME,
-    ONNX_DECODER_WITH_PAST_NAME,
-    ORTOptimizer,
-    ORTQuantizer,
-    ORTTrainer,
-    ORTTrainingArguments,
-)
+from optimum.onnxruntime import ONNX_DECODER_NAME, ONNX_DECODER_WITH_PAST_NAME, ORTOptimizer, ORTQuantizer
 from optimum.onnxruntime.configuration import (
     AutoCalibrationConfig,
     AutoOptimizationConfig,
@@ -26,18 +18,13 @@ from optimum.onnxruntime.configuration import (
     QuantizationConfig,
 )
 from safetensors.torch import save_file
-from transformers import TrainerCallback
-from transformers.modeling_utils import no_init_weights
-from transformers.utils.logging import set_verbosity_error
 
 from ...generators.dataset_generator import DatasetGenerator
 from ...task_utils import TEXT_GENERATION_TASKS
 from ..base import Backend
+from ..transformers_utils import random_init_weights
 from .config import ORTConfig
 from .utils import TASKS_TO_ORTMODELS, TASKS_TO_ORTSD, format_calibration_config, format_quantization_config
-
-# disable transformers logging
-set_verbosity_error()
 
 LOGGER = getLogger("onnxruntime")
 
@@ -49,82 +36,81 @@ class ORTBackend(Backend[ORTConfig]):
         super().__init__(config)
         self.validate_task()
 
-        if self.config.library == "diffusers":
+        self.session_options = SessionOptions()
+        if self.config.session_options:
+            LOGGER.info("\t+ Processing session options")
+            for key, value in self.config.session_options.items():
+                setattr(self.session_options, key, value)
+
+        LOGGER.info("\t+ Creating backend temporary directory")
+        self.tmpdir = TemporaryDirectory()
+
+        if self.config.no_weights:
+            LOGGER.info("\t+ Loading no weights ORTModel")
+            self.load_ortmodel_with_no_weights()
+        else:
+            LOGGER.info("\t+ Loading pretrained ORTModel")
+            self.load_ortmodel_from_pretrained()
+
+        if self.is_optimized or self.is_quantized:
+            original_model, self.config.model = self.config.model, self.pretrained_model.model_save_dir
+
+        if self.is_optimized:
+            LOGGER.info("\t+ Applying ORT optimization")
+            self.optimize_onnx_files()
+            self.config.model = self.optimized_model
+
+        if self.is_quantized:
+            LOGGER.info("\t+ Applying ORT quantization")
+            self.quantize_onnx_files()
+            self.config.model = self.quantized_model
+
+        if self.is_optimized or self.is_quantized:
+            original_export, self.config.export = self.config.export, False
+            LOGGER.info("\t+ Loading optimized/quantized ORTModel")
+            self.load_ortmodel_from_pretrained()
+            self.config.model, self.config.export = original_model, original_export
+
+        self.validate_provider()
+        self.tmpdir.cleanup()
+
+    def validate_task(self) -> None:
+        if self.config.task in TASKS_TO_ORTSD:
             self.ortmodel_class = get_class(TASKS_TO_ORTSD[self.config.task])
-            LOGGER.info(f"Using ORTDiffusion class {self.ortmodel_class.__name__}")
+            LOGGER.info(f"Using ORTStableDiffusion class {self.ortmodel_class.__name__}")
         elif self.config.task in TASKS_TO_ORTMODELS:
             self.ortmodel_class = get_class(TASKS_TO_ORTMODELS[self.config.task])
             LOGGER.info(f"Using ORTModel class {self.ortmodel_class.__name__}")
         else:
             raise NotImplementedError(f"ORTBackend does not support task {self.config.task}")
 
-        LOGGER.info("\t+ Creating backend temporary directory")
-        self.tmpdir = TemporaryDirectory()
-
-        self.session_options = SessionOptions()
-        for key, value in self.config.session_options.items():
-            setattr(self.session_options, key, value)
-
-        if self.config.no_weights:
-            self.load_ortmodel_with_no_weights()
-        else:
-            self.load_ortmodel_from_pretrained()
-
-        if self.is_trt_text_generation:
-            return
-
-        if self.is_optimized or self.is_quantized:
-            original_model = self.config.model
-            self.config.model = self.pretrained_model.model_save_dir
-
-        if self.is_optimized:
-            self.optimize_onnx_files()
-
-        if self.is_quantized:
-            self.quantize_onnx_files()
-
-        if self.is_optimized or self.is_quantized:
-            original_export = self.config.export
-            self.load_ortmodel_from_pretrained()  # load optimized/quantized model
-            self.config.export = original_export
-            self.config.model = original_model
-
-        self.validate_provider()
-
-    def validate_task(self) -> None:
-        if self.config.task not in {**TASKS_TO_ORTMODELS, **TASKS_TO_ORTSD}:
-            raise NotImplementedError(f"ORTBackend does not support task {self.config.task}")
-
     def validate_provider(self) -> None:
-        assert (
-            self.pretrained_model.providers[0] == self.config.provider
-        ), f"{self.config.provider} is not first in providers list: {self.pretrained_model.providers}"
+        if not self.pretrained_model.providers[0] == self.config.provider:
+            raise ValueError(
+                f"{self.config.provider} is not first in providers list: {self.pretrained_model.providers}"
+            )
 
     def create_no_weights_model(self) -> None:
+        self.no_weights_model = os.path.join(self.tmpdir.name, "no_weights_model")
         LOGGER.info("\t+ Creating no weights model directory")
-        self.no_weights_model = os.path.join(self.tmpdir.name, "no_weights")
         os.makedirs(self.no_weights_model, exist_ok=True)
-
-        LOGGER.info("\t+ Saving pretrained config")
-        self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
-
         LOGGER.info("\t+ Creating no weights model state dict")
         state_dict = torch.nn.Linear(1, 1).state_dict()
+        LOGGER.info("\t+ Saving no weights model safetensors")
+        safetensors = os.path.join(self.no_weights_model, "model.safetensors")
+        save_file(tensors=state_dict, filename=safetensors, metadata={"format": "pt"})
 
-        LOGGER.info("\t+ Saving no weights model state dict")
-        save_file(
-            filename=os.path.join(self.no_weights_model, "model.safetensors"),
-            metadata={"format": "pt"},
-            tensors=state_dict,
-        )
+        if self.config.library == "transformers":
+            LOGGER.info("\t+ Saving no weights model pretrained config")
+            self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
 
     def load_ortmodel_with_no_weights(self) -> None:
+        LOGGER.info("\t+ Creating no weights model")
         self.create_no_weights_model()
 
-        with no_init_weights():
-            original_model = self.config.model
-            self.config.model = self.no_weights_model
-            LOGGER.info("\t+ Loading no weights model")
+        with random_init_weights():
+            original_model, self.config.model = self.config.model, self.no_weights_model
+            LOGGER.info("\t+ Loading no weights ORTModel")
             self.load_ortmodel_from_pretrained()
             self.config.model = original_model
 
@@ -139,10 +125,6 @@ class ORTBackend(Backend[ORTConfig]):
             **self.config.hub_kwargs,
             **self.ortmodel_kwargs,
         )
-
-    @property
-    def is_trt_text_generation(self) -> bool:
-        return self.config.provider == "TensorrtExecutionProvider" and self.config.task in TEXT_GENERATION_TASKS
 
     @property
     def is_optimized(self) -> bool:
@@ -189,7 +171,7 @@ class ORTBackend(Backend[ORTConfig]):
 
     def optimize_onnx_files(self) -> None:
         LOGGER.info("\t+ Attempting optimization")
-        optimized_model_path = os.path.join(self.tmpdir.name, "optimized")
+        self.optimized_model = os.path.join(self.tmpdir.name, "optimized")
         LOGGER.info("\t+ Processing optimization config")
         if self.config.auto_optimization is not None:
             optimization_config = AutoOptimizationConfig.with_optimization_level(
@@ -206,24 +188,20 @@ class ORTBackend(Backend[ORTConfig]):
         LOGGER.info("\t+ Optimizing ORTModel")
         optimizer.optimize(
             optimization_config,
-            save_dir=optimized_model_path,
+            save_dir=self.optimized_model,
             # TODO: add support for these
             use_external_data_format=None,
             one_external_file=True,
             file_suffix="",
         )
-
         if self.pretrained_processor is not None:
-            self.pretrained_processor.save_pretrained(optimized_model_path)
-
+            self.pretrained_processor.save_pretrained(self.optimized_model)
         if self.pretrained_config is not None:
-            self.pretrained_config.save_pretrained(optimized_model_path)
-
-        self.config.model = optimized_model_path
+            self.pretrained_config.save_pretrained(self.optimized_model)
 
     def quantize_onnx_files(self) -> None:
         LOGGER.info("\t+ Attempting quantization")
-        quantized_model_path = f"{self.tmpdir.name}/quantized"
+        self.quantized_model = f"{self.tmpdir.name}/quantized_model"
 
         if self.is_calibrated and len(self.onnx_files_names) > 1:
             raise NotImplementedError(
@@ -286,7 +264,7 @@ class ORTBackend(Backend[ORTConfig]):
 
             LOGGER.info("\t+ Quantizing model")
             quantizer.quantize(
-                save_dir=quantized_model_path,
+                save_dir=self.quantized_model,
                 quantization_config=quantization_config,
                 calibration_tensors_range=calibration_tensors_range,
                 # TODO: add support for these (maybe)
@@ -294,55 +272,24 @@ class ORTBackend(Backend[ORTConfig]):
                 preprocessor=None,
                 file_suffix="",
             )
-
         if self.pretrained_processor is not None:
-            self.pretrained_processor.save_pretrained(quantized_model_path)
-
+            self.pretrained_processor.save_pretrained(self.quantized_model)
         if self.pretrained_config is not None:
-            self.pretrained_config.save_pretrained(quantized_model_path)
-
-        self.config.model = quantized_model_path
-
-    def prepare_for_inference(self, **kwargs) -> None:
-        if self.is_trt_text_generation:
-            LOGGER.info("\t+ Creating dynamic shapes for Tensorrt engine. Engine creation might take a while.")
-            batch_size = kwargs["batch_size"]
-            max_new_tokens = kwargs["max_new_tokens"]
-            sequence_length = kwargs["sequence_length"]
-            self.config.provider_options = {
-                **self.config.provider_options,
-                "trt_profile_min_shapes": (
-                    f"input_ids:{batch_size}x{sequence_length},"
-                    f"attention_mask:{batch_size}x{sequence_length},"
-                    f"position_ids:{batch_size}x{sequence_length}"
-                ),
-                "trt_profile_max_shapes": (
-                    f"input_ids:{batch_size}x{sequence_length + max_new_tokens},"
-                    f"attention_mask:{batch_size}x{sequence_length + max_new_tokens},"
-                    f"position_ids:{batch_size}x{sequence_length + max_new_tokens}"
-                ),
-                "trt_profile_opt_shapes": (
-                    f"input_ids:{batch_size}x{sequence_length + max_new_tokens},"
-                    f"attention_mask:{batch_size}x{sequence_length + max_new_tokens},"
-                    f"position_ids:{batch_size}x{sequence_length + max_new_tokens}"
-                ),
-            }
-            self.load_ortmodel_from_pretrained()
-            self.validate_provider()
+            self.pretrained_config.save_pretrained(self.quantized_model)
 
     def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        inputs = super().prepare_inputs(inputs)
+
         if self.config.library == "diffusers":
+            return {"prompt": inputs["prompt"]}
+        else:
+            for key, value in list(inputs.items()):
+                if key in self.inputs_names:
+                    inputs[key] = value.to(self.config.device)
+                else:
+                    LOGGER.warning(f"Input {key} is not in expected inputs names. Removing it.")
+                    inputs.pop(key)
             return inputs
-
-        LOGGER.info(f"\t+ Moving inputs tensors to device {self.config.device}")
-        for key, value in list(inputs.items()):
-            if key in self.inputs_names:
-                inputs[key] = value.to(self.config.device)
-            else:
-                LOGGER.warning(f"Input {key} is not in expected inputs names. Removing it.")
-                inputs.pop(key)
-
-        return inputs
 
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         return self.pretrained_model.forward(**inputs, **kwargs)
@@ -352,29 +299,6 @@ class ORTBackend(Backend[ORTConfig]):
 
     def call(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         return self.pretrained_model(**inputs, **kwargs)
-
-    def train(
-        self,
-        training_dataset: Dataset,
-        training_arguments: Dict[str, Any],
-        training_callbacks: List[TrainerCallback],
-        training_data_collator: Callable[[List[Dict[str, Any]]], Dict[str, Any]],
-    ) -> None:
-        LOGGER.info("\t+ Setting dataset format to `torch`")
-        training_dataset.set_format(type="torch", columns=list(training_dataset.features.keys()))
-        LOGGER.info("\t+ Wrapping training arguments with optimum.onnxruntime.ORTTrainingArguments")
-        training_arguments = ORTTrainingArguments(**training_arguments)
-        LOGGER.info("\t+ Wrapping model with optimum.onnxruntime.ORTTrainer")
-        trainer = ORTTrainer(
-            model=self.pretrained_model,
-            args=training_arguments,
-            callbacks=training_callbacks,
-            train_dataset=training_dataset,
-            data_collator=training_data_collator,
-        )
-        LOGGER.info("\t+ Starting training")
-        trainer.train()
-        LOGGER.info("\t+ Training finished successfully")
 
     def clean(self) -> None:
         super().clean()
