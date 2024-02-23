@@ -7,8 +7,6 @@ OPTIMUM_BENCHMARK_VERSION = "0.2.0"
 
 MIN_OPTIMUM_VERSION = "1.16.0"
 INSTALL_REQUIRES = [
-    # For now
-    "torch",
     # Mandatory HF dependencies
     "transformers",
     "accelerate",

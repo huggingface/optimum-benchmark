@@ -147,6 +147,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 self.pretrained_model = self.automodel_class.from_pretrained(
                     pretrained_model_name_or_path=self.config.model, **self.config.hub_kwargs, **self.automodel_kwargs
                 )
+
+            torch.distributed.barrier()  # better safe than hanging
             LOGGER.info("\t+ Initializing DeepSpeed Inference")
             self.pretrained_model = init_inference(self.pretrained_model, config=self.config.deepspeed_inference_config)
             torch.distributed.barrier()  # better safe than hanging
