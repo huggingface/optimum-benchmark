@@ -49,7 +49,7 @@ EXTRAS_REQUIRE = {
     "neural-compressor": [f"optimum[neural-compressor]>={MIN_OPTIMUM_VERSION}"],
     "torch-ort": ["torch-ort", "onnxruntime-training", f"optimum>={MIN_OPTIMUM_VERSION}"],
     # docker-based backends
-    "py-tgi": ["py-tgi"],
+    "py-tgi": ["py-tgi==0.1.3"],
     # third-party features
     "codecarbon": ["codecarbon"],
     "deepspeed": ["deepspeed"],
