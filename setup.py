@@ -3,15 +3,12 @@ import os
 
 from setuptools import find_packages, setup
 
-try:
-    import torch
-except ImportError:
-    raise ImportError("PyTorch is not installed. Please install it before running setup.py")
-
 OPTIMUM_BENCHMARK_VERSION = "0.2.0"
 
 MIN_OPTIMUM_VERSION = "1.16.0"
 INSTALL_REQUIRES = [
+    # For now
+    "torch",
     # Mandatory HF dependencies
     "transformers",
     "accelerate",
@@ -27,8 +24,8 @@ INSTALL_REQUIRES = [
     "pandas",
 ]
 
-USE_CUDA = os.environ.get("USE_CUDA", None) or torch.version.cuda is not None
-USE_ROCM = os.environ.get("USE_ROCM", None) or torch.version.hip is not None
+USE_CUDA = os.environ.get("USE_CUDA", None) == "1"
+USE_ROCM = os.environ.get("USE_ROCM", None) == "1"
 
 if USE_CUDA:
     INSTALL_REQUIRES.append("nvidia-ml-py")
