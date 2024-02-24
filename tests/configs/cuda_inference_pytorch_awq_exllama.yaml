@@ -1,0 +1,25 @@
+defaults:
+  - backend: pytorch
+  - _base_ # inherits from base config
+  - _inference_ # inherits from inference config
+  - _cuda_ # inherits from cuda config
+  - _no_weights_sweep_ # sweep over no_weights: true,false
+  - _self_ # hydra 1.1 compatibility
+
+experiment_name: cuda_inference_pytorch_awq_exllama
+
+benchmark:
+  input_shapes:
+    batch_size: 4
+    sequence_length: 128
+
+  generate_kwargs:
+    max_new_tokens: 128
+    min_new_tokens: 128
+
+backend:
+  model: TheBloke/Mistral-7B-Instruct-v0.1-AWQ
+  quantization_scheme: "awq"
+  quantization_config:
+    exllama_config:
+      version:  2

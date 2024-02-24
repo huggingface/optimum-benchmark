@@ -55,6 +55,8 @@ EXTRAS_REQUIRE = {
     "diffusers": ["diffusers"],
     "timm": ["timm"],
     "peft": ["peft"],
+    "autoawq": ["autoawq"],
+    "bitsandbytes": ["bitsandbytes"],
 }
 
 
