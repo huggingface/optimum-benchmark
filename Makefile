@@ -68,7 +68,7 @@ run_docker_cuda:
 	--rm \
 	--pid host \
 	--shm-size 64G \
-	--gpus '"device=0,1"' \
+	--gpus all \
 	--entrypoint /bin/bash \
 	--volume $(PWD):/workspace \
 	--workdir /workspace \
@@ -81,8 +81,7 @@ run_docker_rocm:
 	--pid host \
 	--shm-size 64G \
 	--device /dev/kfd \
-	--device /dev/dri/renderD128 \
-	--device /dev/dri/renderD129 \
+	--device /dev/dri/ \
 	--entrypoint /bin/bash \
 	--volume $(PWD):/workspace \
 	--workdir /workspace \
