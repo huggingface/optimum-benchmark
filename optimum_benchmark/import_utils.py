@@ -29,6 +29,11 @@ _psutil_available = importlib.util.find_spec("psutil") is not None
 _optimum_benchmark_available = importlib.util.find_spec("optimum_benchmark") is not None
 _py_tgi_available = importlib.util.find_spec("py_tgi") is not None
 _pyrsmi_available = importlib.util.find_spec("pyrsmi") is not None
+_llm_swarm_available = importlib.util.find_spec("llm_swarm") is not None
+
+
+def is_llm_swarm_available():
+    return _llm_swarm_available
 
 
 def is_pyrsmi_available():
@@ -196,6 +201,11 @@ def optimum_benchmark_version():
 def py_tgi_version():
     if _py_tgi_available:
         return importlib.metadata.version("py_tgi")
+
+
+def llm_swarm_version():
+    if _llm_swarm_available:
+        return importlib.metadata.version("llm_swarm")
 
 
 def get_git_revision_hash(package_name: str) -> Optional[str]:

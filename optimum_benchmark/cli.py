@@ -6,6 +6,7 @@ import hydra
 from hydra.core.config_store import ConfigStore
 from omegaconf import DictConfig, OmegaConf
 
+from .backends.llm_swarm.config import LLMSwarmConfig
 from .backends.neural_compressor.config import INCConfig
 from .backends.onnxruntime.config import ORTConfig
 from .backends.openvino.config import OVConfig
@@ -34,6 +35,7 @@ cs.store(group="backend", name=TorchORTConfig.name, node=TorchORTConfig)
 cs.store(group="backend", name=TRTLLMConfig.name, node=TRTLLMConfig)
 cs.store(group="backend", name=INCConfig.name, node=INCConfig)
 cs.store(group="backend", name=PyTGIConfig.name, node=PyTGIConfig)
+cs.store(group="backend", name=LLMSwarmConfig.name, node=LLMSwarmConfig)
 # benchmarks configurations
 cs.store(group="benchmark", name=TrainingConfig.name, node=TrainingConfig)
 cs.store(group="benchmark", name=InferenceConfig.name, node=InferenceConfig)
