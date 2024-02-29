@@ -7,16 +7,13 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: cuda_inference_pytorch_llama_gptq  
+experiment_name: cuda_inference_pytorch_llama_gptq
 
 backend:
   device: cuda
   device_ids: 0
   model: TheBloke/Llama-2-7B-GPTQ
-  # hub_kwargs:
-  #   trust_remote_code: true
   quantization_config:
-    # disable_exllama: true
     exllama_config:
       version: 2
 
@@ -26,7 +23,6 @@ launcher:
 benchmark:
   memory: true
   latency: true
-  energy: true
 
 # hydra/cli specific settings
 hydra:
