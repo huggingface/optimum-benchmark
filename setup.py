@@ -47,7 +47,7 @@ EXTRAS_REQUIRE = {
     "neural-compressor": [f"optimum[neural-compressor]>={MIN_OPTIMUM_VERSION}"],
     "torch-ort": ["torch-ort", "onnxruntime-training", f"optimum>={MIN_OPTIMUM_VERSION}"],
     # other backends
-    "llm-swarm": ["git+https://github.com/huggingface/llm-swarm.git"],
+    "llm-swarm": ["llm-swarm@git+https://github.com/huggingface/llm-swarm.git"],
     "py-tgi": ["py-tgi==0.1.3"],
     # optional dependencies
     "codecarbon": ["codecarbon"],
