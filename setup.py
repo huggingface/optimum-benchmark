@@ -46,9 +46,10 @@ EXTRAS_REQUIRE = {
     "onnxruntime-gpu": [f"optimum[onnxruntime-gpu]>={MIN_OPTIMUM_VERSION}"],
     "neural-compressor": [f"optimum[neural-compressor]>={MIN_OPTIMUM_VERSION}"],
     "torch-ort": ["torch-ort", "onnxruntime-training", f"optimum>={MIN_OPTIMUM_VERSION}"],
-    # docker-based backends
+    # other backends
+    "llm-swarm": ["git+https://github.com/huggingface/llm-swarm.git"],
     "py-tgi": ["py-tgi==0.1.3"],
-    # third-party features
+    # optional dependencies
     "codecarbon": ["codecarbon"],
     "deepspeed": ["deepspeed"],
     "diffusers": ["diffusers"],

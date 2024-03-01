@@ -20,14 +20,12 @@ class LLMSwarmConfig(BackendConfig):
     inference_engine: str = "tgi"
     volume: str = "/fsx/ilyas/.cache"
     per_instance_max_parallel_requests: int = 500
-    slurm_template_path: str = "/fsx/ilyas/llm-swarm/templates/tgi_h100.template.slurm"
-    load_balancer_template_path: str = "/fsx/ilyas/llm-swarm/templates/nginx.template.conf"
+    slurm_template_path: str = "/fsx/ilyas/swarm-templates/tgi_h100.template.slurm"
+    load_balancer_template_path: str = "/fsx/ilyas/swarm-templates/nginx.template.conf"
     debug_endpoint: Optional[str] = None
 
     def __post_init__(self):
         super().__post_init__()
 
-        num_device_ids = len(self.device_ids.split(",")) if self.device_ids else 0
-
-        if self.gpus != num_device_ids:
-            raise ValueError(f"Number of gpus ({self.gpus}) does not match number of device ids ({num_device_ids})")
+        # so that downloaded artifacts are stored in the same place
+        self.hub_kwargs["cache_dir"] = self.volume

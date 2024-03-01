@@ -45,22 +45,17 @@ class LLMSwarmBackend(Backend[LLMSwarmConfig]):
             per_instance_max_parallel_requests=self.config.per_instance_max_parallel_requests,
             revision=self.config.hub_kwargs.get("revision", "main"),
             debug_endpoint=self.config.debug_endpoint,
-            volume=self.config.volume,
         )
         self.llm_swarm = LLMSwarm(self.llm_swarm_config).__enter__()
         self.client = AsyncInferenceClient(self.llm_swarm.endpoint)
 
     def download_pretrained_model(self) -> None:
-        LOGGER.info("\t+ Downloading pretrained model")
         with torch.device("meta"):
-            self.automodel_class.from_pretrained(
-                self.config.model, cache_dir=self.config.volume, **self.config.hub_kwargs
-            )
+            self.automodel_class.from_pretrained(self.config.model, **self.config.hub_kwargs)
 
     def prepare_generation_config(self) -> None:
-        LOGGER.info("\t+ Modifying generation config for fixed length generation")
-        self.generation_config.eos_token_id = None
-        self.generation_config.pad_token_id = None
+        self.generation_config.eos_token_id = -100
+        self.generation_config.pad_token_id = -100
         model_cache_folder = f"models/{self.config.model}".replace("/", "--")
         model_cache_path = f"{self.config.volume}/{model_cache_folder}"
         snapshot_file = f"{model_cache_path}/refs/{self.config.hub_kwargs.get('revision', 'main')}"
