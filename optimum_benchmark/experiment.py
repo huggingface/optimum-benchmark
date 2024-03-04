@@ -174,6 +174,7 @@ def launch(experiment_config: ExperimentConfig) -> BenchmarkReport:
         launcher: Launcher = launcher_factory(launcher_config)
     except Exception as e:
         LOGGER.error(f"Error during launcher allocation: {e}")
+        os.chdir(original_dir)
         tmpdir.cleanup()
         raise e
 
@@ -184,6 +185,7 @@ def launch(experiment_config: ExperimentConfig) -> BenchmarkReport:
         output = launcher.launch(run, benchmark_config, backend_config)
     except Exception as e:
         LOGGER.error(f"Error during experiment launching: {e}")
+        os.chdir(original_dir)
         tmpdir.cleanup()
         raise e
 

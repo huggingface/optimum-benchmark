@@ -15,6 +15,15 @@ jobs:
   run_cli_cpu_py_tgi_tests:
     runs-on: ubuntu-latest
     steps:
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          dotnet: true
+          android: true
+          haskell: true
+          docker-images: true
+          large-packages: false
+
       - name: Checkout
         uses: actions/checkout@v3
 
