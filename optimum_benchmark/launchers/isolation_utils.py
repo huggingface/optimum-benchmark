@@ -135,7 +135,7 @@ def assert_system_devices_isolation(main_pid: int) -> None:
     isolation_pid = os.getpid()
 
     while psutil.pid_exists(main_pid):
-        child_processes = set()
+        permitted_pids = set()
         non_permitted_pids = set()
 
         all_devices_pids = get_pids_running_on_system_device()
@@ -147,18 +147,26 @@ def assert_system_devices_isolation(main_pid: int) -> None:
             try:
                 info = psutil.Process(pid)
                 parent_pid = info.ppid()
-            except Exception as e:
-                LOGGER.error(f"Failed to get parent pid for process {pid} with error {e}")
+            except Exception:
                 parent_pid = None
 
             if parent_pid == main_pid or parent_pid == isolation_pid:
-                child_processes.add(pid)
+                permitted_pids.add(pid)
             else:
-                non_permitted_pids.add(pid)
+                try:
+                    info = psutil.Process(parent_pid)
+                    parent_parent_pid = info.ppid()
+                except Exception:
+                    parent_parent_pid = None
+
+                if parent_parent_pid == main_pid or parent_parent_pid == isolation_pid:
+                    permitted_pids.add(pid)
+                else:
+                    non_permitted_pids.add(pid)
 
         if len(non_permitted_pids) > 0:
             LOGGER.error(f"Found non-permitted process(es) running on system device(s): {non_permitted_pids}")
-            for pid in child_processes:
+            for pid in permitted_pids:
                 try:
                     LOGGER.error(f"Interrupting child process {pid} of main process {main_pid}")
                     os.kill(pid, signal.SIGINT)
