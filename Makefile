@@ -34,7 +34,7 @@ style:
 install:
 	pip install -e .
 
-## Docker builds
+## Docker build
 
 define build_docker
 	docker build -f docker/$(1).dockerfile  --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t opt-bench-$(1):local .
