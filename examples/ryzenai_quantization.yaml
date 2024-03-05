@@ -12,7 +12,7 @@ experiment_name: ryzenai_resnet50
 backend:
   device: cpu
   export: true
-  model: timm/mobilenetv3_large_100.ra_in1k
+  model: timm/vgg11.tv_in1k
   provider: CPUExecutionProvider
   auto_quantization: cpu_cnn_config
 
