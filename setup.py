@@ -46,7 +46,10 @@ EXTRAS_REQUIRE = {
     "onnxruntime-gpu": [f"optimum[onnxruntime-gpu]>={MIN_OPTIMUM_VERSION}"],
     "neural-compressor": [f"optimum[neural-compressor]>={MIN_OPTIMUM_VERSION}"],
     "torch-ort": ["torch-ort", "onnxruntime-training", f"optimum>={MIN_OPTIMUM_VERSION}"],
-    "ryzenai": ["optimum-amd@git+https://github.com/huggingface/optimum-amd.git@export-error"],
+    "ryzenai": [
+        "optimum-amd@git+https://github.com/huggingface/optimum-amd.git@export-error",
+        "vai_q_onnx@https://github.com/amd/RyzenAI-SW/raw/main/tutorial/RyzenAI_quant_tutorial/onnx_example/pkgs/vai_q_onnx-1.16.0+60e82ab-py2.py3-none-any.whl",
+    ],
     # other backends
     "llm-swarm": ["llm-swarm@git+https://github.com/huggingface/llm-swarm.git"],
     "py-tgi": ["py-tgi==0.1.3"],
