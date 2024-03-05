@@ -12,6 +12,7 @@ from .backends.onnxruntime.config import ORTConfig
 from .backends.openvino.config import OVConfig
 from .backends.py_tgi.config import PyTGIConfig
 from .backends.pytorch.config import PyTorchConfig
+from .backends.ryzenai.config import RyzenAIConfig
 from .backends.tensorrt_llm.config import TRTLLMConfig
 from .backends.torch_ort.config import TorchORTConfig
 from .benchmarks.inference.config import InferenceConfig
@@ -36,6 +37,7 @@ cs.store(group="backend", name=TRTLLMConfig.name, node=TRTLLMConfig)
 cs.store(group="backend", name=INCConfig.name, node=INCConfig)
 cs.store(group="backend", name=PyTGIConfig.name, node=PyTGIConfig)
 cs.store(group="backend", name=LLMSwarmConfig.name, node=LLMSwarmConfig)
+cs.store(group="backend", name=RyzenAIConfig.name, node=RyzenAIConfig)
 # benchmarks configurations
 cs.store(group="benchmark", name=TrainingConfig.name, node=TrainingConfig)
 cs.store(group="benchmark", name=InferenceConfig.name, node=InferenceConfig)

@@ -99,6 +99,15 @@ IMAGE_DIFFUSION_TASKS = ["stable-diffusion", "stable-diffusion-xl"]
 
 TEXT_GENERATION_TASKS = ["image-to-text", "text-generation", "text2text-generation", "automatic-speech-recognition"]
 
+IMAGE_PROCESSING_TASKS = [
+    "image-classification",
+    "image-segmentation",
+    "object-detection",
+    "semantic-segmentation",
+    "zero-shot-image-classification",
+    "zero-shot-object-detection",
+]
+
 
 def map_from_synonym(task: str) -> str:
     if task in _SYNONYM_TASK_MAP:
