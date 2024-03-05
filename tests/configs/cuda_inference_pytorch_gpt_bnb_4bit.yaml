@@ -13,5 +13,4 @@ backend:
   quantization_scheme: "bnb"
   quantization_config:
     load_in_4bit: true
-    llm_int8_threshold: 6.0
     bnb_4bit_compute_dtype: float16

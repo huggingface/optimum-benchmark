@@ -13,4 +13,3 @@ backend:
   quantization_scheme: "bnb"
   quantization_config:
     load_in_8bit: true
-    llm_int8_threshold: 6.0
