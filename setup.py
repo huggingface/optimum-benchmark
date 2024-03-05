@@ -47,7 +47,7 @@ EXTRAS_REQUIRE = {
     "neural-compressor": [f"optimum[neural-compressor]>={MIN_OPTIMUM_VERSION}"],
     "torch-ort": ["torch-ort", "onnxruntime-training", f"optimum>={MIN_OPTIMUM_VERSION}"],
     "ryzenai": [
-        "optimum-amd@git+https://github.com/huggingface/optimum-amd.git@export-error",
+        f"optimum[amd]>={MIN_OPTIMUM_VERSION}",
         "vai_q_onnx@https://github.com/amd/RyzenAI-SW/raw/main/tutorial/RyzenAI_quant_tutorial/onnx_example/pkgs/vai_q_onnx-1.16.0+60e82ab-py2.py3-none-any.whl",
     ],
     # other backends
