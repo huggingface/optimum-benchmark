@@ -107,5 +107,5 @@ class BenchmarkReport(PushToHubMixin):
         return cls(**aggregated_measurements)
 
     @property
-    def file_name(self) -> str:
+    def default_file_name(self) -> str:
         return "benchmark_report.json"
