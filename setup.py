@@ -48,7 +48,7 @@ EXTRAS_REQUIRE = {
     "torch-ort": ["torch-ort", "onnxruntime-training", f"optimum>={MIN_OPTIMUM_VERSION}"],
     # other backends
     "llm-swarm": ["llm-swarm@git+https://github.com/huggingface/llm-swarm.git"],
-    "py-tgi": ["py-tgi==0.1.3"],
+    "py-txi": ["py-txi@git+https://github.com/IlyasMoutawwakil/py-txi.git"],
     # optional dependencies
     "codecarbon": ["codecarbon"],
     "deepspeed": ["deepspeed"],
