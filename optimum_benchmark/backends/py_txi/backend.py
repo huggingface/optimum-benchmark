@@ -51,9 +51,10 @@ class PyTXIBackend(Backend[PyTXIConfig]):
     def prepare_generation_config(self) -> None:
         self.generation_config.eos_token_id = -100
         self.generation_config.pad_token_id = -100
-        self.generation_config.temperature = None
-        self.generation_config.top_k = None
-        self.generation_config.top_p = None
+        self.generation_config.temperature = 1.0
+        self.generation_config.top_p = 1.0
+        self.generation_config.top_k = 50
+
         model_cache_folder = f"models/{self.config.model}".replace("/", "--")
         model_cache_path = f"{self.volume}/{model_cache_folder}"
         snapshot_file = f"{model_cache_path}/refs/{self.config.hub_kwargs.get('revision', 'main')}"
@@ -88,9 +89,10 @@ class PyTXIBackend(Backend[PyTXIConfig]):
             LOGGER.info("\t+ Modifying generation config for fixed length generation")
             self.generation_config.eos_token_id = -100
             self.generation_config.pad_token_id = -100
-            self.generation_config.temperature = None
-            self.generation_config.top_k = None
-            self.generation_config.top_p = None
+            self.generation_config.temperature = 1.0
+            self.generation_config.top_p = 1.0
+            self.generation_config.top_k = 50
+
             LOGGER.info("\t+ Saving new pretrained generation config")
             self.generation_config.save_pretrained(save_directory=self.no_weights_model)
 
@@ -98,8 +100,7 @@ class PyTXIBackend(Backend[PyTXIConfig]):
         LOGGER.info("\t+ Creating no weights model")
         self.create_no_weights_model()
 
-        original_volumes = self.config.volumes
-        self.config.volumes = {self.no_weights_model: {"bind": "/data", "mode": "rw"}}
+        original_volumes, self.config.volumes = self.config.volumes, {self.tmpdir.name: {"bind": "/data", "mode": "rw"}}
         original_model, self.config.model = self.config.model, "/data/no_weights_model"
         LOGGER.info("\t+ Loading no weights model")
         self.load_model_from_pretrained()
