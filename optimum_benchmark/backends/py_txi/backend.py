@@ -79,11 +79,11 @@ class PyTXIBackend(Backend[PyTXIConfig]):
         # unlike Transformers, TXI won't accept any missing tensors so we need to materialize the model
         LOGGER.info(f"\t+ Loading no weights model from {self.no_weights_model}")
         with random_init_weights():
-            model = self.automodel_class.from_pretrained(
+            self.pretrained_model = self.automodel_class.from_pretrained(
                 self.no_weights_model, **self.config.hub_kwargs, device_map="auto", _fast_init=False
             )
         LOGGER.info("\t+ Saving no weights model")
-        model.save_pretrained(save_directory=self.no_weights_model)
+        self.pretrained_model.save_pretrained(save_directory=self.no_weights_model)
 
         if self.config.task in TEXT_GENERATION_TASKS:
             LOGGER.info("\t+ Modifying generation config for fixed length generation")
