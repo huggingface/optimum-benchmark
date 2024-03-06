@@ -35,7 +35,7 @@ class PyTXIConfig(BackendConfig):
         metadata={"help": "Dictionary of volumes to mount inside the container."},
     )
     environment: Dict[str, str] = field(
-        default_factory=lambda: {"HUGGINGFACE_HUB_TOKEN": os.environ.get("HUGGINGFACE_HUB_TOKEN", "")},
+        default_factory=lambda: {"HUGGING_FACE_HUB_TOKEN": os.environ.get("HUGGING_FACE_HUB_TOKEN", "")},
         metadata={"help": "Dictionary of environment variables to forward to the container."},
     )
 
@@ -65,19 +65,16 @@ class PyTXIConfig(BackendConfig):
         elif self.task in TEXT_EMBEDDING_TASKS:
             self.image = "ghcr.io/huggingface/text-embeddings-inference:cpu-latest"
 
-        if self.trust_remote_code is None:
-            self.trust_remote_code = self.hub_kwargs.get("trust_remote_code", None)
-
         if self.max_concurrent_requests is None:
             if self.task in TEXT_GENERATION_TASKS:
                 self.max_concurrent_requests = 128
             elif self.task in TEXT_EMBEDDING_TASKS:
                 self.max_concurrent_requests = 512
 
-        if self.device == "cuda" and is_nvidia_system() and self.gpus is None:
+        if self.device_ids is not None and is_nvidia_system() and self.gpus is None:
             self.gpus = self.device_ids
 
-        if self.device == "cuda" and is_rocm_system() and self.devices is None:
+        if self.device_ids is not None and is_rocm_system() and self.devices is None:
             ids = list(map(int, self.device_ids.split(",")))
             renderDs = [file for file in os.listdir("/dev/dri") if file.startswith("renderD")]
             self.devices = ["/dev/kfd"] + [f"/dev/dri/{renderDs[i]}" for i in ids]
