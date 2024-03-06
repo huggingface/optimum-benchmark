@@ -1,4 +1,4 @@
-name: CLI CPU Py-TGI Tests
+name: CLI CPU Py-TXI Tests
 
 on:
   workflow_dispatch:
@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  run_cli_cpu_py_tgi_tests:
+  run_cli_cpu_py_txi_tests:
     runs-on: ubuntu-latest
     steps:
       - name: Free disk space
@@ -35,10 +35,13 @@ jobs:
       - name: Install requirements
         run: |
           pip install --upgrade pip
-          pip install -e .[testing,py-tgi]
+          pip install -e .[testing,py-txi]
 
       - name: Pull TGI docker image
         run: docker pull ghcr.io/huggingface/text-generation-inference:latest
 
+      - name: Pull TEI docker image
+        run: docker pull ghcr.io/huggingface/text-embedding-inference:cpu-latest
+
       - name: Run tests
-        run: pytest -k "cli and cpu and py_tgi"
+        run: pytest -k "cli and cpu and py_txi"
