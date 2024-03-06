@@ -7,19 +7,17 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: tgi_llama
+experiment_name: tei_bert
 
 backend:
-  device: cuda
-  device_ids: 0,1
-  no_weights: true
-  model: NousResearch/Nous-Hermes-llama-2-7b
+  model: bert-base-uncased
+  pooling: cls
+  device: cpu
 
 benchmark:
   input_shapes:
-    batch_size: 4
-    sequence_length: 256
-  new_tokens: 100
+    batch_size: 64
+    sequence_length: 128
 
 # hydra/cli specific settings
 hydra:
