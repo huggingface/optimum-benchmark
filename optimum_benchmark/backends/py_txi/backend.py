@@ -84,6 +84,8 @@ class PyTXIBackend(Backend[PyTXIConfig]):
             )
         LOGGER.info("\t+ Saving no weights model")
         self.pretrained_model.save_pretrained(save_directory=self.no_weights_model)
+        del self.pretrained_model
+        torch.cuda.empty_cache()
 
         if self.config.task in TEXT_GENERATION_TASKS:
             LOGGER.info("\t+ Modifying generation config for fixed length generation")
