@@ -15,9 +15,8 @@ CLI_MISC_REQS := testing
 
 CLI_CUDA_ONNXRUNTIME_REQS := testing,timm,diffusers
 CLI_ROCM_ONNXRUNTIME_REQS := testing,timm,diffusers
-CLI_CUDA_PYTORCH_REQS := testing,timm,diffusers,deepspeed,peft
-CLI_ROCM_PYTORCH_REQS := testing,timm,diffusers,deepspeed,peft
-CLI_CUDA_PYTORCH_QUANTIZATION_REQS := bitsandbytes git+https://github.com/casper-hansen/AutoAWQ.git
+CLI_CUDA_PYTORCH_REQS := testing,timm,diffusers,deepspeed,peft,bitsandbytes,autoawq
+CLI_ROCM_PYTORCH_REQS := testing,timm,diffusers,deepspeed,peft,autoawq
 CLI_CPU_OPENVINO_REQS := testing,openvino,timm,diffusers
 CLI_CPU_PYTORCH_REQS := testing,timm,diffusers,deepspeed,peft
 CLI_CPU_ONNXRUNTIME_REQS := testing,onnxruntime,timm,diffusers
@@ -108,7 +107,7 @@ define test_nvidia
 	--entrypoint /bin/bash \
 	--volume $(PWD):/workspace \
 	--workdir /workspace \
-	opt-bench-$(1):local -c "pip install -e .[$(2)] && pip install $(CLI_CUDA_PYTORCH_QUANTIZATION_REGS) && pytest tests/ -k '$(3)' -x"
+	opt-bench-$(1):local -c "pip install requests && pip install -e .[$(2)] && pytest tests/ -k '$(3)' -x"
 endef
 
 define test_amdgpu
@@ -122,7 +121,7 @@ define test_amdgpu
 	--entrypoint /bin/bash \
 	--volume $(PWD):/workspace \
 	--workdir /workspace \
-	opt-bench-$(1):local -c "pip install -e .[$(2)] && pip install git+https://github.com/casper-hansen/AutoAWQ.git && pytest tests/ -k '$(3)' -x"
+	opt-bench-$(1):local -c "pip install requests && pip install -e .[$(2)] && pytest tests/ -k '$(3)' -x"
 endef
 
 # group the extra
