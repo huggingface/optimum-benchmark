@@ -10,7 +10,7 @@ from .backends.llm_swarm.config import LLMSwarmConfig
 from .backends.neural_compressor.config import INCConfig
 from .backends.onnxruntime.config import ORTConfig
 from .backends.openvino.config import OVConfig
-from .backends.py_tgi.config import PyTGIConfig
+from .backends.py_txi.config import PyTXIConfig
 from .backends.pytorch.config import PyTorchConfig
 from .backends.ryzenai.config import RyzenAIConfig
 from .backends.tensorrt_llm.config import TRTLLMConfig
@@ -35,7 +35,7 @@ cs.store(group="backend", name=ORTConfig.name, node=ORTConfig)
 cs.store(group="backend", name=TorchORTConfig.name, node=TorchORTConfig)
 cs.store(group="backend", name=TRTLLMConfig.name, node=TRTLLMConfig)
 cs.store(group="backend", name=INCConfig.name, node=INCConfig)
-cs.store(group="backend", name=PyTGIConfig.name, node=PyTGIConfig)
+cs.store(group="backend", name=PyTXIConfig.name, node=PyTXIConfig)
 cs.store(group="backend", name=LLMSwarmConfig.name, node=LLMSwarmConfig)
 cs.store(group="backend", name=RyzenAIConfig.name, node=RyzenAIConfig)
 # benchmarks configurations

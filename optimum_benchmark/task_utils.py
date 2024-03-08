@@ -95,6 +95,8 @@ _CUSTOM_CLASSES = {
     ("pt", "vision-encoder-decoder", "document-question-answering"): ("transformers", "VisionEncoderDecoderModel"),
 }
 
+TEXT_EMBEDDING_TASKS = ["feature-extraction", "fill-mask"]
+
 IMAGE_DIFFUSION_TASKS = ["stable-diffusion", "stable-diffusion-xl"]
 
 TEXT_GENERATION_TASKS = ["image-to-text", "text-generation", "text2text-generation", "automatic-speech-recognition"]
@@ -107,7 +109,6 @@ IMAGE_PROCESSING_TASKS = [
     "zero-shot-image-classification",
     "zero-shot-object-detection",
 ]
-
 
 def map_from_synonym(task: str) -> str:
     if task in _SYNONYM_TASK_MAP:

@@ -145,8 +145,6 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             LOGGER.info("\t+ Creating inference latency tracker")
             self.latency_tracker = LatencyTracker(backend=backend.config.name, device=backend.config.device)
             if backend.config.task in TEXT_GENERATION_TASKS:
-                LOGGER.info("\t+ Creating latency logits processor tracker")
-
                 self.run_text_generation_latency_tracking(backend)
             elif backend.config.task in IMAGE_DIFFUSION_TASKS:
                 self.run_image_diffusion_latency_tracking(backend)
