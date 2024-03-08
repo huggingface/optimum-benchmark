@@ -82,9 +82,9 @@ class PushToHubMixin:
             )
 
     @property
-    def default_save_path(self) -> str:
-        return "optimum-benchmark"
-
-    @property
     def default_file_name(self) -> str:
         return "config.json"
+
+    @property
+    def default_save_path(self) -> str:
+        return "benchmarks"

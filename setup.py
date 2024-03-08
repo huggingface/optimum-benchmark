@@ -1,5 +1,6 @@
 import importlib.util
 import os
+import subprocess
 
 from setuptools import find_packages, setup
 
@@ -22,8 +23,20 @@ INSTALL_REQUIRES = [
     "pandas",
 ]
 
-USE_CUDA = os.environ.get("USE_CUDA", None) == "1"
-USE_ROCM = os.environ.get("USE_ROCM", None) == "1"
+try:
+    subprocess.run(["nvidia-smi"], check=True)
+    IS_NVIDIA_SYSTEM = True
+except Exception:
+    IS_NVIDIA_SYSTEM = False
+
+try:
+    subprocess.run(["rocm-smi"], check=True)
+    IS_ROCM_SYSTEM = True
+except Exception:
+    IS_ROCM_SYSTEM = False
+
+USE_CUDA = (os.environ.get("USE_CUDA", None) == "1") or IS_NVIDIA_SYSTEM
+USE_ROCM = (os.environ.get("USE_ROCM", None) == "1") or IS_ROCM_SYSTEM
 
 if USE_CUDA:
     INSTALL_REQUIRES.append("nvidia-ml-py")
