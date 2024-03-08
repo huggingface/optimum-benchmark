@@ -46,7 +46,7 @@ class ExperimentConfig(PushToHubMixin):
     environment: Dict = field(default_factory=lambda: {**get_system_info(), **get_hf_libs_info()})
 
     @property
-    def file_name(self) -> str:
+    def default_file_name(self) -> str:
         return "experiment_config.json"
 
 
