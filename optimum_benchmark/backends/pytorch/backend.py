@@ -278,15 +278,13 @@ class PyTorchBackend(Backend[PyTorchConfig]):
     def is_exllamav2(self) -> bool:
         return (self.is_gptq_quantized or self.is_awq_quantized) and (
             (
-                hasattr(self.pretrained_config, "quantization_config")
-                and hasattr(self.pretrained_config.quantization_config, "exllama_config")
-                and "exllama_version" in self.pretrained_config.quantization_config.exllama_config
-                and self.pretrained_config.quantization_config.exllama_config["exllama_version"] == 2
+                getattr(self.pretrained_config, "quantization_config", None) is not None
+                and getattr(self.pretrained_config.quantization_config, "exllama_config", None) is not None
+                and self.pretrained_config.quantization_config.exllama_config.get("exllama_version", None) == 2
             )
             or (
-                hasattr(self.quantization_config, "exllama_config")
-                and "exllama_version" in self.quantization_config.exllama_config
-                and self.quantization_config.exllama_config["exllama_version"] == 2
+                self.config.quantization_config.get("exllama_config", None) is not None
+                and self.config.quantization_config.exllama_config.get("exllama_version", None) == 2
             )
         )
 
