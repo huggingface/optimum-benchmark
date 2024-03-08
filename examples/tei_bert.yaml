@@ -10,9 +10,9 @@ defaults:
 experiment_name: tei_bert
 
 backend:
-  model: bert-base-uncased
-  pooling: cls
   device: cpu
+  pooling: cls
+  model: bert-base-uncased
 
 benchmark:
   input_shapes:

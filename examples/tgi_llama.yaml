@@ -10,7 +10,7 @@ defaults:
 experiment_name: tgi_llama
 
 backend:
-  device: cuda
+  device: cpu
   device_ids: 0,1
   no_weights: true
   model: NousResearch/Nous-Hermes-llama-2-7b
