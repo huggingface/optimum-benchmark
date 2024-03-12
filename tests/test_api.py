@@ -119,7 +119,7 @@ def test_api_launch(device, launcher_config):
     benchmark_config = InferenceConfig(
         memory=True,
         latency=True,
-        input_shapes={"batch_size": 4 if device_ids is not None else 1},
+        input_shapes={"batch_size": 4},
     )
 
     backend_config = PyTorchConfig(
