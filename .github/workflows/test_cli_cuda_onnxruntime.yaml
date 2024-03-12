@@ -13,7 +13,8 @@ concurrency:
 
 jobs:
   build_image_and_run_cli_cuda_onnxruntime_tests:
-    runs-on: nvidia-gpu
+    runs-on: [single-gpu, nvidia-gpu, a10, ci]
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -28,19 +29,14 @@ jobs:
           --tag opt-bench-cuda:11.8.0
           .
 
-      - name: Get GPUs with most free memory
-        id: get_devices
-        run: |
-          echo "::set-output name=devices::$(nvidia-smi --query-gpu=memory.free,index --format=csv,noheader,nounits | sort -n -k1 | tail -n 2 | awk -F', ' '{print $2}' | xargs echo -n | sed 's/ /,/g' | awk '{print $0}')"
-
       - name: Run tests
         run: docker run
           --rm
+          --gpus all
           --pid host
           --shm-size 64G
           --env USE_CUDA="1"
           --entrypoint /bin/bash
-          --gpus '"device=${{ steps.get_devices.outputs.devices }}"'
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
           opt-bench-cuda:11.8.0
