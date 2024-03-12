@@ -202,27 +202,55 @@ def monitor_gpu_vram_memory(process_id: int, device_ids: List[int], connection: 
                 "Please install the official and NVIDIA maintained PyNVML library through `pip install nvidia-ml-py`."
             )
         pynvml.nvmlInit()
+
         devices_handles = [pynvml.nvmlDeviceGetHandleByIndex(device_id) for device_id in device_ids]
+        track_global_vram = os.environ.get("TRACK_GLOBAL_VRAM", "0") == "1"
+
+        if track_global_vram:
+            LOGGER.warning(
+                "Tracking global VRAM usage. This will track the memory usage of all processes using the device(s)."
+            )
+        else:
+            LOGGER.info(
+                "Tracking process-specific VRAM usage. This will track the memory usage of the monitored process and its children."
+            )
 
         while not stop:
             current_used_memory = 0
-            for device_id, device_handle in zip(device_ids, devices_handles):
-                try:
-                    device_processes = pynvml.nvmlDeviceGetComputeRunningProcesses(device_handle)
-                except Exception as e:
-                    LOGGER.warning(f"\t\t+ Could not get process list for device {device_id}: {e}")
-                    continue
-                for device_process in device_processes:
-                    if device_process.pid == process_id:
-                        current_used_memory += device_process.usedGpuMemory
-                    else:
-                        try:
-                            cpu_process = psutil.Process(device_process.pid)
-                        except Exception as e:
-                            LOGGER.warning(f"\t\t+ Could not get process info for process {device_process.pid}: {e}")
-                            continue
-                        if cpu_process.parent() is not None and cpu_process.parent().pid == process_id:
+
+            if track_global_vram:
+                for device_id, device_handle in zip(device_ids, devices_handles):
+                    try:
+                        device_memory = pynvml.nvmlDeviceGetMemoryInfo(device_handle)
+                    except Exception as e:
+                        LOGGER.warning(f"Could not get memory info for device {device_id}: {e}")
+                        continue
+                    current_used_memory += device_memory.used
+            else:
+                for device_id, device_handle in zip(device_ids, devices_handles):
+                    try:
+                        device_processes = pynvml.nvmlDeviceGetComputeRunningProcesses(device_handle)
+                    except Exception as e:
+                        LOGGER.warning(
+                            f"Could not get process list for device {device_id}: {e}. "
+                            "Something went wrong with the GPU device."
+                        )
+                        continue
+                    for device_process in device_processes:
+                        if device_process.pid == process_id:
                             current_used_memory += device_process.usedGpuMemory
+                        else:
+                            try:
+                                cpu_process = psutil.Process(device_process.pid)
+                            except Exception as e:
+                                LOGGER.warning(
+                                    f"Could not get process info for process {device_process.pid}: {e}. "
+                                    "Please make sure your code has the necessary PID Namespaces permissions. "
+                                    "Or enable global VRAM usage tracking by setting the `GLOBAL_VRAM_USAGE` environment variable to `1`."
+                                )
+                                continue
+                            if cpu_process.parent() is not None and cpu_process.parent().pid == process_id:
+                                current_used_memory += device_process.usedGpuMemory
 
             max_memory = max(max_memory, current_used_memory)
             stop = connection.poll(interval)
@@ -253,7 +281,7 @@ def monitor_gpu_vram_memory(process_id: int, device_ids: List[int], connection: 
                         try:
                             gpu_process_info = amdsmi.amdsmi_get_gpu_process_info(device_handle, process_handle)
                         except Exception as e:
-                            LOGGER.warning(f"\t\t+ Could not get process info for process {process_handle}: {e}")
+                            LOGGER.warning(f"Could not get process info for process {process_handle}: {e}")
                             continue
                         # only memory usage of the monitored process and its children is tracked
                         if gpu_process_info["pid"] == process_id:
@@ -262,9 +290,7 @@ def monitor_gpu_vram_memory(process_id: int, device_ids: List[int], connection: 
                             try:
                                 cpu_process_info = psutil.Process(gpu_process_info["pid"])
                             except Exception as e:
-                                LOGGER.warning(
-                                    f"\t\t+ Could not get process info for process {gpu_process_info['pid']}: {e}"
-                                )
+                                LOGGER.warning(f"Could not get process info for process {gpu_process_info['pid']}: {e}")
                                 continue
                             if cpu_process_info.parent() is not None and cpu_process_info.ppid() == process_id:
                                 current_used_memory += gpu_process_info["memory_usage"]["vram_mem"]
@@ -280,13 +306,13 @@ def monitor_gpu_vram_memory(process_id: int, device_ids: List[int], connection: 
                     try:
                         processes_handles = amdsmi.amdsmi_get_process_list(device_handle)
                     except Exception as e:
-                        LOGGER.warning(f"\t\t+ Could not get process list for device {device_id}: {e}")
+                        LOGGER.warning(f"Could not get process list for device {device_id}: {e}")
                         continue
                     for process_handle in processes_handles:
                         try:
                             gpu_process_info = amdsmi.amdsmi_get_process_info(device_handle, process_handle)
                         except Exception as e:
-                            LOGGER.warning(f"\t\t+ Could not get process info for process {process_handle}: {e}")
+                            LOGGER.warning(f"Could not get process info for process {process_handle}: {e}")
                             continue
                         # only memory usage of the monitored process and its children is tracked
                         if gpu_process_info["pid"] == process_id:
@@ -295,9 +321,7 @@ def monitor_gpu_vram_memory(process_id: int, device_ids: List[int], connection: 
                             try:
                                 cpu_process_info = psutil.Process(gpu_process_info["pid"])
                             except Exception as e:
-                                LOGGER.warning(
-                                    f"\t\t+ Could not get process info for process {gpu_process_info['pid']}: {e}"
-                                )
+                                LOGGER.warning(f"Could not get process info for process {gpu_process_info['pid']}: {e}")
                                 continue
                             if cpu_process_info.parent() is not None and cpu_process_info.ppid() == process_id:
                                 current_used_memory += gpu_process_info["memory_usage"]["vram_mem"]

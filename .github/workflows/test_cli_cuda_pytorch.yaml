@@ -42,9 +42,9 @@ jobs:
         run: docker run
           --rm
           --gpus all
-          --pid host
           --shm-size 64G
           --env USE_CUDA="1"
+          --env TRACK_GLOBAL_VRAM="1"
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
           --entrypoint /bin/bash
