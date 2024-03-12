@@ -44,7 +44,7 @@ jobs:
           --gpus all
           --shm-size 64G
           --env USE_CUDA="1"
-          --env TRACK_GLOBAL_VRAM="1"
+          --env PROCESS_SPECIFIC_VRAM="0"
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
           --entrypoint /bin/bash
