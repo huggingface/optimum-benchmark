@@ -1,0 +1,9 @@
+backend:
+  torch_compile: true
+  torch_compile_config:
+    fullgraph: false
+    dynamic: false
+    backend: "inductor"
+    mode: null
+    options: null
+    disable: false

@@ -1,0 +1,11 @@
+defaults:
+  - backend: pytorch
+  # order of inheritance, last one overrides previous ones
+  - _base_ # inherits from base config
+  - _training_ # inherits from training config
+  - _gpt_ # inherits from gpt config
+  - _cuda_ # inherits from cuda config
+  - _torch_compile_ # inherits from  torch compile config
+  - _self_ # hydra 1.1 compatibility
+
+experiment_name: cuda_training_pytorch_gpt_torch_compile
