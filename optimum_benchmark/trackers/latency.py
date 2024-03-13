@@ -218,6 +218,11 @@ class LatencyLogitsProcessor(LogitsProcessor):
 
         self.tok_events: List[Union[float, torch.cuda.Event]] = []
 
+        if self.device == "cuda" and self.backend == "pytorch":
+            prefill_event = torch.cuda.Event(enable_timing=True)
+            prefill_event.record()
+            self.tok_events.append(prefill_event)
+
         yield  # this is where generate is called, and for each token, we record an event
 
         self.run_events.append(self.tok_events)
@@ -235,6 +240,18 @@ class LatencyLogitsProcessor(LogitsProcessor):
 
         return scores
 
+    def get_prefill_latency(self) -> Latency:
+        if self.device == "cuda" and self.backend == "pytorch":
+            # synchronize the device to make sure all events have been recorded
+            torch.cuda.synchronize()
+            latencies_list = [
+                self.run_events[i][0].elapsed_time(self.run_events[i][1]) / 1e3 for i in range(len(self.run_events))
+            ]
+        else:
+            latencies_list = [(self.run_events[i][1] - self.run_events[i][0]) for i in range(len(self.run_events))]
+
+        return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
+
     def get_per_token_latency(self) -> Latency:
         latencies_list = []
         for tok_events in self.run_events:
@@ -242,10 +259,10 @@ class LatencyLogitsProcessor(LogitsProcessor):
                 # synchronize the device to make sure all events have been recorded
                 torch.cuda.synchronize()
                 latencies_list.extend(
-                    [tok_events[i - 1].elapsed_time(tok_events[i]) / 1e3 for i in range(1, len(tok_events))]
+                    [tok_events[i].elapsed_time(tok_events[i + 1]) / 1e3 for i in range(1, len(tok_events) - 1)]
                 )
             else:
-                latencies_list.extend([(tok_events[i] - tok_events[i - 1]) for i in range(1, len(tok_events))])
+                latencies_list.extend([(tok_events[i] - tok_events[i + 1]) for i in range(1, len(tok_events) - 1)])
 
         return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
 
