@@ -280,13 +280,11 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             (
                 hasattr(self.pretrained_config, "quantization_config")
                 and hasattr(self.pretrained_config.quantization_config, "exllama_config")
-                and "exllama_version" in self.pretrained_config.quantization_config.exllama_config
-                and self.pretrained_config.quantization_config.exllama_config["exllama_version"] == 2
+                and self.pretrained_config.quantization_config.exllama_config.get("exllama_version", None) == 2
             )
             or (
-                hasattr(self.quantization_config, "exllama_config")
-                and "exllama_version" in self.quantization_config.exllama_config
-                and self.quantization_config.exllama_config["exllama_version"] == 2
+                "exllama_config" in self.config.quantization_config
+                and self.config.quantization_config["exllama_config"].get("exllama_version", None) == 2
             )
         )
 
