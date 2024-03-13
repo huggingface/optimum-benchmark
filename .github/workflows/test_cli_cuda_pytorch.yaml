@@ -49,4 +49,4 @@ jobs:
           --workdir /workspace/optimum-benchmark
           --entrypoint /bin/bash
           opt-bench-cuda:${{ matrix.image.cuda_version }}
-          -c "pip install requests && pip install -e .[testing,diffusers,timm,deepspeed,peft,bitsandbytes,autoawq,auto-gptq] && pytest -k 'cli and cuda and pytorch' -x"
+          -c "pip install requests && pip install -e .[testing,diffusers,timm,deepspeed,peft,bitsandbytes,autoawq,optimum,auto-gptq] && pytest -k 'cli and cuda and pytorch' -x"
