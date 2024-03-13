@@ -56,13 +56,13 @@ class Energy:
         """Enables subtraction of two Energy instances using the '-' operator."""
         if self.unit != other.unit:
             raise ValueError("Energy units must match to perform subtraction")
-        
+
         return Energy(
             cpu=self.cpu - other.cpu,
             gpu=self.gpu - other.gpu,
             ram=self.ram - other.ram,
             total=self.total - other.total,
-            unit=self.unit
+            unit=self.unit,
         )
 
 
