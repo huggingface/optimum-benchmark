@@ -49,6 +49,8 @@ LAUNCHER_CONFIGS = [
 BACKENDS = ["pytorch", "none"]
 DEVICES = ["cpu", "cuda"]
 
+CUDA_VISIBLE_DEVICES = ",".join([str(i) for i in range(torch.cuda.device_count())])
+
 
 @pytest.mark.parametrize("device", DEVICES)
 @pytest.mark.parametrize("backend", BACKENDS)
@@ -113,10 +115,16 @@ def test_api_memory_tracker(device, backend):
 @pytest.mark.parametrize("device", DEVICES)
 @pytest.mark.parametrize("launcher_config", LAUNCHER_CONFIGS)
 def test_api_launch(device, launcher_config):
-    benchmark_config = InferenceConfig(latency=True, memory=True)
+    device_ids = CUDA_VISIBLE_DEVICES if device == "cuda" else None
+    benchmark_config = InferenceConfig(
+        memory=True,
+        latency=True,
+        input_shapes={"batch_size": 4},
+    )
+
     backend_config = PyTorchConfig(
         model="bert-base-uncased",
-        device_ids="0,1" if device == "cuda" else None,
+        device_ids=device_ids,
         no_weights=True,
         device=device,
     )
