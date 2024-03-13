@@ -51,4 +51,4 @@ jobs:
           --device /dev/dri/renderD129
           --entrypoint /bin/bash
           opt-bench-rocm:${{ matrix.image.rocm_version }}
-          -c "pip install requests && pip install -e .[testing,diffusers,timm,deepspeed,peft,autoawq] && pytest -k 'cli and cuda and pytorch and not bnb' -x"
+          -c "pip install requests && pip install -e .[testing,diffusers,timm,deepspeed,peft,autoawq,optimum,auto-gptq] && pytest -k 'cli and cuda and pytorch and not bnb' -x"
