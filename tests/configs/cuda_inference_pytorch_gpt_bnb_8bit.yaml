@@ -1,0 +1,15 @@
+defaults:
+  - backend: pytorch
+  - _base_ # inherits from base config
+  - _inference_ # inherits from inference config
+  - _cuda_ # inherits from cuda config
+  - _gpt_ # use gpt2 model
+  - _no_weights_sweep_ # sweep no_weights: true, false
+  - _self_ # hydra 1.1 compatibility
+
+experiment_name: cuda_inference_pytorch_gpt_bnb_8bit
+
+backend:
+  quantization_scheme: "bnb"
+  quantization_config:
+    load_in_8bit: true

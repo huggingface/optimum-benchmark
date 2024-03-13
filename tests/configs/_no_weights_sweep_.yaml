@@ -1,0 +1,4 @@
+hydra:
+  sweeper:
+    params:
+      backend.no_weights: true,false

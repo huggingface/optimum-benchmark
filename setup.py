@@ -68,6 +68,8 @@ EXTRAS_REQUIRE = {
     "diffusers": ["diffusers"],
     "timm": ["timm"],
     "peft": ["peft"],
+    "autoawq": ["autoawq@git+https://github.com/casper-hansen/AutoAWQ.git"],
+    "bitsandbytes": ["bitsandbytes"],
 }
 
 
