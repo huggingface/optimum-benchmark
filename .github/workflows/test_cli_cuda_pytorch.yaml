@@ -22,7 +22,8 @@ jobs:
             { torch_cuda: cu121, torch_pre_release: 1, cuda_version: 12.1.1 },
           ]
 
-    runs-on: nvidia-gpu
+    runs-on: [multi-gpu, nvidia-gpu, 4-a10, ci]
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -37,20 +38,15 @@ jobs:
           --tag opt-bench-cuda:${{ matrix.image.cuda_version }}
           .
 
-      - name: Get GPUs with most free memory
-        id: get_devices
-        run: |
-          echo "::set-output name=devices::$(nvidia-smi --query-gpu=memory.free,index --format=csv,noheader,nounits | sort -n -k1 | tail -n 2 | awk -F', ' '{print $2}' | xargs echo -n | sed 's/ /,/g' | awk '{print $0}')"
-
       - name: Run tests
         run: docker run
           --rm
-          --pid host
+          --gpus all
           --shm-size 64G
           --env USE_CUDA="1"
-          --gpus '"device=${{ steps.get_devices.outputs.devices }}"'
+          --env PROCESS_SPECIFIC_VRAM="0"
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
           --entrypoint /bin/bash
           opt-bench-cuda:${{ matrix.image.cuda_version }}
-          -c "pip install -e .[testing,diffusers,timm,deepspeed,peft] && pytest -k 'cli and cuda and pytorch' -x"
+          -c "pip install requests && pip install -e .[testing,diffusers,timm,deepspeed,peft,bitsandbytes,autoawq] && pytest -k 'cli and cuda and pytorch' -x"

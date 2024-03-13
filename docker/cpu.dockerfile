@@ -1,4 +1,6 @@
-FROM ubuntu:latest
+ARG UBUNTU_VERSION=20.04
+
+FROM ubuntu:${UBUNTU_VERSION}
 
 # Ignore interactive questions during `docker build`
 ENV DEBIAN_FRONTEND noninteractive

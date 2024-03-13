@@ -142,18 +142,33 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 LOGGER.info(f"\t+ Moving pipeline to device: {self.config.device}")
                 self.pretrained_model.to(self.config.device)
         elif self.config.deepspeed_inference:
-            with torch.device("cpu"):
-                LOGGER.info("\t+ Loading DeepSpeed model directly on CPU to avoid OOM")
-                self.pretrained_model = self.automodel_class.from_pretrained(
-                    pretrained_model_name_or_path=self.config.model, **self.config.hub_kwargs, **self.automodel_kwargs
-                )
+            if self.config.no_weights:
+                with torch.device("meta"):
+                    LOGGER.info("\t+ Loading model on meta device for fast initialization")
+                    self.pretrained_model = self.automodel_class.from_pretrained(
+                        pretrained_model_name_or_path=self.config.model,
+                        **self.config.hub_kwargs,
+                        **self.automodel_kwargs,
+                    )
+                LOGGER.info("\t+ Materializing model on CPU")
+                self.pretrained_model.to_empty(device="cpu")
+                LOGGER.info("\t+ Tying model weights")
+                self.pretrained_model.tie_weights()
+            else:
+                LOGGER.info("\t+ Loading model on cpu to avoid OOM")
+                with torch.device("cpu"):
+                    self.pretrained_model = self.automodel_class.from_pretrained(
+                        pretrained_model_name_or_path=self.config.model,
+                        **self.config.hub_kwargs,
+                        **self.automodel_kwargs,
+                    )
 
             torch.distributed.barrier()  # better safe than hanging
-            LOGGER.info("\t+ Initializing DeepSpeed Inference")
+            LOGGER.info("\t+ Initializing DeepSpeed Inference Engine")
             self.pretrained_model = init_inference(self.pretrained_model, config=self.config.deepspeed_inference_config)
             torch.distributed.barrier()  # better safe than hanging
         elif self.is_quantized:
-            # we can't use device context manager since the model is quantized
+            # we can't use device context manager on quantized models
             LOGGER.info("\t+ Loading Quantized model")
             self.pretrained_model = self.automodel_class.from_pretrained(
                 pretrained_model_name_or_path=self.config.model,
@@ -218,10 +233,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.load_model_from_pretrained()
             self.config.model = original_model
 
-        # dunno how necessary this is
-        LOGGER.info("\t+ Tying model weights")
-        self.pretrained_model.tie_weights()
-
     def process_quantization_config(self) -> None:
         if self.is_gptq_quantized:
             LOGGER.info("\t+ Processing GPTQ config")
@@ -269,13 +280,11 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             (
                 hasattr(self.pretrained_config, "quantization_config")
                 and hasattr(self.pretrained_config.quantization_config, "exllama_config")
-                and "exllama_version" in self.pretrained_config.quantization_config.exllama_config
-                and self.pretrained_config.quantization_config.exllama_config["exllama_version"] == 2
+                and self.pretrained_config.quantization_config.exllama_config.get("exllama_version", None) == 2
             )
             or (
-                hasattr(self.quantization_config, "exllama_config")
-                and "exllama_version" in self.quantization_config.exllama_config
-                and self.quantization_config.exllama_config["exllama_version"] == 2
+                "exllama_config" in self.config.quantization_config
+                and self.config.quantization_config["exllama_config"].get("exllama_version", None) == 2
             )
         )
 

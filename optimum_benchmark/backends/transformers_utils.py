@@ -32,7 +32,7 @@ def get_transformers_generation_config(model: str, **kwargs) -> Optional["Genera
         # sometimes contains information about the model's input shapes that are not available in the config
         return GenerationConfig.from_pretrained(model, **kwargs)
     except Exception:
-        return None
+        return GenerationConfig()
 
 
 def get_transformers_pretrained_processor(model: str, **kwargs) -> Optional["PretrainedProcessor"]:

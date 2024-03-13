@@ -1,5 +1,6 @@
 import importlib.util
 import os
+import subprocess
 
 from setuptools import find_packages, setup
 
@@ -22,8 +23,20 @@ INSTALL_REQUIRES = [
     "pandas",
 ]
 
-USE_CUDA = os.environ.get("USE_CUDA", None) == "1"
-USE_ROCM = os.environ.get("USE_ROCM", None) == "1"
+try:
+    subprocess.run(["nvidia-smi"], check=True)
+    IS_NVIDIA_SYSTEM = True
+except Exception:
+    IS_NVIDIA_SYSTEM = False
+
+try:
+    subprocess.run(["rocm-smi"], check=True)
+    IS_ROCM_SYSTEM = True
+except Exception:
+    IS_ROCM_SYSTEM = False
+
+USE_CUDA = (os.environ.get("USE_CUDA", None) == "1") or IS_NVIDIA_SYSTEM
+USE_ROCM = (os.environ.get("USE_ROCM", None) == "1") or IS_ROCM_SYSTEM
 
 if USE_CUDA:
     INSTALL_REQUIRES.append("nvidia-ml-py")
@@ -46,14 +59,17 @@ EXTRAS_REQUIRE = {
     "onnxruntime-gpu": [f"optimum[onnxruntime-gpu]>={MIN_OPTIMUM_VERSION}"],
     "neural-compressor": [f"optimum[neural-compressor]>={MIN_OPTIMUM_VERSION}"],
     "torch-ort": ["torch-ort", "onnxruntime-training", f"optimum>={MIN_OPTIMUM_VERSION}"],
-    # docker-based backends
-    "py-tgi": ["py-tgi==0.1.3"],
-    # third-party features
+    # other backends
+    "llm-swarm": ["llm-swarm@git+https://github.com/huggingface/llm-swarm.git"],
+    "py-txi": ["py-txi@git+https://github.com/IlyasMoutawwakil/py-txi.git"],
+    # optional dependencies
     "codecarbon": ["codecarbon"],
     "deepspeed": ["deepspeed"],
     "diffusers": ["diffusers"],
     "timm": ["timm"],
     "peft": ["peft"],
+    "autoawq": ["autoawq@git+https://github.com/casper-hansen/AutoAWQ.git"],
+    "bitsandbytes": ["bitsandbytes"],
 }
 
 

@@ -18,6 +18,7 @@ launcher:
   device_isolation: true
 
 benchmark:
+  memory: true
   input_shapes:
     batch_size: 1
 
