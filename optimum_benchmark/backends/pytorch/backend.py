@@ -345,6 +345,12 @@ class PyTorchBackend(Backend[PyTorchConfig]):
     ) -> TrainerState:
         LOGGER.info(f"\t+ Wrapping training arguments with {TrainingArguments.__name__}")
         training_arguments = TrainingArguments(**training_arguments)
+
+        if self.config.device == "cpu":
+            assert training_arguments.use_cpu, f"""backend.device is set to {self.config.device} while use_cpu in training_arguments is set to false (default)
+            which will make the training run on gpu. Please set benchmark.training.training_arguments.use_cpu to true if the benchmark is intended to run on cpu
+            """
+
         LOGGER.info(f"\t+ Wrapping model with {Trainer.__name__}")
         trainer = Trainer(
             args=training_arguments,
