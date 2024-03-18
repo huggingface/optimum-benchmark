@@ -19,7 +19,7 @@ class InferenceConfig(BenchmarkConfig):
     duration: int = field(default=10, metadata={"help": "Minimum duration of the benchmark in seconds"})
     warmup_runs: int = field(default=10, metadata={"help": "Number of warmup runs to perform before benchmarking"})
 
-    # input/output shapes
+    # input/output config
     input_shapes: Dict[str, Any] = field(
         default_factory=dict,
         metadata={"help": "Input shapes for the model. Missing keys will be filled with default values."},
@@ -27,12 +27,12 @@ class InferenceConfig(BenchmarkConfig):
     new_tokens: Optional[int] = field(
         default=None,
         metadata={"help": "Deprecated. If set, `max_new_tokens` and `min_new_tokens` will be set to this value."},
-    )
+    )  # should be removed soon
 
     # tracking options
-    energy: bool = field(default=False, metadata={"help": "Measure energy usage"})
-    memory: bool = field(default=False, metadata={"help": "Measure max memory usage"})
     latency: bool = field(default=True, metadata={"help": "Measure latencies and throughputs"})
+    memory: bool = field(default=False, metadata={"help": "Measure max memory usage"})
+    energy: bool = field(default=False, metadata={"help": "Measure energy usage"})
 
     # methods kwargs
     forward_kwargs: Dict[str, Any] = field(

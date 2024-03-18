@@ -82,8 +82,9 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         )
 
         if backend.config.task in TEXT_GENERATION_TASKS:
-            LOGGER.info("\t+ Generating and preparing Text Generation inputs")
+            LOGGER.info("\t+ Generating Text Generation inputs")
             self.forward_inputs = self.input_generator()
+            LOGGER.info("\t+ Preparing Text Generation inputs")
             self.forward_inputs = backend.prepare_inputs(self.forward_inputs)
             self.generate_inputs = extract_text_generation_inputs(self.forward_inputs)
             LOGGER.info("\t+ Updating Text Generation kwargs with default values")
@@ -96,6 +97,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         elif backend.config.task in IMAGE_DIFFUSION_TASKS:
             LOGGER.info("\t+ Generating Image Diffusion inputs")
             self.call_inputs = self.input_generator()
+            LOGGER.info("\t+ Preparing Image Diffusion inputs")
             self.call_inputs = backend.prepare_inputs(self.call_inputs)
             LOGGER.info("\t+ Updating Image Diffusion kwargs with default values")
             self.config.call_kwargs = {**IMAGE_DIFFUSION_KWARGS, **self.config.call_kwargs}
@@ -103,8 +105,9 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             self.report = ImageDiffusionReport(call=BenchmarkMeasurements())
 
         else:
-            LOGGER.info("\t+ Generating and preparing Inference inputs")
+            LOGGER.info("\t+ Generating Inference inputs")
             self.forward_inputs = self.input_generator()
+            LOGGER.info("\t+ Preparing Inference inputs")
             self.forward_inputs = backend.prepare_inputs(self.forward_inputs)
             LOGGER.info("\t+ Initializing Inference report")
             self.report = InferenceReport(forward=BenchmarkMeasurements())
