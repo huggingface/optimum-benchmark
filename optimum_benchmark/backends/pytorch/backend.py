@@ -18,7 +18,7 @@ from transformers import (
     TrainingArguments,
 )
 
-from ...import_utils import is_deepspeed_available, is_torch_distributed_available
+from ...import_utils import is_deepspeed_available, is_torch_distributed_available, is_torch_zendnn_plugin_available
 from ..base import Backend
 from ..peft_utils import apply_peft
 from ..transformers_utils import random_init_weights
@@ -29,6 +29,10 @@ if is_deepspeed_available():
 
 if is_torch_distributed_available():
     import torch.distributed
+
+if is_torch_zendnn_plugin_available():
+    import torch_zendnn_plugin  # noqa: F401, F403
+
 
 # bachend logger
 LOGGER = getLogger("pytorch")

@@ -30,6 +30,11 @@ _optimum_benchmark_available = importlib.util.find_spec("optimum_benchmark") is 
 _py_txi_available = importlib.util.find_spec("py_txi") is not None
 _pyrsmi_available = importlib.util.find_spec("pyrsmi") is not None
 _llm_swarm_available = importlib.util.find_spec("llm_swarm") is not None
+_torch_zendnn_plugin_available = importlib.util.find_spec("torch_zendnn_plugin") is not None
+
+
+def is_torch_zendnn_plugin_available():
+    return _torch_zendnn_plugin_available
 
 
 def is_llm_swarm_available():
