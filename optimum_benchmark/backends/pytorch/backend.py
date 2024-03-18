@@ -100,10 +100,12 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         # Torch compile
         if self.config.torch_compile:
             if self.config.library == "diffusers":
-                LOGGER.info("\t+ Using torch.compile on unet forward pass")
-                # TODO: should we compile vae and/or clip as well ?
-                self.pretrained_model.unet.forward = torch.compile(
-                    self.pretrained_model.unet.forward, **self.config.torch_compile_config
+                LOGGER.info("\t+ Using torch.compile to compile unet and vae")
+                self.pretrained_model.unet = torch.compile(
+                    self.pretrained_model.unet, **self.config.torch_compile_config
+                )
+                self.pretrained_model.vae.decode = torch.compile(
+                    self.pretrained_model.vae.decode, **self.config.torch_compile_config
                 )
             else:
                 LOGGER.info("\t+ Using torch.compile on forward pass")
