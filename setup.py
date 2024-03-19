@@ -70,6 +70,9 @@ EXTRAS_REQUIRE = {
     "peft": ["peft"],
     "autoawq": ["autoawq@git+https://github.com/casper-hansen/AutoAWQ.git"],
     "bitsandbytes": ["bitsandbytes"],
+    "auto-gptq-cu118": ["optimum", "auto-gptq@https://huggingface.github.io/autogptq-index/whl/cu118/auto-gptq/auto_gptq-0.7.1%2Bcu118-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"],
+    "auto-gptq-cu121": ["optimum", "auto-gptq"],
+    "auto-gptq-rocm": ["optimum", "auto-gptq@https://huggingface.github.io/autogptq-index/whl/rocm573/auto-gptq/auto_gptq-0.7.1%2Brocm5.7.3-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"]
 }
 
 
