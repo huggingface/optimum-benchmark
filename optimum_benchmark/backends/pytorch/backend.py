@@ -265,19 +265,22 @@ class PyTorchBackend(Backend[PyTorchConfig]):
     @property
     def is_bnb_quantized(self) -> bool:
         return self.config.quantization_scheme == "bnb" or (
-            getattr(self.pretrained_config, "quantization_config", {}).get("quant_method", None) == "bnb"
+            hasattr(self.pretrained_config, "quantization_config")
+            and self.pretrained_config.quantization_config.get("quant_method", None) == "bnb"
         )
 
     @property
     def is_gptq_quantized(self) -> bool:
         return self.config.quantization_scheme == "gptq" or (
-            getattr(self.pretrained_config, "quantization_config", {}).get("quant_method", None) == "gptq"
+            hasattr(self.pretrained_config, "quantization_config")
+            and self.pretrained_config.quantization_config.get("quant_method", None) == "gptq"
         )
 
     @property
     def is_awq_quantized(self) -> bool:
         return self.config.quantization_scheme == "awq" or (
-            getattr(self.pretrained_config, "quantization_config", {}).get("quant_method", None) == "awq"
+            hasattr(self.pretrained_config, "quantization_config")
+            and self.pretrained_config.quantization_config.get("quant_method", None) == "awq"
         )
 
     @property
@@ -286,11 +289,11 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             (
                 hasattr(self.pretrained_config, "quantization_config")
                 and hasattr(self.pretrained_config.quantization_config, "exllama_config")
-                and self.pretrained_config.quantization_config.exllama_config.get("exllama_version", None) == 2
+                and self.pretrained_config.quantization_config.exllama_config.get("version", None) == 2
             )
             or (
                 "exllama_config" in self.config.quantization_config
-                and self.config.quantization_config["exllama_config"].get("exllama_version", None) == 2
+                and self.config.quantization_config["exllama_config"].get("version", None) == 2
             )
         )
 
