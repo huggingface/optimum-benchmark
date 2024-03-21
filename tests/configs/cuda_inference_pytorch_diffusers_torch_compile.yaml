@@ -9,3 +9,8 @@ defaults:
   - _self_ # hydra 1.1 compatibility
 
 experiment_name: cuda_inference_pytorch_diffusers_torch_compile
+
+backend:
+  torch_compile_config:
+    options:
+      conv_1x1_as_mm: True
