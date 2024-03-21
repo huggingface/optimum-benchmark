@@ -36,7 +36,7 @@ class PushToHubMixin:
 
     def to_dataframe(self) -> pd.DataFrame:
         flat_report_dict = self.to_flat_dict()
-        return pd.DataFrame.from_dict(flat_report_dict, orient="index")
+        return pd.DataFrame.from_dict(flat_report_dict, orient="index").T
 
     def to_csv(self, path: str) -> None:
         self.to_dataframe().to_csv(path, index=False)
