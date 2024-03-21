@@ -15,7 +15,7 @@ CLI_MISC_REQS := testing
 
 CLI_CUDA_ONNXRUNTIME_REQS := testing,timm,diffusers
 CLI_ROCM_ONNXRUNTIME_REQS := testing,timm,diffusers
-CLI_CUDA_PYTORCH_REQS := testing,timm,diffusers,deepspeed,peft,bitsandbytes,autoawq
+CLI_CUDA_PYTORCH_REQS := testing,timm,diffusers,deepspeed,peft,bitsandbytes,autoawq,auto-gptq-cu118
 CLI_ROCM_PYTORCH_REQS := testing,timm,diffusers,deepspeed,peft,autoawq
 CLI_CPU_OPENVINO_REQS := testing,openvino,timm,diffusers
 CLI_CPU_PYTORCH_REQS := testing,timm,diffusers,deepspeed,peft
@@ -143,7 +143,7 @@ test_cli_cuda_pytorch:
 	$(call test_nvidia,cuda,$(CLI_CUDA_PYTORCH_REQS),cli and cuda and pytorch)
 
 test_cli_rocm_pytorch:
-	$(call test_amdgpu,rocm,$(CLI_ROCM_PYTORCH_REQS),cli and cuda and pytorch and peft and not bnb)
+	$(call test_amdgpu,rocm,$(CLI_ROCM_PYTORCH_REQS),cli and cuda and pytorch and peft and not bnb and not gptq)
 
 test_cli_cuda_onnxruntime:
 	$(call test_nvidia,cuda,$(CLI_CUDA_ONNXRUNTIME_REQS),cli and cuda and onnxruntime)
