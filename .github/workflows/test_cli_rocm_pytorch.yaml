@@ -19,8 +19,8 @@ jobs:
       matrix:
         image:
           [
-            { torch_rocm: rocm5.6, torch_pre_release: 0, rocm_version: 5.6.1 },
-            { torch_rocm: rocm5.7, torch_pre_release: 1, rocm_version: 5.7.1 },
+            { torch_rocm: rocm5.6, torch_pre_release: 0, rocm_version: 5.6.1, pytest_torch_compile: "" },
+            { torch_rocm: rocm5.7, torch_pre_release: 1, rocm_version: 5.7.1, pytest_torch_compile: "and not torch_compile" }, # starting pytorch nightly version 2.3, inductor uses a trition-rocm compiler version that attempts to load rocm 6
           ]
 
     runs-on: [amd-gpu]
@@ -52,4 +52,4 @@ jobs:
           --device /dev/dri/renderD129
           --entrypoint /bin/bash
           opt-bench-rocm:${{ matrix.image.rocm_version }}
-          -c "pip install requests && pip install -e .[testing,diffusers,timm,deepspeed,peft,autoawq] && pytest -k 'cli and cuda and pytorch and not bnb and not gptq' -x"
+          -c "pip install requests && pip install -e .[testing,diffusers,timm,deepspeed,peft,autoawq] && pytest -k 'cli and cuda and pytorch and not bnb and not gptq ${{ matrix.image.pytest_torch_compile }}' -x"
