@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from logging import getLogger
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
 from ...system_utils import is_rocm_system
 from ..config import BenchmarkConfig
@@ -17,11 +17,17 @@ class EnergyStarConfig(BenchmarkConfig):
     dataset_name: str = field(default="", metadata={"help": "Name of the dataset on the HF Hub."})
     dataset_config: str = field(default="", metadata={"help": "Name of the config of the dataset."})
     dataset_split: str = field(default="train", metadata={"help": "Dataset split to use."})
-    text_column_name: str = field(default="text", metadata={"help": "Name of the column with the text input."})
     num_samples: int = field(default=-1, metadata={"help": "Number of samples to select in the dataset. -1 means all."})
     input_shapes: Dict[str, Any] = field(
         default_factory=dict,
         metadata={"help": "Input shapes for the model. Missing keys will be filled with default values."},
+    )
+
+    # text dataset options
+    text_column_name: str = field(default="text", metadata={"help": "Name of the column with the text input."})
+    truncation: Union[bool, str] = field(default=False, metadata={"help": "To truncate the inputs."})
+    max_length: int = field(
+        default=-1, metadata={"help": "Maximum length to use by one of the truncation/padding parameters"}
     )
 
     # benchmark options

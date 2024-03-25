@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from logging import getLogger
 
 import torch
@@ -16,11 +17,8 @@ from ..inference.benchmark import (
     INFERENCE_EFFICIENCY_UNIT,
     TEXT_GENERATION_EFFICIENCY_UNIT,
     TEXT_GENERATION_KWARGS,
-    ImageDiffusionReport,
-    InferenceReport,
-    TextGenerationReport,
 )
-from ..report import BenchmarkMeasurements
+from ..report import BenchmarkMeasurements, BenchmarkReport
 from .config import EnergyStarConfig
 from .preprocessing_utils import preprocess
 
@@ -30,6 +28,26 @@ if is_torch_distributed_available():
 LOGGER = getLogger("energy_star")
 
 PER_TOKEN_BACKENDS = ["pytorch"]
+
+
+@dataclass
+class TextGenerationReport(BenchmarkReport):
+    prefill: BenchmarkMeasurements
+    decode: BenchmarkMeasurements
+    per_token: BenchmarkMeasurements
+    preprocess: BenchmarkMeasurements
+
+
+@dataclass
+class ImageDiffusionReport(BenchmarkReport):
+    call: BenchmarkMeasurements
+    preprocess: BenchmarkMeasurements
+
+
+@dataclass
+class InferenceReport(BenchmarkReport):
+    forward: BenchmarkMeasurements
+    preprocess: BenchmarkMeasurements
 
 
 class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
@@ -47,6 +65,8 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
                 )
             self.config.input_shapes["batch_size"] //= torch.distributed.get_world_size()
 
+        self.energy_tracker = EnergyTracker(device=backend.config.device, device_ids=backend.config.device_ids)
+
         LOGGER.info("\t+ Loading dataset")
         raw_dataset = load_dataset(
             self.config.dataset_name,
@@ -55,12 +75,15 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
         )
 
         LOGGER.info("\t+ Preprocessing dataset")
-        self.dataset = preprocess(
-            dataset=raw_dataset,
-            task=backend.config.task,
-            config=self.config,
-            model_name=backend.config.model,
-        )
+        with self.energy_tracker.track():
+            self.dataset = preprocess(
+                dataset=raw_dataset,
+                task=backend.config.task,
+                config=self.config,
+                preprocessor=backend.pretrained_processor,
+            )
+        self.preprocessing_energy = self.energy_tracker.get_energy()
+        self.energy_tracker.reset()
 
         LOGGER.info("\t+ Initialising dataloader")
         self.dataloader = DataLoader(self.dataset, batch_size=self.config.input_shapes["batch_size"])
@@ -70,18 +93,26 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
             self.config.generate_kwargs = {**TEXT_GENERATION_KWARGS, **self.config.generate_kwargs}
             LOGGER.info("\t+ Initializing Text Generation report")
             self.report = TextGenerationReport(
-                decode=BenchmarkMeasurements(), prefill=BenchmarkMeasurements(), per_token=BenchmarkMeasurements()
+                decode=BenchmarkMeasurements(),
+                prefill=BenchmarkMeasurements(),
+                per_token=BenchmarkMeasurements(),
+                preprocess=BenchmarkMeasurements(),
             )
 
         elif backend.config.task in IMAGE_DIFFUSION_TASKS:
             LOGGER.info("\t+ Updating Image Diffusion kwargs with default values")
             self.config.call_kwargs = {**IMAGE_DIFFUSION_KWARGS, **self.config.call_kwargs}
             LOGGER.info("\t+ Initializing Image Diffusion report")
-            self.report = ImageDiffusionReport(call=BenchmarkMeasurements())
+            self.report = ImageDiffusionReport(call=BenchmarkMeasurements(), preprocess=BenchmarkMeasurements())
 
         else:
             LOGGER.info("\t+ Initializing Inference report")
-            self.report = InferenceReport(forward=BenchmarkMeasurements())
+            self.report = InferenceReport(forward=BenchmarkMeasurements(), preprocess=BenchmarkMeasurements())
+
+        self.report.preprocess.energy = self.preprocessing_energy
+        self.report.preprocess.efficiency = Efficiency.from_energy(
+            self.report.preprocess.energy, self.inference_volume, unit=INFERENCE_EFFICIENCY_UNIT
+        )
 
         LOGGER.info("\t+ Preparing backend for Inference")
         backend.prepare_for_inference(
@@ -122,63 +153,55 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
     ## Energy tracking
     def run_text_generation_energy_tracking(self, backend: Backend[BackendConfigT]):
         LOGGER.info("\t+ Running energy tracking")
-        self.energy_tracker = EnergyTracker(device=backend.config.device, device_ids=backend.config.device_ids)
-        forward_energy = 0
-        generate_energy = 0
 
-        for inputs in tqdm(self.dataloader):
-            for key, value in inputs.items():
-                if hasattr(value, "to"):
-                    inputs[key] = value.to(backend.config.device)
-            with self.energy_tracker.track():
-                _ = backend.forward(self.forward_inputs, self.config.forward_kwargs)
-            forward_energy += self.energy_tracker.get_energy()
+        with self.energy_tracker.track():
+            for inputs in tqdm(self.dataloader):
+                backend.prepare_inputs(inputs)
+                _ = backend.forward(inputs, self.config.forward_kwargs)
 
-            self.energy_tracker.reset()
-            with self.energy_tracker.track():
-                _ = backend.generate(self.generate_inputs, self.config.generate_kwargs)
-            generate_energy += self.energy_tracker.get_energy()
-
-        self.report.prefill.energy = forward_energy
+        self.report.prefill.energy = self.energy_tracker.get_energy()
         self.report.prefill.efficiency = Efficiency.from_energy(
             self.report.prefill.energy, self.text_generation_prefill_volume, unit=TEXT_GENERATION_EFFICIENCY_UNIT
         )
-        self.report.decode.energy = generate_energy - forward_energy
+        self.energy_tracker.reset()
+
+        with self.energy_tracker.track():
+            for inputs in tqdm(self.dataloader):
+                _ = backend.generate(inputs, self.config.generate_kwargs)
+
+        self.report.decode.energy = self.energy_tracker.get_energy()
         self.report.decode.efficiency = Efficiency.from_energy(
             self.report.decode.energy, self.text_generation_decode_volume, unit=TEXT_GENERATION_EFFICIENCY_UNIT
         )
+        self.energy_tracker.reset()
 
     def run_image_diffusion_energy_tracking(self, backend: Backend[BackendConfigT]):
         LOGGER.info("\t+ Running energy tracking")
-        self.energy_tracker = EnergyTracker(device=backend.config.device, device_ids=backend.config.device_ids)
 
-        for inputs in tqdm(self.dataloader):
-            for key, value in inputs.items():
-                if hasattr(value, "to"):
-                    inputs[key] = value.to(backend.config.device)
-            with self.energy_tracker.track():
+        with self.energy_tracker.track():
+            for inputs in tqdm(self.dataloader):
+                backend.prepare_inputs(inputs)
                 _ = backend.call(self.call_inputs, self.config.call_kwargs)
 
         self.report.call.energy = self.energy_tracker.get_energy()
         self.report.call.efficiency = Efficiency.from_energy(
             self.report.call.energy, self.image_diffusion_volume, unit=IMAGE_DIFFUSION_EFFICIENCY_UNIT
         )
+        self.energy_tracker.reset()
 
     def run_inference_energy_tracking(self, backend: Backend[BackendConfigT]):
         LOGGER.info("\t+ Running energy tracking")
-        self.energy_tracker = EnergyTracker(device=backend.config.device, device_ids=backend.config.device_ids)
 
-        for inputs in tqdm(self.dataloader):
-            for key, value in inputs.items():
-                if hasattr(value, "to"):
-                    inputs[key] = value.to(backend.config.device)
-            with self.energy_tracker.track():
+        with self.energy_tracker.track():
+            for inputs in tqdm(self.dataloader):
+                backend.prepare_inputs(inputs)
                 _ = backend.forward(inputs, self.config.forward_kwargs)
 
         self.report.forward.energy = self.energy_tracker.get_energy()
         self.report.forward.efficiency = Efficiency.from_energy(
             self.report.forward.energy, self.inference_volume, unit=INFERENCE_EFFICIENCY_UNIT
         )
+        self.energy_tracker.reset()
 
     @property
     def inference_volume(self) -> int:  # in samples
