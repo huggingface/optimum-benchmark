@@ -156,7 +156,7 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
 
         with self.energy_tracker.track():
             for inputs in tqdm(self.dataloader):
-                backend.prepare_inputs(inputs)
+                inputs = backend.prepare_inputs(inputs)
                 _ = backend.forward(inputs, self.config.forward_kwargs)
 
         self.report.prefill.energy = self.energy_tracker.get_energy()
@@ -180,7 +180,7 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
 
         with self.energy_tracker.track():
             for inputs in tqdm(self.dataloader):
-                backend.prepare_inputs(inputs)
+                inputs = backend.prepare_inputs(inputs)
                 _ = backend.call(self.call_inputs, self.config.call_kwargs)
 
         self.report.call.energy = self.energy_tracker.get_energy()
@@ -194,7 +194,7 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
 
         with self.energy_tracker.track():
             for inputs in tqdm(self.dataloader):
-                backend.prepare_inputs(inputs)
+                inputs = backend.prepare_inputs(inputs)
                 _ = backend.forward(inputs, self.config.forward_kwargs)
 
         self.report.forward.energy = self.energy_tracker.get_energy()
