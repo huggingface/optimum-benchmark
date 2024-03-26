@@ -65,7 +65,7 @@ EXTRAS_REQUIRE = {
     "llm-swarm": ["llm-swarm@git+https://github.com/huggingface/llm-swarm.git"],
     "py-txi": ["py-txi@git+https://github.com/IlyasMoutawwakil/py-txi.git"],
     # optional dependencies
-    "autoawq": ["autoawq@git+https://github.com/casper-hansen/AutoAWQ.git@v0.2.4"],
+    "autoawq": ["autoawq@git+https://github.com/casper-hansen/AutoAWQ.git@v0.2.3"],
     "auto-gptq-cu118": ["optimum", AUTOGPTQ_CU118],
     "auto-gptq-cu121": ["optimum", AUTOGPTQ_CU121],
     "bitsandbytes": ["bitsandbytes"],
