@@ -113,6 +113,8 @@ def test_api_memory_tracker(device, backend):
 @pytest.mark.parametrize("benchmark", BENCHMARKS)
 @pytest.mark.parametrize("library,task,model", LIBRARIES_TASKS_MODELS)
 def test_api_launch(device, launcher, benchmark, library, task, model):
+    device_ids = "0" if device == "cuda" else None
+
     if benchmark == "training":
         benchmark_config = TrainingConfig(memory=True, latency=True, input_shapes={"dataset_size": 2})
     elif benchmark == "inference":
@@ -124,11 +126,12 @@ def test_api_launch(device, launcher, benchmark, library, task, model):
         launcher_config = InlineConfig(device_isolation=False)
 
     backend_config = PyTorchConfig(
+        device_ids=device_ids,
         no_weights=True,
-        library=library,
         device=device,
-        model=model,
         task=task,
+        model=model,
+        library=library,
     )
     experiment_config = ExperimentConfig(
         experiment_name=f"{library}_{task}_{model}_{device}",
