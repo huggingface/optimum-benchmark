@@ -116,9 +116,9 @@ def test_api_launch(device, launcher, benchmark, library, task, model):
     device_ids = "0" if device == "cuda" else None
 
     if benchmark == "training":
-        benchmark_config = TrainingConfig(memory=True, latency=True, input_shapes={"dataset_size": 2})
+        benchmark_config = TrainingConfig(memory=True, latency=True)
     elif benchmark == "inference":
-        benchmark_config = InferenceConfig(memory=True, latency=True, input_shapes={"batch_size": 2})
+        benchmark_config = InferenceConfig(memory=True, latency=True)
 
     if launcher == "inline":
         launcher_config = ProcessConfig(device_isolation=False)
