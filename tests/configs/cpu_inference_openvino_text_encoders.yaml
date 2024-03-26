@@ -1,10 +1,11 @@
 defaults:
-  - backend: pytorch
+  - backend: openvino
   # order of inheritance, last one overrides previous ones
   - _base_ # inherits from base config
   - _cpu_ # inherits from cpu config
   - _inference_ # inherits from inference config
-  - _timm_ # inherits from timm config
+  - _text_encoders_ # inherits from text encoders sweep config
+  - _no_weights_ # inherits from no weights config
   - _self_ # hydra 1.1 compatibility
 
-experiment_name: cpu_inference_pytorch_timm
+experiment_name: cpu_inference_openvino_text_encoders

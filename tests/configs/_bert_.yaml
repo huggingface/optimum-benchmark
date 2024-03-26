@@ -1,3 +1,2 @@
 backend:
-  task: fill-mask
-  model: bert-base-uncased
+  model: google-bert/bert-base-uncased

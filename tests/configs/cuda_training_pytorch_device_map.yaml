@@ -1,0 +1,10 @@
+defaults:
+  - backend: pytorch
+  # order of inheritance, last one overrides previous ones
+  - _base_ # inherits from base config
+  - _device_map_ # inherits from device map config
+  - _no_weights_ # inherits from no weights config
+  - _training_ # inherits from training config
+  - _self_ # hydra 1.1 compatibility
+
+experiment_name: cuda_training_pytorch_device_map

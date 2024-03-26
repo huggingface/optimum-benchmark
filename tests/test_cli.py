@@ -11,13 +11,23 @@ TEST_CONFIG_DIR = "/".join(__file__.split("/")[:-1] + ["configs"])
 TEST_CONFIG_NAMES = [
     config.split(".")[0]
     for config in os.listdir(TEST_CONFIG_DIR)
-    if config.endswith(".yaml") and not (config.startswith("_") or config.endswith("_"))  # or "ds_tp" in config)
+    if config.endswith(".yaml") and not (config.startswith("_") or config.endswith("_"))
 ]
 
 
 @pytest.mark.parametrize("config_name", TEST_CONFIG_NAMES)
 def test_cli_configs(config_name):
-    args = ["optimum-benchmark", "--config-dir", TEST_CONFIG_DIR, "--config-name", config_name, "--multirun"]
+    args = [
+        "optimum-benchmark",
+        "--config-dir",
+        TEST_CONFIG_DIR,
+        "--config-name",
+        config_name,
+        # to run config sweeps when defined
+        "--multirun",
+        # to run the tests faster (comment for debugging)
+        "hydra/launcher=joblib",
+    ]
 
     popen = run_subprocess_and_log_stream_output(LOGGER, args)
     assert popen.returncode == 0, f"Failed to run {config_name}"

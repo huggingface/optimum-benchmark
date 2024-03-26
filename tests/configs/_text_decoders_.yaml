@@ -1,0 +1,5 @@
+hydra:
+  sweeper:
+    params:
+      backend.task: text-generation
+      backend.model: hf-internal-testing/tiny-random-GPT2LMHeadModel,hf-internal-testing/tiny-random-LlamaForCausalLM

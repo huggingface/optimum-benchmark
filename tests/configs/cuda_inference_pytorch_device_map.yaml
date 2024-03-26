@@ -2,9 +2,9 @@ defaults:
   - backend: pytorch
   # order of inheritance, last one overrides previous ones
   - _base_ # inherits from base config
-  - _cpu_ # inherits from cpu config
+  - _device_map_ # inherits from device map config
+  - _no_weights_ # inherits from no weights config
   - _inference_ # inherits from inference config
-  - _timm_ # inherits from timm config
   - _self_ # hydra 1.1 compatibility
 
-experiment_name: cpu_inference_pytorch_timm
+experiment_name: cuda_inference_pytorch_device_map

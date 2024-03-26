@@ -17,14 +17,13 @@ from optimum_benchmark.backends.transformers_utils import (
     get_transformers_pretrained_processor,
 )
 from optimum_benchmark.benchmarks.inference.config import INPUT_SHAPES, InferenceConfig
-from optimum_benchmark.benchmarks.training.config import DATASET_SHAPES
+from optimum_benchmark.benchmarks.training.config import DATASET_SHAPES, TrainingConfig
 from optimum_benchmark.experiment import ExperimentConfig, launch
 from optimum_benchmark.generators.dataset_generator import DatasetGenerator
 from optimum_benchmark.generators.input_generator import InputGenerator
 from optimum_benchmark.import_utils import get_git_revision_hash
 from optimum_benchmark.launchers.inline.config import InlineConfig
 from optimum_benchmark.launchers.process.config import ProcessConfig
-from optimum_benchmark.launchers.torchrun.config import TorchrunConfig
 from optimum_benchmark.trackers.latency import LatencyTracker
 from optimum_benchmark.trackers.memory import MemoryTracker
 
@@ -41,15 +40,10 @@ LIBRARIES_TASKS_MODELS = [
     ("diffusers", "stable-diffusion", "CompVis/stable-diffusion-v1-4"),
     ("timm", "image-classification", "timm/resnet50.a1_in1k"),
 ]
-LAUNCHER_CONFIGS = [
-    InlineConfig(device_isolation=False),
-    ProcessConfig(device_isolation=False),
-    TorchrunConfig(device_isolation=False, nproc_per_node=2),
-]
-BACKENDS = ["pytorch", "none"]
+BENCHMARKS = ["training", "inference"]
+LAUNCHERS = ["inline", "process"]
+BACKENDS = ["pytorch", "other"]
 DEVICES = ["cpu", "cuda"]
-
-CUDA_VISIBLE_DEVICES = ",".join([str(i) for i in range(torch.cuda.device_count())])
 
 
 @pytest.mark.parametrize("device", DEVICES)
@@ -107,29 +101,37 @@ def test_api_memory_tracker(device, backend):
     assert measured_memory > expected_memory * 0.9
 
     del array
+
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
+
     gc.collect()
 
 
 @pytest.mark.parametrize("device", DEVICES)
-@pytest.mark.parametrize("launcher_config", LAUNCHER_CONFIGS)
-def test_api_launch(device, launcher_config):
-    device_ids = CUDA_VISIBLE_DEVICES if device == "cuda" else None
-    benchmark_config = InferenceConfig(
-        memory=True,
-        latency=True,
-        input_shapes={"batch_size": 4},
-    )
+@pytest.mark.parametrize("launcher", LAUNCHERS)
+@pytest.mark.parametrize("benchmark", BENCHMARKS)
+@pytest.mark.parametrize("library,task,model", LIBRARIES_TASKS_MODELS)
+def test_api_launch(device, launcher, benchmark, library, task, model):
+    if benchmark == "training":
+        benchmark_config = TrainingConfig(memory=True, latency=True, input_shapes={"dataset_size": 2})
+    elif benchmark == "inference":
+        benchmark_config = InferenceConfig(memory=True, latency=True, input_shapes={"batch_size": 2})
+
+    if launcher == "inline":
+        launcher_config = ProcessConfig(device_isolation=False)
+    elif launcher == "process":
+        launcher_config = InlineConfig(device_isolation=False)
 
     backend_config = PyTorchConfig(
-        model="bert-base-uncased",
-        device_ids=device_ids,
         no_weights=True,
+        library=library,
         device=device,
+        model=model,
+        task=task,
     )
     experiment_config = ExperimentConfig(
-        experiment_name="api-experiment",
+        experiment_name=f"{library}_{task}_{model}_{device}",
         benchmark=benchmark_config,
         launcher=launcher_config,
         backend=backend_config,
@@ -138,17 +140,12 @@ def test_api_launch(device, launcher_config):
     benchmark_report = launch(experiment_config)
 
     with TemporaryDirectory() as tempdir:
-        experiment_config.to_dict()
-        experiment_config.to_flat_dict()
-        experiment_config.to_dataframe()
-        experiment_config.to_csv(f"{tempdir}/experiment_config.csv")
-        experiment_config.to_json(f"{tempdir}/experiment_config.json")
-
-        benchmark_report.to_dict()
-        benchmark_report.to_flat_dict()
-        benchmark_report.to_dataframe()
-        benchmark_report.to_csv(f"{tempdir}/benchmark_report.csv")
-        benchmark_report.to_json(f"{tempdir}/benchmark_report.json")
+        for name, artifact in {"config": experiment_config, "report": benchmark_report}.items():
+            artifact.to_dict()
+            artifact.to_flat_dict()
+            artifact.to_dataframe()
+            artifact.to_csv(f"{tempdir}/{name}.csv")
+            artifact.to_json(f"{tempdir}/{name}.json")
 
 
 @pytest.mark.parametrize("library,task,model", LIBRARIES_TASKS_MODELS)
