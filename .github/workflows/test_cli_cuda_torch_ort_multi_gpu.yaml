@@ -1,4 +1,4 @@
-name: CLI TensorRT-LLM Tests
+name: CLI CUDA Torch-ORT Multi-GPU Tests
 
 on:
   workflow_dispatch:
@@ -12,8 +12,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  pull_image_and_run_cli_tensorrt_llm_tests:
-    runs-on: [single-gpu, nvidia-gpu, a10, ci]
+  build_image_and_run_cli_cuda_torch_ort_multi_gpu_tests:
+    runs-on: [multi-gpu, nvidia-gpu, 4-a10, ci]
 
     steps:
       - name: Checkout
@@ -21,22 +21,24 @@ jobs:
 
       - name: Build image
         run: docker build
-          --file docker/tensorrt_llm.dockerfile
+          --file docker/cuda.dockerfile
           --build-arg USER_ID=$(id -u)
           --build-arg GROUP_ID=$(id -g)
-          --tag opt-bench-tensorrt-llm:latest
+          --build-arg CUDA_VERSION=11.8.0
+          --build-arg TORCH_CUDA=cu118
+          --tag opt-bench-cuda:11.8.0
           .
 
       - name: Run tests
         run: docker run
           --rm
           --gpus all
-          --pid host
           --shm-size 64G
           --env USE_CUDA="1"
           --env PROCESS_SPECIFIC_VRAM="0"
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
           --entrypoint /bin/bash
-          opt-bench-tensorrt-llm:latest
-          -c "pip install -e .[testing] && pip uninstall -y nvidia-ml-py && pytest -k 'cli and tensorrt_llm' -x"
+          opt-bench-cuda:11.8.0
+          -c "pip install -e .[testing,torch-ort,peft] && python -m torch_ort.configure &&
+          pytest -s -v -k 'cli and cuda and torch_ort and (dp or ddp or device_map or deepspeed_inferene)' -x"

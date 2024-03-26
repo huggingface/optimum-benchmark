@@ -29,4 +29,4 @@ jobs:
           pip install -e .[testing,timm,diffusers]
 
       - name: Run tests
-        run: pytest -k "api and not (cpu or cuda or rocm or tensorrt)"
+        run: pytest -k "api and not (cpu or cuda or tensorrt)"

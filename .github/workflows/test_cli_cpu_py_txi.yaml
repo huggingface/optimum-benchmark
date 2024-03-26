@@ -44,4 +44,4 @@ jobs:
         run: docker pull ghcr.io/huggingface/text-embeddings-inference:cpu-latest
 
       - name: Run tests
-        run: pytest -k "cli and cpu and py_txi"
+        run: pytest -s -v -k "cli and cpu and py_txi"

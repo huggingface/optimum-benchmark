@@ -1,4 +1,4 @@
-name: CLI CUDA Pytorch Tests
+name: CLI CUDA Pytorch Single-GPU Tests
 
 on:
   workflow_dispatch:
@@ -12,17 +12,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build_image_and_run_cli_cuda_pytorch_tests:
+  build_image_and_run_cli_cuda_pytorch_single_gpu_tests:
     strategy:
       fail-fast: false
       matrix:
         image:
           [
             { torch_cuda: cu118, torch_pre_release: 0, cuda_version: 11.8.0 },
-            { torch_cuda: cu121, torch_pre_release: 1, cuda_version: 12.1.1 },
+            { torch_cuda: cu121, torch_pre_release: 0, cuda_version: 12.1.1 },
           ]
 
-    runs-on: [multi-gpu, nvidia-gpu, 4-a10, ci]
+    runs-on: [single-gpu, nvidia-gpu, a10, ci]
 
     steps:
       - name: Checkout
@@ -49,4 +49,5 @@ jobs:
           --workdir /workspace/optimum-benchmark
           --entrypoint /bin/bash
           opt-bench-cuda:${{ matrix.image.cuda_version }}
-          -c "pip install requests && pip install -e .[testing,diffusers,timm,deepspeed,peft,bitsandbytes,autoawq,auto-gptq-${{ matrix.image.torch_cuda }}] && pytest -k 'cli and cuda and pytorch' -x"
+          -c "pip install -e .[testing,diffusers,timm,deepspeed,peft,bitsandbytes,autoawq,auto-gptq-${{ matrix.image.torch_cuda }}] &&
+          pytest -s -v -k 'cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed_inferene)' -x"

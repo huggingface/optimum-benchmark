@@ -55,7 +55,6 @@ run_docker_cpu:
 	docker run \
 	-it \
 	--rm \
-	--pid host \
 	--entrypoint /bin/bash \
 	--volume $(PWD):/workspace \
 	--workdir /workspace \
@@ -65,7 +64,6 @@ run_docker_cuda:
 	docker run \
 	-it \
 	--rm \
-	--pid host \
 	--shm-size 64G \
 	--gpus all \
 	--entrypoint /bin/bash \
@@ -77,7 +75,6 @@ run_docker_rocm:
 	docker run \
 	-it \
 	--rm \
-	--pid host \
 	--shm-size 64G \
 	--device /dev/kfd \
 	--device /dev/dri/ \
@@ -91,7 +88,6 @@ run_docker_rocm:
 define test_ubuntu
 	docker run \
 	--rm \
-	--pid host \
 	--entrypoint /bin/bash \
 	--volume $(PWD):/workspace \
 	--workdir /workspace \
@@ -101,7 +97,6 @@ endef
 define test_nvidia
 	docker run \
 	--rm \
-	--pid host \
 	--shm-size 64G \
 	--gpus '"device=0,1"' \
 	--entrypoint /bin/bash \
@@ -113,7 +108,6 @@ endef
 define test_amdgpu
 	docker run \
 	--rm \
-	--pid host \
 	--shm-size 64G \
 	--device /dev/kfd \
 	--device /dev/dri/renderD128 \

@@ -1,5 +1,4 @@
-
-name: CLI ROCm Pytorch Tests
+name: CLI ROCm Pytorch Multi-GPU Tests
 
 on:
   workflow_dispatch:
@@ -13,14 +12,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build_image_and_run_cli_rocm_pytorch_tests:
+  build_image_and_run_cli_rocm_pytorch_multi_gpu_tests:
     strategy:
       fail-fast: false
       matrix:
         image:
           [
             { torch_rocm: rocm5.6, torch_pre_release: 0, rocm_version: 5.6.1 },
-            { torch_rocm: rocm5.7, torch_pre_release: 1, rocm_version: 5.7.1 },
+            { torch_rocm: rocm5.7, torch_pre_release: 0, rocm_version: 5.7.1 },
           ]
 
     runs-on: [amd-gpu]
@@ -42,14 +41,14 @@ jobs:
       - name: Run tests
         run: docker run
           --rm
-          --pid host
           --shm-size 64G
           --env USE_ROCM="1"
-          --volume $(pwd):/workspace/optimum-benchmark
-          --workdir /workspace/optimum-benchmark
           --device /dev/kfd
           --device /dev/dri/renderD128
           --device /dev/dri/renderD129
+          --volume $(pwd):/workspace/optimum-benchmark
+          --workdir /workspace/optimum-benchmark
           --entrypoint /bin/bash
           opt-bench-rocm:${{ matrix.image.rocm_version }}
-          -c "pip install requests && pip install -e .[testing,diffusers,timm,deepspeed,peft,autoawq] && pytest -k 'cli and cuda and pytorch and not bnb and not gptq' -x"
+          -c "pip install -e .[testing,diffusers,timm,deepspeed,peft,autoawq] && 
+          pytest -k 'cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed_inferene) and not (bnb or gptq)' -x"
