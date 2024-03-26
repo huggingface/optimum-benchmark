@@ -124,20 +124,21 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
         )
 
         LOGGER.info("\t+ Warming up backend for Inference")
+        warmup_inputs = backend.prepare_inputs(next(iter(self.dataloader)))
         for _ in range(self.config.warmup_runs):
             if backend.config.task in TEXT_GENERATION_TASKS:
-                _ = backend.generate(next(iter(self.dataloader)), {"max_new_tokens": 2, "min_new_tokens": 2})
+                _ = backend.generate(warmup_inputs, {"max_new_tokens": 2, "min_new_tokens": 2})
             elif backend.config.task in IMAGE_DIFFUSION_TASKS:
-                _ = backend.call(next(iter(self.dataloader)), {"num_inference_steps": 2})
+                _ = backend.call(warmup_inputs, {"num_inference_steps": 2})
             else:
-                _ = backend.forward(next(iter(self.dataloader)), self.config.forward_kwargs)
+                _ = backend.forward(warmup_inputs, self.config.forward_kwargs)
 
         if backend.config.task in TEXT_GENERATION_TASKS:
             LOGGER.info("\t+ Additional warmup for Text Generation")
-            _ = backend.generate(next(iter(self.dataloader)), self.config.generate_kwargs)
+            _ = backend.generate(warmup_inputs, self.config.generate_kwargs)
         elif backend.config.task in IMAGE_DIFFUSION_TASKS:
             LOGGER.info("\t+ Additional warmup for Image Diffusion")
-            _ = backend.call(next(iter(self.dataloader)), self.config.call_kwargs)
+            _ = backend.call(warmup_inputs, self.config.call_kwargs)
 
         if self.config.energy:
             if backend.config.task in TEXT_GENERATION_TASKS:
