@@ -39,12 +39,10 @@ def test_cli_exit_code():
         "--config-dir",
         TEST_CONFIG_DIR,
         "--config-name",
-        "_base_",
-        "backend=pytorch",
-        "benchmark=inference",
+        "cpu_inference_pytorch_text_encoders",
         # compatible task and model
-        "backend.model=bert-base-uncased",
         "backend.task=text-classification",
+        "backend.model=bert-base-uncased",
     ]
 
     popen_0 = run_subprocess_and_log_stream_output(LOGGER, args_0)
@@ -55,12 +53,10 @@ def test_cli_exit_code():
         "--config-dir",
         TEST_CONFIG_DIR,
         "--config-name",
-        "_base_",
-        "backend=pytorch",
-        "benchmark=inference",
+        "cpu_inference_pytorch_text_encoders",
         # incompatible task and model to trigger error
-        "backend.model=bert-base-uncased",
         "backend.task=image-classification",
+        "backend.model=bert-base-uncased",
     ]
 
     popen_1 = run_subprocess_and_log_stream_output(LOGGER, args_1)
