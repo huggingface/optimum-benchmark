@@ -1,9 +1,8 @@
 backend:
   torch_compile: true
   torch_compile_config:
+    backend: "inductor"
     fullgraph: false
     dynamic: false
-    backend: "inductor"
-    mode: null
-    options: null
-    disable: false
+    options:
+      conv_1x1_as_mm: True
