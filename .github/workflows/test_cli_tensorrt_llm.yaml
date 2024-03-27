@@ -1,0 +1,42 @@
+name: CLI TensorRT-LLM Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pull_image_and_run_cli_tensorrt_llm_tests:
+    runs-on: [single-gpu, nvidia-gpu, a10, ci]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Build image
+        run: docker build
+          --file docker/tensorrt_llm.dockerfile
+          --build-arg USER_ID=$(id -u)
+          --build-arg GROUP_ID=$(id -g)
+          --tag opt-bench-tensorrt-llm:latest
+          .
+
+      - name: Run tests
+        run: docker run
+          --rm
+          --gpus all
+          --pid host
+          --shm-size 64G
+          --env USE_CUDA="1"
+          --env PROCESS_SPECIFIC_VRAM="0"
+          --volume $(pwd):/workspace/optimum-benchmark
+          --workdir /workspace/optimum-benchmark
+          --entrypoint /bin/bash
+          opt-bench-tensorrt-llm:latest
+          -c "pip install -e .[testing] && pip uninstall -y nvidia-ml-py && pytest -k 'cli and tensorrt_llm' -x"
