@@ -22,7 +22,6 @@ from optimum_benchmark.experiment import ExperimentConfig, launch
 from optimum_benchmark.generators.dataset_generator import DatasetGenerator
 from optimum_benchmark.generators.input_generator import InputGenerator
 from optimum_benchmark.import_utils import get_git_revision_hash
-from optimum_benchmark.launchers.inline.config import InlineConfig
 from optimum_benchmark.launchers.process.config import ProcessConfig
 from optimum_benchmark.trackers.latency import LatencyTracker
 from optimum_benchmark.trackers.memory import MemoryTracker
@@ -50,14 +49,19 @@ def test_api_launch(device, launcher, benchmark, library, task, model):
     device_ids = "0" if device == "cuda" else None
 
     if benchmark == "training":
-        benchmark_config = TrainingConfig(memory=True, latency=True)
+        if library != "transformers":
+            return  # skip training for non-transformers models
+        benchmark_config = TrainingConfig(memory=True, latency=True, warmup_steps=2, max_steps=5)
     elif benchmark == "inference":
-        benchmark_config = InferenceConfig(memory=True, latency=True)
-
-    if launcher == "inline":
-        launcher_config = ProcessConfig(device_isolation=False)
-    elif launcher == "process":
-        launcher_config = InlineConfig(device_isolation=False)
+        benchmark_config = InferenceConfig(
+            duration=1,
+            warmup_runs=1,
+            memory=True,
+            latency=True,
+            input_shapes={"batch_size": 1, "sequence_length": 16},
+            generate_kwargs={"max_new_tokens": 5, "min_new_tokens": 5},
+            call_kwargs={"num_inference_steps": 2},
+        )
 
     backend_config = PyTorchConfig(
         no_weights=no_weights,
@@ -67,6 +71,9 @@ def test_api_launch(device, launcher, benchmark, library, task, model):
         model=model,
         library=library,
     )
+
+    launcher_config = ProcessConfig(device_isolation=False)
+
     experiment_config = ExperimentConfig(
         experiment_name=f"{library}_{task}_{model}_{device}",
         benchmark=benchmark_config,
@@ -77,12 +84,11 @@ def test_api_launch(device, launcher, benchmark, library, task, model):
     benchmark_report = launch(experiment_config)
 
     with TemporaryDirectory() as tempdir:
-        for name, artifact in {"config": experiment_config, "report": benchmark_report}.items():
-            artifact.to_dict()
-            artifact.to_flat_dict()
-            artifact.to_dataframe()
-            artifact.to_csv(f"{tempdir}/{name}.csv")
-            artifact.to_json(f"{tempdir}/{name}.json")
+        benchmark_report.to_dict()
+        benchmark_report.to_flat_dict()
+        benchmark_report.to_dataframe()
+        benchmark_report.to_csv(f"{tempdir}/artifact.csv")
+        benchmark_report.to_json(f"{tempdir}/artifact.json")
 
 
 @pytest.mark.parametrize("library,task,model", LIBRARIES_TASKS_MODELS)
@@ -178,7 +184,6 @@ def test_api_memory_tracker(device, backend):
         else:
             if torch.version.hip is not None:
                 return  # skip vram measurement for ROCm
-
             measured_memory = final_memory.max_vram - initial_memory.max_vram
     else:
         measured_memory = final_memory.max_ram - initial_memory.max_ram

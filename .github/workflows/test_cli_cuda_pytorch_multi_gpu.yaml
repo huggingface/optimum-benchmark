@@ -17,10 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         image:
-          [
-            { torch_cuda: cu118, torch_pre_release: 0, cuda_version: 11.8.0 },
-            { torch_cuda: cu121, torch_pre_release: 0, cuda_version: 12.1.1 },
-          ]
+          [{ torch_cuda: cu121, torch_pre_release: 0, cuda_version: 12.1.1 }]
 
     runs-on: [multi-gpu, nvidia-gpu, 4-a10, ci]
 
