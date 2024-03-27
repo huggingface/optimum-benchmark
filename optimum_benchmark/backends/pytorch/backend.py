@@ -101,6 +101,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         if self.config.torch_compile:
             if self.config.library == "diffusers":
                 LOGGER.info("\t+ Using torch.compile to compile unet and vae")
+                torch._inductor.config.conv_1x1_as_mm = True
                 self.pretrained_model.unet = torch.compile(
                     self.pretrained_model.unet, **self.config.torch_compile_config
                 )
