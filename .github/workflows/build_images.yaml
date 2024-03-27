@@ -1,0 +1,74 @@
+name: Build Images
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "docker/**"
+      - ".github/workflows/build_images.yaml"
+
+  schedule:
+    - cron: "0 0 * * *"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build_cuda_images:
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          [
+            { torch_cuda: cu118, torch_pre_release: 0, cuda_version: 11.8.0 },
+            { torch_cuda: cu121, torch_pre_release: 0, cuda_version: 12.1.1 },
+          ]
+
+    runs-on: [single-gpu, nvidia-gpu, a10, ci]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          install: true
+
+      - name: Build image
+        uses: docker/build-push-action@v5
+        with:
+          push: false
+          file: docker/cuda.dockerfile
+          tags: opt-bench-cuda:${{ matrix.image.cuda_version }}
+          cache-from: type=local,src=/mnt/hf_cache/opt_bench_cache/,mode=min
+          cache-to: type=local,dest=/mnt/hf_cache/opt_bench_cache/,mode=min
+          build-args: |
+            TORCH_CUDA=${{ matrix.image.torch_cuda }}
+            CUDA_VERSION=${{ matrix.image.cuda_version }}
+            TORCH_PRE_RELEASE=${{ matrix.image.torch_pre_release }}
+
+  build_rocm_images:
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          [{ torch_rocm: rocm5.7, torch_pre_release: 0, rocm_version: 5.7.1 }]
+
+    runs-on: [amd-gpu]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build image
+        run: docker build
+          --file docker/rocm.dockerfile
+          --build-arg USER_ID=$(id -u)
+          --build-arg GROUP_ID=$(id -g)
+          --build-arg TORCH_ROCM=${{ matrix.image.torch_rocm }}
+          --build-arg ROCM_VERSION=${{ matrix.image.rocm_version }}
+          --build-arg TORCH_PRE_RELEASE=${{ matrix.image.torch_pre_release }}
+          --tag opt-bench-rocm:${{ matrix.image.rocm_version }}
+          .

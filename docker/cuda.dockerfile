@@ -24,13 +24,6 @@ ARG TORCH_CUDA=cu121
 # Ignore interactive questions during `docker build`
 ENV DEBIAN_FRONTEND noninteractive
 
-# Run as non-root user
-ARG USER_ID
-ARG GROUP_ID
-
-RUN addgroup --gid $GROUP_ID user
-RUN adduser --disabled-password --gecos '' --uid $USER_ID --gid $GROUP_ID user
-
 # Install python
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.10 \
@@ -40,17 +33,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1
-
-# Add local bin to PATH
-ENV PATH="/home/user/.local/bin:${PATH}"
-
-# Add user to sudoers
-RUN adduser user sudo
-RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >>/etc/sudoers
-
-# Change user
-USER user
-WORKDIR /home/user
 
 # Update pip
 RUN pip install --upgrade pip
