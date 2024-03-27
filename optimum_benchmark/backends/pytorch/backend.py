@@ -323,13 +323,14 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         inputs = super().prepare_inputs(inputs)
 
         if self.config.library == "diffusers":
-            return {"prompt": inputs["prompt"]}
+            inputs = {"prompt": inputs["prompt"]}
         elif self.config.library == "timm":
-            return {"x": inputs["pixel_values"].to(self.config.device)}
+            inputs = {"x": inputs["pixel_values"].to(self.config.device)}
         else:
             for key, value in inputs.items():
                 inputs[key] = value.to(self.config.device)
-            return inputs
+
+        return inputs
 
     @torch.inference_mode()
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:

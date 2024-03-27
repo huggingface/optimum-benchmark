@@ -64,8 +64,8 @@ run_docker_cuda:
 	docker run \
 	-it \
 	--rm \
-	--shm-size 64G \
 	--gpus all \
+	--shm-size 64G \
 	--entrypoint /bin/bash \
 	--volume $(PWD):/workspace \
 	--workdir /workspace \

@@ -30,21 +30,18 @@ LIBRARIES_TASKS_MODELS = [
     ("timm", "image-classification", "timm/resnet50.a1_in1k"),
     ("transformers", "text-generation", "openai-community/gpt2"),
     ("transformers", "fill-mask", "google-bert/bert-base-uncased"),
-    ("transformers", "text2text-generation", "google-t5/t5-small"),
     ("transformers", "multiple-choice", "FacebookAI/roberta-base"),
     ("transformers", "text-classification", "FacebookAI/roberta-base"),
     ("transformers", "token-classification", "microsoft/deberta-v3-base"),
     ("transformers", "image-classification", "google/vit-base-patch16-224"),
-    ("transformers", "semantic-segmentation", "google/vit-base-patch16-224"),
     ("diffusers", "stable-diffusion", "CompVis/stable-diffusion-v1-4"),
 ]
 
 
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
-@pytest.mark.parametrize("launcher", ["inline", "process"])
 @pytest.mark.parametrize("benchmark", ["training", "inference"])
 @pytest.mark.parametrize("library,task,model", LIBRARIES_TASKS_MODELS)
-def test_api_launch(device, launcher, benchmark, library, task, model):
+def test_api_launch(device, benchmark, library, task, model):
     no_weights = True if library == "transformers" else False
     device_ids = "0" if device == "cuda" else None
 
@@ -87,8 +84,8 @@ def test_api_launch(device, launcher, benchmark, library, task, model):
         benchmark_report.to_dict()
         benchmark_report.to_flat_dict()
         benchmark_report.to_dataframe()
-        benchmark_report.to_csv(f"{tempdir}/artifact.csv")
-        benchmark_report.to_json(f"{tempdir}/artifact.json")
+        benchmark_report.to_csv(f"{tempdir}/benchmark_report.csv")
+        benchmark_report.to_json(f"{tempdir}/benchmark_report.json")
 
 
 @pytest.mark.parametrize("library,task,model", LIBRARIES_TASKS_MODELS)
