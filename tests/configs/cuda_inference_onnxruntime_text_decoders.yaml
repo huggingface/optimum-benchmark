@@ -1,0 +1,11 @@
+defaults:
+  - backend: onnxruntime
+  # order of inheritance, last one overrides previous ones
+  - _base_ # inherits from base config
+  - _cuda_ # inherits from cuda config
+  - _inference_ # inherits from inference config
+  - _text_decoders_ # inherits from text decoders sweep config
+  - _no_weights_ # inherits from no weights sweep config
+  - _self_ # hydra 1.1 compatibility
+
+experiment_name: cuda_inference_onnxruntime_text_decoders_no_weights

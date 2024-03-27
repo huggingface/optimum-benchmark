@@ -1,11 +1,14 @@
 import os
 from dataclasses import dataclass, field
+from logging import getLogger
 from typing import Any, Dict, List, Optional, Union
 
 from ...import_utils import py_txi_version
 from ...system_utils import is_nvidia_system, is_rocm_system
 from ...task_utils import TEXT_EMBEDDING_TASKS, TEXT_GENERATION_TASKS
 from ..config import BackendConfig
+
+LOGGER = getLogger("py-txi")
 
 
 @dataclass
@@ -64,6 +67,9 @@ class PyTXIConfig(BackendConfig):
             self.image = "ghcr.io/huggingface/text-generation-inference:latest"
         elif self.task in TEXT_EMBEDDING_TASKS:
             self.image = "ghcr.io/huggingface/text-embeddings-inference:cpu-latest"
+
+        if self.task in TEXT_EMBEDDING_TASKS and self.pooling is None:
+            self.pooling = "cls"
 
         if self.max_concurrent_requests is None:
             if self.task in TEXT_GENERATION_TASKS:

@@ -1,2 +1,3 @@
 backend:
   peft_type: LORA
+  model: openai-community/gpt2

@@ -1,0 +1,10 @@
+defaults:
+  - backend: py-txi
+  # order of inheritance, last one overrides previous ones
+  - _base_ # inherits from base config
+  - _cpu_ # inherits from cpu config
+  - _inference_ # inherits from inference config
+  - _gpt2_ # inherits from gpt config
+  - _self_ # hydra 1.1 compatibility
+
+experiment_name: cpu_inference_py_txi_gpt2

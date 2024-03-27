@@ -1,0 +1,11 @@
+defaults:
+  - backend: onnxruntime
+  # order of inheritance, last one overrides previous ones
+  - _base_ # inherits from base config
+  - _cpu_ # inherits from cpu config
+  - _inference_ # inherits from inference config
+  - _ort_quant_ # inherits from ort static quant config
+  - _no_weights_ # inherits from no weights sweep config
+  - _self_ # hydra 1.1 compatibility
+
+experiment_name: cpu_inference_onnxruntime_ort_quant

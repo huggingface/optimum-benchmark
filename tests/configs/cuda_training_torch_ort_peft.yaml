@@ -1,0 +1,11 @@
+defaults:
+  - backend: torch-ort
+  # order of inheritance, last one overrides previous ones
+  - _base_ # inherits from base config
+  - _cuda_ # inherits from cuda config
+  - _training_ # inherits from training config
+  - _no_weights_ # inherits from no weights config
+  - _peft_ # inherits from peft config
+  - _self_ # hydra 1.1 compatibility
+
+experiment_name: cuda_training_torch_ort_peft

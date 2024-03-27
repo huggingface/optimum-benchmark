@@ -1,0 +1,11 @@
+defaults:
+  - backend: pytorch
+  # order of inheritance, last one overrides previous ones
+  - _base_ # inherits from base config
+  - _cuda_ # inherits from cuda config
+  - _inference_ # inherits from inference config
+  - _text_encoders_ # inherits from text encoders config
+  - _no_weights_ # inherits from no weights config
+  - _self_ # hydra 1.1 compatibility
+
+experiment_name: cuda_inference_pytorch_text_encoders_no_weights

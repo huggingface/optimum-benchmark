@@ -101,6 +101,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         if self.config.torch_compile:
             if self.config.library == "diffusers":
                 LOGGER.info("\t+ Using torch.compile to compile unet and vae")
+                torch._inductor.config.conv_1x1_as_mm = True
                 self.pretrained_model.unet = torch.compile(
                     self.pretrained_model.unet, **self.config.torch_compile_config
                 )
@@ -323,13 +324,14 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         inputs = super().prepare_inputs(inputs)
 
         if self.config.library == "diffusers":
-            return {"prompt": inputs["prompt"]}
+            inputs = {"prompt": inputs["prompt"]}
         elif self.config.library == "timm":
-            return {"x": inputs["pixel_values"].to(self.config.device)}
+            inputs = {"x": inputs["pixel_values"].to(self.config.device)}
         else:
             for key, value in inputs.items():
                 inputs[key] = value.to(self.config.device)
-            return inputs
+
+        return inputs
 
     @torch.inference_mode()
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:

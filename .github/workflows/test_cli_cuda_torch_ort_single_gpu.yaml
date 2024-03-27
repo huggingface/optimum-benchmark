@@ -1,0 +1,59 @@
+name: CLI CUDA Torch-ORT Single-GPU Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build_image_and_run_cli_cuda_torch_ort_single_gpu_tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          [{ torch_cuda: cu118, torch_pre_release: 0, cuda_version: 11.8.0 }]
+
+    runs-on: [single-gpu, nvidia-gpu, a10, ci]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          install: true
+
+      - name: Build image
+        uses: docker/build-push-action@v5
+        with:
+          load: true
+          push: false
+          file: docker/cuda.dockerfile
+          tags: opt-bench-cuda:${{ matrix.image.cuda_version }}
+          cache-from: type=local,src=/mnt/hf_cache/opt_bench_cache/
+          build-args: |
+            TORCH_CUDA=${{ matrix.image.torch_cuda }}
+            CUDA_VERSION=${{ matrix.image.cuda_version }}
+            TORCH_PRE_RELEASE=${{ matrix.image.torch_pre_release }}
+
+      - name: Run tests
+        run: docker run
+          --rm
+          --gpus all
+          --shm-size 64G
+          --env USE_CUDA="1"
+          --env PROCESS_SPECIFIC_VRAM="0"
+          --volume $(pwd):/workspace/optimum-benchmark
+          --workdir /workspace/optimum-benchmark
+          --entrypoint /bin/bash
+          opt-bench-cuda:${{ matrix.image.cuda_version }}
+          -c "pip install -e .[testing,torch-ort,peft] &&
+          pip install transformers==4.38 && python -m torch_ort.configure &&
+          pytest -s -v -k 'cli and cuda and torch_ort and not (dp or ddp or device_map or deepspeed)' -x"

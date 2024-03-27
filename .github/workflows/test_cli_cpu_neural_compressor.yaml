@@ -29,4 +29,4 @@ jobs:
           pip install -e .[testing,neural-compressor,diffusers,timm]
 
       - name: Run CPU tests
-        run: pytest -k "cli and cpu and neural_compressor"
+        run: pytest -s -v -k "cli and cpu and neural_compressor"
