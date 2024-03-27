@@ -3,6 +3,3 @@ backend:
   quantization_scheme: awq
   quantization_config:
     version: exllama
-    exllama_config:
-      version: 2
-      max_input_len: 512

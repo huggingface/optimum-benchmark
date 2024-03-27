@@ -52,8 +52,8 @@ if PYRSMI in INSTALL_REQUIRES:
 AUTOGPTQ_CUDA = "auto-gptq==0.7.1"
 AUTOGPTQ_ROCM = "auto-gptq@https://huggingface.github.io/autogptq-index/whl/rocm573/auto-gptq/auto_gptq-0.7.1%2Brocm5.7.3-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
 
-AUTOAWQ_CUDA = "autoawq==0.2.3"
-AUTOAWQ_ROCM = "autoawq@https://github.com/casper-hansen/AutoAWQ/releases/download/v0.2.3/autoawq-0.2.3+rocm571-cp310-cp310-linux_x86_64.whl"
+AUTOAWQ_CUDA = "autoawq==0.2.1"
+AUTOAWQ_ROCM = "autoawq@https://github.com/casper-hansen/AutoAWQ/releases/download/v0.2.1/autoawq-0.2.1+rocm571-cp310-cp310-linux_x86_64.whl"
 
 EXTRAS_REQUIRE = {
     "quality": ["ruff"],
