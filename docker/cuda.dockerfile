@@ -13,13 +13,13 @@
 # limitations under the License.
 
 ARG CUDNN_VERSION=8
-ARG CUDA_VERSION=11.8.0
+ARG CUDA_VERSION=12.1.1
 ARG UBUNTU_VERSION=22.04
 
 FROM nvidia/cuda:${CUDA_VERSION}-cudnn${CUDNN_VERSION}-devel-ubuntu${UBUNTU_VERSION}
 
-ARG TORCH_CUDA=cu118
 ARG TORCH_PRE_RELEASE=0
+ARG TORCH_CUDA=cu121
 
 # Ignore interactive questions during `docker build`
 ENV DEBIAN_FRONTEND noninteractive
@@ -57,6 +57,6 @@ RUN pip install --upgrade pip
 
 # Install PyTorch
 RUN if [ "${TORCH_PRE_RELEASE}" = "1" ]; \
-    then pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/${TORCH_CUDA} ; \
+then pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/${TORCH_CUDA} ; \
     else pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
-    fi
+fi

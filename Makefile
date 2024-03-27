@@ -67,6 +67,7 @@ run_docker_cuda:
 	--gpus all \
 	--shm-size 64G \
 	--entrypoint /bin/bash \
+	--env PROCESS_SPECIFIC_VRAM="0" \
 	--volume $(PWD):/workspace \
 	--workdir /workspace \
 	opt-bench-cuda:local

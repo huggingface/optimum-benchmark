@@ -47,6 +47,5 @@ jobs:
           --workdir /workspace/optimum-benchmark
           --entrypoint /bin/bash
           opt-bench-rocm:${{ matrix.image.rocm_version }}
-          -c "pip install requests &&
-          pip install -e .[testing,diffusers,timm,peft,autoawq] &&
-          pytest -k 'cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed_inferene) and not (bnb or gptq)' -x"
+          -c "pip install -e .[testing,diffusers,timm,peft,autoawq-rocm,auto-gptq-rocm] &&
+          pytest -k 'cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not bnb' -x"

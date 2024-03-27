@@ -13,6 +13,12 @@ concurrency:
 
 jobs:
   build_image_and_run_cli_cuda_onnxruntime_tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          [{ torch_cuda: cu118, torch_pre_release: 0, cuda_version: 11.8.0 }]
+
     runs-on: [single-gpu, nvidia-gpu, a10, ci]
 
     steps:
@@ -22,13 +28,12 @@ jobs:
       - name: Build image
         run: docker build
           --file docker/cuda.dockerfile
-          --cache-to $HF_HOME/ilyas/docker-cache
-          --cache-from $HF_HOME/ilyas/docker-cache
           --build-arg USER_ID=$(id -u)
           --build-arg GROUP_ID=$(id -g)
-          --build-arg CUDA_VERSION=11.8.0
-          --build-arg TORCH_CUDA=cu118
-          --tag opt-bench-cuda:11.8.0
+          --build-arg TORCH_CUDA=${{ matrix.image.torch_cuda }}
+          --build-arg TORCH_PRE_RELEASE=${{ matrix.image.torch_pre_release }}
+          --build-arg CUDA_VERSION=${{ matrix.image.cuda_version }}
+          --tag opt-bench-cuda:${{ matrix.image.cuda_version }}
           .
 
       - name: Run tests
@@ -41,6 +46,6 @@ jobs:
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
           --entrypoint /bin/bash
-          opt-bench-cuda:11.8.0
+          opt-bench-cuda:${{ matrix.image.cuda_version }}
           -c "pip install -e .[testing,onnxruntime-gpu,diffusers,timm] &&
           pytest -s -v -k 'cli and cuda and onnxruntime' -x"

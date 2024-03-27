@@ -49,8 +49,11 @@ if USE_ROCM:
 if PYRSMI in INSTALL_REQUIRES:
     print("ROCm GPU detected without amdsmi installed. Using pyrsmi instead but some features may not work.")
 
-AUTOGPTQ_CU118 = "auto-gptq@https://huggingface.github.io/autogptq-index/whl/cu118/auto-gptq/auto_gptq-0.7.1%2Bcu118-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
-AUTOGPTQ_CU121 = "auto-gptq==0.7.1"
+AUTOGPTQ_CUDA = "auto-gptq==0.7.1"
+AUTOGPTQ_ROCM = "auto-gptq@https://huggingface.github.io/autogptq-index/whl/rocm573/auto-gptq/auto_gptq-0.7.1%2Brocm5.7.3-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
+
+AUTOAWQ_CUDA = "autoawq==0.2.3"
+AUTOAWQ_ROCM = "autoawq@https://github.com/casper-hansen/AutoAWQ/releases/download/v0.2.3/autoawq-0.2.3+rocm571-cp310-cp310-linux_x86_64.whl"
 
 EXTRAS_REQUIRE = {
     "quality": ["ruff"],
@@ -65,9 +68,10 @@ EXTRAS_REQUIRE = {
     "llm-swarm": ["llm-swarm@git+https://github.com/huggingface/llm-swarm.git"],
     "py-txi": ["py-txi@git+https://github.com/IlyasMoutawwakil/py-txi.git"],
     # optional dependencies
-    "autoawq": ["autoawq@git+https://github.com/casper-hansen/AutoAWQ.git@v0.2.3"],
-    "auto-gptq-cu118": ["optimum", AUTOGPTQ_CU118],
-    "auto-gptq-cu121": ["optimum", AUTOGPTQ_CU121],
+    "autoawq": [AUTOAWQ_CUDA],
+    "autoawq-rocm": [AUTOAWQ_ROCM],
+    "auto-gptq": ["optimum", AUTOGPTQ_CUDA],
+    "auto-gptq-rocm": ["optimum", AUTOGPTQ_ROCM],
     "bitsandbytes": ["bitsandbytes"],
     "codecarbon": ["codecarbon"],
     "deepspeed": ["deepspeed"],

@@ -4,5 +4,3 @@ backend:
     backend: "inductor"
     fullgraph: false
     dynamic: false
-    options:
-      conv_1x1_as_mm: True

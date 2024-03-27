@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG ROCM_VERSION=5.6.1
+ARG ROCM_VERSION=5.7.1
 ARG UBUNTU_VERSION=22.04
 
 FROM rocm/dev-ubuntu-${UBUNTU_VERSION}:${ROCM_VERSION}
 
-ARG TORCH_ROCM=rocm5.6
+ARG TORCH_ROCM=rocm5.7
 ARG TORCH_PRE_RELEASE=0
 
 # Ignore interactive questions during `docker build`
@@ -65,6 +65,6 @@ RUN pip install --upgrade pip
 
 # Install PyTorch (nightly if ROCM_VERSION=5.7 or TORCH_PRE_RELEASE=1)
 RUN if [ "${TORCH_PRE_RELEASE}" = "1" ]; \
-    then pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/${TORCH_ROCM} ; \
+then pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/${TORCH_ROCM} ; \
     else pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_ROCM} ; \
-    fi
+fi

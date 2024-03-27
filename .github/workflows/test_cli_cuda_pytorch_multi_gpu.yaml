@@ -31,6 +31,7 @@ jobs:
           --build-arg USER_ID=$(id -u)
           --build-arg GROUP_ID=$(id -g)
           --build-arg TORCH_CUDA=${{ matrix.image.torch_cuda }}
+          --build-arg TORCH_PRE_RELEASE=${{ matrix.image.torch_pre_release }}
           --build-arg CUDA_VERSION=${{ matrix.image.cuda_version }}
           --tag opt-bench-cuda:${{ matrix.image.cuda_version }}
           .
@@ -46,6 +47,5 @@ jobs:
           --workdir /workspace/optimum-benchmark
           --entrypoint /bin/bash
           opt-bench-cuda:${{ matrix.image.cuda_version }}
-          -c "pip install requests &&
-          pip install -e .[testing,diffusers,timm,deepspeed,peft] &&
-          pytest -s -v -k 'cli and cuda and pytorch and (dp or ddp or device_map or deepspeed_inferene)' -x"
+          -c "pip install -e .[testing,diffusers,timm,peft,deepspeed] &&
+          pytest -s -v -k 'cli and cuda and pytorch and (dp or ddp or device_map or deepspeed)' -x"
