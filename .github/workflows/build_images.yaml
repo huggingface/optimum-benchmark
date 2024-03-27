@@ -6,6 +6,8 @@ on:
     paths:
       - "docker/**"
       - ".github/workflows/build_images.yaml"
+    branches:
+      - build_images_*
 
   schedule:
     - cron: "0 0 * * *"
@@ -42,8 +44,8 @@ jobs:
           push: false
           file: docker/cuda.dockerfile
           tags: opt-bench-cuda:${{ matrix.image.cuda_version }}
-          cache-from: type=local,src=/mnt/hf_cache/opt_bench_cache/,mode=min
-          cache-to: type=local,dest=/mnt/hf_cache/opt_bench_cache/,mode=min
+          cache-to: type=local,dest=/mnt/hf_cache/opt_bench_cache/,mode=max
+          cache-from: type=local,src=/mnt/hf_cache/opt_bench_cache/
           build-args: |
             TORCH_CUDA=${{ matrix.image.torch_cuda }}
             CUDA_VERSION=${{ matrix.image.cuda_version }}
