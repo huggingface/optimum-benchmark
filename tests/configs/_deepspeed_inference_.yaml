@@ -12,3 +12,7 @@ backend:
   deepspeed_inference_config:
     tensor_parallel:
       tp_size: 2
+
+benchmark:
+  input_shapes:
+    batch_size: 2
