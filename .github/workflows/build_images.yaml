@@ -45,8 +45,6 @@ jobs:
           cache-from: type=local,src=/mnt/hf_cache/opt_bench_cache/,mode=min
           cache-to: type=local,dest=/mnt/hf_cache/opt_bench_cache/,mode=min
           build-args: |
-            USER_ID=$(id -u)
-            GROUP_ID=$(id -g)
             TORCH_CUDA=${{ matrix.image.torch_cuda }}
             CUDA_VERSION=${{ matrix.image.cuda_version }}
             TORCH_PRE_RELEASE=${{ matrix.image.torch_pre_release }}
