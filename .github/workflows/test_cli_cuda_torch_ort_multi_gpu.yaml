@@ -33,7 +33,7 @@ jobs:
           --build-arg TORCH_CUDA=${{ matrix.image.torch_cuda }}
           --build-arg CUDA_VERSION=${{ matrix.image.cuda_version }}
           --build-arg TORCH_PRE_RELEASE=${{ matrix.image.torch_pre_release }}
-          --cache-from=type=local,src=/mnt/hf_cache/opt_bench_cache/,mode=min
+          --cache-from=type=local,src=/mnt/hf_cache/opt_bench_cache/
           --tag opt-bench-cuda:${{ matrix.image.cuda_version }}
           .
 
@@ -48,5 +48,6 @@ jobs:
           --workdir /workspace/optimum-benchmark
           --entrypoint /bin/bash
           opt-bench-cuda:${{ matrix.image.cuda_version }}
-          -c "pip install -e .[testing,torch-ort,deepspeed,peft] && python -m torch_ort.configure &&
+          -c "pip install -e .[testing,torch-ort,deepspeed,peft] &&
+          pip install transformers==4.38 && python -m torch_ort.configure &&
           pytest -s -v -k 'cli and cuda and torch_ort and (dp or ddp or device_map or deepspeed)' -x"
