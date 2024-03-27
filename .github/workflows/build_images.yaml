@@ -55,6 +55,14 @@ jobs:
           mkdir -p /mnt/hf_cache/optimum_benchmark
           docker save cuda:${{ matrix.image.cuda_version }} > /mnt/hf_cache/optimum_benchmark/cuda-${{ matrix.image.cuda_version }}.tar
 
+      - name: Load image
+        run: |
+          docker load < /mnt/hf_cache/optimum_benchmark/cuda-${{ matrix.image.cuda_version }}.tar
+
+      - name: Test image
+        run: |
+          docker run --rm cuda:${{ matrix.image.cuda_version }} python -c "import torch; print(torch.__version__)"
+
   build_rocm_images:
     strategy:
       fail-fast: false
