@@ -45,6 +45,7 @@ jobs:
       - name: Save
         run: |
           mkdir -p /mnt/hf_cache/optimum_benchmark
+          apt-get update && apt-get install -y pigz
           docker save cuda:${{ matrix.image.cuda_version }} | pigz --fast > /mnt/hf_cache/optimum_benchmark/cuda-${{ matrix.image.cuda_version }}.tar.gz
 
       - name: Load
