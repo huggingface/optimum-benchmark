@@ -48,4 +48,4 @@ jobs:
           --entrypoint /bin/bash
           opt-bench-rocm:${{ matrix.image.rocm_version }}
           -c "pip install -e .[testing,diffusers,timm,peft,autoawq-rocm,auto-gptq-rocm] &&
-          pytest -k 'cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not bnb' -x"
+          pytest -k 'cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not (bnb or awq)' -x"

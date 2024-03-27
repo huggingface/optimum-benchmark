@@ -31,8 +31,9 @@ jobs:
           --build-arg USER_ID=$(id -u)
           --build-arg GROUP_ID=$(id -g)
           --build-arg TORCH_CUDA=${{ matrix.image.torch_cuda }}
-          --build-arg TORCH_PRE_RELEASE=${{ matrix.image.torch_pre_release }}
           --build-arg CUDA_VERSION=${{ matrix.image.cuda_version }}
+          --build-arg TORCH_PRE_RELEASE=${{ matrix.image.torch_pre_release }}
+          --cache-from=type=local,src=/mnt/hf_cache/opt_bench_cache/,mode=min
           --tag opt-bench-cuda:${{ matrix.image.cuda_version }}
           .
 
