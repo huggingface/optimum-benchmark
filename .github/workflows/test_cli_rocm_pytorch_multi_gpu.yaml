@@ -42,8 +42,8 @@ jobs:
           --shm-size 64G
           --env USE_ROCM="1"
           --device /dev/kfd
-          --device /dev/dri/renderD128
-          --device /dev/dri/renderD129
+          --device /dev/dri/renderD130
+          --device /dev/dri/renderD131
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
           --entrypoint /bin/bash

@@ -42,11 +42,11 @@ jobs:
           --shm-size 64G
           --env USE_ROCM="1"
           --device /dev/kfd
-          --device /dev/dri/renderD128
+          --device /dev/dri/renderD132
           --volume $(pwd):/workspace/optimum-benchmark
           --workdir /workspace/optimum-benchmark
           --entrypoint /bin/bash
           opt-bench-rocm:${{ matrix.image.rocm_version }}
           -c "pip install requests &&
-          pip install -e .[testing,diffusers,timm,deepspeed,peft,autoawq] &&
+          pip install -e .[testing,diffusers,timm,peft,autoawq] &&
           pytest -k 'cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed_inferene) and not (bnb or gptq)' -x"

@@ -47,5 +47,5 @@ jobs:
           --entrypoint /bin/bash
           opt-bench-cuda:${{ matrix.image.cuda_version }}
           -c "pip install requests &&
-          pip install -e .[testing,diffusers,timm,deepspeed,peft,bitsandbytes,autoawq,auto-gptq-${{ matrix.image.torch_cuda }}] &&
+          pip install -e .[testing,diffusers,timm,peft,bitsandbytes,autoawq,auto-gptq-${{ matrix.image.torch_cuda }}] &&
           pytest -s -v -k 'cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed_inferene)' -x"
