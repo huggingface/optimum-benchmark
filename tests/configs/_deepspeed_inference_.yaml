@@ -5,7 +5,6 @@ launcher:
   nproc_per_node: 2
 
 backend:
-  device: cuda
   device_ids: 0,1
   model: google-bert/bert-base-uncased
   deepspeed_inference: true
