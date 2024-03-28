@@ -50,7 +50,7 @@ jobs:
       - name: Save
         run: |
           sudo apt update && sudo apt install -y pigz
-          docker save opt-bench-cuda${{ matrix.image.cuda_version }} | pigz --fast > /mnt/hf_cache/optimum_benchmark/cuda-${{ matrix.image.cuda_version }}.tar.gz
+          docker save opt-bench-cuda:${{ matrix.image.cuda_version }} | pigz --fast > /mnt/hf_cache/optimum_benchmark/cuda-${{ matrix.image.cuda_version }}.tar.gz
 
       - name: Load
         run: |
@@ -58,7 +58,7 @@ jobs:
 
       - name: Test
         run: |
-          docker run --rm opt-bench-cuda${{ matrix.image.cuda_version }} nvidia-smi
+          docker run --rm opt-bench-cuda:${{ matrix.image.cuda_version }} nvidia-smi
 
   build_rocm_images:
     strategy:
