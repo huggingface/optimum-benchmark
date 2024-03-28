@@ -159,6 +159,7 @@ Everything else is optional or inferred at runtime, but can be configured to you
 - [x] Intel Neural Compressor backend for CPU (`backend=neural-compressor`, `backend.device=cpu`)
 - [x] TensorRT-LLM backend for CUDA (`backend=tensorrt-llm`, `backend.device=cuda`)
 - [x] OpenVINO backend for CPU (`backend=openvino`, `backend.device=cpu`)
+- [x] OpenVINO backend for GPU (`backend=openvino`, `backend.device=gpu`)
 
 ### Benchmarking 🏋️
 

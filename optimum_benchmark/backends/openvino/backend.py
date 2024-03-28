@@ -121,6 +121,7 @@ class OVBackend(Backend[OVConfig]):
             self.config.model,
             export=self.config.export,
             ov_config=self.config.openvino_config,
+            device=self.config.device,
             **self.config.hub_kwargs,
             **self.ovmodel_kwargs,
         )
