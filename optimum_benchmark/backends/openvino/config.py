@@ -37,7 +37,8 @@ class OVConfig(BackendConfig):
     def __post_init__(self):
         super().__post_init__()
 
-        if self.device != "cpu":
+        self.device = self.device.lower()
+        if self.device not in ["cpu", "gpu"]:
             raise ValueError(f"OVBackend only supports CPU devices, got {self.device}")
 
         if self.intra_op_num_threads is not None:

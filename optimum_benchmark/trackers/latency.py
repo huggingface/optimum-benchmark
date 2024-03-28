@@ -96,6 +96,8 @@ class LatencyTracker:
 
         if self.backend == "pytorch" and self.device == "cuda":
             LOGGER.info("\t+ Tracking Pytorch CUDA latency")
+        elif self.backend == "openvino":
+            LOGGER.info(f"\t+ Tracking OpenVINO {self.device.upper()} latency")
         else:
             LOGGER.info("\t+ Tracking CPU latency")
 
