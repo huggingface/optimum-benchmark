@@ -2,12 +2,6 @@ name: Build Images
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - "docker/**"
-      - ".github/workflows/build_images.yaml"
-    branches:
-      - build_images_*
 
   schedule:
     - cron: "0 0 * * *"
@@ -33,6 +27,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: List
+        run: |
+          mkdir -p /mnt/hf_cache/optimum_benchmark
+          ls /mnt/hf_cache/optimum_benchmark
+
       - name: Build
         run: docker build
           --file docker/cuda.dockerfile
@@ -44,7 +43,7 @@ jobs:
 
       - name: Save
         run: |
-          mkdir -p /mnt/hf_cache/optimum_benchmark
+
           sudo apt update && sudo apt install -y pigz
           docker save cuda:${{ matrix.image.cuda_version }} | pigz --fast > /mnt/hf_cache/optimum_benchmark/cuda-${{ matrix.image.cuda_version }}.tar.gz
 
