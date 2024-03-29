@@ -25,6 +25,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Target devices
+        run: |
+          echo "DEVICE0: $DEVICE0"
+          echo "DEVICE1: $DEVICE1"
+          echo "DEVICE0=$DEVICE0" >> $GITHUB_ENV
+          echo "DEVICE1=$DEVICE1" >> $GITHUB_ENV
+
       - name: Build image
         run: docker build
           --build-arg USER_ID=$(id -u)
@@ -39,7 +46,6 @@ jobs:
         uses: addnab/docker-run-action@v3
         env:
           DEVICE: ${{ env.DEVICE }}
-          WORKSPACE: ${{ github.workspace }}
         with:
           image: opt-bench-rocm:${{ matrix.image.rocm_version }}
           options: |
@@ -49,8 +55,8 @@ jobs:
             --env USE_ROCM="1"
             --device /dev/kfd
             --device /dev/dri/${{ env.DEVICE }}
-            --volume ${{ env.WORKSPACE }}:/workspace
+            --volume ${{ github.workspace }}:/workspace
             --workdir /workspace
           run: |
             pip install -e .[testing,diffusers,timm,peft,autoawq-rocm,auto-gptq-rocm]
-            pytest -x -s -k "cli and rocm and pytorch and not (dp or ddp or device_map or deepspeed) and not (bnb or awq or torch_compile)"
+            pytest -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not (bnb or awq or torch_compile)"

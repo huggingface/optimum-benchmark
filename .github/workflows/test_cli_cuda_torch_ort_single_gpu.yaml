@@ -35,8 +35,6 @@ jobs:
 
       - name: Run tests
         uses: addnab/docker-run-action@v3
-        env:
-          WORKSPACE: ${{ github.workspace }}
         with:
           image: opt-bench-cuda:${{ matrix.image.cuda_version }}
           options: |
@@ -45,7 +43,7 @@ jobs:
             --shm-size 64G
             --env USE_CUDA="1"
             --env PROCESS_SPECIFIC_VRAM="0"
-            --volume ${{ env.WORKSPACE }}:/workspace
+            --volume ${{ github.workspace }}:/workspace
             --workdir /workspace
           run: |
             pip install -e .[testing,torch-ort,peft] &&
