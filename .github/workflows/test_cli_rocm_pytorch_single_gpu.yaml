@@ -38,7 +38,7 @@ jobs:
       - name: Run tests
         uses: addnab/docker-run-action@v3
         env:
-          DEVICE: $DEVICE
+          DEVICE: ${{ env.DEVICE }}
           WORKSPACE: ${{ github.workspace }}
         with:
           image: opt-bench-rocm:${{ matrix.image.rocm_version }}

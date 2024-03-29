@@ -19,6 +19,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Pull image
+        run: docker pull pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime
+
       - name: Run tests
         uses: addnab/docker-run-action@v3
         env:
