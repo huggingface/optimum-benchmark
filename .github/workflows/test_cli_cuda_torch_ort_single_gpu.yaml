@@ -45,7 +45,7 @@ jobs:
             --shm-size 64G
             --env USE_CUDA="1"
             --env PROCESS_SPECIFIC_VRAM="0"
-            --volume $WORKSPACE:/workspace
+            --volume ${{ env.WORKSPACE }}:/workspace
             --workdir /workspace
           run: |
             pip install -e .[testing,torch-ort,peft] &&
