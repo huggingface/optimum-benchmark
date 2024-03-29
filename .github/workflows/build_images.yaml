@@ -6,6 +6,8 @@ on:
     paths:
       - "docker/**"
       - ".github/workflows/build_images.yaml"
+    branches:
+      - build_images_*
 
     branches:
       - build_images_*
