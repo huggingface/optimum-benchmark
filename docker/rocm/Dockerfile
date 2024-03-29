@@ -33,8 +33,8 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
     cd /opt/rocm/share/amd_smi && pip install .
 
 # Create a non-root user
-ARG USER_ID
 ARG GROUP_ID
+ARG USER_ID
 
 RUN addgroup --gid $GROUP_ID group
 RUN adduser --disabled-password --gecos '' --uid $USER_ID --gid $GROUP_ID user

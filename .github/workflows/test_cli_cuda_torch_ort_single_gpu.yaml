@@ -26,6 +26,8 @@ jobs:
 
       - name: Build image
         run: docker build
+          --build-arg USER_ID=$(id -u)
+          --build-arg GROUP_ID=$(id -g)
           --build-arg TORCH_CUDA=${{ matrix.image.torch_cuda }}
           --build-arg CUDA_VERSION=${{ matrix.image.cuda_version }}
           --tag opt-bench-cuda:${{ matrix.image.cuda_version }}

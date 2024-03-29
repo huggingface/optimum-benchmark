@@ -5,5 +5,3 @@ backend:
     fullgraph: false
     dynamic: false
     disable: false
-    options: null
-    mode: null
