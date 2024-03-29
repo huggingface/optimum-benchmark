@@ -57,4 +57,4 @@ jobs:
             --workdir /workspace
           run: |
             pip install -e .[testing,timm,diffusers]
-            pytest -s -x -k "api and rocm"
+            pytest -s -x -k "api and cuda"
