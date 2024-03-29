@@ -25,6 +25,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Echo device
+        run: |
+          echo "DEVICE: $DEVICE"
+
       - name: Build image
         run: docker build
           --build-arg USER_ID=$(id -u)
@@ -38,7 +42,7 @@ jobs:
       - name: Run tests
         uses: addnab/docker-run-action@v3
         env:
-          DEVICE: $DEVICE
+          DEVICE: ${{ env.DEVICE }}
           WORKSPACE: ${{ github.workspace }}
         with:
           image: opt-bench-rocm:${{ matrix.image.rocm_version }}
