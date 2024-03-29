@@ -1,7 +1,2 @@
 backend:
   torch_compile: true
-  torch_compile_config:
-    backend: "inductor"
-    fullgraph: false
-    dynamic: false
-    disable: false

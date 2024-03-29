@@ -1,43 +1,38 @@
-ARG UBUNTU_VERSION=20.04
+ARG UBUNTU_VERSION=22.04
 
 FROM ubuntu:${UBUNTU_VERSION}
 
-# Ignore interactive questions during `docker build`
+# Install necessary packages
+ENV PATH="/home/user/.local/bin:${PATH}"
 ENV DEBIAN_FRONTEND noninteractive
-
-# Run as non-root user
-ARG USER_ID
-ARG GROUP_ID
-
-RUN addgroup --gid $GROUP_ID user
-RUN adduser --disabled-password --gecos '' --uid $USER_ID --gid $GROUP_ID user
-
-# Install python
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
     python3.10 \
-    python3.10-dev \
     python3-pip \
-    git && \
+    python3.10-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
-    update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1
+    update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 && \
+    pip install --no-cache-dir --upgrade pip setuptools wheel 
 
-# Add local bin to PATH
-ENV PATH="/home/user/.local/bin:${PATH}"
+# Create a non-root user
+ARG GROUP_ID
+ARG USER_ID
 
-# Add user to sudoers
-RUN adduser user sudo
-RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >>/etc/sudoers
+RUN addgroup --gid $GROUP_ID group
+RUN adduser --disabled-password --gecos '' --uid $USER_ID --gid $GROUP_ID user
 
 # Change user
 USER user
 WORKDIR /home/user
 
-# Update pip
-RUN pip install --upgrade pip
-
 # Install PyTorch
-RUN if [ "${TORCH_PRE_RELEASE}" = "1" ]; \
-    then pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cpu ; \
-    else pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu ; \
-    fi
+ARG TORCH_VERSION="stable"
+
+RUN if [ "${TORCH_VERSION}" = "stable" ]; then \
+    pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu ; \
+elif [ "${TORCH_VERSION}" = "nighly" ]; then \
+    pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cpu ; \
+else \
+    pip install --no-cache-dir torch==${TORCH_VERSION} torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu ; \
+fi
