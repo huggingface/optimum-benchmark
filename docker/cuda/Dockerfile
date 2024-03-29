@@ -29,7 +29,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 && \
-    pip install --upgrade pip setuptools wheel
+    pip install --no-cache-dir --upgrade pip setuptools wheel 
 
 # Create a non-root user
 ARG GROUP_ID

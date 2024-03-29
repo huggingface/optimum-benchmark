@@ -29,7 +29,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
     amd-smi-lib && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 && \
-    pip install --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir --upgrade pip setuptools wheel  && \
     cd /opt/rocm/share/amd_smi && pip install .
 
 # Create a non-root user

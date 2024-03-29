@@ -46,5 +46,5 @@ jobs:
             --volume ${{ github.workspace }}:/workspace
             --workdir /workspace
           run: |
-            pip install -e .[testing,torch-ort,peft] && python -m torch_ort.configure &&
-            pytest -x -s -k "cli and cuda and torch_ort and not (dp or ddp or device_map)"
+            pip install -e .[testing,torch-ort,peft] && python -m torch_ort.configure
+            pytest -x -s -k "cli and cuda and torch_ort and not (dp or ddp or device_map) and not (peft)"

@@ -373,9 +373,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
     def seed(self):
         super().seed()
         torch.manual_seed(self.config.seed)
-
-        if self.config.device == "cuda":
-            torch.cuda.manual_seed_all(self.config.seed)
+        torch.cuda.manual_seed_all(self.config.seed)
 
     def clean(self) -> None:
         super().clean()
