@@ -82,10 +82,10 @@ EXTRAS_REQUIRE = {
 
 
 setup(
+    packages=find_packages(),
     name="optimum-benchmark",
     version=OPTIMUM_BENCHMARK_VERSION,
     install_requires=INSTALL_REQUIRES,
     extras_require=EXTRAS_REQUIRE,
-    packages=find_packages(),
     entry_points={"console_scripts": ["optimum-benchmark=optimum_benchmark.cli:benchmark_cli"]},
 )

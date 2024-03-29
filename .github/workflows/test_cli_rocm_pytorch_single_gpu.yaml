@@ -12,29 +12,42 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build_image_and_run_cli_rocm_pytorch_single_gpu_tests:
+  run_cli_rocm_pytorch_single_gpu_tests:
     strategy:
       fail-fast: false
       matrix:
         image:
           [{ torch_rocm: rocm5.7, torch_pre_release: 0, rocm_version: 5.7.1 }]
 
-    runs-on: [amd-gpu]
+    runs-on: [single-gpu, amd-gpu, mi250, ci]
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Build image
+        run: docker build
+          --build-arg USER_ID=$(id -u)
+          --build-arg GROUP_ID=$(id -g)
+          --build-arg TORCH_ROCM=${{ matrix.image.torch_rocm }}
+          --build-arg ROCM_VERSION=${{ matrix.image.rocm_version }}
+          --build-arg TORCH_PRE_RELEASE=${{ matrix.image.torch_pre_release }}
+          --tag opt-bench-rocm:${{ matrix.image.rocm_version }}
+          docker/rocm
+
       - name: Run tests
-        run: docker run
-          --rm
-          --pid host
-          --shm-size 64G
-          --env USE_ROCM="1"
-          --device /dev/kfd
-          --device /dev/dri/renderD132
-          --volume $(pwd):/workspace/optimum-benchmark
-          --workdir /workspace/optimum-benchmark
-          --entrypoint /bin/bash
-          opt-bench-rocm:${{ matrix.image.rocm_version }}
-          -c "pip install -e .[testing,diffusers,timm,peft,autoawq-rocm,auto-gptq-rocm] &&
-          pytest -k 'cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not (bnb or awq)' -x"
+        uses: addnab/docker-run-action@v3
+        with:
+          image: opt-bench-rocm:${{ matrix.image.rocm_version }}
+          options: |
+            --rm
+            --pid host
+            --shm-size 64G
+            --env USE_ROCM="1"
+            --device /dev/kfd
+            --device /dev/dri/$DEVICE
+            --volume $(pwd):/workspace 
+            --workdir /workspace
+          run: |
+            pip install -e .[testing,diffusers,timm,peft,autoawq-rocm,auto-gptq-rocm]
+            pytest -x -s -k "cli and rocm and pytorch and not (dp or ddp or device_map or deepspeed) and not (bnb or awq or torch_compile)"

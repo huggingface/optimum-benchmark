@@ -29,4 +29,4 @@ jobs:
           pip install -e .[testing,openvino,diffusers,timm]
 
       - name: Run tests
-        run: pytest -s -v -k "cli and cpu and openvino"
+        run: pytest -s -k "cli and cpu and openvino"

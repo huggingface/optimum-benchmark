@@ -23,6 +23,7 @@ from optimum_benchmark.generators.dataset_generator import DatasetGenerator
 from optimum_benchmark.generators.input_generator import InputGenerator
 from optimum_benchmark.import_utils import get_git_revision_hash
 from optimum_benchmark.launchers.process.config import ProcessConfig
+from optimum_benchmark.system_utils import get_gpu_device_ids
 from optimum_benchmark.trackers.latency import LatencyTracker
 from optimum_benchmark.trackers.memory import MemoryTracker
 
@@ -42,31 +43,33 @@ LIBRARIES_TASKS_MODELS = [
 @pytest.mark.parametrize("benchmark", ["training", "inference"])
 @pytest.mark.parametrize("library,task,model", LIBRARIES_TASKS_MODELS)
 def test_api_launch(device, benchmark, library, task, model):
-    no_weights = True if library == "transformers" else False
-    device_ids = "0" if device == "cuda" else None
+    no_weights = False if library != "transformers" else True
+    device_ids = get_gpu_device_ids() if device == "cuda" else None
 
     if benchmark == "training":
-        if library != "transformers":
+        if library == "transformers":
+            benchmark_config = TrainingConfig(memory=True, latency=True, warmup_steps=2, max_steps=5)
+        else:
             return  # skip training for non-transformers models
-        benchmark_config = TrainingConfig(memory=True, latency=True, warmup_steps=2, max_steps=5)
+
     elif benchmark == "inference":
         benchmark_config = InferenceConfig(
-            duration=1,
-            warmup_runs=1,
             memory=True,
             latency=True,
+            duration=1,
+            warmup_runs=1,
             input_shapes={"batch_size": 1, "sequence_length": 16},
             generate_kwargs={"max_new_tokens": 5, "min_new_tokens": 5},
             call_kwargs={"num_inference_steps": 2},
         )
 
     backend_config = PyTorchConfig(
-        no_weights=no_weights,
-        device_ids=device_ids,
         device=device,
-        task=task,
-        model=model,
+        device_ids=device_ids,
+        no_weights=no_weights,
         library=library,
+        model=model,
+        task=task,
     )
 
     launcher_config = ProcessConfig(device_isolation=False)
