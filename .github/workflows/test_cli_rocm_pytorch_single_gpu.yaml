@@ -46,7 +46,7 @@ jobs:
             --env USE_ROCM="1"
             --device /dev/kfd
             --device /dev/dri/$DEVICE
-            --volume $(pwd):/workspace 
+            --volume ${{ github.workspace }}:/workspace
             --workdir /workspace
           run: |
             pip install -e .[testing,diffusers,timm,peft,autoawq-rocm,auto-gptq-rocm]

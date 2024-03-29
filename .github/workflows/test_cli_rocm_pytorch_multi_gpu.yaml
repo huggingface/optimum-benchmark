@@ -47,7 +47,7 @@ jobs:
             --device /dev/kfd
             --device /dev/dri/$DEVICE0
             --device /dev/dri/$DEVICE1
-            --volume $(pwd):/workspace
+            --volume ${{ github.workspace }}:/workspace
             --workdir /workspace
           run: |
             pip install -e .[testing,diffusers,timm,deepspeed,peft,autoawq-rocm,auto-gptq-rocm]
