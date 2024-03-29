@@ -24,17 +24,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Build image
-        run: docker build
-          --file docker/rocm.dockerfile
-          --build-arg USER_ID=$(id -u)
-          --build-arg GROUP_ID=$(id -g)
-          --build-arg TORCH_ROCM=${{ matrix.image.torch_rocm }}
-          --build-arg TORCH_PRE_RELEASE=${{ matrix.image.torch_pre_release }}
-          --build-arg ROCM_VERSION=${{ matrix.image.rocm_version }}
-          --tag opt-bench-rocm:${{ matrix.image.rocm_version }}
-          .
-
       - name: Run tests
         run: docker run
           --rm
