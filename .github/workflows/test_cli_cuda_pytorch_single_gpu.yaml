@@ -21,6 +21,8 @@ jobs:
 
       - name: Run tests
         uses: addnab/docker-run-action@v3
+        env:
+          WORKSPACE: ${{ github.workspace }}
         with:
           image: pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime
           options: |
@@ -29,7 +31,7 @@ jobs:
             --shm-size 64G
             --env USE_CUDA="1"
             --env PROCESS_SPECIFIC_VRAM="0"
-            --volume ${{ github.workspace }}:/workspace
+            --volume $WORKSPACE:/workspace
             --workdir /workspace
           run: |
             pip install -e .[testing,diffusers,timm,peft,bitsandbytes,autoawq,auto-gptq]

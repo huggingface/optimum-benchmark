@@ -37,6 +37,9 @@ jobs:
 
       - name: Run tests
         uses: addnab/docker-run-action@v3
+        env:
+          DEVICE: $DEVICE
+          WORKSPACE: ${{ github.workspace }}
         with:
           image: opt-bench-rocm:${{ matrix.image.rocm_version }}
           options: |
@@ -46,7 +49,7 @@ jobs:
             --env USE_ROCM="1"
             --device /dev/kfd
             --device /dev/dri/$DEVICE
-            --volume ${{ github.workspace }}:/workspace
+            --volume $WORKSPACE:/workspace
             --workdir /workspace
           run: |
             pip install -e .[testing,timm,diffusers]
