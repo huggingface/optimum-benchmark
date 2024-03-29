@@ -99,9 +99,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         # Torch compile
         if self.config.torch_compile:
-            if self.config.device == "cuda":
-                torch._inductor.config.conv_1x1_as_mm = True
-
             if self.config.library == "diffusers":
                 LOGGER.info("\t+ Using torch.compile to compile unet and vae")
                 self.pretrained_model.unet = torch.compile(
