@@ -10,14 +10,7 @@ AMP_DTYPES = ["bfloat16", "float16"]
 TORCH_DTYPES = ["bfloat16", "float16", "float32", "auto"]
 
 QUANTIZATION_CONFIGS = {"bnb": {"llm_int8_threshold": 0.0}, "gptq": {}, "awq": {}}
-COMPILE_CONFIG = {
-    "fullgraph": False,
-    "dynamic": False,
-    "backend": "inductor",
-    "mode": None,
-    "options": None,
-    "disable": False,
-}
+COMPILE_CONFIG = {}
 
 
 @dataclass
