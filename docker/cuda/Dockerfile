@@ -13,32 +13,42 @@
 # limitations under the License.
 
 ARG CUDNN_VERSION=8
-ARG CUDA_VERSION=12.1.1
+ARG CUDA_VERSION=11.8.0
 ARG UBUNTU_VERSION=22.04
 
 FROM nvidia/cuda:${CUDA_VERSION}-cudnn${CUDNN_VERSION}-devel-ubuntu${UBUNTU_VERSION}
 
-ARG TORCH_PRE_RELEASE=0
-ARG TORCH_CUDA=cu121
-
-# Ignore interactive questions during `docker build`
+# Install necessary packages
 ENV DEBIAN_FRONTEND noninteractive
-
-# Install python
+ENV PATH="/home/user/.local/bin:${PATH}"
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
     python3.10 \
-    python3.10-dev \
     python3-pip \
-    git && \
+    python3.10-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
-    update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1
+    update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 && \
+    pip install --upgrade pip setuptools wheel
 
-# Update pip
-RUN pip install --upgrade pip
+# Create a non-root user
+ARG GROUP_ID
+ARG USER_ID
+
+RUN addgroup --gid $GROUP_ID group
+RUN adduser --disabled-password --gecos '' --uid $USER_ID --gid $GROUP_ID user
+
+USER user
+WORKDIR /home/user
 
 # Install PyTorch
-RUN if [ "${TORCH_PRE_RELEASE}" = "1" ]; \
-then pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/${TORCH_CUDA} ; \
-    else pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
+ARG TORCH_CUDA=cu118
+ARG TORCH_VERSION="stable"
+
+RUN if [ "${TORCH_VERSION}" = "stable" ]; then \
+    pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
+elif [ "${TORCH_VERSION}" = "nighly" ]; then \
+    pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
+else \
+    pip install --no-cache-dir torch==${TORCH_VERSION} torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
 fi

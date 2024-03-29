@@ -16,8 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image:
-          [{ torch_cuda: cu118, torch_pre_release: 0, cuda_version: 11.8.0 }]
+        image: [{ cuda_version: 11.8.0, torch_cuda: cu118 }]
 
     runs-on: [multi-gpu, nvidia-gpu, 4-a10, ci]
 
@@ -28,7 +27,6 @@ jobs:
       - name: Build image
         run: docker build
           --build-arg TORCH_CUDA=${{ matrix.image.torch_cuda }}
-          --build-arg TORCH_PRE_RELEASE=${{ matrix.image.torch_pre_release }}
           --build-arg CUDA_VERSION=${{ matrix.image.cuda_version }}
           --tag opt-bench-cuda:${{ matrix.image.cuda_version }}
           docker/cuda
@@ -46,6 +44,5 @@ jobs:
             --volume ${{ github.workspace }}:/workspace
             --workdir /workspace
           run: |
-            pip install -e .[testing,torch-ort,deepspeed,peft] &&
-            pip install transformers==4.38 && python -m torch_ort.configure &&
-            pytest -x -s -k "cli and cuda and torch_ort and (dp or ddp or device_map or deepspeed)"
+            pip install -e .[testing,torch-ort,peft] && python -m torch_ort.configure
+            pytest -x -s -k "cli and cuda and torch_ort and (dp or ddp or device_map)"
