@@ -57,4 +57,4 @@ jobs:
             --workdir /workspace
           run: |
             pip install -e .[testing,diffusers,timm,peft,autoawq-rocm,auto-gptq-rocm]
-            pytest -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not (bnb or awq or torch_compile)"
+            pytest -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not (bnb or awq)"

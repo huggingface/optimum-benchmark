@@ -20,12 +20,12 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Pull image
-        run: docker pull pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime
+        run: docker pull pytorch/pytorch:2.2.2-cuda12.1-cudnn8-devel
 
       - name: Run tests
         uses: addnab/docker-run-action@v3
         with:
-          image: pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime
+          image: pytorch/pytorch:2.2.2-cuda12.1-cudnn8-devel
           options: |
             --rm
             --gpus all
