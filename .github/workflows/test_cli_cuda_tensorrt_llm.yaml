@@ -1,0 +1,39 @@
+name: CLI CUDA TensorRT-LLM Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cli_cuda_tensorrt_llm_tests:
+    runs-on: [single-gpu, nvidia-gpu, a10, ci]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Pull image
+        run: docker pull huggingface/optimum-nvidia:latest
+
+      - name: Run tests
+        uses: addnab/docker-run-action@v3
+        with:
+          image: huggingface/optimum-nvidia:latest
+          options: |
+            --rm 
+            --gpus all 
+            --shm-size 64G 
+            --env USE_CUDA="1" 
+            --env PROCESS_SPECIFIC_VRAM="0" 
+            --volume ${{ github.workspace }}:/workspace
+            --workdir /workspace
+          run: |
+            pip install -e .[testing] &&
+            pytest -x -s -k "cli and cuda and tensorrt_llm"

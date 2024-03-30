@@ -29,4 +29,4 @@ jobs:
           pip install -e .[testing,onnxruntime,diffusers,timm]
 
       - name: Run tests
-        run: pytest -k "cli and cpu and onnxruntime"
+        run: pytest -s -k "cli and cpu and onnxruntime"

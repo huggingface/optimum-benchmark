@@ -28,5 +28,5 @@ jobs:
           pip install --upgrade pip
           pip install -e .[testing,neural-compressor,diffusers,timm]
 
-      - name: Run CPU tests
-        run: pytest -k "cli and cpu and neural_compressor"
+      - name: Run tests
+        run: pytest -s -k "cli and cpu and neural_compressor"

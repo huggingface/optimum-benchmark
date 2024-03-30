@@ -1,0 +1,6 @@
+backend:
+  model: google-bert/bert-base-uncased
+  quantization: true
+  quantization_config:
+    is_static: true
+  calibration: true

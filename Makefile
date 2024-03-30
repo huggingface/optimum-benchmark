@@ -12,15 +12,15 @@ API_CUDA_REQS := testing,timm,diffusers
 API_ROCM_REQS := testing,timm,diffusers
 
 CLI_MISC_REQS := testing
+CLI_CPU_PYTORCH_REQS := testing,peft,timm,diffusers
+CLI_CPU_OPENVINO_REQS := testing,openvino,timm,diffusers
+CLI_CPU_ONNXRUNTIME_REQS := testing,onnxruntime,timm,diffusers
+CLI_CPU_NEURAL_COMPRESSOR_REQS := testing,neural-compressor,timm,diffusers
 
 CLI_CUDA_ONNXRUNTIME_REQS := testing,timm,diffusers
 CLI_ROCM_ONNXRUNTIME_REQS := testing,timm,diffusers
-CLI_CUDA_PYTORCH_REQS := testing,timm,diffusers,deepspeed,peft,bitsandbytes,autoawq,auto-gptq-cu118
-CLI_ROCM_PYTORCH_REQS := testing,timm,diffusers,deepspeed,peft,autoawq
-CLI_CPU_OPENVINO_REQS := testing,openvino,timm,diffusers
-CLI_CPU_PYTORCH_REQS := testing,timm,diffusers,deepspeed,peft
-CLI_CPU_ONNXRUNTIME_REQS := testing,onnxruntime,timm,diffusers
-CLI_CPU_NEURAL_COMPRESSOR_REQS := testing,neural-compressor,timm,diffusers
+CLI_ROCM_PYTORCH_REQS := testing,timm,diffusers,deepspeed,peft,autoawq,auto-gptq
+CLI_CUDA_PYTORCH_REQS := testing,timm,diffusers,deepspeed,peft,autoawq,auto-gptq,bitsandbytes
 
 quality:
 	ruff check .
@@ -36,7 +36,7 @@ install:
 ## Docker builds
 
 define build_docker
-	docker build -f docker/$(1).dockerfile  --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t opt-bench-$(1):local .
+	docker build --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t opt-bench-$(1):local docker/$(1)
 endef
 
 build_docker_cpu:
@@ -55,7 +55,6 @@ run_docker_cpu:
 	docker run \
 	-it \
 	--rm \
-	--pid host \
 	--entrypoint /bin/bash \
 	--volume $(PWD):/workspace \
 	--workdir /workspace \
@@ -65,10 +64,10 @@ run_docker_cuda:
 	docker run \
 	-it \
 	--rm \
-	--pid host \
-	--shm-size 64G \
 	--gpus all \
+	--shm-size 64G \
 	--entrypoint /bin/bash \
+	--env PROCESS_SPECIFIC_VRAM="0" \
 	--volume $(PWD):/workspace \
 	--workdir /workspace \
 	opt-bench-cuda:local
@@ -77,9 +76,8 @@ run_docker_rocm:
 	docker run \
 	-it \
 	--rm \
-	--pid host \
 	--shm-size 64G \
-	--device /dev/kfd \
+	--device /dev/kfd/ \
 	--device /dev/dri/ \
 	--entrypoint /bin/bash \
 	--volume $(PWD):/workspace \
@@ -88,77 +86,36 @@ run_docker_rocm:
 
 ## Tests
 
-define test_ubuntu
+define test_cpu
 	docker run \
 	--rm \
-	--pid host \
+	--shm-size 64G \
 	--entrypoint /bin/bash \
 	--volume $(PWD):/workspace \
 	--workdir /workspace \
-	opt-bench-$(1):local -c "pip install -e .[$(2)] && pytest tests/ -k '$(3)' -x"
+	opt-bench-cpu:local -c "pip install -e .[$(1)] && pytest -x -s -k '$(2)'"
 endef
 
-define test_nvidia
+define test_cuda
 	docker run \
 	--rm \
-	--pid host \
 	--shm-size 64G \
 	--gpus '"device=0,1"' \
 	--entrypoint /bin/bash \
 	--volume $(PWD):/workspace \
 	--workdir /workspace \
-	opt-bench-$(1):local -c "pip install requests && pip install -e .[$(2)] && pytest tests/ -k '$(3)' -x"
+	opt-bench-cuda:local -c "pip install -e .[$(1)] && pytest -x -s -k '$(2)'"
 endef
 
-define test_amdgpu
+define test_rocm
 	docker run \
 	--rm \
-	--pid host \
 	--shm-size 64G \
-	--device /dev/kfd \
+	--device /dev/kfd/ \
 	--device /dev/dri/renderD128 \
 	--device /dev/dri/renderD129 \
 	--entrypoint /bin/bash \
 	--volume $(PWD):/workspace \
 	--workdir /workspace \
-	opt-bench-$(1):local -c "pip install requests && pip install -e .[$(2)] && pytest tests/ -k '$(3)' -x"
+	opt-bench-cuda:local -c "pip install -e .[$(1)] && pytest -x -s -k '$(2)'"
 endef
-
-# group the extra
-test_api_cpu:
-	$(call test_ubuntu,cpu,$(API_CPU_REQS),api and cpu)
-
-test_api_cuda:
-	$(call test_nvidia,cuda,$(API_CUDA_REQS),api and cuda)
-
-test_api_rocm:
-	$(call test_amdgpu,rocm,$(API_ROCM_REQS),api and rocm)
-
-test_api_misc:
-	$(call test_ubuntu,cpu,$(API_MISC_REQS),api and not (cpu or cuda or rocm or tensorrt))
-
-## CLI tests
-
-test_cli_cuda_pytorch:
-	$(call test_nvidia,cuda,$(CLI_CUDA_PYTORCH_REQS),cli and cuda and pytorch)
-
-test_cli_rocm_pytorch:
-	$(call test_amdgpu,rocm,$(CLI_ROCM_PYTORCH_REQS),cli and cuda and pytorch and peft and not bnb and not gptq)
-
-test_cli_cuda_onnxruntime:
-	$(call test_nvidia,cuda,$(CLI_CUDA_ONNXRUNTIME_REQS),cli and cuda and onnxruntime)
-
-test_cli_rocm_onnxruntime:
-	$(call test_amdgpu,rocm,$(CLI_ROCM_ONNXRUNTIME_REQS),cli and rocm and onnxruntime)
-
-test_cli_cpu_pytorch:
-	$(call test_ubuntu,cpu,$(CLI_CPU_PYTORCH_REQS),cli and cpu and pytorch)
-
-test_cli_cpu_openvino:
-	$(call test_ubuntu,cpu,$(CLI_CPU_OPENVINO_REQS),cli and cpu and openvino)
-
-test_cli_cpu_onnxruntime:
-	$(call test_ubuntu,cpu,$(CLI_CPU_ONNXRUNTIME_REQS),cli and cpu and onnxruntime)
-
-test_cli_cpu_neural_compressor:
-	$(call test_ubuntu,cpu,$(CLI_CPU_NEURAL_COMPRESSOR_REQS),cli and cpu and neural-compressor)

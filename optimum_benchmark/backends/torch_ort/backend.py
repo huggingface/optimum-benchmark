@@ -49,6 +49,8 @@ class TorchORTBackend(Backend[TorchORTConfig]):
 
     def create_no_weights_model(self) -> None:
         self.no_weights_model = os.path.join(self.tmpdir.name, "no_weights_model")
+        LOGGER.info("\t+ Creating no weights model directory")
+        os.makedirs(self.no_weights_model, exist_ok=True)
         LOGGER.info("\t+ Creating no weights model state dict")
         state_dict = torch.nn.Linear(1, 1).state_dict()
         LOGGER.info("\t+ Saving no weights model safetensors")

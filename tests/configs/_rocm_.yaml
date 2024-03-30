@@ -1,3 +1,0 @@
-backend:
-  device: cuda
-  provider: ROCMExecutionProvider

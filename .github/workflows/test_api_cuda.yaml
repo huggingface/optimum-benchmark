@@ -12,41 +12,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build_image_and_run_api_cuda_tests:
-    strategy:
-      fail-fast: false
-      matrix:
-        image:
-          [
-            { torch_cuda: cu118, torch_pre_release: 0, cuda_version: 11.8.0 },
-            { torch_cuda: cu121, torch_pre_release: 1, cuda_version: 12.1.1 },
-          ]
-
-    runs-on: [multi-gpu, nvidia-gpu, 4-a10, ci]
+  run_api_cuda_tests:
+    runs-on: [single-gpu, nvidia-gpu, a10, ci]
 
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Build image
-        run: docker build
-          --file docker/cuda.dockerfile
-          --build-arg USER_ID=$(id -u)
-          --build-arg GROUP_ID=$(id -g)
-          --build-arg TORCH_CUDA=${{ matrix.image.torch_cuda }}
-          --build-arg CUDA_VERSION=${{ matrix.image.cuda_version }}
-          --tag opt-bench-cuda:${{ matrix.image.cuda_version }}
-          .
+      - name: Pull image
+        run: docker pull pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime
 
       - name: Run tests
-        run: docker run
-          --rm
-          --gpus all
-          --shm-size 64G
-          --env USE_CUDA="1"
-          --env PROCESS_SPECIFIC_VRAM="0"
-          --volume $(pwd):/workspace/optimum-benchmark
-          --workdir /workspace/optimum-benchmark
-          --entrypoint /bin/bash
-          opt-bench-cuda:${{ matrix.image.cuda_version }}
-          -c "pip install -e .[testing,timm,diffusers] && pytest -k 'api and cuda' -x"
+        uses: addnab/docker-run-action@v3
+        with:
+          image: pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime
+          options: |
+            --rm 
+            --gpus all 
+            --shm-size 64G 
+            --env USE_CUDA="1" 
+            --env PROCESS_SPECIFIC_VRAM="0" 
+            --volume ${{ github.workspace }}:/workspace
+            --workdir /workspace
+          run: |
+            pip install -e .[testing,timm,diffusers]
+            pytest -s -x -k "api and cuda"

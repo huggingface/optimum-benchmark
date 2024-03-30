@@ -29,4 +29,4 @@ jobs:
           pip install -e .[testing,timm,diffusers]
 
       - name: Run tests
-        run: pytest -k "api and cpu"
+        run: pytest -s -k "api and cpu"
