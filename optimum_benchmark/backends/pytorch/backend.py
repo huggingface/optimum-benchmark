@@ -99,6 +99,10 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         # Torch compile
         if self.config.torch_compile:
+            if self.config.device == "cuda" and torch.cuda.get_device_capability(0)[0] >= 8:
+                LOGGER.info("\t+ Setting float32_matmul_precision to high")
+                torch.set_float32_matmul_precision("high")
+
             if self.config.library == "diffusers":
                 LOGGER.info("\t+ Using torch.compile to compile unet and vae")
                 self.pretrained_model.unet = torch.compile(
