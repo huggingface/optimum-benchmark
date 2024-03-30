@@ -8,3 +8,7 @@ defaults:
   - _self_ # hydra 1.1 compatibility
 
 experiment_name: cpu_training_pytorch_gpt_sweep
+
+benchmark:
+  training_arguments:
+    use_cpu: true
