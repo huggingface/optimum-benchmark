@@ -74,11 +74,6 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
                 training_arguments=self.config.training_arguments,
             )
 
-        if self.config.memory:
-            self.report.overall.memory = memory_tracker.get_max_memory()
-            self.report.warmup.memory = memory_tracker.get_max_memory()
-            self.report.train.memory = memory_tracker.get_max_memory()
-
         if self.config.latency:
             self.report.overall.latency = latency_callback.get_latency()
             self.report.overall.throughput = Throughput.from_latency(
@@ -92,6 +87,11 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
             self.report.train.throughput = Throughput.from_latency(
                 self.report.train.latency, volume=self.train_volume, unit=TRAIN_THROUGHPUT_UNIT
             )
+
+        if self.config.memory:
+            self.report.overall.memory = memory_tracker.get_max_memory()
+            self.report.warmup.memory = memory_tracker.get_max_memory()
+            self.report.train.memory = memory_tracker.get_max_memory()
 
         if self.config.energy:
             # can only get overall energy consumption
