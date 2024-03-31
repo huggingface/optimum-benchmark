@@ -6,6 +6,6 @@ defaults:
   - _text_decoders_ # inherits from text decoders config
   - _no_weights_ # inherits from no weights config
   - _self_ # hydra 1.1 compatibility
-  - override backend: onnxruntime
+  - override backend: pytorch
 
 experiment_name: cuda_inference_pytorch_text_decoders_no_weights
