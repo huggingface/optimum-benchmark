@@ -1,6 +1,8 @@
 defaults:
-  - launcher: process
   - experiment # inheriting experiment schema
+  - backend: pytorch # default backend
+  - launcher: process # default launcher
+  - benchmark: inference # default benchmark
   - override hydra/hydra_logging: colorlog # colored logging
   - override hydra/job_logging: colorlog # colored logging
 

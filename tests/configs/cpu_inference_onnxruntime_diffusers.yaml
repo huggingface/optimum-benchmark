@@ -1,10 +1,10 @@
 defaults:
-  - backend: onnxruntime
   # order of inheritance, last one overrides previous ones
   - _base_ # inherits from base config
   - _cpu_ # inherits from cpu config
   - _inference_ # inherits from inference config
   - _diffusers_ # inherits from diffusers config
   - _self_ # hydra 1.1 compatibility
+  - override backend: onnxruntime
 
 experiment_name: cpu_inference_onnxruntime_diffusers

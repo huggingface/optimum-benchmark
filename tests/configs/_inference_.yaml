@@ -1,5 +1,5 @@
 defaults:
-  - benchmark: inference
+  - override benchmark: inference
 
 benchmark:
   memory: true

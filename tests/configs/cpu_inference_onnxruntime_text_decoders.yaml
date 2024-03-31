@@ -1,5 +1,4 @@
 defaults:
-  - backend: onnxruntime
   # order of inheritance, last one overrides previous ones
   - _base_ # inherits from base config
   - _cpu_ # inherits from cpu config
@@ -7,5 +6,6 @@ defaults:
   - _text_decoders_ # inherits from text decoders config
   - _no_weights_ # inherits from no weights config
   - _self_ # hydra 1.1 compatibility
+  - override backend: onnxruntime
 
 experiment_name: cpu_inference_onnxruntime_text_decoders
