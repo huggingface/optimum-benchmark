@@ -1,8 +1,8 @@
 defaults:
-  - backend: py-txi
-  - launcher: inline # default launcher
-  - benchmark: inference # default benchmark
   - experiment # inheriting experiment schema
+  - benchmark: inference
+  - launcher: inline
+  - backend: py-txi
   - _self_ # for hydra 1.1 compatibility
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
@@ -11,7 +11,6 @@ experiment_name: tei_bert
 
 backend:
   device: cpu
-  pooling: cls
   model: bert-base-uncased
 
 benchmark:
@@ -24,9 +23,6 @@ hydra:
   run:
     # where to store run results
     dir: runs/${experiment_name}
-  sweep:
-    # where to store sweep results
-    dir: sweeps/${experiment_name}
   job:
     # change working directory to the run directory
     chdir: true

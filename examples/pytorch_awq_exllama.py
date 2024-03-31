@@ -4,8 +4,9 @@ from optimum_benchmark.experiment import ExperimentConfig, launch
 from optimum_benchmark.launchers.process.config import ProcessConfig
 from optimum_benchmark.logging_utils import setup_logging
 
+setup_logging(level="INFO")
+
 if __name__ == "__main__":
-    setup_logging(level="INFO")
     launcher_config = ProcessConfig(device_isolation=False)
     benchmark_config = InferenceConfig(
         memory=True,
