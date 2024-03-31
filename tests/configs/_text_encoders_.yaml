@@ -1,4 +1,5 @@
 hydra:
+  mode: MULTIRUN
   sweeper:
     params:
       backend.task: fill-mask,text-classification,token-classification,question-answering
