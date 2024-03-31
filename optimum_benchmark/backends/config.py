@@ -61,8 +61,8 @@ class BackendConfig(ABC):
             self.device_ids = self.device.split(":")[1]
             LOGGER.warning(f"`device` and `device_ids` are now set to `{self.device}` and `{self.device_ids}`.")
 
-        if self.device not in ["cuda", "cpu", "mps", "xla"]:
-            raise ValueError(f"`device` must be either `cuda`, `cpu`, `mps` or `xla`, but got {self.device}")
+        if self.device not in ["cuda", "cpu", "mps", "xla", "gpu"]:
+            raise ValueError(f"`device` must be either `cuda`, `cpu`, `mps`, `xla` or `gpu`, but got {self.device}")
 
         if self.device == "cuda":
             if self.device_ids is None:
