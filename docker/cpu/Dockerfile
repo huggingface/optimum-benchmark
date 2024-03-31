@@ -3,8 +3,8 @@ ARG UBUNTU_VERSION=22.04
 FROM ubuntu:${UBUNTU_VERSION}
 
 # Install necessary packages
-ENV PATH="/home/user/.local/bin:${PATH}"
 ENV DEBIAN_FRONTEND noninteractive
+ENV PATH="/home/user/.local/bin:${PATH}"
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     python3.10 \
@@ -22,7 +22,6 @@ ARG USER_ID
 RUN addgroup --gid $GROUP_ID group
 RUN adduser --disabled-password --gecos '' --uid $USER_ID --gid $GROUP_ID user
 
-# Change user
 USER user
 WORKDIR /home/user
 
