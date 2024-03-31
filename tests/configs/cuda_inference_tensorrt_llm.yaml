@@ -1,14 +1,12 @@
 defaults:
-  - backend: tensorrt-llm # default backend
   # order of inheritance, last one overrides previous ones
   - _base_ # inherits from base config
   - _cuda_ # inherits from cuda config
   - _inference_ # inherits from inference config
   - _self_ # hydra 1.1 compatibility
+  - override backend: tensorrt-llm
 
 experiment_name: cuda_inference_tensorrt_llm
 
 backend:
-  device: cuda
-  device_ids: 0
   model: TinyLlama/TinyLlama-1.1B-Chat-v1.0

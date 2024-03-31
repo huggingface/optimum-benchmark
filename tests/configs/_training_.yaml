@@ -1,5 +1,5 @@
 defaults:
-  - benchmark: training
+  - override benchmark: training
 
 benchmark:
   max_steps: 5
