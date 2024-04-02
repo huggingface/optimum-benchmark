@@ -213,10 +213,13 @@ You can create custom and more complex configuration files following these [exam
 - [x] OnnxRuntime backend for CUDAExecutionProvider (`backend=onnxruntime`, `backend.device=cuda`)
 - [x] OnnxRuntime backend for ROCMExecutionProvider (`backend=onnxruntime`, `backend.device=cuda`, `backend.provider=ROCMExecutionProvider`)
 - [x] OnnxRuntime backend for TensorrtExecutionProvider (`backend=onnxruntime`, `backend.device=cuda`, `backend.provider=TensorrtExecutionProvider`)
+- [x] Py-TXI backend for CPU and GPU (`backend=py-txi`, `backend.device=cpu` or `backend.device=cuda`)
 - [x] Intel Neural Compressor backend for CPU (`backend=neural-compressor`, `backend.device=cpu`)
 - [x] TensorRT-LLM backend for CUDA (`backend=tensorrt-llm`, `backend.device=cuda`)
+- [x] Torch-ORT backend for CUDA (`backend=torch-ort`, `backend.device=cuda`)
 - [x] OpenVINO backend for CPU (`backend=openvino`, `backend.device=cpu`)
 - [x] OpenVINO backend for GPU (`backend=openvino`, `backend.device=gpu`)
+
 
 <details>
 <summary>General backend features 🧰</summary>
