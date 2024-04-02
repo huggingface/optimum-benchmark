@@ -52,6 +52,7 @@ jobs:
             --device /dev/kfd
             --device /dev/dri/${{ env.DEVICE }}
             --volume ${{ github.workspace }}:/workspace
+            --env PROCESS_SPECIFIC_VRAM="1"
             --workdir /workspace
           run: |
             pip install -e .[testing,timm,diffusers]

@@ -48,12 +48,12 @@ jobs:
           image: opt-bench-rocm:${{ matrix.image.rocm_version }}
           options: |
             --rm
-            --pid host
             --shm-size 64G
             --env USE_ROCM="1"
             --device /dev/kfd
             --device /dev/dri/${{ env.DEVICE }}
             --volume ${{ github.workspace }}:/workspace
+            --env PROCESS_SPECIFIC_VRAM="1"
             --workdir /workspace
           run: |
             pip install -e .[testing,diffusers,timm,peft,autoawq-rocm,auto-gptq-rocm]
