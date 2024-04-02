@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  cli_cuda_pytorch_single_gpu_tests:
+  run_cli_cuda_pytorch_single_gpu_tests:
     runs-on: [single-gpu, nvidia-gpu, a10, ci]
 
     steps:

@@ -23,8 +23,6 @@ def test_cli_configs(config_name):
         TEST_CONFIG_DIR,
         "--config-name",
         config_name,
-        # to run config sweeps when defined
-        "--multirun",
         # to run the tests faster (comment for debugging)
         "hydra/launcher=joblib",
     ]

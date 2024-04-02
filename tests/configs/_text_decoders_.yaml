@@ -1,4 +1,5 @@
 hydra:
+  mode: MULTIRUN
   sweeper:
     params:
       backend.task: text-generation

@@ -22,12 +22,9 @@ FROM nvidia/cuda:${CUDA_VERSION}-cudnn${CUDNN_VERSION}-devel-ubuntu${UBUNTU_VERS
 ENV DEBIAN_FRONTEND noninteractive
 ENV PATH="/home/user/.local/bin:${PATH}"
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git \
-    python3.10 \
-    python3-pip \
-    python3.10-dev && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
+    build-essential git bash-completion \
+    python3.10 python3-pip python3.10-dev && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 && \
     pip install --no-cache-dir --upgrade pip setuptools wheel 
 

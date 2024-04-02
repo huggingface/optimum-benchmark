@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  run_cli_cuda_torch_ort_single_gpu_tests:
+  build_image_and_run_cli_cuda_torch_ort_single_gpu_tests:
     strategy:
       fail-fast: false
       matrix:

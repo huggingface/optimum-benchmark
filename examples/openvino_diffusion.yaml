@@ -1,16 +1,17 @@
 defaults:
+  - experiment # inheriting experiment schema
+  - benchmark: inference
   - backend: openvino
   - launcher: process
-  - benchmark: inference
-  - experiment # inheriting experiment schema
   - _self_ # for hydra 1.1 compatibility
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
+experiment_name: openvino_diffusion
+
 backend:
   device: cpu
   model: stabilityai/stable-diffusion-2-1
-  experiment_name: openvino_diffusion
   reshape: true
   export: true
   half: true
@@ -24,9 +25,6 @@ hydra:
   run:
     # where to store run results
     dir: runs/${experiment_name}
-  sweep:
-    # where to store sweep results
-    dir: sweeps/${experiment_name}
   job:
     # change working directory to the run directory
     chdir: true
