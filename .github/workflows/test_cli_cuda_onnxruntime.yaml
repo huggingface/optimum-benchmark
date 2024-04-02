@@ -12,32 +12,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build_image_and_run_cli_cuda_onnxruntime_tests:
+  run_cli_cuda_onnxruntime_tests:
     runs-on: [single-gpu, nvidia-gpu, a10, ci]
 
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Build image
-        run: docker build
-          --file docker/cuda.dockerfile
-          --build-arg USER_ID=$(id -u)
-          --build-arg GROUP_ID=$(id -g)
-          --build-arg CUDA_VERSION=11.8.0
-          --build-arg TORCH_CUDA=cu118
-          --tag opt-bench-cuda:11.8.0
-          .
+      - name: Pull image
+        run: docker pull pytorch/pytorch:2.2.2-cuda11.8-cudnn8-runtime
 
       - name: Run tests
-        run: docker run
-          --rm
-          --gpus all
-          --shm-size 64G
-          --env USE_CUDA="1"
-          --env PROCESS_SPECIFIC_VRAM="0"
-          --volume $(pwd):/workspace/optimum-benchmark
-          --workdir /workspace/optimum-benchmark
-          --entrypoint /bin/bash
-          opt-bench-cuda:11.8.0
-          -c "pip install -e .[testing,onnxruntime-gpu,diffusers,timm] && pytest -k 'cli and cuda and onnxruntime' -x"
+        uses: addnab/docker-run-action@v3
+        with:
+          image: pytorch/pytorch:2.2.2-cuda11.8-cudnn8-runtime
+          options: |
+            --rm 
+            --gpus all 
+            --shm-size 64G 
+            --env USE_CUDA="1" 
+            --env PROCESS_SPECIFIC_VRAM="0" 
+            --volume ${{ github.workspace }}:/workspace
+            --workdir /workspace
+          run: |
+            pip install -e .[testing,onnxruntime-gpu,diffusers,timm] &&
+            pytest -x -s -k "cli and cuda and onnxruntime"

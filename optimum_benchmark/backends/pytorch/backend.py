@@ -99,6 +99,10 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         # Torch compile
         if self.config.torch_compile:
+            if self.config.device == "cuda" and torch.cuda.get_device_capability(0)[0] >= 8:
+                LOGGER.info("\t+ Setting float32_matmul_precision to high")
+                torch.set_float32_matmul_precision("high")
+
             if self.config.library == "diffusers":
                 LOGGER.info("\t+ Using torch.compile to compile unet and vae")
                 self.pretrained_model.unet = torch.compile(
@@ -323,13 +327,14 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         inputs = super().prepare_inputs(inputs)
 
         if self.config.library == "diffusers":
-            return {"prompt": inputs["prompt"]}
+            inputs = {"prompt": inputs["prompt"]}
         elif self.config.library == "timm":
-            return {"x": inputs["pixel_values"].to(self.config.device)}
+            inputs = {"x": inputs["pixel_values"].to(self.config.device)}
         else:
             for key, value in inputs.items():
                 inputs[key] = value.to(self.config.device)
-            return inputs
+
+        return inputs
 
     @torch.inference_mode()
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
@@ -369,9 +374,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
     def seed(self):
         super().seed()
         torch.manual_seed(self.config.seed)
-
-        if self.config.device == "cuda":
-            torch.cuda.manual_seed_all(self.config.seed)
+        torch.cuda.manual_seed_all(self.config.seed)
 
     def clean(self) -> None:
         super().clean()

@@ -1,6 +1,0 @@
-hydra:
-  sweeper:
-    params:
-      backend.task: text-generation
-      backend.no_weights: true,false
-      backend.model: hf-internal-testing/tiny-random-gpt2,IlyasMoutawwakil/tiny-random-llama

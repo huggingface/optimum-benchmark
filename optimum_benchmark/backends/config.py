@@ -61,8 +61,8 @@ class BackendConfig(ABC):
             self.device_ids = self.device.split(":")[1]
             LOGGER.warning(f"`device` and `device_ids` are now set to `{self.device}` and `{self.device_ids}`.")
 
-        if self.device not in ["cuda", "cpu", "mps", "xla"]:
-            raise ValueError(f"`device` must be either `cuda`, `cpu`, `mps` or `xla`, but got {self.device}")
+        if self.device not in ["cuda", "cpu", "mps", "xla", "gpu"]:
+            raise ValueError(f"`device` must be either `cuda`, `cpu`, `mps`, `xla` or `gpu`, but got {self.device}")
 
         if self.device == "cuda":
             if self.device_ids is None:
@@ -70,10 +70,11 @@ class BackendConfig(ABC):
                 self.device_ids = get_gpu_device_ids()
                 LOGGER.warning(f"`device_ids` is now set to `{self.device_ids}` based on system configuration.")
 
-            os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-            os.environ["CUDA_VISIBLE_DEVICES"] = self.device_ids
+            if is_nvidia_system():
+                os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+                os.environ["CUDA_VISIBLE_DEVICES"] = self.device_ids
 
-            if is_rocm_system():
+            elif is_rocm_system():
                 # https://rocm.docs.amd.com/en/latest/conceptual/gpu-isolation.html
                 os.environ["GPU_DEVICE_ORDINAL"] = self.device_ids
                 os.environ["HIP_VISIBLE_DEVICES"] = self.device_ids

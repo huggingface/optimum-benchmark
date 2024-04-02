@@ -1,8 +1,8 @@
 defaults:
-  - backend: pytorch
-  - launcher: process
-  - benchmark: inference
   - experiment # inheriting experiment schema
+  - benchmark: inference
+  - launcher: process
+  - backend: pytorch
   - _self_ # for hydra 1.1 compatibility
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
@@ -16,6 +16,7 @@ benchmark:
 backend:
   device: cuda
   device_ids: 0
+  no_weights: true
   model: bert-base-uncased
 
 # hydra/cli specific settings
@@ -23,9 +24,6 @@ hydra:
   run:
     # where to store run results
     dir: runs/${experiment_name}
-  sweep:
-    # where to store sweep results
-    dir: sweeps/${experiment_name}
   job:
     # change working directory to the run directory
     chdir: true

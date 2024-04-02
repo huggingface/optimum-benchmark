@@ -1,0 +1,62 @@
+name: CLI ROCm Pytorch Multi-GPU Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run_cli_rocm_pytorch_multi_gpu_tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [{ rocm_version: 5.7.1, torch_rocm: rocm5.7 }]
+
+    runs-on: [multi-gpu, amd-gpu, mi250, ci]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Target devices
+        run: |
+          echo "DEVICE0: $DEVICE0"
+          echo "DEVICE1: $DEVICE1"
+          echo "DEVICE0=$DEVICE0" >> $GITHUB_ENV
+          echo "DEVICE1=$DEVICE1" >> $GITHUB_ENV
+
+      - name: Build image
+        run: docker build
+          --build-arg USER_ID=$(id -u)
+          --build-arg GROUP_ID=$(id -g)
+          --build-arg TORCH_ROCM=${{ matrix.image.torch_rocm }}
+          --build-arg ROCM_VERSION=${{ matrix.image.rocm_version }}
+          --tag opt-bench-rocm:${{ matrix.image.rocm_version }}
+          docker/rocm
+
+      - name: Run tests
+        uses: addnab/docker-run-action@v3
+        env:
+          DEVICE0: ${{ env.DEVICE0 }}
+          DEVICE1: ${{ env.DEVICE1 }}
+        with:
+          image: opt-bench-rocm:${{ matrix.image.rocm_version }}
+          options: |
+            --rm
+            --pid host
+            --shm-size 64G
+            --env USE_ROCM="1"
+            --device /dev/kfd
+            --device /dev/dri/${{ env.DEVICE0 }}
+            --device /dev/dri/${{ env.DEVICE1 }}
+            --volume ${{ github.workspace }}:/workspace
+            --workdir /workspace
+          run: |
+            pip install -e .[testing,diffusers,timm,deepspeed,peft,autoawq-rocm,auto-gptq-rocm]
+            pytest -x -s -k 'cli and cuda and pytorch and (dp or ddp or device_map or deepspeed)'

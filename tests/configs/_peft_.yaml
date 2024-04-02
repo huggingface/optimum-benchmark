@@ -1,2 +1,8 @@
 backend:
   peft_type: LORA
+
+hydra:
+  mode: MULTIRUN
+  sweeper:
+    params:
+      backend.model: openai-community/gpt2,google-bert/bert-base-uncased

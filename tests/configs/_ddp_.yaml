@@ -6,3 +6,4 @@ launcher:
 
 backend:
   device_ids: 0,1
+  model: openai-community/gpt2

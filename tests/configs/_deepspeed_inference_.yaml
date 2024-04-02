@@ -1,0 +1,17 @@
+defaults:
+  - override launcher: torchrun
+
+launcher:
+  nproc_per_node: 2
+
+backend:
+  device_ids: 0,1
+  model: google-bert/bert-base-uncased
+  deepspeed_inference: true
+  deepspeed_inference_config:
+    tensor_parallel:
+      tp_size: 2
+
+benchmark:
+  input_shapes:
+    batch_size: 2

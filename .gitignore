@@ -168,7 +168,6 @@ data/
 version.txt
 
 .engine/
-actions-runner-duplicate/
-actions-runner/
 experiments/
 amdsmi/
+amd-*
