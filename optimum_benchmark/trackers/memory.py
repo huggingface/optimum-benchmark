@@ -6,8 +6,17 @@ from multiprocessing import Pipe, Process
 from multiprocessing.connection import Connection
 from typing import List, Literal, Optional
 
-from ..import_utils import is_amdsmi_available, is_pynvml_available, is_torch_available, is_torch_distributed_available
-from ..system_utils import get_gpu_device_ids, get_rocm_version, is_nvidia_system, is_rocm_system
+from ..import_utils import (
+    is_amdsmi_available,
+    is_pynvml_available,
+    is_pyrsmi_available,
+    is_torch_available,
+    is_torch_distributed_available,
+)
+from ..system_utils import get_gpu_device_ids, is_nvidia_system, is_rocm_system
+
+if is_rocm_system() and is_pyrsmi_available():
+    from pyrsmi import rocml
 
 if is_torch_distributed_available():
     import torch.distributed
@@ -263,15 +272,21 @@ def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connectio
         pynvml.nvmlShutdown()
 
     elif is_rocm_system():
-        if not is_amdsmi_available():
+        if not is_amdsmi_available() and not is_pyrsmi_available():
             raise ValueError(
-                "The library amdsmi is required to run memory benchmark on AMD GPUs, but is not installed. "
-                "Please install the official and AMD maintained amdsmi library from https://github.com/ROCm/amdsmi."
+                "Either the library AMD SMI or PyRSMI is required to run memory benchmark on AMD GPUs, but neither is installed. "
+                "Please install the official and AMD maintained AMD SMI library from https://github.com/ROCm/amdsmi "
+                "or PyRSMI library from https://github.com/ROCm/pyrsmi."
             )
-        amdsmi.amdsmi_init()
-        rocm_version = get_rocm_version()
 
-        if rocm_version >= "5.7":
+        if PROCESS_SPECIFIC_VRAM:
+            if not is_amdsmi_available():
+                raise ValueError(
+                    "The library AMD SMI is required to run process-specific memory benchmark on AMD GPUs, but is not installed. "
+                    "Please install the official and AMD maintained AMD SMI library from https://github.com/ROCm/amdsmi."
+                )
+
+            amdsmi.amdsmi_init()
             devices_handles = amdsmi.amdsmi_get_processor_handles()
             while not stop:
                 used_memory = 0
@@ -298,34 +313,29 @@ def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connectio
                 max_used_memory = max(max_used_memory, used_memory)
                 stop = connection.poll(interval)
 
+            amdsmi.amdsmi_shut_down()
+
         else:
-            devices_handles = amdsmi.amdsmi_get_device_handles()
+            if not is_pyrsmi_available():
+                raise ValueError(
+                    "The library PyRSMI is required to run global-device memory benchmark on AMD GPUs, but is not installed. "
+                    "Please install the official and AMD maintained PyRSMI library from https://github.com/ROCm/pyrsmi."
+                )
+
+            rocml.smi_initialize()
             while not stop:
                 used_memory = 0
-                monitored_pids = [monitored_pid] + [child.pid for child in monitored_process.children(recursive=True)]
-
                 for device_id in device_ids:
-                    device_handle = devices_handles[device_id]
                     try:
-                        processes_handles = amdsmi.amdsmi_get_process_list(device_handle)
+                        used_memory += rocml.smi_get_device_memory_used(device_id)
                     except Exception as e:
-                        LOGGER.warning(f"Could not get process list for device {device_id}: {e}")
-                        continue
-
-                    for process_handle in processes_handles:
-                        try:
-                            gpu_process_info = amdsmi.amdsmi_get_process_info(device_handle, process_handle)
-                        except Exception as e:
-                            LOGGER.warning(f"Could not get process info for process {process_handle}: {e}")
-                            continue
-
-                        if gpu_process_info["pid"] in monitored_pids:
-                            used_memory += gpu_process_info["memory_usage"]["vram_mem"]
+                        LOGGER.warning(f"Could not get memory usage for device {device_id}: {e}")
 
                 max_used_memory = max(max_used_memory, used_memory)
                 stop = connection.poll(interval)
 
-        amdsmi.amdsmi_shut_down()
+            rocml.smi_shutdown()
+
     else:
         raise ValueError("Only NVIDIA and AMD ROCm GPUs are supported for CUDA memory tracking.")
 

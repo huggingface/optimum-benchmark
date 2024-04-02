@@ -11,6 +11,7 @@ from ..task_utils import infer_library_from_model_name_or_path, infer_task_from_
 
 LOGGER = getLogger("backend")
 
+# backends share the same hub kwargs
 HUB_KWARGS = {
     "revision": "main",
     "force_download": False,
@@ -76,8 +77,7 @@ class BackendConfig(ABC):
 
             elif is_rocm_system():
                 # https://rocm.docs.amd.com/en/latest/conceptual/gpu-isolation.html
-                os.environ["GPU_DEVICE_ORDINAL"] = self.device_ids
-                os.environ["HIP_VISIBLE_DEVICES"] = self.device_ids
+                # ROCR_VISIBLE_DEVICES is better than HIP_VISIBLE_DEVICES/CUDA_VISIBLE_DEVICES
                 os.environ["ROCR_VISIBLE_DEVICES"] = self.device_ids
 
         if self.library not in ["transformers", "diffusers", "timm"]:

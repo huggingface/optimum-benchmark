@@ -8,7 +8,7 @@ from typing import Dict, Set
 
 from ..import_utils import is_amdsmi_available, is_psutil_available, is_pynvml_available
 from ..logging_utils import setup_logging
-from ..system_utils import get_rocm_version, is_nvidia_system, is_rocm_system
+from ..system_utils import is_nvidia_system, is_rocm_system
 
 if is_psutil_available():
     import psutil
@@ -22,7 +22,7 @@ if is_amdsmi_available():
 LOGGER = getLogger("isolation")
 
 
-def get_nvidia_devices_pids() -> Dict[int, list]:
+def get_nvidia_devices_pids(device_ids) -> Dict[int, list]:
     if not is_pynvml_available():
         raise ValueError(
             "The library pynvml is required to get the pids running on NVIDIA GPUs, but is not installed. "
@@ -51,65 +51,39 @@ def get_nvidia_devices_pids() -> Dict[int, list]:
 def get_amd_devices_pids() -> Dict[int, list]:
     if not is_amdsmi_available():
         raise ValueError(
-            "The library amdsmi is required get the pids running on AMD GPUs, but is not installed. "
+            "The library amdsmi is required to get the pids running on AMD GPUs, but is not installed. "
             "Please install the official and AMD maintained amdsmi library from https://github.com/ROCm/amdsmi."
         )
 
     devices_pids: Dict[int, list] = {}
-    rocm_version = get_rocm_version()
-    devices_ids = [int(device_id) for device_id in os.environ["CUDA_VISIBLE_DEVICES"].split(",")]
+    devices_ids = [int(device_id) for device_id in os.environ["ROCR_VISIBLE_DEVICES"].split(",")]
 
     amdsmi.amdsmi_init()
 
-    if rocm_version >= "5.7":
-        # starting from rocm 5.7, the api seems to have changed names
-        devices_handles = amdsmi.amdsmi_get_processor_handles()
-        for device_id in devices_ids:
-            device_handle = devices_handles[device_id]
+    # starting from rocm 5.7, the api seems to have changed names
+    processor_handles = amdsmi.amdsmi_get_processor_handles()
+    for device_id in devices_ids:
+        processor_handle = processor_handles[device_id]
+        try:
+            # these functions fail a lot for no apparent reason
+            processes_handles = amdsmi.amdsmi_get_gpu_process_list(processor_handle)
+        except Exception:
+            continue
+
+        for process_handle in processes_handles:
             try:
                 # these functions fail a lot for no apparent reason
-                processes_handles = amdsmi.amdsmi_get_gpu_process_list(device_handle)
+                info = amdsmi.amdsmi_get_gpu_process_info(processor_handle, process_handle)
             except Exception:
                 continue
 
-            for process_handle in processes_handles:
-                try:
-                    # these functions fail a lot for no apparent reason
-                    info = amdsmi.amdsmi_get_gpu_process_info(device_handle, process_handle)
-                except Exception:
-                    continue
-
-                if info["memory_usage"]["vram_mem"] == 4096:
-                    continue
-
-                if device_id not in devices_pids:
-                    devices_pids[device_id] = []
-
-                devices_pids[device_id].append(info["pid"])
-    else:
-        devices_handles = amdsmi.amdsmi_get_device_handles()
-        for device_id in devices_ids:
-            device_handle = devices_handles[device_id]
-            try:
-                # these functions might fail for no apparent reason
-                processes_handles = amdsmi.amdsmi_get_process_list(device_handle)
-            except Exception:
+            if info["memory_usage"]["vram_mem"] == 4096:
                 continue
 
-            for process_handle in processes_handles:
-                try:
-                    # these functions might fail for no apparent reason
-                    info = amdsmi.amdsmi_get_process_info(device_handle, process_handle)
-                except Exception:
-                    continue
+            if device_id not in devices_pids:
+                devices_pids[device_id] = []
 
-                if info["memory_usage"]["vram_mem"] == 4096:
-                    continue
-
-                if device_id not in devices_pids:
-                    devices_pids[device_id] = []
-
-                devices_pids[device_id].append(info["pid"])
+            devices_pids[device_id].append(info["pid"])
 
     amdsmi.amdsmi_shut_down()
 
@@ -188,11 +162,13 @@ def device_isolation(enabled: bool):
 
     isolation_process = Process(target=assert_system_devices_isolation, kwargs={"main_pid": os.getpid()}, daemon=True)
     isolation_process.start()
+
     LOGGER.info(f"\t+ Launched device(s) isolation process {isolation_process.pid}.")
 
     yield
 
     LOGGER.info("\t+ Closing device(s) isolation process...")
+
     isolation_process.kill()
     isolation_process.join()
     isolation_process.close()

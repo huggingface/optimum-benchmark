@@ -11,10 +11,7 @@ if is_torch_distributed_available():
     import torch.distributed
 
 if is_codecarbon_available():
-    from codecarbon import (
-        EmissionsTracker,  # type: ignore
-        OfflineEmissionsTracker,
-    )
+    from codecarbon import EmissionsTracker, OfflineEmissionsTracker
 
 LOGGER = getLogger("energy")
 
@@ -54,6 +51,7 @@ class Energy:
 
     def __sub__(self, other: "Energy") -> "Energy":
         """Enables subtraction of two Energy instances using the '-' operator."""
+
         if self.unit != other.unit:
             raise ValueError("Energy units must match to perform subtraction")
 

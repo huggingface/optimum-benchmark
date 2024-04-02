@@ -38,7 +38,7 @@ class ProcessLauncher(Launcher[ProcessConfig]):
                 join=False,
                 nprocs=1,
             )
-            LOGGER.info(f"\t+ Launched worker process(es) with PID(s): {process_context.pids()}")
+            LOGGER.info(f"\t+ Launched benchmark in isolated process {process_context.pids()[0]}.")
             while not process_context.join():
                 pass
 
