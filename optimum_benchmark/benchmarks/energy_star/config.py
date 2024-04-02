@@ -7,6 +7,8 @@ from ..config import BenchmarkConfig
 
 LOGGER = getLogger("energy_star")
 
+INPUT_SHAPES = {"batch_size": 1}
+
 
 @dataclass
 class EnergyStarConfig(BenchmarkConfig):
@@ -31,7 +33,6 @@ class EnergyStarConfig(BenchmarkConfig):
     )
 
     # benchmark options
-    duration: int = field(default=10, metadata={"help": "Minimum duration of the benchmark in seconds"})
     warmup_runs: int = field(default=10, metadata={"help": "Number of warmup runs to perform before benchmarking"})
 
     # tracking options
@@ -50,6 +51,8 @@ class EnergyStarConfig(BenchmarkConfig):
 
     def __post_init__(self):
         super().__post_init__()
+
+        self.input_shapes = {**INPUT_SHAPES, **self.input_shapes}
 
         if (
             "max_new_tokens" in self.generate_kwargs
