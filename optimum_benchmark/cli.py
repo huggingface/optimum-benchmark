@@ -14,6 +14,7 @@ from .backends.py_txi.config import PyTXIConfig
 from .backends.pytorch.config import PyTorchConfig
 from .backends.tensorrt_llm.config import TRTLLMConfig
 from .backends.torch_ort.config import TorchORTConfig
+from .benchmarks.energy_star.config import EnergyStarConfig
 from .benchmarks.inference.config import InferenceConfig
 from .benchmarks.report import BenchmarkReport
 from .benchmarks.training.config import TrainingConfig
@@ -39,6 +40,7 @@ cs.store(group="backend", name=LLMSwarmConfig.name, node=LLMSwarmConfig)
 # benchmarks configurations
 cs.store(group="benchmark", name=TrainingConfig.name, node=TrainingConfig)
 cs.store(group="benchmark", name=InferenceConfig.name, node=InferenceConfig)
+cs.store(group="benchmark", name=EnergyStarConfig.name, node=EnergyStarConfig)
 # launchers configurations
 cs.store(group="launcher", name=InlineConfig.name, node=InlineConfig)
 cs.store(group="launcher", name=ProcessConfig.name, node=ProcessConfig)
