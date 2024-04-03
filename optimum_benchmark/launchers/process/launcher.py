@@ -1,3 +1,4 @@
+import os
 from logging import getLogger
 from typing import Callable
 
@@ -29,7 +30,7 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         queue = ctx.Queue()
         lock = ctx.Lock()
 
-        with device_isolation(enabled=self.config.device_isolation):
+        with device_isolation(enabled=self.config.device_isolation, isolated_pid=os.getpid()):
             process_context = mp.start_processes(
                 entrypoint,
                 args=(worker, queue, lock, log_level, *worker_args),
