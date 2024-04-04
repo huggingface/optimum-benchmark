@@ -43,11 +43,13 @@ if USE_CUDA:
 
 PYRSMI = "pyrsmi@git+https://github.com/ROCm/pyrsmi.git"
 if USE_ROCM:
+    INSTALL_REQUIRES.append(PYRSMI)
     if not importlib.util.find_spec("amdsmi"):
-        INSTALL_REQUIRES.append(PYRSMI)
-
-if PYRSMI in INSTALL_REQUIRES:
-    print("ROCm GPU detected without amdsmi installed. Using pyrsmi instead but some features may not work.")
+        print(
+            "ROCm GPU detected without amdsmi installed. You won't be able to run process-specific VRAM tracking. "
+            "Please install amdsmi from https://github.com/ROCm/amdsmi to enable this feature, "
+            "or remember to set PROCESS_SPECIFIC_VRAM=0 in your environment to disable it."
+        )
 
 AUTOGPTQ_CUDA = "auto-gptq==0.7.1"
 AUTOGPTQ_ROCM = "auto-gptq@https://huggingface.github.io/autogptq-index/whl/rocm573/auto-gptq/auto_gptq-0.7.1%2Brocm5.7.3-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"

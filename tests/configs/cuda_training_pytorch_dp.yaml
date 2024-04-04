@@ -3,8 +3,9 @@ defaults:
   - _base_ # inherits from base config
   - _cuda_ # inherits from cuda config
   - _training_ # inherits from training config
-  - _dp_ # inherits from data parallel config
+  - _device_isolation_ # inherits from device isolation config
   - _no_weights_ # inherits from no weights config
+  - _dp_ # inherits from data parallel config
   - _self_ # hydra 1.1 compatibility
   - override backend: pytorch
 

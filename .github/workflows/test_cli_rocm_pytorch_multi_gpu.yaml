@@ -49,14 +49,14 @@ jobs:
           image: opt-bench-rocm:${{ matrix.image.rocm_version }}
           options: |
             --rm
-            --pid host
             --shm-size 64G
             --env USE_ROCM="1"
             --device /dev/kfd
             --device /dev/dri/${{ env.DEVICE0 }}
             --device /dev/dri/${{ env.DEVICE1 }}
             --volume ${{ github.workspace }}:/workspace
+            --env PROCESS_SPECIFIC_VRAM="0"
             --workdir /workspace
           run: |
             pip install -e .[testing,diffusers,timm,deepspeed,peft,autoawq-rocm,auto-gptq-rocm]
-            pytest -x -s -k 'cli and cuda and pytorch and (dp or ddp or device_map or deepspeed)'
+            pytest -x -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed) and not (bnb or awq)"

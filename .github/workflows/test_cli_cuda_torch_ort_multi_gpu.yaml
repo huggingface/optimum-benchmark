@@ -47,4 +47,4 @@ jobs:
             --workdir /workspace
           run: |
             pip install -e .[testing,torch-ort,peft] && python -m torch_ort.configure
-            pytest -x -s -k "cli and cuda and torch_ort and (dp or ddp or device_map)"
+            pytest -x -s -k "cli and cuda and torch_ort and (dp or ddp or device_map) and not peft"

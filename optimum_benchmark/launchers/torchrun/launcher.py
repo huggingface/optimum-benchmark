@@ -52,13 +52,14 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
         queue = ctx.Queue()
         lock = ctx.Lock()
 
-        with device_isolation(enabled=self.config.device_isolation):
-            LOGGER.info(f"\t+ Launching torchrun agent with {self.config.nproc_per_node} workers processes")
+        with device_isolation(enabled=self.config.device_isolation, isolated_pid=os.getpid()):
+            LOGGER.info(f"\t+ Launching torchrun agent with {self.config.nproc_per_node} worker processes")
             launch_agent(
                 entrypoint=entrypoint, args=(worker, queue, lock, log_level, *worker_args), config=launch_config
             )
 
         reports: List[BenchmarkReport] = []
+
         while not queue.empty():
             reports.append(queue.get())
 
@@ -70,6 +71,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
         else:
             raise ValueError("No benchmark report was returned by the workers")
 
+        # Log the final report
         report.log()
 
         return report

@@ -4,6 +4,7 @@ defaults:
   - _cuda_ # inherits from cuda config
   - _inference_ # inherits from inference config
   - _text_encoders_ # inherits from text encoders config
+  - _device_isolation_ # inherits from device isolation config
   - _no_weights_ # inherits from no weights config
   - _self_ # hydra 1.1 compatibility
   - override backend: pytorch

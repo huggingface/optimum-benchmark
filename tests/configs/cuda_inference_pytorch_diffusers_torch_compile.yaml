@@ -3,6 +3,7 @@ defaults:
   - _base_ # inherits from base config
   - _cuda_ # inherits from cpu config
   - _inference_ # inherits from inference config
+  - _device_isolation_ # inherits from device isolation config
   - _torch_compile_ # inherits from  torch compile config
   - _diffusers_ # inherits from diffusers config
   - _self_ # hydra 1.1 compatibility
