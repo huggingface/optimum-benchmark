@@ -143,11 +143,16 @@ def device_isolation(enabled: bool, isolated_pid: int):
         return
 
     if is_nvidia_system():
-        device_ids = os.environ.get("CUDA_VISIBLE_DEVICES", "")
+        device_ids = os.environ.get("CUDA_VISIBLE_DEVICES", None)
     elif is_rocm_system():
-        device_ids = os.environ.get("ROCR_VISIBLE_DEVICES", "")
+        device_ids = os.environ.get("ROCR_VISIBLE_DEVICES", None)
     else:
         raise ValueError("Device isolation is only supported on NVIDIA and AMD GPUs")
+
+    if device_ids is None:
+        raise ValueError(
+            "Device isolation requires CUDA_VISIBLE_DEVICES or ROCR_VISIBLE_DEVICES to be set but none were found."
+        )
 
     isolation_process = Process(
         target=assert_system_devices_isolation,

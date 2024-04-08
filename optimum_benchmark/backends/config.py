@@ -26,9 +26,8 @@ class BackendConfig(ABC):
     version: str
     _target_: str
 
-    model: Optional[str] = None
-
     task: Optional[str] = None
+    model: Optional[str] = None
     library: Optional[str] = None
 
     device: Optional[str] = None
@@ -74,11 +73,11 @@ class BackendConfig(ABC):
             if is_nvidia_system():
                 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
                 os.environ["CUDA_VISIBLE_DEVICES"] = self.device_ids
-
             elif is_rocm_system():
                 # https://rocm.docs.amd.com/en/latest/conceptual/gpu-isolation.html
-                # ROCR_VISIBLE_DEVICES is better than HIP_VISIBLE_DEVICES/CUDA_VISIBLE_DEVICES
                 os.environ["ROCR_VISIBLE_DEVICES"] = self.device_ids
+            else:
+                raise RuntimeError("CUDA device is only supported on systems with NVIDIA or ROCm drivers.")
 
         if self.library not in ["transformers", "diffusers", "timm"]:
             raise ValueError(f"`library` must be either `transformers`, `diffusers` or `timm`, but got {self.library}")

@@ -9,6 +9,9 @@ defaults:
 
 experiment_name: pytorch_bert
 
+launcher:
+  device_isolation: true
+
 benchmark:
   latency: true
   memory: true

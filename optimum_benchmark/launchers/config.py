@@ -16,8 +16,12 @@ class LauncherConfig(ABC):
     device_isolation: bool = False
 
     def __post_init__(self):
-        if not is_nvidia_system() and not is_rocm_system():
-            raise ValueError("Device isolation is not supported on NVIDIA or ROCm systems")
+        if self.device_isolation and not is_nvidia_system() and not is_rocm_system():
+            raise ValueError(
+                "Device isolation is only supported on NVIDIA and ROCm systems. "
+                "Please set `device_isolation` to False or make sure your drivers "
+                "are correctly installed by running `nvidia-smi` or `rocm-smi`."
+            )
 
 
 LauncherConfigT = TypeVar("LauncherConfigT", bound=LauncherConfig)
