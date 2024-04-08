@@ -154,21 +154,20 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
     ## Energy tracking
     def run_text_generation_energy_tracking(self, backend: Backend[BackendConfigT]):
         LOGGER.info("\t+ Running energy tracking")
-
         with self.energy_tracker.track():
             for inputs in tqdm(self.dataloader):
                 inputs = backend.prepare_inputs(inputs)
                 _ = backend.forward(inputs, self.config.forward_kwargs)
-
         self.report.prefill.energy = self.energy_tracker.get_energy()
         self.report.prefill.efficiency = Efficiency.from_energy(
             self.report.prefill.energy, self.text_generation_prefill_volume, unit=TEXT_GENERATION_EFFICIENCY_UNIT
         )
         self.energy_tracker.reset()
-
         with self.energy_tracker.track():
             for inputs in tqdm(self.dataloader):
-                _ = backend.generate(inputs, self.config.generate_kwargs)
+                print(type(inputs))
+                output_tensor = backend.generate(inputs, self.config.generate_kwargs)
+                print(type(output_tensor))
 
         self.report.decode.energy = self.energy_tracker.get_energy()
         self.report.decode.efficiency = Efficiency.from_energy(
