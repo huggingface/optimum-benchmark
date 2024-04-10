@@ -39,17 +39,6 @@ LIBRARIES_TASKS_MODELS = [
 ]
 
 
-def delete_all_tensors():
-    for obj in gc.get_objects():
-        if torch.is_tensor(obj):
-            del obj
-
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-
-    gc.collect()
-
-
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 @pytest.mark.parametrize("benchmark", ["training", "inference"])
 @pytest.mark.parametrize("library,task,model", LIBRARIES_TASKS_MODELS)
@@ -164,6 +153,7 @@ def test_api_latency_tracker(device, backend):
 
     assert latency.mean < 1.1
     assert latency.mean > 0.9
+    assert len(latency.values) == 2
 
 
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
@@ -177,7 +167,6 @@ def test_api_memory_tracker(device, backend):
         time.sleep(1)
         pass
 
-    # the process consumes memory that we can't control
     initial_memory = tracker.get_max_memory()
     initial_memory.log()
 
