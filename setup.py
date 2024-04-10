@@ -19,6 +19,7 @@ INSTALL_REQUIRES = [
     # CPU Memory
     "psutil",
     # Reporting
+    "typing-extensions",
     "flatten_dict",
     "pandas",
 ]

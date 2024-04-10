@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Dict, Type
 from .backends.config import BackendConfig
 from .benchmarks.config import BenchmarkConfig
 from .benchmarks.report import BenchmarkReport
-from .hub_utils import PushToHubMixin
+from .hub_utils import PushToHubMixin, classproperty
 from .import_utils import get_hf_libs_info
 from .launchers.config import LauncherConfig
 from .system_utils import get_system_info
@@ -40,8 +40,8 @@ class ExperimentConfig(PushToHubMixin):
     # ENVIRONMENT CONFIGURATION
     environment: Dict = field(default_factory=lambda: {**get_system_info(), **get_hf_libs_info()})
 
-    @property
-    def default_file_name(self) -> str:
+    @classproperty
+    def default_filename(cls) -> str:
         return "experiment_config.json"
 
 

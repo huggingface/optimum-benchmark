@@ -1,7 +1,9 @@
 import gc
+import os
 import time
 from tempfile import TemporaryDirectory
 
+import pandas as pd
 import pytest
 import torch
 
@@ -17,6 +19,7 @@ from optimum_benchmark.backends.transformers_utils import (
     get_transformers_pretrained_processor,
 )
 from optimum_benchmark.benchmarks.inference.config import INPUT_SHAPES, InferenceConfig
+from optimum_benchmark.benchmarks.report import BenchmarkReport
 from optimum_benchmark.benchmarks.training.config import DATASET_SHAPES, TrainingConfig
 from optimum_benchmark.experiment import ExperimentConfig, launch
 from optimum_benchmark.generators.dataset_generator import DatasetGenerator
@@ -27,6 +30,7 @@ from optimum_benchmark.system_utils import get_gpu_device_ids
 from optimum_benchmark.trackers.latency import LatencyTracker
 from optimum_benchmark.trackers.memory import MemoryTracker
 
+REPO_ID = "IlyasMoutawwakil/optimum-benchmarks-ci"
 LIBRARIES_TASKS_MODELS = [
     ("timm", "image-classification", "timm/resnet50.a1_in1k"),
     ("transformers", "text-generation", "openai-community/gpt2"),
@@ -74,8 +78,28 @@ def test_api_launch(device, benchmark, library, task, model):
 
     launcher_config = ProcessConfig(device_isolation=False)
 
+    experiment_name = f"{library}_{task}_{model}_{device}"
     experiment_config = ExperimentConfig(
-        experiment_name=f"{library}_{task}_{model}_{device}",
+        experiment_name=experiment_name,
+        benchmark=benchmark_config,
+        launcher=launcher_config,
+        backend=backend_config,
+    )
+
+    benchmark_report = launch(experiment_config)
+
+    experiment_config.push_to_hub(repo_id=REPO_ID, path_in_repo=experiment_name)
+    benchmark_report.push_to_hub(repo_id=REPO_ID, path_in_repo=experiment_name)
+
+
+def test_api_push_to_hub_mixin():
+    experiment_name = "test_api_push_to_hub_mixin"
+    launcher_config = ProcessConfig(device_isolation=False)
+    backend_config = PyTorchConfig(model="google-bert/bert-base-uncased", device="cpu")
+    benchmark_config = InferenceConfig(memory=True, latency=True, duration=1, warmup_runs=1)
+
+    experiment_config = ExperimentConfig(
+        experiment_name=experiment_name,
         benchmark=benchmark_config,
         launcher=launcher_config,
         backend=backend_config,
@@ -84,11 +108,44 @@ def test_api_launch(device, benchmark, library, task, model):
     benchmark_report = launch(experiment_config)
 
     with TemporaryDirectory() as tempdir:
-        benchmark_report.to_dict()
-        benchmark_report.to_flat_dict()
-        benchmark_report.to_dataframe()
-        benchmark_report.to_csv(f"{tempdir}/benchmark_report.csv")
-        benchmark_report.to_json(f"{tempdir}/benchmark_report.json")
+        # dict/json api
+        experiment_config.save_json(f"{tempdir}/experiment_config.json")
+        assert os.path.exists(f"{tempdir}/experiment_config.json")
+        from_json_experiment_config: ExperimentConfig = ExperimentConfig.from_json(f"{tempdir}/experiment_config.json")
+        assert from_json_experiment_config.to_dict() == experiment_config.to_dict()
+
+        # dataframe/csv api
+        experiment_config.save_csv(f"{tempdir}/experiment_config.csv")
+        assert os.path.exists(f"{tempdir}/experiment_config.csv")
+        from_csv_experiment_config: ExperimentConfig = ExperimentConfig.from_csv(f"{tempdir}/experiment_config.csv")
+        pd.testing.assert_frame_equal(from_csv_experiment_config.to_dataframe(), experiment_config.to_dataframe())
+
+    # Hugging Face Hub API
+    experiment_config.push_to_hub(repo_id=REPO_ID, subfolder=experiment_name)
+    from_hub_experiment_config: ExperimentConfig = ExperimentConfig.from_pretrained(
+        repo_id=REPO_ID, subfolder=experiment_name
+    )
+    assert from_hub_experiment_config.to_dict() == experiment_config.to_dict()
+
+    with TemporaryDirectory() as tempdir:
+        # dict/json api
+        benchmark_report.save_json(f"{tempdir}/benchmark_report.json")
+        assert os.path.exists(f"{tempdir}/benchmark_report.json")
+        from_json_benchmark_report: BenchmarkReport = BenchmarkReport.from_json(f"{tempdir}/benchmark_report.json")
+        assert from_json_benchmark_report.to_dict() == benchmark_report.to_dict()
+
+        # dataframe/csv api
+        benchmark_report.save_csv(f"{tempdir}/benchmark_report.csv")
+        assert os.path.exists(f"{tempdir}/benchmark_report.csv")
+        from_csv_benchmark_report: BenchmarkReport = BenchmarkReport.from_csv(f"{tempdir}/benchmark_report.csv")
+        pd.testing.assert_frame_equal(from_csv_benchmark_report.to_dataframe(), benchmark_report.to_dataframe())
+
+    # Hugging Face Hub API
+    benchmark_report.push_to_hub(repo_id=REPO_ID, subfolder=experiment_name)
+    from_hub_benchmark_report: BenchmarkReport = BenchmarkReport.from_pretrained(
+        repo_id=REPO_ID, subfolder=experiment_name
+    )
+    assert from_hub_benchmark_report.to_dict() == benchmark_report.to_dict()
 
 
 @pytest.mark.parametrize("library,task,model", LIBRARIES_TASKS_MODELS)
