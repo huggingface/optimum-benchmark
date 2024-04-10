@@ -164,8 +164,8 @@ def image_preprocessing(
     if config.num_samples != -1:
         dataset = dataset.select(range(config.num_samples))
         # Add a pad token if the tokenizer doesn't have one
-    if getattr(tokenizer, "pad_token", None) is None:
-        tokenizer.pad_token = tokenizer.eos_token
+    if getattr(processor.tokenizer, "pad_token", None) is None:
+        processor.tokenizer.pad_token = processor.tokenizer.eos_token
 
     def preprocess_function(examples):
         return processor(
