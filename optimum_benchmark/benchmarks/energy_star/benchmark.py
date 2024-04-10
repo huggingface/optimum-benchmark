@@ -11,13 +11,6 @@ from ...import_utils import is_torch_distributed_available
 from ...task_utils import IMAGE_DIFFUSION_TASKS, TEXT_GENERATION_TASKS
 from ...trackers.energy import Efficiency, EnergyTracker
 from ..base import Benchmark
-from ..inference.benchmark import (
-    IMAGE_DIFFUSION_EFFICIENCY_UNIT,
-    IMAGE_DIFFUSION_KWARGS,
-    INFERENCE_EFFICIENCY_UNIT,
-    TEXT_GENERATION_EFFICIENCY_UNIT,
-    TEXT_GENERATION_KWARGS,
-)
 from ..report import BenchmarkMeasurements, BenchmarkReport
 from .config import EnergyStarConfig
 from .preprocessing_utils import preprocess
@@ -27,7 +20,31 @@ if is_torch_distributed_available():
 
 LOGGER = getLogger("energy_star")
 
-PER_TOKEN_BACKENDS = ["pytorch"]
+# let's define energy star's specific kwargs and units instead of using inference benchmark's
+
+PER_TOKEN_BACKENDS = ["pytorch", "onnxruntime", "openvino", "neural-compressor"]
+
+IMAGE_DIFFUSION_KWARGS = {"num_inference_steps": 30, "num_images_per_prompt": 1}
+TEXT_GENERATION_KWARGS = {
+    "num_return_sequences": 1,
+    "max_new_tokens": 100,
+    "min_new_tokens": 100,
+    "temperature": 1.0,
+    "do_sample": False,
+    "use_cache": True,
+    "num_beams": 1,
+    # "pad_token_id": 0, # not needed for energy star
+}
+
+
+TEXT_GENERATION_THROUGHPUT_UNIT = "tokens/s"
+IMAGE_DIFFUSION_THROUGHPUT_UNIT = "images/s"
+INFERENCE_THROUGHPUT_UNIT = "samples/s"
+
+TEXT_GENERATION_EFFICIENCY_UNIT = "tokens/kWh"
+IMAGE_DIFFUSION_EFFICIENCY_UNIT = "images/kWh"
+INFERENCE_EFFICIENCY_UNIT = "samples/kWh"
+
 
 
 @dataclass
@@ -127,11 +144,16 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
         warmup_inputs = backend.prepare_inputs(next(iter(self.dataloader)))
         for _ in range(self.config.warmup_runs):
             if backend.config.task in TEXT_GENERATION_TASKS:
-                _ = backend.generate(warmup_inputs, {"max_new_tokens": 2, "min_new_tokens": 2})
+                warmup_kwargs = self.config.generate_kwargs.copy()
+                warmup_kwargs.update({"max_new_tokens": 1, "min_new_tokens": 1})
+                _ = backend.generate(warmup_inputs, warmup_kwargs)
             elif backend.config.task in IMAGE_DIFFUSION_TASKS:
-                _ = backend.call(warmup_inputs, {"num_inference_steps": 2})
+                warmup_kwargs = self.config.call_kwargs.copy()
+                warmup_kwargs.update({"num_inference_steps": 2})
+                _ = backend.call(warmup_inputs, warmup_kwargs)
             else:
-                _ = backend.forward(warmup_inputs, self.config.forward_kwargs)
+                warmup_kwargs = self.config.forward_kwargs.copy()
+                _ = backend.forward(warmup_inputs, warmup_kwargs)
 
         if backend.config.task in TEXT_GENERATION_TASKS:
             LOGGER.info("\t+ Additional warmup for Text Generation")
@@ -154,20 +176,24 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
     ## Energy tracking
     def run_text_generation_energy_tracking(self, backend: Backend[BackendConfigT]):
         LOGGER.info("\t+ Running energy tracking")
+        
+        prefill_kwargs = self.config.generate_kwargs.copy()
+        prefill_kwargs.update({"max_new_tokens": 1, "min_new_tokens": 1})
+        
         with self.energy_tracker.track():
             for inputs in tqdm(self.dataloader):
                 inputs = backend.prepare_inputs(inputs)
-                _ = backend.forward(inputs, self.config.forward_kwargs)
+                _ = backend.prefill(inputs, prefill_kwargs)
+                
         self.report.prefill.energy = self.energy_tracker.get_energy()
         self.report.prefill.efficiency = Efficiency.from_energy(
             self.report.prefill.energy, self.text_generation_prefill_volume, unit=TEXT_GENERATION_EFFICIENCY_UNIT
         )
+        
         self.energy_tracker.reset()
         with self.energy_tracker.track():
             for inputs in tqdm(self.dataloader):
-                print(type(inputs))
-                output_tensor = backend.generate(inputs, self.config.generate_kwargs)
-                print(type(output_tensor))
+                _ = backend.generate(inputs, self.config.generate_kwargs)
 
         self.report.decode.energy = self.energy_tracker.get_energy()
         self.report.decode.efficiency = Efficiency.from_energy(
@@ -181,7 +207,7 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
         with self.energy_tracker.track():
             for inputs in tqdm(self.dataloader):
                 inputs = backend.prepare_inputs(inputs)
-                _ = backend.call(self.call_inputs, self.config.call_kwargs)
+                _ = backend.call(inputs, self.config.call_kwargs)
 
         self.report.call.energy = self.energy_tracker.get_energy()
         self.report.call.efficiency = Efficiency.from_energy(

@@ -96,6 +96,12 @@ class Backend(Generic[BackendConfigT], ABC):
         """
         raise NotImplementedError("Backend must implement forward method")
 
+    def prefill(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
+        """
+        This method is used to perform the prefill pass of the model.
+        """
+        raise NotImplementedError("Backend must implement prefill method")
+
     def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         """
         This method is used to perform the generation pass of the model.
