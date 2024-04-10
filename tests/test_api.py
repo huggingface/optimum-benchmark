@@ -24,7 +24,7 @@ from optimum_benchmark.generators.input_generator import InputGenerator
 from optimum_benchmark.import_utils import get_git_revision_hash
 from optimum_benchmark.launchers.process.config import ProcessConfig
 from optimum_benchmark.system_utils import get_gpu_device_ids
-from optimum_benchmark.trackers.latency import LatencyTracker
+from optimum_benchmark.trackers.latency import LatencyTracker, Timer
 from optimum_benchmark.trackers.memory import MemoryTracker
 
 LIBRARIES_TASKS_MODELS = [
@@ -133,38 +133,40 @@ def test_api_dataset_generator(library, task, model):
     generated_dataset = generator()
 
     assert len(generated_dataset) > 0, "No dataset was generated"
-
-    len(generated_dataset) == DATASET_SHAPES["dataset_size"]
+    assert len(generated_dataset) == DATASET_SHAPES["dataset_size"]
 
 
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 @pytest.mark.parametrize("backend", ["pytorch", "other"])
 def test_api_latency_tracker(device, backend):
-    expected_latency = 1
     tracker = LatencyTracker(device=device, backend=backend)
+    timer = Timer()
 
-    for _ in range(2):
+    timer.reset()
+    tracker.reset()
+    while timer.elapsed() < 2:
         with tracker.track():
             time.sleep(1)
 
     latency = tracker.get_latency()
     latency.log()
 
-    assert latency.mean < expected_latency * 1.1
-    assert latency.mean > expected_latency * 0.9
+    assert latency.mean < 1.1
+    assert latency.mean > 0.9
+    assert len(latency.values) == 2
 
 
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 @pytest.mark.parametrize("backend", ["pytorch", "other"])
 def test_api_memory_tracker(device, backend):
-    tracker = MemoryTracker(device=device, backend=backend)
+    device_ids = get_gpu_device_ids() if device == "cuda" else None
+    tracker = MemoryTracker(device=device, backend=backend, device_ids=device_ids)
 
     tracker.reset()
     with tracker.track():
         time.sleep(1)
         pass
 
-    # the process consumes memory that we can't control
     initial_memory = tracker.get_max_memory()
     initial_memory.log()
 
@@ -182,9 +184,8 @@ def test_api_memory_tracker(device, backend):
         if backend == "pytorch":
             measured_memory = final_memory.max_allocated - initial_memory.max_allocated
         else:
-            if torch.version.hip is not None:
-                return  # skip vram measurement for ROCm
-            measured_memory = final_memory.max_vram - initial_memory.max_vram
+            # because user namespace is not visible to pynvml/amdsmi, we use global vram
+            measured_memory = final_memory.max_global_vram - initial_memory.max_global_vram
     else:
         measured_memory = final_memory.max_ram - initial_memory.max_ram
 
