@@ -97,8 +97,9 @@ class MemoryTracker:
         self.device = device
         self.backend = backend
         self.device_ids = device_ids
-        self.distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
         self.monitored_pid = int(os.environ.get("BENCHMARK_PID", os.getpid()))
+        self.track_cuda_pytorch_memory = self.device == "cuda" and self.backend == "pytorch"
+        self.distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
         LOGGER.info("\t+ Tracking RAM memory")
 
@@ -106,29 +107,34 @@ class MemoryTracker:
             self.device_ids = list(map(int, self.device_ids.split(",")))
             LOGGER.info(f"\t+ Tracking VRAM memory of CUDA devices: {self.device_ids}")
 
-            if self.backend == "pytorch":
-                self.num_pytorch_devices = torch.cuda.device_count()
-                if len(self.device_ids) != self.num_pytorch_devices:
-                    raise ValueError(
-                        "The number of target CUDA devices and Pytorch's CUDA device count do not match. "
-                        f"Got {len(self.device_ids)} and {self.num_pytorch_devices} respectively."
-                    )
-                LOGGER.info(
-                    f"\t+ Tracking Allocated/Reserved memory of {self.num_pytorch_devices} Pytorch CUDA devices"
+        if self.track_cuda_pytorch_memory:
+            self.num_pytorch_devices = torch.cuda.device_count()
+            if len(self.device_ids) != self.num_pytorch_devices:
+                raise ValueError(
+                    "The number of target CUDA devices and Pytorch's CUDA device count do not match. "
+                    f"Got {len(self.device_ids)} and {self.num_pytorch_devices} respectively."
                 )
+            LOGGER.info(f"\t+ Tracking Allocated/Reserved memory of {self.num_pytorch_devices} Pytorch CUDA devices")
 
-        self.max_ram_memory = 0
-        self.max_global_vram_memory = 0
-        self.max_process_vram_memory = 0
-        self.max_reserved_memory = 0
-        self.max_allocated_memory = 0
+        self.max_ram_memory = None
+        self.max_global_vram_memory = None
+        self.max_process_vram_memory = None
+        self.max_reserved_memory = None
+        self.max_allocated_memory = None
+
+    def reset(self):
+        self.max_ram_memory = None
+        self.max_global_vram_memory = None
+        self.max_process_vram_memory = None
+        self.max_reserved_memory = None
+        self.max_allocated_memory = None
 
     @contextmanager
     def track(self):
         if self.distributed:
             torch.distributed.barrier()
 
-        if self.device == "cuda" and self.backend == "pytorch":
+        if self.track_cuda_pytorch_memory:
             yield from self._cuda_pytorch_memory()
         elif self.device == "cuda":
             yield from self._cuda_memory()
@@ -172,7 +178,6 @@ class MemoryTracker:
         parent_connection.send(True)
         self.max_global_vram_memory = parent_connection.recv()
         self.max_process_vram_memory = parent_connection.recv()
-        parent_connection.close()
 
     def _cpu_memory(self):
         child_connection, parent_connection = Pipe()
@@ -186,10 +191,9 @@ class MemoryTracker:
 
         parent_connection.send(True)
         self.max_ram_memory = parent_connection.recv()
-        parent_connection.close()
 
     def get_max_memory(self):
-        if self.device == "cuda" and self.backend == "pytorch":
+        if self.track_cuda_pytorch_memory:
             return Memory(
                 unit=MEMORY_UNIT,
                 max_ram=self.max_ram_memory,
