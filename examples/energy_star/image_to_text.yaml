@@ -13,8 +13,8 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model:
-  task: image-captioning
+  model: Salesforce/blip-image-captioning-base
+  task: image-to-text
 
 launcher:
   device_isolation: true

@@ -1,15 +1,14 @@
 from datasets import Dataset
 from transformers import PreTrainedTokenizer
-
-from ...backends.transformers_utils import PretrainedProcessor
+from ...backends.transformers_utils import PretrainedProcessor, get_transformers_pretrained_processor
 from .config import EnergyStarConfig
-
 
 def preprocess(dataset: Dataset, task: str, config: EnergyStarConfig, preprocessor: PretrainedProcessor) -> Dataset:
     task_to_preprocessing = {"feature-extraction": feature_extraction_preprocessing,
                              "text-classification" : text_classification_preprocessing,
                              "question-answering" : question_answering_preprocessing,
-                             "text-generation": text_generation_preprocessing}
+                             "text-generation": text_generation_preprocessing,
+                             "image-to-text": image_preprocessing}
 
     return task_to_preprocessing[task](dataset, config, preprocessor)
 
@@ -149,6 +148,35 @@ def text_generation_preprocessing(
         batched=True,
         remove_columns=dataset.features,
         desc="Running tokenizer on dataset",
+    ).with_format(
+        "torch"
+    )  # We don't want a torch dependency here but for now the only backend used for this benchmark is PyTorch
+
+    return dataset
+
+def image_preprocessing(
+    dataset: Dataset, config: EnergyStarConfig, processor: PretrainedProcessor
+) -> Dataset:
+    # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
+    if config.input_shapes["batch_size"] == 1:
+        dataset = dataset.filter(lambda example: example[config.image_column_name] != "")
+
+    if config.num_samples != -1:
+        dataset = dataset.select(range(config.num_samples))
+        # Add a pad token if the tokenizer doesn't have one
+    if getattr(tokenizer, "pad_token", None) is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    def preprocess_function(examples):
+        return processor(
+            examples[config.image_column_name]
+            )
+
+    dataset = dataset.map(
+        preprocess_function,
+        batched=True,
+        remove_columns=dataset.features,
+        desc="Running processor on dataset",
     ).with_format(
         "torch"
     )  # We don't want a torch dependency here but for now the only backend used for this benchmark is PyTorch
