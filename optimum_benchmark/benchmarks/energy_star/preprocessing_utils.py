@@ -1,14 +1,18 @@
 from datasets import Dataset
 from transformers import PreTrainedTokenizer
-from ...backends.transformers_utils import PretrainedProcessor, get_transformers_pretrained_processor
+
+from ...backends.transformers_utils import PretrainedProcessor
 from .config import EnergyStarConfig
 
+
 def preprocess(dataset: Dataset, task: str, config: EnergyStarConfig, preprocessor: PretrainedProcessor) -> Dataset:
-    task_to_preprocessing = {"feature-extraction": feature_extraction_preprocessing,
-                             "text-classification" : text_classification_preprocessing,
-                             "question-answering" : question_answering_preprocessing,
-                             "text-generation": text_generation_preprocessing,
-                             "image-to-text": image_preprocessing}
+    task_to_preprocessing = {
+        "feature-extraction": feature_extraction_preprocessing,
+        "text-classification": text_classification_preprocessing,
+        "question-answering": question_answering_preprocessing,
+        "text-generation": text_generation_preprocessing,
+        "image-to-text": image_preprocessing,
+    }
 
     return task_to_preprocessing[task](dataset, config, preprocessor)
 
@@ -48,6 +52,7 @@ def feature_extraction_preprocessing(
 
     return dataset
 
+
 def text_classification_preprocessing(
     dataset: Dataset, config: EnergyStarConfig, tokenizer: PreTrainedTokenizer
 ) -> Dataset:
@@ -83,12 +88,15 @@ def text_classification_preprocessing(
 
     return dataset
 
+
 def question_answering_preprocessing(
     dataset: Dataset, config: EnergyStarConfig, tokenizer: PreTrainedTokenizer
 ) -> Dataset:
     # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
     if config.input_shapes["batch_size"] == 1:
-        dataset = dataset.filter(lambda example: (example[config.question_column_name],example[config.context_column_name]) != "" )
+        dataset = dataset.filter(
+            lambda example: (example[config.question_column_name], example[config.context_column_name]) != ""
+        )
 
     if config.num_samples != -1:
         dataset = dataset.select(range(config.num_samples))
@@ -118,6 +126,7 @@ def question_answering_preprocessing(
     )  # We don't want a torch dependency here but for now the only backend used for this benchmark is PyTorch
 
     return dataset
+
 
 def text_generation_preprocessing(
     dataset: Dataset, config: EnergyStarConfig, tokenizer: PreTrainedTokenizer
@@ -154,9 +163,8 @@ def text_generation_preprocessing(
 
     return dataset
 
-def image_preprocessing(
-    dataset: Dataset, config: EnergyStarConfig, processor: PretrainedProcessor
-) -> Dataset:
+
+def image_preprocessing(dataset: Dataset, config: EnergyStarConfig, processor: PretrainedProcessor) -> Dataset:
     # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
     if config.input_shapes["batch_size"] == 1:
         dataset = dataset.filter(lambda example: example[config.image_column_name] != "")
@@ -168,9 +176,7 @@ def image_preprocessing(
         processor.tokenizer.pad_token = processor.tokenizer.eos_token
 
     def preprocess_function(examples):
-        return processor(
-            examples[config.image_column_name]
-            )
+        return processor(examples[config.image_column_name])
 
     dataset = dataset.map(
         preprocess_function,

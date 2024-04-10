@@ -39,11 +39,15 @@ class EnergyStarConfig(BenchmarkConfig):
     question_column_name: str = field(default="question", metadata={"help": "Name of the column with the question."})
     context_column_name: str = field(default="context", metadata={"help": "Name of the column with the context."})
 
-    #sts dataset options
-    sentence1_column_name: str = field(default="sentence1", metadata={"help": "Name of the column with the first sentence."})
-    sentence2_column_name: str = field(default="sentence2", metadata={"help": "Name of the column with the second sentence."})
+    # sts dataset options
+    sentence1_column_name: str = field(
+        default="sentence1", metadata={"help": "Name of the column with the first sentence."}
+    )
+    sentence2_column_name: str = field(
+        default="sentence2", metadata={"help": "Name of the column with the second sentence."}
+    )
 
-    #asr dataset options
+    # asr dataset options
     audio_column_name: str = field(default="audio", metadata={"help": "Name of the column with the audio."})
 
     # benchmark options
