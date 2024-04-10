@@ -98,6 +98,8 @@ _CUSTOM_CLASSES = {
 IMAGE_DIFFUSION_TASKS = ["stable-diffusion", "stable-diffusion-xl"]
 
 TEXT_GENERATION_TASKS = ["image-to-text", "text-generation", "text2text-generation", "automatic-speech-recognition"]
+TEXT_GENERATION_WITHOUT_INPUT_TEXT_TASKS = ["automatic-speech-recognition", "image-to-text"]
+TEXT_GENERATION_WITH_INPUT_TEXT_TASKS = ["text-generation", "text2text-generation"]
 
 TEXT_EMBEDDING_TASKS = ["feature-extraction", "fill-mask"]
 

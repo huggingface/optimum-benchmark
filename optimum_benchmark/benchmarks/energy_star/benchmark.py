@@ -12,6 +12,7 @@ from ...task_utils import IMAGE_DIFFUSION_TASKS, TEXT_GENERATION_TASKS
 from ...trackers.energy import Efficiency, EnergyTracker
 from ..base import Benchmark
 from ..report import BenchmarkMeasurements, BenchmarkReport
+from ..utils import compute_call_volume, compute_decode_volume, compute_forward_volume, compute_prefill_volume
 from .config import EnergyStarConfig
 from .preprocessing_utils import preprocess
 
@@ -127,7 +128,7 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
 
         self.report.preprocess.energy = self.preprocessing_energy
         self.report.preprocess.efficiency = Efficiency.from_energy(
-            self.report.preprocess.energy, self.inference_volume, unit=INFERENCE_EFFICIENCY_UNIT
+            self.report.preprocess.energy, self.config.num_samples, unit=INFERENCE_EFFICIENCY_UNIT
         )
 
         LOGGER.info("\t+ Preparing backend for Inference")
@@ -185,8 +186,14 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
                 _ = backend.prefill(inputs, prefill_kwargs)
 
         self.report.prefill.energy = self.energy_tracker.get_energy()
+
+        prefill_tokens_volume = compute_prefill_volume(
+            backend.config.task, self.config.input_shapes, self.config.generate_kwargs
+        )
         self.report.prefill.efficiency = Efficiency.from_energy(
-            self.report.prefill.energy, self.text_generation_prefill_volume, unit=TEXT_GENERATION_EFFICIENCY_UNIT
+            self.report.prefill.energy,
+            volume=prefill_tokens_volume * self.config.num_samples,
+            unit=TEXT_GENERATION_EFFICIENCY_UNIT,
         )
 
         self.energy_tracker.reset()
@@ -195,8 +202,12 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
                 _ = backend.generate(inputs, self.config.generate_kwargs)
 
         self.report.decode.energy = self.energy_tracker.get_energy()
+
+        decode_tokens_volume = compute_decode_volume(self.config.input_shapes, self.config.generate_kwargs)
         self.report.decode.efficiency = Efficiency.from_energy(
-            self.report.decode.energy, self.text_generation_decode_volume, unit=TEXT_GENERATION_EFFICIENCY_UNIT
+            self.report.decode.energy,
+            volume=decode_tokens_volume * self.config.num_samples,
+            unit=TEXT_GENERATION_EFFICIENCY_UNIT,
         )
         self.energy_tracker.reset()
 
@@ -209,8 +220,12 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
                 _ = backend.call(inputs, self.config.call_kwargs)
 
         self.report.call.energy = self.energy_tracker.get_energy()
+
+        image_diffusion_volume = compute_call_volume(self.config.input_shapes, self.config.call_kwargs)
         self.report.call.efficiency = Efficiency.from_energy(
-            self.report.call.energy, self.image_diffusion_volume, unit=IMAGE_DIFFUSION_EFFICIENCY_UNIT
+            self.report.call.energy,
+            volume=image_diffusion_volume * self.config.num_samples,
+            unit=IMAGE_DIFFUSION_EFFICIENCY_UNIT,
         )
         self.energy_tracker.reset()
 
@@ -223,34 +238,15 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
                 _ = backend.forward(inputs, self.config.forward_kwargs)
 
         self.report.forward.energy = self.energy_tracker.get_energy()
+
+        inference_samples_volume = compute_forward_volume(self.config.input_shapes)
         self.report.forward.efficiency = Efficiency.from_energy(
-            self.report.forward.energy, self.inference_volume, unit=INFERENCE_EFFICIENCY_UNIT
+            self.report.forward.energy,
+            volume=inference_samples_volume * self.config.num_samples,
+            unit=INFERENCE_EFFICIENCY_UNIT,
         )
+
         self.energy_tracker.reset()
-
-    @property
-    def inference_volume(self) -> int:  # in samples
-        return self.config.num_samples
-
-    @property
-    def image_diffusion_volume(self) -> int:  # in images
-        return self.config.input_shapes["batch_size"] * self.config.call_kwargs["num_images_per_prompt"]
-
-    @property
-    def text_generation_prefill_volume(self) -> int:  # in tokens
-        return self.config.input_shapes["batch_size"] * self.config.input_shapes["sequence_length"]
-
-    @property
-    def text_generation_per_token_volume(self) -> int:  # in tokens
-        return self.config.input_shapes["batch_size"] * self.config.generate_kwargs["num_return_sequences"]
-
-    @property
-    def text_generation_decode_volume(self) -> int:  # in tokens
-        return (
-            self.config.input_shapes["batch_size"]
-            * self.config.generate_kwargs["num_return_sequences"]
-            * (self.config.generate_kwargs["max_new_tokens"] - 1)  # 1 token is generated during prefill
-        )
 
     def get_report(self) -> InferenceReport:
         return self.report
