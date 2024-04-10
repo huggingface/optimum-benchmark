@@ -204,6 +204,7 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
 
         with self.energy_tracker.track():
             for inputs in tqdm(self.dataloader):
+                inputs = backend.prepare_inputs(inputs)
                 _ = backend.generate(inputs, self.config.generate_kwargs)
 
         self.report.decode.energy = self.energy_tracker.get_energy()
