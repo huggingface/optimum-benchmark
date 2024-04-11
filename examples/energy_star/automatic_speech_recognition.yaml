@@ -13,7 +13,7 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model:
+  model: openai/whisper-large-v3
   task: automatic-speech-recognition
 
 launcher:
@@ -28,10 +28,6 @@ benchmark:
 
 # hydra/cli specific settings
 hydra:
-   mode: MULTIRUN
-  sweeper:
-    params:
-      backend.model:
   run:
     # where to store run results
     dir: runs/${experiment_name}

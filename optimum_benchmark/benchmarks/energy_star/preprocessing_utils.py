@@ -12,6 +12,7 @@ def preprocess(dataset: Dataset, task: str, config: EnergyStarConfig, preprocess
         "question-answering": question_answering_preprocessing,
         "text-generation": text_generation_preprocessing,
         "image-to-text": image_preprocessing,
+        'automatic-speech-recognition': audio_preprocessing
     }
 
     return task_to_preprocessing[task](dataset, config, preprocessor)
@@ -177,6 +178,32 @@ def image_preprocessing(dataset: Dataset, config: EnergyStarConfig, processor: P
 
     def preprocess_function(examples):
         return processor(examples[config.image_column_name])
+
+    dataset = dataset.map(
+        preprocess_function,
+        batched=True,
+        remove_columns=dataset.features,
+        desc="Running processor on dataset",
+    ).with_format(
+        "torch"
+    )  # We don't want a torch dependency here but for now the only backend used for this benchmark is PyTorch
+
+    return dataset
+
+def audio_preprocessing(dataset: Dataset, config: EnergyStarConfig, processor: PretrainedProcessor) -> Dataset:
+    # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
+    if config.input_shapes["batch_size"] == 1:
+        dataset = dataset.filter(lambda example: example[config.audio_column_name] != "")
+
+    if config.num_samples != -1:
+        dataset = dataset.select(range(config.num_samples))
+        # Add a pad token if the tokenizer doesn't have one
+    if getattr(processor.tokenizer, "pad_token", None) is None:
+        processor.tokenizer.pad_token = processor.tokenizer.eos_token
+
+    def preprocess_function(examples):
+        audio = examples[config.audio_column_name]
+        return processor(audio["array"], sampling_rate=audio["sampling_rate"])
 
     dataset = dataset.map(
         preprocess_function,
