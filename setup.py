@@ -41,14 +41,13 @@ USE_ROCM = (os.environ.get("USE_ROCM", None) == "1") or IS_ROCM_SYSTEM
 if USE_CUDA:
     INSTALL_REQUIRES.append("nvidia-ml-py")
 
-PYRSMI = "pyrsmi@git+https://github.com/ROCm/pyrsmi.git"
 if USE_ROCM:
+    PYRSMI = "pyrsmi@git+https://github.com/ROCm/pyrsmi.git"
     INSTALL_REQUIRES.append(PYRSMI)
     if not importlib.util.find_spec("amdsmi"):
         print(
             "ROCm GPU detected without amdsmi installed. You won't be able to run process-specific VRAM tracking. "
-            "Please install amdsmi from https://github.com/ROCm/amdsmi to enable this feature, "
-            "or remember to set PROCESS_SPECIFIC_VRAM=0 in your environment to disable it."
+            "Please install amdsmi from https://github.com/ROCm/amdsmi to enable this feature."
         )
 
 AUTOGPTQ_CUDA = "auto-gptq==0.7.1"
