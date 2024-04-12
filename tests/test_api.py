@@ -42,6 +42,7 @@ LIBRARIES_TASKS_MODELS = [
     ("diffusers", "stable-diffusion", "CompVis/stable-diffusion-v1-4"),
 ]
 
+
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 @pytest.mark.parametrize("benchmark", ["training", "inference"])
 @pytest.mark.parametrize("library,task,model", LIBRARIES_TASKS_MODELS)
