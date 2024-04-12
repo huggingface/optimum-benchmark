@@ -152,13 +152,12 @@ def text_generation_preprocessing(
         tokenizer.pad_token = tokenizer.eos_token
 
     padding = False if config.input_shapes["batch_size"] == 1 else True
-
     def tokenize_function(examples):
         return tokenizer(
             examples[config.text_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length=config.max_length if config.max_length != -1 else None,
+            max_length=tokenizer.model_max_length - config.generate_kwargs['max_new_tokens'],
         )
 
     dataset = dataset.map(
