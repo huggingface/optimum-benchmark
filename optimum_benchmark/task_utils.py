@@ -58,10 +58,13 @@ _TRANSFORMERS_TASKS_TO_TF_MODEL_LOADERS = {
     "zero-shot-object-detection": "TFAutoModelForZeroShotObjectDetection",
 }
 _DIFFUSERS_TASKS_TO_MODEL_LOADERS = {
+    "text-to-image": "AutoPipelineForText2Image",
+    "image-to-image": "AutoPipelineForImage2Image",
     "stable-diffusion": "AutoPipelineForText2Image",
     "stable-diffusion-xl": "AutoPipelineForText2Image",
 }
 _TIMM_TASKS_TO_MODEL_LOADERS = {"image-classification": "create_model"}
+
 _LIBRARY_TO_TF_TASKS_TO_MODEL_LOADER_MAP = {"transformers": _TRANSFORMERS_TASKS_TO_TF_MODEL_LOADERS}
 _LIBRARY_TO_TASKS_TO_MODEL_LOADER_MAP = {
     "transformers": _TRANSFORMERS_TASKS_TO_MODEL_LOADERS,
@@ -95,7 +98,7 @@ _CUSTOM_CLASSES = {
     ("pt", "vision-encoder-decoder", "document-question-answering"): ("transformers", "VisionEncoderDecoderModel"),
 }
 
-IMAGE_DIFFUSION_TASKS = ["stable-diffusion", "stable-diffusion-xl"]
+IMAGE_DIFFUSION_TASKS = ["text-to-image", "image-to-image", "stable-diffusion", "stable-diffusion-xl"]
 
 TEXT_GENERATION_TASKS = ["image-to-text", "text-generation", "text2text-generation", "automatic-speech-recognition"]
 TEXT_GENERATION_WITHOUT_INPUT_TEXT_TASKS = ["automatic-speech-recognition", "image-to-text"]
