@@ -4,6 +4,9 @@ from transformers import PreTrainedTokenizer
 from ...backends.transformers_utils import PretrainedProcessor
 from .config import EnergyStarConfig
 
+from typing import List
+from PIL.Image import Image
+
 
 def preprocess(dataset: Dataset, task: str, config: EnergyStarConfig, preprocessor: PretrainedProcessor) -> Dataset:
     task_to_preprocessing = {
@@ -11,9 +14,9 @@ def preprocess(dataset: Dataset, task: str, config: EnergyStarConfig, preprocess
         "text-classification": text_classification_preprocessing,
         "question-answering": question_answering_preprocessing,
         "text-generation": text_generation_preprocessing,
-        "image-to-text": image_text_preprocessing,
-        "image-classification": image_preprocessing,
-        'automatic-speech-recognition': audio_preprocessing
+        "image-to-text": image_to_text_preprocessing,
+        "image-classification": image_classification_preprocessing,
+        "automatic-speech-recognition": automatic_speech_recognition_preprocessing,
     }
 
     return task_to_preprocessing[task](dataset, config, preprocessor)
@@ -165,7 +168,10 @@ def text_generation_preprocessing(
 
     return dataset
 
-def image_preprocessing(dataset: Dataset, config: EnergyStarConfig, processor: PretrainedProcessor) -> Dataset:
+
+def image_classification_preprocessing(
+    dataset: Dataset, config: EnergyStarConfig, processor: PretrainedProcessor
+) -> Dataset:
     # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
     if config.input_shapes["batch_size"] == 1:
         dataset = dataset.filter(lambda example: example[config.image_column_name] != "")
@@ -174,22 +180,20 @@ def image_preprocessing(dataset: Dataset, config: EnergyStarConfig, processor: P
         dataset = dataset.select(range(config.num_samples))
         # Add a pad token if the tokenizer doesn't have one
 
-    def preprocess_function(examples):
-        return processor(examples[config.image_column_name].convert('RGB'))
+    def preprocess_function(examples: List[Image]):
+        return processor([image.convert("RGB") for image in examples[config.image_column_name]])
 
     dataset = dataset.map(
         preprocess_function,
-        batched=True,
         remove_columns=dataset.features,
         desc="Running processor on dataset",
-    ).with_format(
-        "torch"
-    )  # We don't want a torch dependency here but for now the only backend used for this benchmark is PyTorch
+        batched=True,
+    ).with_format("torch")
 
     return dataset
 
 
-def image_text_preprocessing(dataset: Dataset, config: EnergyStarConfig, processor: PretrainedProcessor) -> Dataset:
+def image_to_text_preprocessing(dataset: Dataset, config: EnergyStarConfig, processor: PretrainedProcessor) -> Dataset:
     # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
     if config.input_shapes["batch_size"] == 1:
         dataset = dataset.filter(lambda example: example[config.image_column_name] != "")
@@ -214,7 +218,10 @@ def image_text_preprocessing(dataset: Dataset, config: EnergyStarConfig, process
 
     return dataset
 
-def audio_preprocessing(dataset: Dataset, config: EnergyStarConfig, processor: PretrainedProcessor) -> Dataset:
+
+def automatic_speech_recognition_preprocessing(
+    dataset: Dataset, config: EnergyStarConfig, processor: PretrainedProcessor
+) -> Dataset:
     # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
     if config.input_shapes["batch_size"] == 1:
         dataset = dataset.filter(lambda example: example[config.audio_column_name] != "")
