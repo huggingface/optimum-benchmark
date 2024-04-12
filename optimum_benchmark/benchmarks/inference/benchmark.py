@@ -8,7 +8,7 @@ from ...generators.input_generator import InputGenerator
 from ...import_utils import is_torch_distributed_available
 from ...task_utils import IMAGE_DIFFUSION_TASKS, TEXT_GENERATION_TASKS
 from ...trackers.energy import Efficiency, EnergyTracker
-from ...trackers.latency import LatencyLogitsProcessor, LatencyTracker, Throughput
+from ...trackers.latency import LatencyTracker, PerTokenLatencyLogitsProcessor, Throughput, Timer
 from ...trackers.memory import MemoryTracker
 from ..base import Benchmark
 from ..report import BenchmarkMeasurements, BenchmarkReport
@@ -67,7 +67,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
     def __init__(self, config: InferenceConfig) -> None:
         super().__init__(config)
 
-    def run(self, backend: Backend[BackendConfigT][BackendConfigT]) -> None:
+    def run(self, backend: Backend[BackendConfigT]) -> None:
         if is_torch_distributed_available() and torch.distributed.is_initialized():
             LOGGER.info("\t+ Distributing batch size across processes")
             if self.config.input_shapes["batch_size"] % torch.distributed.get_world_size() != 0:
@@ -150,7 +150,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         if self.config.latency:
             if backend.config.task in TEXT_GENERATION_TASKS:
                 if backend.config.name in PER_TOKEN_BACKENDS:
-                    self.run_fine_grained_text_generation_latency_tracking(backend)
+                    self.run_per_token_text_generation_latency_tracking(backend)
                 else:
                     self.run_text_generation_latency_tracking(backend)
             elif backend.config.task in IMAGE_DIFFUSION_TASKS:
@@ -178,8 +178,8 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         self.memory_tracker = MemoryTracker(
             backend=backend.config.name, device=backend.config.device, device_ids=backend.config.device_ids
         )
-        self.memory_tracker.reset()
 
+        self.memory_tracker.reset()
         with self.memory_tracker.track():
             _ = backend.forward(self.forward_inputs, self.config.forward_kwargs)
 
@@ -197,6 +197,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             backend=backend.config.name, device=backend.config.device, device_ids=backend.config.device_ids
         )
 
+        self.memory_tracker.reset()
         with self.memory_tracker.track():
             _ = backend.call(self.call_inputs, self.config.call_kwargs)
 
@@ -208,26 +209,28 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             backend=backend.config.name, device=backend.config.device, device_ids=backend.config.device_ids
         )
 
+        self.memory_tracker.reset()
         with self.memory_tracker.track():
             _ = backend.forward(self.forward_inputs, self.config.forward_kwargs)
 
         self.report.forward.memory = self.memory_tracker.get_max_memory()
 
     ## Latency tracking
-    def run_fine_grained_text_generation_latency_tracking(self, backend: Backend[BackendConfigT]):
+    def run_per_token_text_generation_latency_tracking(self, backend: Backend[BackendConfigT]):
         LOGGER.info("\t+ Running fine-grained Text Generation latency tracking")
-        self.logits_processor = LatencyLogitsProcessor(device=backend.config.device, backend=backend.config.name)
+        logits_processor = PerTokenLatencyLogitsProcessor(device=backend.config.device, backend=backend.config.name)
         self.config.generate_kwargs["logits_processor"] = LogitsProcessorList(
-            [self.logits_processor, *self.config.generate_kwargs.get("logits_processor", [])]
+            [logits_processor, *self.config.generate_kwargs.get("logits_processor", [])]
         )
+        timer = Timer()
 
-        while self.logits_processor.get_elapsed_time() < self.config.duration:
-            with self.logits_processor.track():
+        while timer.elapsed() < self.config.duration:
+            with logits_processor.track():
                 _ = backend.generate(self.generate_inputs, self.config.generate_kwargs)
 
-        self.report.per_token.latency = self.logits_processor.get_per_token_latency()
-        self.report.prefill.latency = self.logits_processor.get_prefill_latency()
-        self.report.decode.latency = self.logits_processor.get_decode_latency()
+        self.report.per_token.latency = logits_processor.get_per_token_latency()
+        self.report.prefill.latency = logits_processor.get_prefill_latency()
+        self.report.decode.latency = logits_processor.get_decode_latency()
 
         self.report.per_token.throughput = Throughput.from_latency(
             self.report.per_token.latency, self.text_generation_per_token_volume, unit=TEXT_GENERATION_THROUGHPUT_UNIT
@@ -241,51 +244,55 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
 
     def run_text_generation_latency_tracking(self, backend: Backend[BackendConfigT]):
         LOGGER.info("\t+ Running Text Generation latency tracking")
-        self.latency_tracker = LatencyTracker(backend=backend.config.name, device=backend.config.device)
+        latency_tracker = LatencyTracker(backend=backend.config.name, device=backend.config.device)
+        timer = Timer()
 
-        while self.latency_tracker.get_elapsed_time() < self.config.duration:
-            with self.latency_tracker.track():
+        while timer.elapsed() < self.config.duration:
+            with latency_tracker.track():
                 _ = backend.forward(self.forward_inputs, self.config.forward_kwargs)
-        forward_latency = self.latency_tracker.get_latency()
 
+        forward_latency = latency_tracker.get_latency()
         self.report.prefill.latency = forward_latency
         self.report.prefill.throughput = Throughput.from_latency(
             self.report.prefill.latency, self.text_generation_prefill_volume, unit=TEXT_GENERATION_THROUGHPUT_UNIT
         )
 
-        self.latency_tracker.reset()
-        while self.latency_tracker.get_elapsed_time() < self.config.duration:
-            with self.latency_tracker.track():
+        timer.reset()
+        latency_tracker.reset()
+        while timer.elapsed() < self.config.duration:
+            with latency_tracker.track():
                 _ = backend.generate(self.generate_inputs, self.config.generate_kwargs)
-        generate_latency = self.latency_tracker.get_latency()
 
+        generate_latency = latency_tracker.get_latency()
         self.report.decode.latency = generate_latency - forward_latency
         self.report.decode.throughput = Throughput.from_latency(
             self.report.decode.latency, self.text_generation_decode_volume, unit=TEXT_GENERATION_THROUGHPUT_UNIT
         )
 
     def run_image_diffusion_latency_tracking(self, backend: Backend[BackendConfigT]):
-        LOGGER.info("\t+ Running latency tracking")
-        self.latency_tracker = LatencyTracker(backend=backend.config.name, device=backend.config.device)
+        LOGGER.info("\t+ Running Image Diffusion latency tracking")
+        latency_tracker = LatencyTracker(backend=backend.config.name, device=backend.config.device)
+        timer = Timer()
 
-        while self.latency_tracker.get_elapsed_time() < self.config.duration:
-            with self.latency_tracker.track():
+        while timer.elapsed() < self.config.duration:
+            with latency_tracker.track():
                 _ = backend.call(self.call_inputs, self.config.call_kwargs)
 
-        self.report.call.latency = self.latency_tracker.get_latency()
+        self.report.call.latency = latency_tracker.get_latency()
         self.report.call.throughput = Throughput.from_latency(
             self.report.call.latency, self.image_diffusion_volume, unit=IMAGE_DIFFUSION_THROUGHPUT_UNIT
         )
 
     def run_latency_inference_tracking(self, backend: Backend[BackendConfigT]):
         LOGGER.info("\t+ Running latency tracking")
-        self.latency_tracker = LatencyTracker(backend=backend.config.name, device=backend.config.device)
+        latency_tracker = LatencyTracker(backend=backend.config.name, device=backend.config.device)
+        timer = Timer()
 
-        while self.latency_tracker.get_elapsed_time() < self.config.duration:
-            with self.latency_tracker.track():
+        while timer.elapsed() < self.config.duration:
+            with latency_tracker.track():
                 _ = backend.forward(self.forward_inputs, self.config.forward_kwargs)
 
-        self.report.forward.latency = self.latency_tracker.get_latency()
+        self.report.forward.latency = latency_tracker.get_latency()
         self.report.forward.throughput = Throughput.from_latency(
             self.report.forward.latency, self.inference_volume, unit=INFERENCE_THROUGHPUT_UNIT
         )
@@ -293,22 +300,22 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
     ## Energy tracking
     def run_text_generation_energy_tracking(self, backend: Backend[BackendConfigT]):
         LOGGER.info("\t+ Running energy tracking")
-        self.energy_tracker = EnergyTracker(device=backend.config.device, device_ids=backend.config.device_ids)
+        energy_tracker = EnergyTracker(device=backend.config.device, device_ids=backend.config.device_ids)
 
-        with self.energy_tracker.track():
+        with energy_tracker.track():
             _ = backend.forward(self.forward_inputs, self.config.forward_kwargs)
-        forward_energy = self.energy_tracker.get_energy()
 
+        forward_energy = energy_tracker.get_energy()
         self.report.prefill.energy = forward_energy
         self.report.prefill.efficiency = Efficiency.from_energy(
             self.report.prefill.energy, self.text_generation_prefill_volume, unit=TEXT_GENERATION_EFFICIENCY_UNIT
         )
 
-        self.energy_tracker.reset()
-        with self.energy_tracker.track():
+        energy_tracker.reset()
+        with energy_tracker.track():
             _ = backend.generate(self.generate_inputs, self.config.generate_kwargs)
-        generate_energy = self.energy_tracker.get_energy()
 
+        generate_energy = energy_tracker.get_energy()
         self.report.decode.energy = generate_energy - forward_energy
         self.report.decode.efficiency = Efficiency.from_energy(
             self.report.decode.energy, self.text_generation_decode_volume, unit=TEXT_GENERATION_EFFICIENCY_UNIT
@@ -316,24 +323,24 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
 
     def run_image_diffusion_energy_tracking(self, backend: Backend[BackendConfigT]):
         LOGGER.info("\t+ Running energy tracking")
-        self.energy_tracker = EnergyTracker(device=backend.config.device, device_ids=backend.config.device_ids)
+        energy_tracker = EnergyTracker(device=backend.config.device, device_ids=backend.config.device_ids)
 
-        with self.energy_tracker.track():
+        with energy_tracker.track():
             _ = backend.call(self.call_inputs, self.config.call_kwargs)
 
-        self.report.call.energy = self.energy_tracker.get_energy()
+        self.report.call.energy = energy_tracker.get_energy()
         self.report.call.efficiency = Efficiency.from_energy(
             self.report.call.energy, self.image_diffusion_volume, unit=IMAGE_DIFFUSION_EFFICIENCY_UNIT
         )
 
     def run_inference_energy_tracking(self, backend: Backend[BackendConfigT]):
         LOGGER.info("\t+ Running energy tracking")
-        self.energy_tracker = EnergyTracker(device=backend.config.device, device_ids=backend.config.device_ids)
+        energy_tracker = EnergyTracker(device=backend.config.device, device_ids=backend.config.device_ids)
 
-        with self.energy_tracker.track():
+        with energy_tracker.track():
             _ = backend.forward(self.forward_inputs, self.config.forward_kwargs)
 
-        self.report.forward.energy = self.energy_tracker.get_energy()
+        self.report.forward.energy = energy_tracker.get_energy()
         self.report.forward.efficiency = Efficiency.from_energy(
             self.report.forward.energy, self.inference_volume, unit=INFERENCE_EFFICIENCY_UNIT
         )

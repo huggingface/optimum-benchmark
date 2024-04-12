@@ -7,7 +7,7 @@ from transformers import default_data_collator
 from ...backends.base import Backend, BackendConfigT
 from ...generators.dataset_generator import DatasetGenerator
 from ...trackers.energy import Efficiency, EnergyTracker
-from ...trackers.latency import LatencyTrainerCallback, Throughput
+from ...trackers.latency import StepLatencyTrainerCallback, Throughput
 from ...trackers.memory import MemoryTracker
 from ..base import Benchmark
 from ..report import BenchmarkMeasurements, BenchmarkReport
@@ -21,9 +21,9 @@ TRAIN_EFFICIENCY_UNIT = "samples/kWh"
 
 @dataclass
 class TrainingReport(BenchmarkReport):
-    overall: BenchmarkMeasurements = BenchmarkMeasurements()
-    warmup: BenchmarkMeasurements = BenchmarkMeasurements()
-    train: BenchmarkMeasurements = BenchmarkMeasurements()
+    overall: BenchmarkMeasurements
+    warmup: BenchmarkMeasurements
+    train: BenchmarkMeasurements
 
 
 class TrainingBenchmark(Benchmark[TrainingConfig]):
@@ -42,12 +42,14 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
         training_dataset = dataset_generator()
 
         LOGGER.info("\t+ Initializing training report")
-        self.report = TrainingReport()
+        self.report = TrainingReport(
+            overall=BenchmarkMeasurements(), warmup=BenchmarkMeasurements(), train=BenchmarkMeasurements()
+        )
 
         training_callbackes = []
         if self.config.latency:
             LOGGER.info("\t+ Adding latency measuring callback")
-            latency_callback = LatencyTrainerCallback(device=backend.config.device, backend=backend.config.name)
+            latency_callback = StepLatencyTrainerCallback(device=backend.config.device, backend=backend.config.name)
             training_callbackes.append(latency_callback)
 
         training_trackers = []

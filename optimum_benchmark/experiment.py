@@ -70,7 +70,13 @@ def launch(experiment_config: ExperimentConfig) -> BenchmarkReport:
     Runs an experiment using specified launcher configuration/logic
     """
 
+    # We keep track of the main benchmark process PID to be able to
+    # track its memory usage in isolated and distributed setups
+    os.environ["BENCHMARK_PID"] = str(os.getpid())
+
     if os.environ.get("BENCHMARK_INTERFACE", "API") == "API":
+        # We launch the experiment in a temporary directory to avoid
+        # polluting the current working directory with temporary files
         LOGGER.info("Launching experiment in a temporary directory.")
         tmpdir = TemporaryDirectory()
         original_dir = os.getcwd()

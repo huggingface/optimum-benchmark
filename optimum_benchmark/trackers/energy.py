@@ -104,16 +104,22 @@ class EnergyTracker:
             self.device_ids = list(map(int, self.device_ids.split(",")))
             LOGGER.info(f"\t+ Tracking GPU energy on devices {self.device_ids}")
 
-        self.reset()
+        self.cpu_energy = None
+        self.gpu_energy = None
+        self.ram_energy = None
+        self.total_energy = None
 
     def reset(self):
-        self.cpu_energy = 0
-        self.gpu_energy = 0
-        self.ram_energy = 0
-        self.total_energy = 0
+        self.cpu_energy = None
+        self.gpu_energy = None
+        self.ram_energy = None
+        self.total_energy = None
 
     @contextmanager
     def track(self, interval=1, file_prefix="method"):
+        if any(energy is not None for energy in [self.cpu_energy, self.gpu_energy, self.ram_energy, self.total_energy]):
+            raise ValueError("Energy tracker is meant for single use only. Please reset the tracker before reusing it.")
+
         if not is_codecarbon_available():
             raise ValueError(
                 "The library codecarbon is required to run energy benchmark, but is not installed. "
@@ -148,22 +154,21 @@ class EnergyTracker:
             )
 
         if self.distributed:
-            torch.distributed.barrier(device_ids=[torch.cuda.current_device()] if self.device == "cuda" else None)
+            torch.distributed.barrier()
 
         self.emission_tracker.start()
+
         yield
+
         self.emission_tracker.stop()
 
         if self.distributed:
-            torch.distributed.barrier(device_ids=[torch.cuda.current_device()] if self.device == "cuda" else None)
+            torch.distributed.barrier()
 
         self.cpu_energy = self.emission_tracker._total_cpu_energy.kWh
         self.gpu_energy = self.emission_tracker._total_gpu_energy.kWh
         self.ram_energy = self.emission_tracker._total_ram_energy.kWh
         self.total_energy = self.emission_tracker._total_energy.kWh
-
-    def get_elapsed_time(self) -> float:
-        return self.emission_tracker._last_measured_time - self.emission_tracker._start_time
 
     def get_energy(self) -> Energy:
         return Energy(
