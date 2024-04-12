@@ -203,9 +203,14 @@ def audio_preprocessing(dataset: Dataset, config: EnergyStarConfig, processor: P
 
     def preprocess_function(examples):
         audio = examples[config.audio_column_name]
-        output = processor(audio["array"], sampling_rate=audio["sampling_rate"])
-        output["input_features"] = output["input_features"][0]
-        return output
+        outputs = processor(audio["array"], sampling_rate=audio["sampling_rate"])
+
+        # The processor may add an extra dimension so we squeeze it
+        for key, value in outputs.items():
+            if isinstance(value, list) and len(value) == 1:
+                outputs[key] = value[0]
+
+        return outputs
 
     dataset = dataset.map(
         preprocess_function,
