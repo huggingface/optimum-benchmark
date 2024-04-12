@@ -30,7 +30,7 @@ from optimum_benchmark.system_utils import get_gpu_device_ids
 from optimum_benchmark.trackers.latency import LatencyTracker
 from optimum_benchmark.trackers.memory import MemoryTracker
 
-REPO_ID = "IlyasMoutawwakil/optimum-benchmarks-ci"
+REPO_ID = "optimum-benchmark/ci-tests"
 LIBRARIES_TASKS_MODELS = [
     ("timm", "image-classification", "timm/resnet50.a1_in1k"),
     ("transformers", "text-generation", "openai-community/gpt2"),
