@@ -41,8 +41,7 @@ jobs:
             --rm
             --gpus all
             --shm-size 64G
-            --env USE_CUDA="1"
-            --env PROCESS_SPECIFIC_VRAM="0"
+            --env MKL_THREADING_LAYER=GNU
             --volume ${{ github.workspace }}:/workspace
             --workdir /workspace
           run: |

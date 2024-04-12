@@ -28,5 +28,11 @@ jobs:
           pip install --upgrade pip
           pip install -e .[testing,timm,diffusers]
 
+      - name: HF Hub login
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          huggingface-cli login --token $HF_TOKEN
+
       - name: Run tests
         run: pytest -s -k "api and not (cpu or cuda)"

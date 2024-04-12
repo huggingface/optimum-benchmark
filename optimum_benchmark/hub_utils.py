@@ -1,15 +1,28 @@
 import os
 import tempfile
 from dataclasses import asdict, dataclass
-from json import dump
+from json import dump, load
 from logging import getLogger
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional
 
 import pandas as pd
-from flatten_dict import flatten
-from huggingface_hub import create_repo, upload_file
+from flatten_dict import flatten, unflatten
+from huggingface_hub import create_repo, hf_hub_download, upload_file
+
+try:
+    from typing import Self
+except ImportError:
+    from typing_extensions import Self
 
 LOGGER = getLogger(__name__)
+
+
+class classproperty:
+    def __init__(self, fget):
+        self.fget = fget
+
+    def __get__(self, obj, owner):
+        return self.fget(owner)
 
 
 @dataclass
@@ -18,73 +31,106 @@ class PushToHubMixin:
     A Mixin to push artifacts to the Hugging Face Hub
     """
 
-    def to_dict(self) -> Dict[str, Any]:
-        data_dict = asdict(self)
-        return data_dict
+    # DICTIONARY/JSON API
+    def to_dict(self, flat=False) -> Dict[str, Any]:
+        data = asdict(self)
 
-    def to_flat_dict(self) -> Dict[str, Any]:
-        report_dict = self.to_dict()
-        return flatten(report_dict, reducer="dot")
-
-    def to_json(self, path: str, flat: bool = False) -> None:
         if flat:
-            with open(path, "w") as f:
-                dump(self.to_flat_dict(), f, indent=4)
-        else:
-            with open(path, "w") as f:
-                dump(self.to_dict(), f, indent=4)
+            data = flatten(data, reducer="dot")
 
+        return data
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "PushToHubMixin":
+        return cls(**data)
+
+    def save_json(self, path: str, flat: bool = False) -> None:
+        with open(path, "w") as f:
+            dump(self.to_dict(flat=flat), f, indent=4)
+
+    @classmethod
+    def from_json(cls, path: str) -> Self:
+        with open(path, "r") as f:
+            data = load(f)
+        return cls.from_dict(data)
+
+    # DATAFRAME/CSV API
     def to_dataframe(self) -> pd.DataFrame:
-        flat_report_dict = self.to_flat_dict()
-        return pd.DataFrame.from_dict(flat_report_dict, orient="index").T
+        flat_dict_data = self.to_dict(flat=True)
+        return pd.DataFrame.from_dict(flat_dict_data, orient="index").T
 
-    def to_csv(self, path: str) -> None:
+    @classmethod
+    def from_dataframe(cls, df: pd.DataFrame) -> Self:
+        data = df.to_dict(orient="records")[0]
+
+        for k, v in data.items():
+            if isinstance(v, str) and v.startswith("[") and v.endswith("]"):
+                # we correct lists that were converted to strings
+                data[k] = eval(v)
+
+            if v != v:
+                # we correct nan to None
+                data[k] = None
+
+        data = unflatten(data, splitter="dot")
+        return cls.from_dict(data)
+
+    def save_csv(self, path: str) -> None:
         self.to_dataframe().to_csv(path, index=False)
 
-    def save_pretrained(
-        self,
-        save_path: Optional[Union[str, os.PathLike]] = None,
-        file_name: Optional[Union[str, os.PathLike]] = None,
-        flat: bool = False,
-    ) -> None:
-        save_path = save_path or self.default_save_path
-        file_name = file_name or self.default_file_name
+    @classmethod
+    def from_csv(cls, path: str) -> Self:
+        return cls.from_dataframe(pd.read_csv(path))
 
-        file_path = os.path.join(save_path, file_name)
-        os.makedirs(save_path, exist_ok=True)
-        self.to_json(file_path, flat=flat)
-
+    # HUGGING FACE HUB API
     def push_to_hub(
-        self,
-        repo_id: str,
-        save_path: Optional[str] = None,
-        file_name: Optional[str] = None,
-        flat: bool = False,
-        **kwargs,
-    ) -> str:
-        token = kwargs.get("token", None)
-        private = kwargs.get("private", False)
-        repo_id = create_repo(repo_id, private=private, token=token, exist_ok=True).repo_id
+        self, repo_id: str, filename: Optional[str] = None, subfolder: Optional[str] = None, **kwargs
+    ) -> None:
+        filename = str(filename or self.default_filename)
+        subfolder = str(subfolder or self.default_subfolder)
+
+        token = kwargs.pop("token", None)
+        private = kwargs.pop("private", False)
+        exist_ok = kwargs.pop("exist_ok", True)
+        repo_type = kwargs.pop("repo_type", "dataset")
+
+        create_repo(repo_id, token=token, private=private, exist_ok=exist_ok, repo_type=repo_type)
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            save_path = save_path or self.default_save_path
-            file_name = file_name or self.default_file_name
+            path_or_fileobj = os.path.join(tmpdir, filename)
+            path_in_repo = os.path.join(subfolder, filename)
+            self.save_json(path_or_fileobj)
 
-            path_or_fileobj = os.path.join(tmpdir, file_name)
-            path_in_repo = os.path.join(save_path, file_name)
-            self.to_json(path_or_fileobj, flat=flat)
-
+            LOGGER.info(f"Pushing {path_or_fileobj} to {repo_id}:{path_in_repo}")
             upload_file(
                 repo_id=repo_id,
                 path_in_repo=path_in_repo,
                 path_or_fileobj=path_or_fileobj,
+                repo_type=repo_type,
+                token=token,
                 **kwargs,
             )
 
-    @property
-    def default_file_name(self) -> str:
+    @classmethod
+    def from_pretrained(
+        cls, repo_id: str, filename: Optional[str] = None, subfolder: Optional[str] = None, **kwargs
+    ) -> Self:
+        filename = str(filename or cls.default_filename)
+        subfolder = str(subfolder or cls.default_subfolder)
+
+        repo_type = kwargs.pop("repo_type", "dataset")
+
+        resolved_file = hf_hub_download(
+            repo_id=repo_id, filename=filename, subfolder=subfolder, repo_type=repo_type, **kwargs
+        )
+        config_dict = cls.from_json(resolved_file)
+
+        return config_dict
+
+    @classproperty
+    def default_filename(self) -> str:
         return "config.json"
 
-    @property
-    def default_save_path(self) -> str:
+    @classproperty
+    def default_subfolder(self) -> str:
         return "benchmarks"
