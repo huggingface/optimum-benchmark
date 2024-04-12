@@ -203,11 +203,12 @@ def audio_preprocessing(dataset: Dataset, config: EnergyStarConfig, processor: P
 
     def preprocess_function(examples):
         audio = examples[config.audio_column_name]
-        return processor(audio["array"], sampling_rate=audio["sampling_rate"])
+        output = processor(audio["array"], sampling_rate=audio["sampling_rate"])
+        output["input_features"] = output["input_features"][0]
+        return output
 
     dataset = dataset.map(
         preprocess_function,
-        batched=True,
         remove_columns=dataset.features,
         desc="Running processor on dataset",
     ).with_format(
