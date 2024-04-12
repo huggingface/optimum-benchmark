@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from logging import getLogger
-
+import os
 import torch
 from datasets import load_dataset
 from torch.utils.data import DataLoader
@@ -20,6 +20,7 @@ if is_torch_distributed_available():
     import torch.distributed
 
 LOGGER = getLogger("energy_star")
+os.environ['TOKENIZERS_PARALLELISM']="false"
 
 # let's define energy star's specific kwargs and units instead of using inference benchmark's
 
@@ -185,8 +186,10 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
         prefill_kwargs.update({"max_new_tokens": 1, "min_new_tokens": 1})
 
         with self.energy_tracker.track():
+            prefill_tokens_volume = 0
             for inputs in tqdm(self.dataloader):
                 inputs = backend.prepare_inputs(inputs)
+                prefill_tokens_volume += inputs['input_ids'].size(dim=1)
                 _ = backend.prefill(inputs, prefill_kwargs)
 
         self.report.prefill.energy = self.energy_tracker.get_energy()

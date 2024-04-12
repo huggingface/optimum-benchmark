@@ -12,9 +12,9 @@ experiment_name: energy_star
 backend:
   device: cuda
   device_ids: 0
-  no_weights: true
-  model:
-  task: image-generation
+  no_weights: false
+  model: stabilityai/sd-turbo
+  task: stable-diffusion
 
 launcher:
   device_isolation: true

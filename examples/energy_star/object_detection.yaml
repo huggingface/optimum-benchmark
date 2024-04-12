@@ -13,7 +13,7 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model:
+  model: facebook/detr-resnet-50
   task: object-detection
 
 launcher:

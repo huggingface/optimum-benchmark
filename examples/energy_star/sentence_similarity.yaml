@@ -13,8 +13,9 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model:
+  model: WhereIsAI/UAE-Large-V1
   task: sentence-similarity
+  library: transformers
 
 launcher:
   device_isolation: true

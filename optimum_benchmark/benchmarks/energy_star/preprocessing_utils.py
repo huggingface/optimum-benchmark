@@ -11,12 +11,16 @@ from PIL.Image import Image
 def preprocess(dataset: Dataset, task: str, config: EnergyStarConfig, preprocessor: PretrainedProcessor) -> Dataset:
     task_to_preprocessing = {
         "feature-extraction": feature_extraction_preprocessing,
+        "sentence-similarity" : sentence_similarity_preprocessing,
         "text-classification": text_classification_preprocessing,
         "question-answering": question_answering_preprocessing,
         "text-generation": text_generation_preprocessing,
         "image-to-text": image_to_text_preprocessing,
         "image-classification": image_classification_preprocessing,
+        'stable-diffusion' : text_classification_preprocessing,
         "automatic-speech-recognition": automatic_speech_recognition_preprocessing,
+        "object-detection": image_classification_preprocessing,
+        "summarization": text_classification_preprocessing,
     }
 
     return task_to_preprocessing[task](dataset, config, preprocessor)
@@ -247,6 +251,44 @@ def automatic_speech_recognition_preprocessing(
         preprocess_function,
         remove_columns=dataset.features,
         desc="Running processor on dataset",
+    ).with_format(
+        "torch"
+    )  # We don't want a torch dependency here but for now the only backend used for this benchmark is PyTorch
+
+    return dataset
+
+def sentence_similarity_preprocessing(
+    dataset: Dataset, config: EnergyStarConfig, tokenizer: PreTrainedTokenizer
+) -> Dataset:
+    # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
+    if config.input_shapes["batch_size"] == 1:
+        dataset = dataset.filter(
+            lambda example: (example[config.sentence1_column_name], example[config.sentence2_column_name]) != ""
+        )
+
+    if config.num_samples != -1:
+        dataset = dataset.select(range(config.num_samples))
+
+    # Add a pad token if the tokenizer doesn't have one
+    if getattr(tokenizer, "pad_token", None) is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    padding = False if config.input_shapes["batch_size"] == 1 else True
+
+    def tokenize_function(examples):
+        return tokenizer(
+            examples[config.sentence1_column_name],
+            examples[config.sentence2_column_name],
+            padding=padding,
+            truncation=config.truncation,
+            max_length=config.max_length if config.max_length != -1 else None,
+        )
+
+    dataset = dataset.map(
+        tokenize_function,
+        batched=True,
+        remove_columns=dataset.features,
+        desc="Running tokenizer on dataset",
     ).with_format(
         "torch"
     )  # We don't want a torch dependency here but for now the only backend used for this benchmark is PyTorch
