@@ -88,8 +88,8 @@ def test_api_launch(device, benchmark, library, task, model):
 
     benchmark_report = launch(experiment_config)
 
-    experiment_config.push_to_hub(repo_id=REPO_ID, path_in_repo=experiment_name)
-    benchmark_report.push_to_hub(repo_id=REPO_ID, path_in_repo=experiment_name)
+    experiment_config.push_to_hub(repo_id=REPO_ID, subfolder=experiment_name)
+    benchmark_report.push_to_hub(repo_id=REPO_ID, subfolder=experiment_name)
 
 
 def test_api_push_to_hub_mixin():
