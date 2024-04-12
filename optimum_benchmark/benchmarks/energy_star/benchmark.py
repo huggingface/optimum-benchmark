@@ -194,12 +194,9 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
 
         self.report.prefill.energy = self.energy_tracker.get_energy()
 
-        prefill_tokens_volume = compute_prefill_volume(
-            backend.config.task, self.config.input_shapes, self.config.generate_kwargs
-        )
         self.report.prefill.efficiency = Efficiency.from_energy(
             self.report.prefill.energy,
-            volume=prefill_tokens_volume * self.config.num_samples,
+            volume=prefill_tokens_volume,
             unit=TEXT_GENERATION_EFFICIENCY_UNIT,
         )
 
