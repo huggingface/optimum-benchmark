@@ -30,7 +30,7 @@ from optimum_benchmark.system_utils import get_gpu_device_ids
 from optimum_benchmark.trackers.latency import LatencyTracker
 from optimum_benchmark.trackers.memory import MemoryTracker
 
-REPO_ID = "optimum-benchmark/ci-tests"
+HF_ORGA_ID = "optimum-benchmark"
 LIBRARIES_TASKS_MODELS = [
     ("timm", "image-classification", "timm/resnet50.a1_in1k"),
     ("transformers", "text-generation", "openai-community/gpt2"),
@@ -41,7 +41,6 @@ LIBRARIES_TASKS_MODELS = [
     ("transformers", "image-classification", "google/vit-base-patch16-224"),
     ("diffusers", "stable-diffusion", "CompVis/stable-diffusion-v1-4"),
 ]
-
 
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 @pytest.mark.parametrize("benchmark", ["training", "inference"])
@@ -78,22 +77,24 @@ def test_api_launch(device, benchmark, library, task, model):
 
     launcher_config = ProcessConfig(device_isolation=False)
 
-    experiment_name = f"{library}_{task}_{model}_{device}"
+    experiment_name = f"{device}_{benchmark}_{library}_{task}_{model}"
     experiment_config = ExperimentConfig(
         experiment_name=experiment_name,
         benchmark=benchmark_config,
         launcher=launcher_config,
         backend=backend_config,
     )
-
     benchmark_report = launch(experiment_config)
 
-    experiment_config.push_to_hub(repo_id=REPO_ID, subfolder=experiment_name)
-    benchmark_report.push_to_hub(repo_id=REPO_ID, subfolder=experiment_name)
+    repo_id = f"{HF_ORGA_ID}/{device}"
+    experiment_config.push_to_hub(repo_id=repo_id, subfolder=experiment_name)
+    benchmark_report.push_to_hub(repo_id=repo_id, subfolder=experiment_name)
 
 
 def test_api_push_to_hub_mixin():
+    repo_id = f"{HF_ORGA_ID}/misc"
     experiment_name = "test_api_push_to_hub_mixin"
+
     launcher_config = ProcessConfig(device_isolation=False)
     backend_config = PyTorchConfig(model="google-bert/bert-base-uncased", device="cpu")
     benchmark_config = InferenceConfig(memory=True, latency=True, duration=1, warmup_runs=1)
@@ -121,9 +122,9 @@ def test_api_push_to_hub_mixin():
         pd.testing.assert_frame_equal(from_csv_experiment_config.to_dataframe(), experiment_config.to_dataframe())
 
     # Hugging Face Hub API
-    experiment_config.push_to_hub(repo_id=REPO_ID, subfolder=experiment_name)
+    experiment_config.push_to_hub(repo_id=repo_id, subfolder=experiment_name)
     from_hub_experiment_config: ExperimentConfig = ExperimentConfig.from_pretrained(
-        repo_id=REPO_ID, subfolder=experiment_name
+        repo_id=repo_id, subfolder=experiment_name
     )
     assert from_hub_experiment_config.to_dict() == experiment_config.to_dict()
 
@@ -141,9 +142,9 @@ def test_api_push_to_hub_mixin():
         pd.testing.assert_frame_equal(from_csv_benchmark_report.to_dataframe(), benchmark_report.to_dataframe())
 
     # Hugging Face Hub API
-    benchmark_report.push_to_hub(repo_id=REPO_ID, subfolder=experiment_name)
+    benchmark_report.push_to_hub(repo_id=repo_id, subfolder=experiment_name)
     from_hub_benchmark_report: BenchmarkReport = BenchmarkReport.from_pretrained(
-        repo_id=REPO_ID, subfolder=experiment_name
+        repo_id=repo_id, subfolder=experiment_name
     )
     assert from_hub_benchmark_report.to_dict() == benchmark_report.to_dict()
 
@@ -227,10 +228,8 @@ def test_api_memory_tracker(device, backend):
 
     tracker.reset()
     with tracker.track():
-        time.sleep(1)
         array = torch.randn((10000, 10000), dtype=torch.float64, device=device)
         expected_memory = array.nbytes / 1e6
-        time.sleep(1)
 
     final_memory = tracker.get_max_memory()
     final_memory.log()

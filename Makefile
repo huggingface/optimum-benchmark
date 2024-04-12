@@ -44,8 +44,6 @@ run_docker_cuda:
 	--rm \
 	--gpus all \
 	--shm-size 64G \
-	--env USE_CUDA="1" \
-	--env PROCESS_SPECIFIC_VRAM="0" \
 	--volume $(PWD):/workspace \
 	--entrypoint /bin/bash \
 	--workdir /workspace \
@@ -58,8 +56,6 @@ run_docker_rocm:
 	--shm-size 64G \
 	--device /dev/kfd \
 	--device /dev/dri \
-	--env USE_ROCM="1" \
-	--env PROCESS_SPECIFIC_VRAM="0" \
 	--volume $(PWD):/workspace \
 	--entrypoint /bin/bash \
 	--workdir /workspace \
