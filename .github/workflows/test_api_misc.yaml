@@ -14,6 +14,7 @@ concurrency:
 jobs:
   run_api_misc_tests:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3

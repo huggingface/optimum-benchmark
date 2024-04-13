@@ -14,6 +14,7 @@ concurrency:
 jobs:
   run_cli_cpu_neural_compressor_tests:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -26,6 +27,7 @@ jobs:
       - name: Install requirements
         run: |
           pip install --upgrade pip
+          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
           pip install -e .[testing,neural-compressor,diffusers,timm]
 
       - name: Run tests

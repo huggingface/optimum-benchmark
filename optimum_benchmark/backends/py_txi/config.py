@@ -37,9 +37,9 @@ class PyTXIConfig(BackendConfig):
         default_factory=lambda: {os.path.expanduser("~/.cache/huggingface/hub"): {"bind": "/data", "mode": "rw"}},
         metadata={"help": "Dictionary of volumes to mount inside the container."},
     )
-    environment: Dict[str, str] = field(
-        default_factory=lambda: {"HUGGING_FACE_HUB_TOKEN": os.environ.get("HUGGING_FACE_HUB_TOKEN", "")},
-        metadata={"help": "Dictionary of environment variables to forward to the container."},
+    environment: List[str] = field(
+        default_factory=lambda: ["HUGGING_FACE_HUB_TOKEN"],
+        metadata={"help": "List of environment variables to forward to the container from the host."},
     )
 
     # Common options
@@ -50,7 +50,8 @@ class PyTXIConfig(BackendConfig):
     sharded: Optional[str] = None
     quantize: Optional[str] = None
     num_shard: Optional[int] = None
-    enable_cuda_graphs: Optional[bool] = None
+    speculate: Optional[int] = None
+    cuda_graphs: Optional[bool] = None
     disable_custom_kernels: Optional[bool] = None
     trust_remote_code: Optional[bool] = None
 
@@ -63,20 +64,7 @@ class PyTXIConfig(BackendConfig):
         if self.task not in TEXT_GENERATION_TASKS + TEXT_EMBEDDING_TASKS:
             raise NotImplementedError(f"TXI does not support task {self.task}")
 
-        if self.task in TEXT_GENERATION_TASKS:
-            self.image = "ghcr.io/huggingface/text-generation-inference:latest"
-        elif self.task in TEXT_EMBEDDING_TASKS:
-            self.image = "ghcr.io/huggingface/text-embeddings-inference:cpu-latest"
-
-        if self.task in TEXT_EMBEDDING_TASKS and self.pooling is None:
-            self.pooling = "cls"
-
-        if self.max_concurrent_requests is None:
-            if self.task in TEXT_GENERATION_TASKS:
-                self.max_concurrent_requests = 128
-            elif self.task in TEXT_EMBEDDING_TASKS:
-                self.max_concurrent_requests = 512
-
+        # Device options
         if self.device_ids is not None and is_nvidia_system() and self.gpus is None:
             self.gpus = self.device_ids
 
@@ -84,3 +72,15 @@ class PyTXIConfig(BackendConfig):
             ids = list(map(int, self.device_ids.split(",")))
             renderDs = [file for file in os.listdir("/dev/dri") if file.startswith("renderD")]
             self.devices = ["/dev/kfd"] + [f"/dev/dri/{renderDs[i]}" for i in ids]
+
+        # Common options
+        if self.max_concurrent_requests is None:
+            if self.task in TEXT_GENERATION_TASKS:
+                self.max_concurrent_requests = 128
+            elif self.task in TEXT_EMBEDDING_TASKS:
+                self.max_concurrent_requests = 512
+
+        # TGI specific
+        if self.task in TEXT_GENERATION_TASKS:
+            if self.trust_remote_code is None:
+                self.trust_remote_code = self.hub_kwargs.get("trust_remote_code", False)
