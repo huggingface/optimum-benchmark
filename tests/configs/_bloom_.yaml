@@ -1,0 +1,2 @@
+backend:
+  model: "bigscience/bloom-560m"
