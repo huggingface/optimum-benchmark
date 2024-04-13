@@ -1,4 +1,4 @@
 backend:
   library: diffusers
   task: stable-diffusion
-  model: hf-internal-testing/tiny-stable-diffusion-torch
+  model: hf-internal-testing/tiny-stable-diffusion-pipe

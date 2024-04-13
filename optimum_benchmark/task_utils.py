@@ -48,6 +48,7 @@ _TIMM_TASKS_TO_MODEL_LOADERS = {
     "image-classification": "create_model",
 }
 _SENTENCE_TRANSFORMERS_TASKS_TO_MODEL_LOADERS = {
+    "feature-extraction": "SentenceTransformer",
     "sentence-similarity": "SentenceTransformer",
 }
 
@@ -134,32 +135,41 @@ def infer_task_from_model_name_or_path(model_name_or_path: str, revision: Option
     model_info = huggingface_hub.model_info(model_name_or_path, revision=revision)
     library_name = infer_library_from_model_name_or_path(model_name_or_path, revision=revision)
 
-    if library_name == "diffusers":
-        class_name = model_info.config["diffusers"]["class_name"]
-        inferred_task_name = "stable-diffusion-xl" if "XL" in class_name else "stable-diffusion"
-    elif library_name == "timm":
+    if library_name == "timm":
         inferred_task_name = "image-classification"
+
     elif library_name == "sentence-transformers":
-        inferred_task_name = "sentence-similarity"
-    else:
-        pipeline_tag = getattr(model_info, "pipeline_tag", None)
-        if pipeline_tag is not None:
+        inferred_task_name = "feature-extraction"
+
+    elif library_name == "diffusers":
+        if "text-to-image" in model_info.tags:
+            inferred_task_name = "text-to-image"
+        elif "image-to-image" in model_info.tags:
+            inferred_task_name = "image-to-image"
+        else:
+            class_name = model_info.config["diffusers"]["class_name"]
+            inferred_task_name = "stable-diffusion-xl" if "XL" in class_name else "stable-diffusion"
+
+    elif library_name == "transformers":
+        if model_info.pipeline_tag is not None:
             inferred_task_name = map_from_synonym(model_info.pipeline_tag)
         else:
-            transformers_info = model_info.transformersInfo
-            pipeline_tag = transformers_info.get("pipeline_tag")
+            pipeline_tag = model_info.transformersInfo.pipeline_tag
 
-            if transformers_info is not None and pipeline_tag is not None:
+            if model_info.transformers_info is not None and pipeline_tag is not None:
                 inferred_task_name = map_from_synonym(pipeline_tag)
             else:
-                auto_model_class_name = transformers_info["auto_model"]
+                auto_model_class_name = model_info.transformers_info["auto_model"]
                 tasks_to_automodels = _LIBRARY_TO_TASKS_TO_MODEL_LOADER_MAP[model_info.library_name]
                 for task_name, class_name_for_task in tasks_to_automodels.items():
                     if class_name_for_task == auto_model_class_name:
                         inferred_task_name = task_name
                         break
-                    else:
-                        inferred_task_name = None
+
+                    inferred_task_name = None
+
+    else:
+        raise NotImplementedError(f"Library {library_name} is not supported yet.")
 
     if inferred_task_name is None:
         raise KeyError(f"Could not find the proper task name for {auto_model_class_name}.")
@@ -196,29 +206,21 @@ def get_automodel_class_for_task(
             )
 
         if isinstance(tasks_to_model_loader[task], str):
-            auto_model_class_name = tasks_to_model_loader[task]
-        else:
-            # automatic-speech-recognition case, which may map to several auto class
-            if library == "transformers":
-                if model_type is None:
-                    auto_model_class_name = tasks_to_model_loader[task][0]
-                else:
-                    for autoclass_name in tasks_to_model_loader[task]:
-                        module = getattr(loaded_library, autoclass_name)
-                        if (
-                            model_type in module._model_mapping._model_mapping
-                            or model_type.replace("-", "_") in module._model_mapping._model_mapping
-                        ):
-                            auto_model_class_name = autoclass_name
-                            break
+            inferred_auto_model_class_name = tasks_to_model_loader[task]
+        elif isinstance(tasks_to_model_loader[task], tuple):
+            if model_type is None:
+                inferred_auto_model_class_name = tasks_to_model_loader[task][0]
+            else:
+                for auto_class_name in tasks_to_model_loader[task]:
+                    model_mapping = getattr(loaded_library, auto_class_name)._model_mapping._model_mapping
 
-                    if auto_model_class_name is None:
-                        raise ValueError(
-                            f"Unrecognized configuration classes {tasks_to_model_loader[task]} do not match"
-                            f" with the model type {model_type} and task {task}."
-                        )
+                    if model_type in model_mapping or model_type.replace("-", "_") in model_mapping:
+                        inferred_auto_model_class_name = auto_class_name
+                        break
 
-    if auto_model_class_name is None:
+                    inferred_auto_model_class_name = None
+
+    if inferred_auto_model_class_name is None:
         raise ValueError(f"Could not find the model class name for task {task}.")
 
     inferred_model_class = getattr(loaded_library, auto_model_class_name)
