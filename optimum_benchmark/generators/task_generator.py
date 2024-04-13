@@ -383,7 +383,7 @@ class FeatureExtractionGenerator(TextGenerator, ImageGenerator):
 
 
 TASKS_TO_GENERATORS = {
-    # model tasks
+    # transformers models tasks
     "feature-extraction": FeatureExtractionGenerator,
     "text-classification": TextClassificationGenerator,
     "token-classification": TokenClassificationGenerator,
@@ -395,7 +395,8 @@ TASKS_TO_GENERATORS = {
     "image-classification": ImageClassificationGenerator,
     "object-detection": ObjectDetectionGenerator,
     "semantic-segmentation": SemanticSegmentationGenerator,
-    # pipeline tasks
+    # diffusers pipelines tasks
+    "text-to-image": PromptGenerator,
     "stable-diffusion": PromptGenerator,
     "stable-diffusion-xl": PromptGenerator,
 }

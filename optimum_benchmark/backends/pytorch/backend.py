@@ -143,6 +143,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         elif self.config.library == "diffusers":
             LOGGER.info("\t+ Loading Diffusion pipeline")
             self.pretrained_model = self.automodel_class.from_pretrained(
+                pretrained_model_name_or_path=self.config.model,
                 pretrained_model_or_path=self.config.model,
                 device_map=self.config.device_map,
                 **self.config.hub_kwargs,

@@ -74,6 +74,7 @@ EXTRAS_REQUIRE = {
     "autoawq-rocm": [AUTOAWQ_ROCM],
     "auto-gptq": ["optimum", AUTOGPTQ_CUDA],
     "auto-gptq-rocm": ["optimum", AUTOGPTQ_ROCM],
+    "sentence-transformers": ["sentence-transformers"],
     "bitsandbytes": ["bitsandbytes"],
     "codecarbon": ["codecarbon"],
     "deepspeed": ["deepspeed"],
