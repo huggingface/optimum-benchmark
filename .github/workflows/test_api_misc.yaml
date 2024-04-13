@@ -27,13 +27,12 @@ jobs:
       - name: Install requirements
         run: |
           pip install --upgrade pip
+          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
           pip install -e .[testing,timm,diffusers]
 
-      - name: HF Hub login
+      - name: Run tests
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          PUSH_REPO_ID: optimum-benchmark/misc
         run: |
-          huggingface-cli login --token $HF_TOKEN
-
-      - name: Run tests
-        run: pytest -s -k "api and not (cpu or cuda)"
+          pytest -s -k "api and not (cpu or cuda)"

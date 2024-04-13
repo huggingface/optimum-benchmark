@@ -30,7 +30,8 @@ from optimum_benchmark.system_utils import get_gpu_device_ids
 from optimum_benchmark.trackers.latency import LatencyTracker, Timer
 from optimum_benchmark.trackers.memory import MemoryTracker
 
-HF_ORGA_ID = "optimum-benchmark"
+PUSH_REPO_ID = os.environ.get("PUSH_REPO_ID", "optimum-benchmark/misc")
+
 LIBRARIES_TASKS_MODELS = [
     ("timm", "image-classification", "timm/resnet50.a1_in1k"),
     ("transformers", "text-generation", "openai-community/gpt2"),
@@ -87,13 +88,11 @@ def test_api_launch(device, benchmark, library, task, model):
     )
     benchmark_report = launch(experiment_config)
 
-    repo_id = f"{HF_ORGA_ID}/{device}"
-    experiment_config.push_to_hub(repo_id=repo_id, subfolder=experiment_name)
-    benchmark_report.push_to_hub(repo_id=repo_id, subfolder=experiment_name)
+    experiment_config.push_to_hub(repo_id=PUSH_REPO_ID, subfolder=experiment_name)
+    benchmark_report.push_to_hub(repo_id=PUSH_REPO_ID, subfolder=experiment_name)
 
 
 def test_api_push_to_hub_mixin():
-    repo_id = f"{HF_ORGA_ID}/misc"
     experiment_name = "test_api_push_to_hub_mixin"
 
     launcher_config = ProcessConfig(device_isolation=False)
@@ -123,9 +122,9 @@ def test_api_push_to_hub_mixin():
         pd.testing.assert_frame_equal(from_csv_experiment_config.to_dataframe(), experiment_config.to_dataframe())
 
     # Hugging Face Hub API
-    experiment_config.push_to_hub(repo_id=repo_id, subfolder=experiment_name)
+    experiment_config.push_to_hub(repo_id=PUSH_REPO_ID, subfolder=experiment_name)
     from_hub_experiment_config: ExperimentConfig = ExperimentConfig.from_pretrained(
-        repo_id=repo_id, subfolder=experiment_name
+        repo_id=PUSH_REPO_ID, subfolder=experiment_name
     )
     assert from_hub_experiment_config.to_dict() == experiment_config.to_dict()
 
@@ -143,9 +142,9 @@ def test_api_push_to_hub_mixin():
         pd.testing.assert_frame_equal(from_csv_benchmark_report.to_dataframe(), benchmark_report.to_dataframe())
 
     # Hugging Face Hub API
-    benchmark_report.push_to_hub(repo_id=repo_id, subfolder=experiment_name)
+    benchmark_report.push_to_hub(repo_id=PUSH_REPO_ID, subfolder=experiment_name)
     from_hub_benchmark_report: BenchmarkReport = BenchmarkReport.from_pretrained(
-        repo_id=repo_id, subfolder=experiment_name
+        repo_id=PUSH_REPO_ID, subfolder=experiment_name
     )
     assert from_hub_benchmark_report.to_dict() == benchmark_report.to_dict()
 
