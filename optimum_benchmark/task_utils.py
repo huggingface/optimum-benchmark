@@ -223,6 +223,6 @@ def get_automodel_class_for_task(
     if inferred_auto_model_class_name is None:
         raise ValueError(f"Could not find the model class name for task {task}.")
 
-    inferred_model_class = getattr(loaded_library, auto_model_class_name)
+    inferred_model_class = getattr(loaded_library, inferred_auto_model_class_name)
 
     return inferred_model_class
