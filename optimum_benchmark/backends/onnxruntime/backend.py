@@ -285,7 +285,7 @@ class ORTBackend(Backend[ORTConfig]):
         if self.config.library == "diffusers":
             inputs = {"prompt": inputs["prompt"]}
         else:
-            for key, value in inputs.items():
+            for key, value in list(inputs.items()):
                 if key not in PROBLEMATIC_INPUTS:
                     inputs[key] = value.to(self.config.device)
                 elif key not in self.inputs_names:
