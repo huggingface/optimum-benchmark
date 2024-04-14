@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import gc
 import os
 from logging import getLogger
@@ -160,6 +161,10 @@ class INCBackend(Backend[INCConfig]):
     @torch.inference_mode()
     def forward(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:
         return self.pretrained_model(**input, **kwargs)
+
+    @torch.inference_mode()
+    def prefill(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
+        return self.pretrained_model.generate(**inputs, **kwargs)
 
     @torch.inference_mode()
     def generate(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:

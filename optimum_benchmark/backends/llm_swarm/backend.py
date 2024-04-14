@@ -1,4 +1,5 @@
 import asyncio
+from collections import OrderedDict
 import gc
 from logging import getLogger
 from typing import Any, Dict, List
@@ -79,6 +80,9 @@ class LLMSwarmBackend(Backend[LLMSwarmConfig]):
         return await asyncio.gather(*(self.single_client_call(p, kwargs) for p in inputs["prompt"]))
 
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> List[str]:
+        return asyncio.run(self.batch_client_call(inputs, kwargs))
+
+    def prefill(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> List[str]:
         return asyncio.run(self.batch_client_call(inputs, kwargs))
 
     def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> List[str]:

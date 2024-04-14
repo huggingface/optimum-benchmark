@@ -158,22 +158,20 @@ class PyTXIBackend(Backend[PyTXIConfig]):
             raise NotImplementedError(f"TXI does not support task {self.config.task}")
 
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> List[str]:
-        if self.config.task in TEXT_GENERATION_TASKS:
-            return self.pretrained_model.generate(
-                **inputs,
-                do_sample=kwargs.get("do_sample", False),
-                max_new_tokens=kwargs.get("max_new_tokens", 1),
-            )
-        elif self.config.task in TEXT_EMBEDDING_TASKS:
-            return self.pretrained_model.encode(**inputs, **kwargs)
-        else:
-            raise NotImplementedError(f"TXI does not support task {self.config.task}")
+        return self.pretrained_model.encode(**inputs, **kwargs)
+
+    def prefill(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> Dict[str, Any]:
+        return self.pretrained_model.generate(
+            **inputs,
+            do_sample=kwargs.get("do_sample", False),
+            max_new_tokens=kwargs.get("max_new_tokens"),
+        )
 
     def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> List[str]:
         return self.pretrained_model.generate(
             **inputs,
             do_sample=kwargs.get("do_sample", False),
-            max_new_tokens=kwargs.get("max_new_tokens", 1),
+            max_new_tokens=kwargs.get("max_new_tokens"),
         )
 
     def clean(self) -> None:
