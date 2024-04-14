@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - llm-perf
+      - llm-perf-*
   schedule:
     # Every day at 00:00 UTC
     - cron: "0 0 * * *"
@@ -34,7 +34,7 @@ jobs:
         uses: addnab/docker-run-action@v3
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          PUSH_REPO_ID: optimum-benchmark/llm-perf-pytorch-cuda-1xA100
+          PUSH_REPO_ID: optimum-benchmark/llm-perf-pytorch-cuda-1xA10
         with:
           image: llm-perf-pytorch-cuda:12.1.1
           options: |
