@@ -62,9 +62,10 @@ def test_api_launch(device, benchmark, library, task, model):
             memory=True,
             latency=True,
             duration=1,
+            iterations=1,
             warmup_runs=1,
-            input_shapes={"batch_size": 1, "sequence_length": 16},
-            generate_kwargs={"max_new_tokens": 5, "min_new_tokens": 5},
+            input_shapes={"batch_size": 1, "sequence_length": 2},
+            generate_kwargs={"max_new_tokens": 2, "min_new_tokens": 2},
             call_kwargs={"num_inference_steps": 2},
             energy=torch.version.hip is None,
         )
@@ -98,7 +99,7 @@ def test_api_push_to_hub_mixin():
 
     launcher_config = ProcessConfig(device_isolation=False)
     backend_config = PyTorchConfig(model="google-bert/bert-base-uncased", device="cpu")
-    benchmark_config = InferenceConfig(memory=True, latency=True, duration=1, warmup_runs=1)
+    benchmark_config = InferenceConfig(memory=True, latency=True, duration=1, iterations=1, warmup_runs=1)
 
     experiment_config = ExperimentConfig(
         experiment_name=experiment_name,
