@@ -27,7 +27,7 @@ from optimum_benchmark.generators.input_generator import InputGenerator
 from optimum_benchmark.import_utils import get_git_revision_hash
 from optimum_benchmark.launchers.process.config import ProcessConfig
 from optimum_benchmark.system_utils import get_gpu_device_ids
-from optimum_benchmark.trackers.latency import LatencyTracker, Timer
+from optimum_benchmark.trackers.latency import LatencyTracker
 from optimum_benchmark.trackers.memory import MemoryTracker
 
 PUSH_REPO_ID = os.environ.get("PUSH_REPO_ID", "optimum-benchmark/misc")
@@ -198,11 +198,21 @@ def test_api_dataset_generator(library, task, model):
 @pytest.mark.parametrize("backend", ["pytorch", "other"])
 def test_api_latency_tracker(device, backend):
     tracker = LatencyTracker(device=device, backend=backend)
-    timer = Timer()
 
-    timer.reset()
     tracker.reset()
-    while timer.elapsed() < 2:
+    while tracker.elapsed() < 2:
+        with tracker.track():
+            time.sleep(1)
+
+    latency = tracker.get_latency()
+    latency.log()
+
+    assert latency.mean < 1.1
+    assert latency.mean > 0.9
+    assert len(latency.values) == 2
+
+    tracker.reset()
+    while tracker.count() < 2:
         with tracker.track():
             time.sleep(1)
 
