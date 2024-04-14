@@ -21,8 +21,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Pull image
-        run: docker pull pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime
+      - name: Build image
+        run: docker build
+          --build-arg USER_ID=$(id -u)
+          --build-arg GROUP_ID=$(id -g)
+          --build-arg TORCH_CUDA=cu121
+          --build-arg CUDA_VERSION=12.1.1
+          --tag llm-perf-cuda:12.1.1
+          docker/cuda
 
       - name: Run benchmarks
         uses: addnab/docker-run-action@v3
@@ -30,7 +36,7 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PUSH_REPO_ID: optimum-benchmark/llm-perf-pytorch-cuda-1xA10
         with:
-          image: pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime
+          image: llm-perf-cuda:12.1.1
           options: |
             --rm
             --gpus all
