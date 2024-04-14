@@ -231,9 +231,6 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         prefill_volume = self.atomic_prefill_volume
         decode_volume = self.atomic_decode_volume
 
-        LOGGER.info(f"count: {latency_tracker.count()}")
-        LOGGER.info(f"elapsed: {latency_tracker.elapsed()}")
-
         self.report.per_token.latency = per_token_latency
         self.report.prefill.latency = prefill_latency
         self.report.decode.latency = decode_latency
@@ -259,9 +256,6 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         prefill_latency = latency_tracker.get_latency()
         prefill_volume = self.atomic_prefill_volume
 
-        LOGGER.info(f"count: {latency_tracker.count()}")
-        LOGGER.info(f"elapsed: {latency_tracker.elapsed()}")
-
         self.report.prefill.latency = prefill_latency
         self.report.prefill.throughput = Throughput.from_latency(
             prefill_latency, prefill_volume, unit=TEXT_GENERATION_THROUGHPUT_UNIT
@@ -274,9 +268,6 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         generate_latency = latency_tracker.get_latency()
         decode_latency = generate_latency - prefill_latency
         decode_volume = self.atomic_decode_volume
-
-        LOGGER.info(f"count: {latency_tracker.count()}")
-        LOGGER.info(f"elapsed: {latency_tracker.elapsed()}")
 
         self.report.decode.latency = decode_latency
         self.report.decode.throughput = Throughput.from_latency(
@@ -293,9 +284,6 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         call_latency = latency_tracker.get_latency()
         call_volume = self.atomic_call_volume
 
-        LOGGER.info(f"count: {latency_tracker.count()}")
-        LOGGER.info(f"elapsed: {latency_tracker.elapsed()}")
-
         self.report.call.latency = call_latency
         self.report.call.throughput = Throughput.from_latency(
             call_latency, call_volume, unit=IMAGE_DIFFUSION_THROUGHPUT_UNIT
@@ -310,9 +298,6 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
                 _ = backend.forward(self.inputs, self.config.forward_kwargs)
         forward_latency = latency_tracker.get_latency()
         forward_volume = self.atomic_forward_volume
-
-        LOGGER.info(f"count: {latency_tracker.count()}")
-        LOGGER.info(f"elapsed: {latency_tracker.elapsed()}")
 
         self.report.forward.latency = forward_latency
         self.report.forward.throughput = Throughput.from_latency(

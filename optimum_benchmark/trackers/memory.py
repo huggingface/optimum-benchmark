@@ -81,15 +81,17 @@ class Memory:
         )
 
     def log(self, prefix: str = "forward"):
-        LOGGER.info(f"\t\t+ {prefix} max RAM memory: {self.max_ram:f} ({self.unit})")
+        LOGGER.info(f"\t\t+ {prefix} memory:")
+        if self.max_ram is not None:
+            LOGGER.info(f"\t\t\t- max RAM: {self.max_ram:f} ({self.unit})")
         if self.max_global_vram is not None:
-            LOGGER.info(f"\t\t+ {prefix} max global VRAM memory: {self.max_global_vram:f} ({self.unit})")
+            LOGGER.info(f"\t\t\t- max global VRAM: {self.max_global_vram:f} ({self.unit})")
         if self.max_process_vram is not None:
-            LOGGER.info(f"\t\t+ {prefix} max process VRAM memory: {self.max_process_vram:f} ({self.unit})")
+            LOGGER.info(f"\t\t\t- max process VRAM: {self.max_process_vram:f} ({self.unit})")
         if self.max_reserved is not None:
-            LOGGER.info(f"\t\t+ {prefix} max reserved memory: {self.max_reserved:f} ({self.unit})")
+            LOGGER.info(f"\t\t\t- max reserved memory: {self.max_reserved:f} ({self.unit})")
         if self.max_allocated is not None:
-            LOGGER.info(f"\t\t+ {prefix} max allocated memory: {self.max_allocated:f} ({self.unit})")
+            LOGGER.info(f"\t\t\t- max allocated memory: {self.max_allocated:f} ({self.unit})")
 
 
 class MemoryTracker:
@@ -105,7 +107,7 @@ class MemoryTracker:
 
         if self.device == "cuda":
             self.device_ids = list(map(int, self.device_ids.split(",")))
-            LOGGER.info(f"\t+ Tracking VRAM memory of CUDA devices: {self.device_ids}")
+            LOGGER.info(f"\t+ Tracking VRAM memory of CUDA devices {self.device_ids}")
 
         if self.track_cuda_pytorch_memory:
             self.num_pytorch_devices = torch.cuda.device_count()
@@ -195,24 +197,14 @@ class MemoryTracker:
         self.max_ram_memory = parent_connection.recv()
 
     def get_max_memory(self):
-        if self.track_cuda_pytorch_memory:
-            return Memory(
-                unit=MEMORY_UNIT,
-                max_ram=self.max_ram_memory,
-                max_global_vram=self.max_global_vram_memory,
-                max_process_vram=self.max_process_vram_memory,
-                max_reserved=self.max_reserved_memory,
-                max_allocated=self.max_allocated_memory,
-            )
-        elif self.device == "cuda":
-            return Memory(
-                unit=MEMORY_UNIT,
-                max_ram=self.max_ram_memory,
-                max_global_vram=self.max_global_vram_memory,
-                max_process_vram=self.max_process_vram_memory,
-            )
-        else:
-            return Memory(unit=MEMORY_UNIT, max_ram=self.max_ram_memory)
+        return Memory(
+            unit=MEMORY_UNIT,
+            max_ram=self.max_ram_memory,
+            max_global_vram=self.max_global_vram_memory,
+            max_process_vram=self.max_process_vram_memory,
+            max_reserved=self.max_reserved_memory,
+            max_allocated=self.max_allocated_memory,
+        )
 
 
 def monitor_cpu_ram_memory(monitored_pid: int, connection: Connection, interval: float = 0.001):

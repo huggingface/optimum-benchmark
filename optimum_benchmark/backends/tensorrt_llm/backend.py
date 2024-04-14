@@ -6,7 +6,6 @@ from typing import Any, Dict
 import torch
 from hydra.utils import get_class
 from safetensors.torch import save_file
-from transformers.utils import ModelOutput
 
 from ..base import Backend
 from .config import TRTLLMConfig
@@ -80,7 +79,7 @@ class TRTLLMBackend(Backend[TRTLLMConfig]):
             seed=kwargs.get("seed", 42),
         )
 
-    def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:
+    def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         return self.pretrained_model.generate(
             input_ids=inputs.get("input_ids"),
             attention_mask=inputs.get("attention_mask"),

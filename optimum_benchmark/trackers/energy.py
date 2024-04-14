@@ -47,10 +47,11 @@ class Energy:
         return Energy(cpu=cpu, gpu=gpu, ram=ram, total=total, unit=ENERGY_UNIT)
 
     def log(self, prefix: str = "forward"):
-        LOGGER.info(f"\t\t+ {prefix} CPU energy: {self.cpu:f} ({self.unit})")
-        LOGGER.info(f"\t\t+ {prefix} GPU energy: {self.gpu:f} ({self.unit})")
-        LOGGER.info(f"\t\t+ {prefix} RAM energy: {self.ram:f} ({self.unit})")
-        LOGGER.info(f"\t\t+ {prefix} total energy: {self.total:f} ({self.unit})")
+        LOGGER.info(f"\t\t+ {prefix} energy consumption:")
+        LOGGER.info(f"\t\t\t+ CPU: {self.cpu:f} ({self.unit})")
+        LOGGER.info(f"\t\t\t+ GPU: {self.gpu:f} ({self.unit})")
+        LOGGER.info(f"\t\t\t+ RAM: {self.ram:f} ({self.unit})")
+        LOGGER.info(f"\t\t\t+ total: {self.total:f} ({self.unit})")
 
     def __sub__(self, other: "Energy") -> "Energy":
         """Enables subtraction of two Energy instances using the '-' operator."""
@@ -89,8 +90,8 @@ class Efficiency:
     def from_energy(energy: "Energy", volume: int, unit: str) -> "Efficiency":
         return Efficiency(value=volume / energy.total if energy.total > 0 else 0, unit=unit)
 
-    def log(self, prefix: str = "forward"):
-        LOGGER.info(f"\t\t+ {prefix} efficiency: {self.value:f} ({self.unit})")
+    def log(self, prefix: str = "method"):
+        LOGGER.info(f"\t\t+ {prefix} energy efficiency: {self.value:f} ({self.unit})")
 
 
 class EnergyTracker:
@@ -115,7 +116,7 @@ class EnergyTracker:
         self.total_energy = None
 
     @contextmanager
-    def track(self, interval=1, file_prefix="method"):
+    def track(self, interval: int = 1, file_prefix: str = "method"):
         if not is_codecarbon_available():
             raise ValueError(
                 "The library codecarbon is required to run energy benchmark, but is not installed. "

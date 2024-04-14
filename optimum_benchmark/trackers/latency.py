@@ -9,6 +9,7 @@ from ..import_utils import is_torch_distributed_available
 if is_torch_distributed_available():
     import torch.distributed
 
+import numpy as np
 import torch
 from transformers import LogitsProcessor, TrainerCallback
 
@@ -24,9 +25,14 @@ class Latency:
     unit: Latency_Unit_Literal
 
     count: int
+    total: float
     mean: float
     stdev: float
-    total: float
+    p50: float
+    p90: float
+    p95: float
+    p99: float
+
     values: List[float]
 
     def __getitem__(self, index) -> float:
@@ -60,18 +66,30 @@ class Latency:
 
     @staticmethod
     def from_values(values: List[float], unit: str) -> "Latency":
-        count = len(values)
-        total = sum(values)
-        mean = total / count if count > 0 else 0
-        stdev = (sum((val - mean) ** 2 for val in values) / count) ** 0.5 if count > 1 else 0
-        return Latency(count=count, mean=mean, stdev=stdev, values=values, total=total, unit=unit)
+        return Latency(
+            unit=unit,
+            count=len(values),
+            total=sum(values),
+            mean=np.mean(values),
+            stdev=np.std(values),
+            p50=np.percentile(values, 50),
+            p90=np.percentile(values, 90),
+            p95=np.percentile(values, 95),
+            p99=np.percentile(values, 99),
+            values=values,
+        )
 
-    def log(self, prefix: str = "forward"):
+    def log(self, prefix: str = "method"):
+        stdev_percentage = 100 * self.stdev / self.mean if self.mean > 0 else 0
         LOGGER.info(f"\t\t+ {prefix} latency:")
-        LOGGER.info(f"\t\t\t- count: {self.count}")
-        LOGGER.info(f"\t\t\t- total: {self.total:f} {self.unit}")
-        LOGGER.info(f"\t\t\t- mean: {self.mean:f} {self.unit}")
-        LOGGER.info(f"\t\t\t- stdev: {self.stdev:f} {self.unit}")
+        LOGGER.info(f"\t\t\t+ count: {self.count}")
+        LOGGER.info(f"\t\t\t+ total: {self.total:f} {self.unit}")
+        LOGGER.info(f"\t\t\t+ mean: {self.mean:f} {self.unit}")
+        LOGGER.info(f"\t\t\t+ stdev: {self.stdev:f} {self.unit} ({stdev_percentage:.2f}%)")
+        LOGGER.info(f"\t\t\t+ p50: {self.p50:f} {self.unit}")
+        LOGGER.info(f"\t\t\t+ p90: {self.p90:f} {self.unit}")
+        LOGGER.info(f"\t\t\t+ p95: {self.p95:f} {self.unit}")
+        LOGGER.info(f"\t\t\t+ p99: {self.p99:f} {self.unit}")
 
 
 @dataclass
@@ -97,7 +115,7 @@ class Throughput:
         value = volume / latency.mean if latency.mean > 0 else 0
         return Throughput(value=value, unit=unit)
 
-    def log(self, prefix: str = "forward"):
+    def log(self, prefix: str = "method"):
         LOGGER.info(f"\t\t+ {prefix} throughput: {self.value:f} {self.unit}")
 
 

@@ -16,9 +16,18 @@ class InferenceConfig(BenchmarkConfig):
     _target_: str = "optimum_benchmark.benchmarks.inference.benchmark.InferenceBenchmark"
 
     # benchmark options
-    duration: int = field(default=10, metadata={"help": "Minimum duration of the benchmark in seconds"})
-    iterations: int = field(default=10, metadata={"help": "Minimum number of iterations to run the benchmark"})
-    warmup_runs: int = field(default=10, metadata={"help": "Number of warmup runs to perform before benchmarking"})
+    iterations: int = field(
+        default=10,
+        metadata={"help": "Minimum number of iterations to run the benchmark, set to 0 to disable this constraint"},
+    )
+    duration: int = field(
+        default=10,
+        metadata={"help": "Minimum duration of the benchmark in seconds, set to 0 to disable this constraint"},
+    )
+    warmup_runs: int = field(
+        default=10,
+        metadata={"help": "Number of warmup runs to perform before benchmarking, set to 0 to disable warmup"},
+    )
 
     # input/output config
     input_shapes: Dict[str, Any] = field(
