@@ -14,7 +14,6 @@ from optimum_benchmark.logging_utils import setup_logging
 CWD = os.getcwd()
 PUSH_REPO_ID = os.getenv("PUSH_REPO_ID", "optimum-benchmark/llm-perf-pytorch-cuda-local")
 
-# MODELS_LIST = ["TinyLlama/TinyLlama-1.1B-Chat-v1.0"]
 OPEN_LLM_DF = pd.read_csv("hf://datasets/optimum/llm-perf-dataset/open-llm.csv")
 CUSTOM_LLM_DF = pd.read_csv("hf://datasets/optimum/llm-perf-dataset/custom-llm.csv")
 MODELS_LIST = list(OPEN_LLM_DF["Model"]) + list(CUSTOM_LLM_DF["Model"])
@@ -28,20 +27,20 @@ WEIGHTS_CONFIGS = {
     "float32": {"torch_dtype": "float32", "quant_scheme": None, "quant_config": {}},
     "float16": {"torch_dtype": "float16", "quant_scheme": None, "quant_config": {}},
     "bfloat16": {"torch_dtype": "bfloat16", "quant_scheme": None, "quant_config": {}},
-    # # bnb
-    # "4bit-bnb": {"torch_dtype": "float16", "quant_scheme": "bnb", "quant_config": {"load_in_4bit": True}},
-    # "8bit-bnb": {"torch_dtype": "float16", "quant_scheme": "bnb", "quant_config": {"load_in_8bit": True}},
-    # # gptq
-    # "4bit-gptq-exllama-v1": {
-    #     "quant_scheme": "gptq",
-    #     "torch_dtype": "float16",
-    #     "quant_config": {"bits": 4, "use_exllama ": True, "version": 1, "model_seqlen": 256},
-    # },
-    # "4bit-gptq-exllama-v2": {
-    #     "torch_dtype": "float16",
-    #     "quant_scheme": "gptq",
-    #     "quant_config": {"bits": 4, "use_exllama ": True, "version": 2, "model_seqlen": 256},
-    # },
+    # bnb
+    "4bit-bnb": {"torch_dtype": "float16", "quant_scheme": "bnb", "quant_config": {"load_in_4bit": True}},
+    "8bit-bnb": {"torch_dtype": "float16", "quant_scheme": "bnb", "quant_config": {"load_in_8bit": True}},
+    # gptq
+    "4bit-gptq-exllama-v1": {
+        "quant_scheme": "gptq",
+        "torch_dtype": "float16",
+        "quant_config": {"bits": 4, "use_exllama ": True, "version": 1, "model_seqlen": 256},
+    },
+    "4bit-gptq-exllama-v2": {
+        "torch_dtype": "float16",
+        "quant_scheme": "gptq",
+        "quant_config": {"bits": 4, "use_exllama ": True, "version": 2, "model_seqlen": 256},
+    },
     # # awq
     # "4bit-awq-gemm": {"torch_dtype": "float16", "quant_scheme": "awq", "quant_config": {"bits": 4, "version": "gemm"}},
     # "4bit-awq-gemv": {"torch_dtype": "float16", "quant_scheme": "awq", "quant_config": {"bits": 4, "version": "gemv"}},
