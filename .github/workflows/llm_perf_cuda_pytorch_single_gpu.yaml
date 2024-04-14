@@ -2,6 +2,9 @@ name: Pytorch CUDA LLM Perf Benchmarks
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - llm-perf
   schedule:
     # Every day at 00:00 UTC
     - cron: "0 0 * * *"
