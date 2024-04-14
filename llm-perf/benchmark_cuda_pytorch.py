@@ -12,7 +12,7 @@ from optimum_benchmark.launchers.process.config import ProcessConfig
 from optimum_benchmark.logging_utils import setup_logging
 
 CWD = os.getcwd()
-REPO_ID = os.getenv("REPO_ID", "optimum-benchmark/llm-perf-pytorch-cuda-1xA10")
+PUSH_REPO_ID = os.getenv("PUSH_REPO_ID", "optimum-benchmark/llm-perf-pytorch-cuda-local")
 
 # MODELS_LIST = ["TinyLlama/TinyLlama-1.1B-Chat-v1.0"]
 OPEN_LLM_DF = pd.read_csv("hf://datasets/optimum/llm-perf-dataset/open-llm.csv")
@@ -114,9 +114,9 @@ def benchmark_cuda_pytorch():
 
         try:
             # skip if the same experiment is already uploaded, and its benchmark report is already uploaded
-            loaded_experiment_config = ExperimentConfig.from_pretrained(repo_id=REPO_ID, subfolder=subfolder)
+            loaded_experiment_config = ExperimentConfig.from_pretrained(repo_id=PUSH_REPO_ID, subfolder=subfolder)
             if loaded_experiment_config.to_dict() == experiment_config.to_dict():
-                BenchmarkReport.from_pretrained(repo_id=REPO_ID, subfolder=subfolder)
+                BenchmarkReport.from_pretrained(repo_id=PUSH_REPO_ID, subfolder=subfolder)
                 LOGGER.info(
                     f"Skipping {experiment_name} with model {model} since the same "
                     "experiment is already uploaded with its benchmark report"
@@ -127,7 +127,7 @@ def benchmark_cuda_pytorch():
 
         experiment_config.push_to_hub(
             subfolder=subfolder,
-            repo_id=REPO_ID,
+            repo_id=PUSH_REPO_ID,
             private=True,
         )
 
@@ -135,7 +135,7 @@ def benchmark_cuda_pytorch():
             benchmark_report = launch(experiment_config)
             benchmark_report.push_to_hub(
                 subfolder=subfolder,
-                repo_id=REPO_ID,
+                repo_id=PUSH_REPO_ID,
                 private=True,
             )
         except Exception as e:

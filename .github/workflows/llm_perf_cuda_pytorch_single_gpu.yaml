@@ -22,13 +22,31 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Build image
-        run: make build_cuda_image
-
-      - name: Run container
-        run: make run_cuda_container
-
-      - name: Install requirements
-        run: make install_cuda_requirements
+        run: docker build
+          --build-arg USER_ID=$(id -u)
+          --build-arg GROUP_ID=$(id -g)
+          --build-arg TORCH_CUDA=cu121
+          --build-arg CUDA_VERSION=12.1.1
+          --tag llm-perf-cuda:12.1.1
+          docker/cuda
 
       - name: Run benchmarks
-        run: make run_cuda_benchmarks
+        uses: addnab/docker-run-action@v3
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          PUSH_REPO_ID: optimum-benchmark/llm-perf-pytorch-cuda-1xA100
+        with:
+          image: llm-perf-pytorch-cuda:12.1.1
+          options: |
+            --rm
+            --gpus all
+            --shm-size 64G
+            --env HF_TOKEN
+            --env PUSH_REPO_ID
+            --env MKL_THREADING_LAYER=GNU
+            --volume ${{ github.workspace }}:/workspace
+            --workdir /workspace
+          run: |
+            pip install -e .
+            pip install bitsandbytes flash-attn codecarbon auto-gptq autoawq optimum einops scipy
+            python llm-perf/benchmark_cuda_pytorch.py
