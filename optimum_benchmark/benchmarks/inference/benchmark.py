@@ -331,7 +331,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         elapsed = 0
         start_time = time.perf_counter()
 
-        with energy_tracker.track():
+        with energy_tracker.track(file_prefix="prefill"):
             while elapsed < self.config.duration or count < self.config.iterations:
                 _ = backend.prefill(self.inputs, prefill_kwargs)
                 elapsed = time.perf_counter() - start_time
@@ -349,7 +349,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         elapsed = 0
         start_time = time.perf_counter()
 
-        with energy_tracker.track():
+        with energy_tracker.track(file_prefix="generate"):
             while elapsed < self.config.duration or count < self.config.iterations:
                 _ = backend.generate(self.inputs, self.config.generate_kwargs)
                 elapsed = time.perf_counter() - start_time
@@ -374,7 +374,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         elapsed = 0
         start_time = time.perf_counter()
 
-        with energy_tracker.track():
+        with energy_tracker.track(file_prefix="call"):
             while elapsed < self.config.duration or count < self.config.iterations:
                 _ = backend.call(self.inputs, self.config.call_kwargs)
                 elapsed = time.perf_counter() - start_time
@@ -398,7 +398,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         elapsed = 0
         start_time = time.perf_counter()
 
-        with energy_tracker.track():
+        with energy_tracker.track(file_prefix="forward"):
             while elapsed < self.config.duration or count < self.config.iterations:
                 _ = backend.forward(self.inputs, self.config.forward_kwargs)
                 elapsed = time.perf_counter() - start_time
