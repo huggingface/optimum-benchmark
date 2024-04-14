@@ -1,6 +1,7 @@
 import os
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from json import dump
 from logging import getLogger
 from typing import List, Literal, Optional
 
@@ -163,8 +164,6 @@ class EnergyTracker:
 
     @contextmanager
     def track(self, file_prefix: str = "task"):
-        self.emission_tracker._output_file = f"{file_prefix}_codecarbon.csv"
-
         if self.asynchronous:
             torch.cuda.synchronize()
 
@@ -176,6 +175,10 @@ class EnergyTracker:
         yield
 
         emission_data: EmissionsData = self.emission_tracker.stop_task()
+
+        with open(f"{file_prefix}_codecarbon.json", "w") as f:
+            LOGGER.info(f"\t+ Saving codecarbon emission data to {file_prefix}_codecarbon.json")
+            dump(asdict(emission_data), f, indent=4)
 
         if self.distributed:
             torch.distributed.barrier()
