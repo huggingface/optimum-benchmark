@@ -28,6 +28,8 @@ from .utils import TASKS_TO_ORTMODELS, TASKS_TO_ORTSD, format_calibration_config
 
 LOGGER = getLogger("onnxruntime")
 
+PROBLEMATIC_INPUTS = ["token_type_ids", "position_ids"]
+
 
 class ORTBackend(Backend[ORTConfig]):
     NAME: str = "onnxruntime"
@@ -281,22 +283,29 @@ class ORTBackend(Backend[ORTConfig]):
         inputs = super().prepare_inputs(inputs)
 
         if self.config.library == "diffusers":
-            return {"prompt": inputs["prompt"]}
+            inputs = {"prompt": inputs["prompt"]}
         else:
             for key, value in list(inputs.items()):
-                if key in self.inputs_names:
+                if key not in PROBLEMATIC_INPUTS:
                     inputs[key] = value.to(self.config.device)
-                else:
-                    LOGGER.warning(f"Input {key} is not in expected inputs names. Removing it.")
+                elif key not in self.inputs_names:
                     inputs.pop(key)
-            return inputs
 
+        return inputs
+
+    @torch.inference_mode()
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         return self.pretrained_model.forward(**inputs, **kwargs)
 
+    @torch.inference_mode()
+    def prefill(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
+        return self.pretrained_model.generate(**inputs, **kwargs)
+
+    @torch.inference_mode()
     def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         return self.pretrained_model.generate(**inputs, **kwargs)
 
+    @torch.inference_mode()
     def call(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         return self.pretrained_model(**inputs, **kwargs)
 

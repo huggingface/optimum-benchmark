@@ -81,6 +81,9 @@ class LLMSwarmBackend(Backend[LLMSwarmConfig]):
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> List[str]:
         return asyncio.run(self.batch_client_call(inputs, kwargs))
 
+    def prefill(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> List[str]:
+        return asyncio.run(self.batch_client_call(inputs, kwargs))
+
     def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> List[str]:
         return asyncio.run(self.batch_client_call(inputs, kwargs))
 

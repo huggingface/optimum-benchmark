@@ -1,5 +1,6 @@
 import gc
 import os
+from collections import OrderedDict
 from logging import getLogger
 from tempfile import TemporaryDirectory
 from typing import Any, Dict
@@ -8,7 +9,6 @@ import torch
 from hydra.utils import get_class
 from neural_compressor.config import AccuracyCriterion, PostTrainingQuantConfig, TuningCriterion
 from optimum.intel.neural_compressor.quantization import INCQuantizer
-from transformers.utils import ModelOutput
 
 from ...generators.dataset_generator import DatasetGenerator
 from ..base import Backend
@@ -158,11 +158,15 @@ class INCBackend(Backend[INCConfig]):
         return inputs
 
     @torch.inference_mode()
-    def forward(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:
+    def forward(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         return self.pretrained_model(**input, **kwargs)
 
     @torch.inference_mode()
-    def generate(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:
+    def prefill(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
+        return self.pretrained_model.generate(**inputs, **kwargs)
+
+    @torch.inference_mode()
+    def generate(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         return self.pretrained_model.generate(**input, **kwargs)
 
     def clean(self) -> None:

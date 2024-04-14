@@ -200,6 +200,9 @@ class OVBackend(Backend[OVConfig]):
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         return self.pretrained_model.forward(**inputs, **kwargs)
 
+    def prefill(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
+        return self.pretrained_model.generate(**inputs, **kwargs)
+
     def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         return self.pretrained_model.generate(**inputs, **kwargs)
 

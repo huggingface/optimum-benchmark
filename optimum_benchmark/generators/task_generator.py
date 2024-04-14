@@ -153,12 +153,6 @@ class TextGenerationGenerator(TextGenerator):
         dummy["input_ids"] = self.input_ids()
         dummy["attention_mask"] = self.attention_mask()
 
-        if self.requires_token_type_ids():
-            dummy["token_type_ids"] = self.token_type_ids()
-
-        if self.requires_position_ids():
-            dummy["position_ids"] = self.position_ids()
-
         if self.with_labels:
             dummy["labels"] = self.input_ids()
 
@@ -169,14 +163,7 @@ class Text2TextGenerationGenerator(TextGenerator):
     def __call__(self):
         dummy = {}
         dummy["input_ids"] = self.input_ids()
-        dummy["decoder_input_ids"] = self.input_ids()
         dummy["attention_mask"] = self.attention_mask()
-
-        if self.requires_token_type_ids():
-            dummy["token_type_ids"] = self.token_type_ids()
-
-        if self.requires_position_ids():
-            dummy["position_ids"] = self.position_ids()
 
         if self.with_labels:
             dummy["labels"] = self.input_ids()

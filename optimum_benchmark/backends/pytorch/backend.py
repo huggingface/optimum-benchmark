@@ -343,6 +343,11 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             return self.pretrained_model.forward(**inputs, **kwargs)
 
     @torch.inference_mode()
+    def prefill(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
+        with torch.autocast(device_type=self.config.device, dtype=self.amp_dtype, enabled=self.config.amp_autocast):
+            return self.pretrained_model.generate(**inputs, **kwargs)
+
+    @torch.inference_mode()
     def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         with torch.autocast(device_type=self.config.device, dtype=self.amp_dtype, enabled=self.config.amp_autocast):
             return self.pretrained_model.generate(**inputs, **kwargs)
