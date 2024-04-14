@@ -82,15 +82,23 @@ def launch(experiment_config: ExperimentConfig) -> BenchmarkReport:
         original_dir = os.getcwd()
         os.chdir(tmpdir.name)
 
-    # Allocate requested launcher
-    launcher_config: LauncherConfig = experiment_config.launcher
-    launcher_factory: Type[Launcher] = get_class(launcher_config._target_)
-    launcher: Launcher = launcher_factory(experiment_config.launcher)
-    report = launcher.launch(run, experiment_config.benchmark, experiment_config.backend)
+    try:
+        # Allocate requested launcher
+        launcher_config: LauncherConfig = experiment_config.launcher
+        launcher_factory: Type[Launcher] = get_class(launcher_config._target_)
+        launcher: Launcher = launcher_factory(experiment_config.launcher)
+        report = launcher.launch(run, experiment_config.benchmark, experiment_config.backend)
+        error = None
+    except Exception as e:
+        LOGGER.error("Error during experiment")
+        error = e
 
     if os.environ.get("BENCHMARK_INTERFACE", "API") == "API":
         LOGGER.info("Cleaning up experiment temporary directory.")
         os.chdir(original_dir)
         tmpdir.cleanup()
+
+    if error is not None:
+        raise error
 
     return report
