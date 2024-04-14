@@ -296,6 +296,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         while latency_tracker.elapsed() < self.config.duration or latency_tracker.count() < self.config.iterations:
             with latency_tracker.track():
                 _ = backend.forward(self.inputs, self.config.forward_kwargs)
+
         forward_latency = latency_tracker.get_latency()
         forward_volume = self.atomic_forward_volume
 
@@ -322,12 +323,12 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
                 elapsed = time.perf_counter() - start_time
                 count += 1
 
-        cumulated_prefill_energy = energy_tracker.get_energy()
-        cumulated_prefill_volume = self.atomic_prefill_volume
+        prefill_energy = energy_tracker.get_energy() / count
+        prefill_volume = self.atomic_prefill_volume
 
-        self.report.prefill.energy = cumulated_prefill_energy
+        self.report.prefill.energy = prefill_energy
         self.report.prefill.efficiency = Efficiency.from_energy(
-            cumulated_prefill_energy, cumulated_prefill_volume, unit=TEXT_GENERATION_EFFICIENCY_UNIT
+            prefill_energy, prefill_volume, unit=TEXT_GENERATION_EFFICIENCY_UNIT
         )
 
         count = 0
@@ -340,13 +341,13 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
                 elapsed = time.perf_counter() - start_time
                 count += 1
 
-        cumulated_generate_energy = energy_tracker.get_energy()
-        cumulated_decode_energy = cumulated_generate_energy - cumulated_prefill_energy
-        cumulated_decode_volume = self.atomic_decode_volume * count
+        generate_energy = energy_tracker.get_energy() / count
+        decode_energy = generate_energy - prefill_energy
+        decode_volume = self.atomic_decode_volume
 
-        self.report.decode.energy = cumulated_decode_energy
+        self.report.decode.energy = decode_energy
         self.report.decode.efficiency = Efficiency.from_energy(
-            cumulated_decode_energy, cumulated_decode_volume, unit=TEXT_GENERATION_EFFICIENCY_UNIT
+            decode_energy, decode_volume, unit=TEXT_GENERATION_EFFICIENCY_UNIT
         )
 
     def run_image_diffusion_energy_tracking(self, backend: Backend[BackendConfigT]):
@@ -365,12 +366,12 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
                 elapsed = time.perf_counter() - start_time
                 count += 1
 
-        cumulated_call_energy = energy_tracker.get_energy()
-        cumulated_call_volume = self.atomic_call_volume * count
+        call_energy = energy_tracker.get_energy() / count
+        call_volume = self.atomic_call_volume
 
-        self.report.call.energy = cumulated_call_energy
+        self.report.call.energy = call_energy
         self.report.call.efficiency = Efficiency.from_energy(
-            cumulated_call_energy, cumulated_call_volume, unit=IMAGE_DIFFUSION_EFFICIENCY_UNIT
+            call_energy, call_volume, unit=IMAGE_DIFFUSION_EFFICIENCY_UNIT
         )
 
     def run_inference_energy_tracking(self, backend: Backend[BackendConfigT]):
@@ -389,12 +390,12 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
                 elapsed = time.perf_counter() - start_time
                 count += 1
 
-        cumulated_forward_energy = energy_tracker.get_energy()
-        cumulated_forward_volume = self.atomic_forward_volume * count
+        forward_energy = energy_tracker.get_energy() / count
+        forward_volume = self.atomic_forward_volume
 
-        self.report.forward.energy = cumulated_forward_energy
+        self.report.forward.energy = forward_energy
         self.report.forward.efficiency = Efficiency.from_energy(
-            cumulated_forward_energy, cumulated_forward_volume, unit=INFERENCE_EFFICIENCY_UNIT
+            forward_energy, forward_volume, unit=INFERENCE_EFFICIENCY_UNIT
         )
 
     @property

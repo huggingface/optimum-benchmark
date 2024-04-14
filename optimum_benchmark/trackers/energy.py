@@ -15,12 +15,16 @@ if is_torch_distributed_available():
 
 if is_codecarbon_available():
     from codecarbon import EmissionsTracker, OfflineEmissionsTracker
+    from codecarbon.output import EmissionsData
 
 LOGGER = getLogger("energy")
 
+POWER_UNIT = "W"
 ENERGY_UNIT = "kWh"
 Energy_Unit_Literal = Literal["kWh"]
 Efficiency_Unit_Literal = Literal["samples/kWh", "tokens/kWh", "images/kWh"]
+
+POWER_CONSUMPTION_SAMPLING_RATE = 1  # in seconds
 
 
 @dataclass
@@ -39,10 +43,11 @@ class Energy:
         elif any(energy is None for energy in energies):
             raise ValueError("Some energy measurements are missing")
 
-        cpu = sum(energy.cpu for energy in energies)
-        gpu = sum(energy.gpu for energy in energies)
-        ram = sum(energy.ram for energy in energies)
-        total = sum(energy.total for energy in energies)
+        # since measurements are machine-level, we just take the average
+        cpu = sum(energy.cpu for energy in energies) / len(energies)
+        gpu = sum(energy.gpu for energy in energies) / len(energies)
+        ram = sum(energy.ram for energy in energies) / len(energies)
+        total = sum(energy.total for energy in energies) / len(energies)
 
         return Energy(cpu=cpu, gpu=gpu, ram=ram, total=total, unit=ENERGY_UNIT)
 
@@ -64,6 +69,15 @@ class Energy:
             gpu=self.gpu - other.gpu,
             ram=self.ram - other.ram,
             total=self.total - other.total,
+            unit=self.unit,
+        )
+
+    def __truediv__(self, scalar: float) -> "Energy":
+        return Energy(
+            cpu=self.cpu / scalar,
+            gpu=self.gpu / scalar,
+            ram=self.ram / scalar,
+            total=self.total / scalar,
             unit=self.unit,
         )
 
@@ -110,13 +124,6 @@ class EnergyTracker:
             self.device_ids = list(map(int, self.device_ids.split(",")))
             LOGGER.info(f"\t+ Tracking GPU energy on devices {self.device_ids}")
 
-        self.cpu_energy = None
-        self.gpu_energy = None
-        self.ram_energy = None
-        self.total_energy = None
-
-    @contextmanager
-    def track(self, interval: int = 1, file_prefix: str = "method"):
         if not is_codecarbon_available():
             raise ValueError(
                 "The library codecarbon is required to run energy benchmark, but is not installed. "
@@ -126,11 +133,11 @@ class EnergyTracker:
         try:
             # TODO: use pynvml and amdsmi directly to get the GPU power consumption
             self.emission_tracker = EmissionsTracker(
-                log_level="error",  # "info" for more verbosity
-                tracking_mode="process",  # "machine" for machine-level tracking
+                log_level="warning",  # "info" for more verbosity
+                tracking_mode="machine",  # "machine" for machine-level tracking
                 gpu_ids=self.device_ids,
-                measure_power_secs=interval,
-                output_file=f"{file_prefix}_codecarbon.csv",
+                output_file="codecarbon.csv",
+                measure_power_secs=POWER_CONSUMPTION_SAMPLING_RATE,
             )
         except Exception as e:
             LOGGER.warning("\t+ Failed to initialize Online Emissions Tracker:, %s", e)
@@ -138,17 +145,25 @@ class EnergyTracker:
             if os.environ.get("COUNTRY_ISO_CODE", None) is None:
                 LOGGER.warning(
                     "\t+ Offline Emissions Tracker requires COUNTRY_ISO_CODE to be set. "
-                    "We will set it to FRA but the carbon footprint will be inaccurate."
+                    "We will set it to USA but the carbon footprint might be inaccurate."
                 )
 
             self.emission_tracker = OfflineEmissionsTracker(
-                log_level="error",
-                tracking_mode="process",
+                log_level="warning",  # "info" for more verbosity
+                tracking_mode="machine",  # "machine" for machine-level tracking
                 gpu_ids=self.device_ids,
-                measure_power_secs=interval,
-                output_file=f"{file_prefix}_codecarbon.csv",
-                country_iso_code=os.environ.get("COUNTRY_ISO_CODE", "FRA"),
+                measure_power_secs=POWER_CONSUMPTION_SAMPLING_RATE,
+                country_iso_code=os.environ.get("COUNTRY_ISO_CODE", "USA"),
             )
+
+        self.cpu_energy = None
+        self.gpu_energy = None
+        self.ram_energy = None
+        self.total_energy = None
+
+    @contextmanager
+    def track(self, file_prefix: str = "task"):
+        self.emission_tracker._output_file = f"{file_prefix}_codecarbon.csv"
 
         if self.asynchronous:
             torch.cuda.synchronize()
@@ -156,11 +171,11 @@ class EnergyTracker:
         if self.distributed:
             torch.distributed.barrier()
 
-        self.emission_tracker.start()
+        self.emission_tracker.start_task()
 
         yield
 
-        self.emission_tracker.stop()
+        emission_data: EmissionsData = self.emission_tracker.stop_task()
 
         if self.distributed:
             torch.distributed.barrier()
@@ -168,10 +183,10 @@ class EnergyTracker:
         if self.asynchronous:
             torch.cuda.synchronize()
 
-        self.cpu_energy = self.emission_tracker._total_cpu_energy.kWh
-        self.gpu_energy = self.emission_tracker._total_gpu_energy.kWh
-        self.ram_energy = self.emission_tracker._total_ram_energy.kWh
-        self.total_energy = self.emission_tracker._total_energy.kWh
+        self.cpu_energy = emission_data.cpu_energy
+        self.gpu_energy = emission_data.gpu_energy
+        self.ram_energy = emission_data.ram_energy
+        self.total_energy = emission_data.energy_consumed
 
     def get_energy(self) -> Energy:
         return Energy(
