@@ -281,15 +281,12 @@ class ORTBackend(Backend[ORTConfig]):
         inputs = super().prepare_inputs(inputs)
 
         if self.config.library == "diffusers":
-            return {"prompt": inputs["prompt"]}
+            inputs = {"prompt": inputs["prompt"]}
         else:
-            for key, value in list(inputs.items()):
-                if key in self.inputs_names:
-                    inputs[key] = value.to(self.config.device)
-                else:
-                    LOGGER.warning(f"Input {key} is not in expected inputs names. Removing it.")
-                    inputs.pop(key)
-            return inputs
+            for key, value in inputs.items():
+                inputs[key] = value.to(self.config.device)
+
+        return inputs
 
     @torch.inference_mode()
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:

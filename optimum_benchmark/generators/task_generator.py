@@ -163,7 +163,6 @@ class Text2TextGenerationGenerator(TextGenerator):
     def __call__(self):
         dummy = {}
         dummy["input_ids"] = self.input_ids()
-        dummy["decoder_input_ids"] = self.input_ids()
         dummy["attention_mask"] = self.attention_mask()
 
         if self.with_labels:
