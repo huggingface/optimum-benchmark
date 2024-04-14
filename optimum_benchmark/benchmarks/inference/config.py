@@ -17,6 +17,7 @@ class InferenceConfig(BenchmarkConfig):
 
     # benchmark options
     duration: int = field(default=10, metadata={"help": "Minimum duration of the benchmark in seconds"})
+    iterations: int = field(default=10, metadata={"help": "Minimum number of iterations to run the benchmark"})
     warmup_runs: int = field(default=10, metadata={"help": "Number of warmup runs to perform before benchmarking"})
 
     # input/output config
@@ -26,23 +27,23 @@ class InferenceConfig(BenchmarkConfig):
     )
     new_tokens: Optional[int] = field(
         default=None,
-        metadata={"help": "Deprecated. If set, `max_new_tokens` and `min_new_tokens` will be set to this value."},
-    )  # should be removed soon
+        metadata={"help": "If set, `max_new_tokens` and `min_new_tokens` will be set to this value."},
+    )
 
     # tracking options
     latency: bool = field(default=True, metadata={"help": "Measure latencies and throughputs"})
     memory: bool = field(default=False, metadata={"help": "Measure max memory usage"})
-    energy: bool = field(default=False, metadata={"help": "Measure energy usage"})
+    energy: bool = field(default=False, metadata={"help": "Measure energy usage and efficiency"})
 
     # methods kwargs
     forward_kwargs: Dict[str, Any] = field(
-        default_factory=dict, metadata={"help": "Keyword arguments to pass to the forward method of the model."}
+        default_factory=dict, metadata={"help": "Keyword arguments to pass to the forward method of the backend."}
     )
     generate_kwargs: Dict[str, Any] = field(
-        default_factory=dict, metadata={"help": "Keyword arguments to pass to the generate method of the model."}
+        default_factory=dict, metadata={"help": "Keyword arguments to pass to the generate method of the backend."}
     )
     call_kwargs: Dict[str, Any] = field(
-        default_factory=dict, metadata={"help": "Keyword arguments to pass to the __call__ method of the pipeline."}
+        default_factory=dict, metadata={"help": "Keyword arguments to pass to the call method of the backend."}
     )
 
     def __post_init__(self):

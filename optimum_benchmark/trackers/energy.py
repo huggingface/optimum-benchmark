@@ -4,8 +4,11 @@ from dataclasses import dataclass
 from logging import getLogger
 from typing import List, Literal, Optional
 
-from ..import_utils import is_codecarbon_available, is_torch_distributed_available
+from ..import_utils import is_codecarbon_available, is_torch_available, is_torch_distributed_available
 from ..system_utils import get_gpu_device_ids
+
+if is_torch_available():
+    import torch
 
 if is_torch_distributed_available():
     import torch.distributed
@@ -91,9 +94,11 @@ class Efficiency:
 
 
 class EnergyTracker:
-    def __init__(self, device: str, device_ids: Optional[str] = None):
+    def __init__(self, backend: str, device: str, device_ids: Optional[str] = None):
         self.device = device
+        self.backend = backend
         self.device_ids = device_ids
+        self.asynchronous = backend == "pytorch" and device == "cuda"
         self.distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
         if self.device == "cuda":
@@ -109,17 +114,8 @@ class EnergyTracker:
         self.ram_energy = None
         self.total_energy = None
 
-    def reset(self):
-        self.cpu_energy = None
-        self.gpu_energy = None
-        self.ram_energy = None
-        self.total_energy = None
-
     @contextmanager
     def track(self, interval=1, file_prefix="method"):
-        if any(energy is not None for energy in [self.cpu_energy, self.gpu_energy, self.ram_energy, self.total_energy]):
-            raise ValueError("Energy tracker is meant for single use only. Please reset the tracker before reusing it.")
-
         if not is_codecarbon_available():
             raise ValueError(
                 "The library codecarbon is required to run energy benchmark, but is not installed. "
@@ -153,6 +149,9 @@ class EnergyTracker:
                 country_iso_code=os.environ.get("COUNTRY_ISO_CODE", "FRA"),
             )
 
+        if self.asynchronous:
+            torch.cuda.synchronize()
+
         if self.distributed:
             torch.distributed.barrier()
 
@@ -164,6 +163,9 @@ class EnergyTracker:
 
         if self.distributed:
             torch.distributed.barrier()
+
+        if self.asynchronous:
+            torch.cuda.synchronize()
 
         self.cpu_energy = self.emission_tracker._total_cpu_energy.kWh
         self.gpu_energy = self.emission_tracker._total_gpu_energy.kWh
