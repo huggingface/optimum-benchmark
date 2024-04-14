@@ -153,6 +153,9 @@ class TextGenerationGenerator(TextGenerator):
         dummy["input_ids"] = self.input_ids()
         dummy["attention_mask"] = self.attention_mask()
 
+        if self.requires_position_ids():
+            dummy["position_ids"] = self.position_ids()
+
         if self.with_labels:
             dummy["labels"] = self.input_ids()
 
@@ -164,6 +167,9 @@ class Text2TextGenerationGenerator(TextGenerator):
         dummy = {}
         dummy["input_ids"] = self.input_ids()
         dummy["attention_mask"] = self.attention_mask()
+
+        if self.requires_position_ids():
+            dummy["position_ids"] = self.position_ids()
 
         if self.with_labels:
             dummy["labels"] = self.input_ids()

@@ -28,6 +28,8 @@ from .utils import TASKS_TO_ORTMODELS, TASKS_TO_ORTSD, format_calibration_config
 
 LOGGER = getLogger("onnxruntime")
 
+PROBLEMATIC_INPUTS = ["token_type_ids", "position_ids"]
+
 
 class ORTBackend(Backend[ORTConfig]):
     NAME: str = "onnxruntime"
@@ -284,6 +286,9 @@ class ORTBackend(Backend[ORTConfig]):
             inputs = {"prompt": inputs["prompt"]}
         else:
             for key, value in inputs.items():
+                if key in PROBLEMATIC_INPUTS:
+                    if key not in self.inputs_names:
+                        continue
                 inputs[key] = value.to(self.config.device)
 
         return inputs
