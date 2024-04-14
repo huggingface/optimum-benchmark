@@ -1,0 +1,31 @@
+name: Pytorch CUDA LLM Perf Benchmarks
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Every day at 00:00 UTC
+    - cron: "0 0 * * *"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build_image_and_run_cuda_pytorch_single_gpu_benchmarks:
+    runs-on: [single-gpu, nvidia-gpu, a10, ci]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Build image
+        run: make build_cuda_image
+
+      - name: Run container
+        run: make run_cuda_container
+
+      - name: Install requirements
+        run: make install_cuda_requirements
+
+      - name: Run benchmarks
+        run: make run_cuda_benchmarks
