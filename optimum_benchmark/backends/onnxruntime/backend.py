@@ -286,10 +286,10 @@ class ORTBackend(Backend[ORTConfig]):
             inputs = {"prompt": inputs["prompt"]}
         else:
             for key, value in inputs.items():
-                if key in PROBLEMATIC_INPUTS:
-                    if key not in self.inputs_names:
-                        continue
-                inputs[key] = value.to(self.config.device)
+                if key not in PROBLEMATIC_INPUTS:
+                    inputs[key] = value.to(self.config.device)
+                elif key not in self.inputs_names:
+                    inputs.pop(key)
 
         return inputs
 
