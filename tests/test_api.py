@@ -66,6 +66,7 @@ def test_api_launch(device, benchmark, library, task, model):
             input_shapes={"batch_size": 1, "sequence_length": 16},
             generate_kwargs={"max_new_tokens": 5, "min_new_tokens": 5},
             call_kwargs={"num_inference_steps": 2},
+            energy=torch.version.hip is None,
         )
 
     backend_config = PyTorchConfig(

@@ -39,5 +39,5 @@ jobs:
             --volume ${{ github.workspace }}:/workspace
             --workdir /workspace
           run: |
-            pip install -e .[testing,timm,diffusers]
+            pip install -e .[testing,timm,diffusers,codecarbon]
             pytest -s -x -k "api and cuda"

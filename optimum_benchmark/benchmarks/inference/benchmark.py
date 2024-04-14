@@ -22,7 +22,6 @@ LOGGER = getLogger("inference")
 
 PER_TOKEN_BACKENDS = ["pytorch", "onnxruntime", "openvino", "neural-compressor"]
 
-IMAGE_DIFFUSION_DEFAULT_KWARGS = {"num_inference_steps": 30, "num_images_per_prompt": 1}
 TEXT_GENERATION_DEFAULT_KWARGS = {
     "num_return_sequences": 1,
     "max_new_tokens": 100,
@@ -37,7 +36,18 @@ TEXT_GENERATION_PREFILL_OVERRIDES = {
     "max_new_tokens": 1,
     "min_new_tokens": 1,
 }
+TEXT_GENERATION_WARMUP_OVERRIDES = {
+    "max_new_tokens": 2,
+    "min_new_tokens": 2,
+}
 
+IMAGE_DIFFUSION_DEFAULT_KWARGS = {
+    "num_inference_steps": 30,
+    "num_images_per_prompt": 1,
+}
+IMAGE_DIFFUSION_WARMUP_OVERRIDES = {
+    "num_inference_steps": 2,
+}
 
 TEXT_GENERATION_THROUGHPUT_UNIT = "tokens/s"
 IMAGE_DIFFUSION_THROUGHPUT_UNIT = "images/s"
@@ -92,7 +102,6 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             self.inputs = backend.prepare_inputs(self.inputs)
             LOGGER.info("\t+ Updating Text Generation kwargs with default values")
             self.config.generate_kwargs = {**TEXT_GENERATION_DEFAULT_KWARGS, **self.config.generate_kwargs}
-            self.config.prefill_kwargs = {**self.config.generate_kwargs, **TEXT_GENERATION_PREFILL_OVERRIDES}
             LOGGER.info("\t+ Initializing Text Generation report")
             self.report = TextGenerationReport(
                 decode=BenchmarkMeasurements(), prefill=BenchmarkMeasurements(), per_token=BenchmarkMeasurements()
@@ -128,9 +137,9 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         LOGGER.info("\t+ Warming up backend for Inference")
         for _ in range(self.config.warmup_runs):
             if backend.config.task in TEXT_GENERATION_TASKS:
-                _ = backend.generate(self.inputs, {"max_new_tokens": 2, "min_new_tokens": 2})
+                _ = backend.generate(self.inputs, {**self.config.generate_kwargs, **TEXT_GENERATION_WARMUP_OVERRIDES})
             elif backend.config.task in IMAGE_DIFFUSION_TASKS:
-                _ = backend.call(self.inputs, {"num_inference_steps": 2})
+                _ = backend.call(self.inputs, {**self.config.call_kwargs, **IMAGE_DIFFUSION_WARMUP_OVERRIDES})
             else:
                 _ = backend.forward(self.inputs, self.config.forward_kwargs)
 
@@ -182,9 +191,10 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         self.memory_tracker = MemoryTracker(
             backend=backend.config.name, device=backend.config.device, device_ids=backend.config.device_ids
         )
+        prefill_kwargs = {**self.config.generate_kwargs, **TEXT_GENERATION_PREFILL_OVERRIDES}
 
         with self.memory_tracker.track():
-            _ = backend.prefill(self.inputs, self.config.prefill_kwargs)
+            _ = backend.prefill(self.inputs, prefill_kwargs)
 
         self.report.prefill.memory = self.memory_tracker.get_max_memory()
 
@@ -224,6 +234,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         while latency_tracker.elapsed() < self.config.duration or latency_tracker.count() < self.config.iterations:
             with latency_tracker.track():
                 _ = backend.generate(self.inputs, per_token_kwargs)
+
         per_token_latency = latency_tracker.get_per_token_latency()
         prefill_latency = latency_tracker.get_prefill_latency()
         decode_latency = latency_tracker.get_decode_latency()
@@ -253,6 +264,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         while latency_tracker.elapsed() < self.config.duration or latency_tracker.count() < self.config.iterations:
             with latency_tracker.track():
                 _ = backend.prefill(self.inputs, prefill_kwargs)
+
         prefill_latency = latency_tracker.get_latency()
         prefill_volume = self.atomic_prefill_volume
 
@@ -265,6 +277,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         while latency_tracker.elapsed() < self.config.duration or latency_tracker.count() < self.config.iterations:
             with latency_tracker.track():
                 _ = backend.generate(self.inputs, self.config.generate_kwargs)
+
         generate_latency = latency_tracker.get_latency()
         decode_latency = generate_latency - prefill_latency
         decode_volume = self.atomic_decode_volume
@@ -281,6 +294,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
         while latency_tracker.elapsed() < self.config.duration or latency_tracker.count() < self.config.iterations:
             with latency_tracker.track():
                 _ = backend.call(self.inputs, self.config.call_kwargs)
+
         call_latency = latency_tracker.get_latency()
         call_volume = self.atomic_call_volume
 
