@@ -28,41 +28,41 @@ WEIGHTS_CONFIGS = {
     "float32": {"torch_dtype": "float32", "quant_scheme": None, "quant_config": {}},
     "float16": {"torch_dtype": "float16", "quant_scheme": None, "quant_config": {}},
     "bfloat16": {"torch_dtype": "bfloat16", "quant_scheme": None, "quant_config": {}},
-    # # bnb
-    # "4bit-bnb": {"torch_dtype": "float16", "quant_scheme": "bnb", "quant_config": {"load_in_4bit": True}},
-    # "8bit-bnb": {"torch_dtype": "float16", "quant_scheme": "bnb", "quant_config": {"load_in_8bit": True}},
-    # # gptq
-    # "4bit-gptq-exllama-v1": {
-    #     "quant_scheme": "gptq",
-    #     "torch_dtype": "float16",
-    #     "quant_config": {"bits": 4, "use_exllama ": True, "version": 1, "model_seqlen": 256},
-    # },
-    # "4bit-gptq-exllama-v2": {
-    #     "torch_dtype": "float16",
-    #     "quant_scheme": "gptq",
-    #     "quant_config": {"bits": 4, "use_exllama ": True, "version": 2, "model_seqlen": 256},
-    # },
-    # # awq
-    # "4bit-awq-gemm": {"torch_dtype": "float16", "quant_scheme": "awq", "quant_config": {"bits": 4, "version": "gemm"}},
-    # "4bit-awq-gemv": {"torch_dtype": "float16", "quant_scheme": "awq", "quant_config": {"bits": 4, "version": "gemv"}},
-    # "4bit-awq-exllama-v1": {
-    #     "torch_dtype": "float16",
-    #     "quant_scheme": "awq",
-    #     "quant_config": {
-    #         "bits": 4,
-    #         "version": "exllama",
-    #         "exllama_config": {"version": 1, "max_input_len": 256, "max_batch_size": 1},
-    #     },
-    # },
-    # "4bit-awq-exllama-v2": {
-    #     "torch_dtype": "float16",
-    #     "quant_scheme": "awq",
-    #     "quant_config": {
-    #         "bits": 4,
-    #         "version": "exllama",
-    #         "exllama_config": {"version": 2, "max_input_len": 256, "max_batch_size": 1},
-    #     },
-    # },
+    # bnb
+    "4bit-bnb": {"torch_dtype": "float16", "quant_scheme": "bnb", "quant_config": {"load_in_4bit": True}},
+    "8bit-bnb": {"torch_dtype": "float16", "quant_scheme": "bnb", "quant_config": {"load_in_8bit": True}},
+    # gptq
+    "4bit-gptq-exllama-v1": {
+        "quant_scheme": "gptq",
+        "torch_dtype": "float16",
+        "quant_config": {"bits": 4, "use_exllama ": True, "version": 1, "model_seqlen": 256},
+    },
+    "4bit-gptq-exllama-v2": {
+        "torch_dtype": "float16",
+        "quant_scheme": "gptq",
+        "quant_config": {"bits": 4, "use_exllama ": True, "version": 2, "model_seqlen": 256},
+    },
+    # awq
+    "4bit-awq-gemm": {"torch_dtype": "float16", "quant_scheme": "awq", "quant_config": {"bits": 4, "version": "gemm"}},
+    "4bit-awq-gemv": {"torch_dtype": "float16", "quant_scheme": "awq", "quant_config": {"bits": 4, "version": "gemv"}},
+    "4bit-awq-exllama-v1": {
+        "torch_dtype": "float16",
+        "quant_scheme": "awq",
+        "quant_config": {
+            "bits": 4,
+            "version": "exllama",
+            "exllama_config": {"version": 1, "max_input_len": 256, "max_batch_size": 1},
+        },
+    },
+    "4bit-awq-exllama-v2": {
+        "torch_dtype": "float16",
+        "quant_scheme": "awq",
+        "quant_config": {
+            "bits": 4,
+            "version": "exllama",
+            "exllama_config": {"version": 2, "max_input_len": 256, "max_batch_size": 1},
+        },
+    },
 }
 
 
