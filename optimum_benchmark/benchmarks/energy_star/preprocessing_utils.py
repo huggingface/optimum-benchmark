@@ -107,25 +107,6 @@ def image_generation_preprocessing(
     if config.num_samples != -1:
         dataset = dataset.select(range(config.num_samples))
 
-    padding = False if config.input_shapes["batch_size"] == 1 else True
-
-    def tokenize_function(examples):
-        return processor.tokenizer(
-            examples[config.text_column_name],
-            padding=padding,
-            truncation=config.truncation,
-            max_length=config.max_length if config.max_length != -1 else None,
-        )
-
-    dataset = dataset.map(
-        tokenize_function,
-        batched=True,
-        remove_columns=dataset.features,
-        desc="Running tokenizer on dataset",
-    ).with_format(
-        "torch"
-    )  # We don't want a torch dependency here but for now the only backend used for this benchmark is PyTorch
-
     return dataset
 
 def text_classification_preprocessing(

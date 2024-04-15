@@ -13,7 +13,7 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: false
-  model: stabilityai/sd-turbo
+  model: segmind/tiny-sd
   task: stable-diffusion
 
 launcher:
