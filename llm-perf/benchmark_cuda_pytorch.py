@@ -16,7 +16,8 @@ PUSH_REPO_ID = os.getenv("PUSH_REPO_ID", "optimum-benchmark/llm-perf-pytorch-cud
 
 OPEN_LLM_DF = pd.read_csv("hf://datasets/optimum/llm-perf-dataset/open-llm.csv")
 CUSTOM_LLM_DF = pd.read_csv("hf://datasets/optimum/llm-perf-dataset/custom-llm.csv")
-MODELS_LIST = list(OPEN_LLM_DF["Model"]) + list(CUSTOM_LLM_DF["Model"])
+MODELS_DF = pd.concat([OPEN_LLM_DF, CUSTOM_LLM_DF]).sort_values("Size", ascending=True)
+MODELS_LIST = MODELS_DF["Model"].tolist()
 
 GENERATE_KWARGS = {"max_new_tokens": 64, "min_new_tokens": 64}
 INPUT_SHAPES = {"batch_size": 1, "sequence_length": 256}
