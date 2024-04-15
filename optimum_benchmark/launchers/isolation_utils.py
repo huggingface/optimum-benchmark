@@ -123,8 +123,6 @@ def assert_system_devices_isolation(isolated_pid: int, device_ids: str, action: 
     else:
         raise ValueError(f"Unsupported action {action}")
 
-    LOGGER.error(f"Isolation process {isolation_pid} is running with an action {action} signal {action_signal}")
-
     while psutil.pid_exists(isolated_pid):
         devices_pids = get_pids_running_on_system_devices(device_ids=device_ids)
         devices_pids = {pid for pid in devices_pids if psutil.pid_exists(pid)}
