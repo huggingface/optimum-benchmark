@@ -162,8 +162,9 @@ def benchmark_cuda_pytorch():
                 benchmark_report = BenchmarkReport.from_targets(["decode", "prefill", "per_token", "error"])
                 benchmark_report.error = "GPTQ: assert outfeatures % 32 == 0"
                 benchmark_report.push_to_hub(subfolder=subfolder, repo_id=PUSH_REPO_ID, private=True)
+            else:
+                LOGGER.error(f"Unknown error: {e}")
 
-            LOGGER.error(e)
             continue
 
 

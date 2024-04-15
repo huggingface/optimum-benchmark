@@ -2,15 +2,12 @@ name: LLM Perf Benchmarks - CUDA PyTorch
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - llm-perf*
   schedule:
     # Every day at 00:00 UTC
     - cron: "0 0 * * *"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -19,13 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         subset: [unquantized, bnb, awq, gptq]
-        machine:
-          [
-            {
-              runs-on: ["single-gpu", "nvidia-gpu", "a10", "ci"],
-              name: "1xA10",
-            },
-          ]
+        machine: [{ name: 1xA10, runs-on: [single-gpu, nvidia-gpu, a10, ci] }]
 
     runs-on: ${{ matrix.machine.runs-on }}
 
@@ -53,16 +44,16 @@ jobs:
           options: |
             --rm
             --gpus all
+            --shm-size 64G
             --env SUBSET
             --env MACHINE
             --env HF_TOKEN
-            --shm-size 64G
             --env MKL_THREADING_LAYER=GNU
             --env HF_HUB_ENABLE_HF_TRANSFER=1
             --volume ${{ github.workspace }}:/workspace
             --workdir /workspace
           run: |
+            pip install -e .[codecarbon]
             pip install packaging && pip install flash-attn einops scipy auto-gptq optimum bitsandbytes autoawq
             pip install -U transformers huggingface_hub[hf_transfer]
-            pip install -e .[codecarbon]
             python llm-perf/benchmark_cuda_pytorch.py
