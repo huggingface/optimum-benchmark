@@ -45,6 +45,7 @@ run_cuda_118_container:
 	docker run \
 	-it \
 	--rm \
+	--pid host \
 	--gpus all \
 	--shm-size 64G \
 	--volume $(PWD):/workspace \
@@ -56,6 +57,7 @@ run_cuda_121_container:
 	docker run \
 	-it \
 	--rm \
+	--pid host \
 	--gpus all \
 	--shm-size 64G \
 	--volume $(PWD):/workspace \
@@ -166,3 +168,22 @@ test_cli_rocm_pytorch_multi_gpu:
 
 test_cli_rocm_pytorch_single_gpu:
 	pytest -s -k "cli and rocm and pytorch and not (dp or ddp or device_map or deepspeed) and not (bnb or awq)"
+
+# llm-perf
+
+install_llm_perf_cuda_pytorch:
+	pip install packaging && pip install flash-attn einops scipy auto-gptq optimum bitsandbytes autoawq
+	pip install -U transformers huggingface_hub[hf_transfer]
+	pip install -e .[codecarbon]
+
+run_llm_perf_cuda_pytorch_unquantized:
+	SUBSET=unquantized python llm-perf/benchmark_cuda_pytorch.py
+
+run_llm_perf_cuda_pytorch_bnb:
+	SUBSET=bnb python llm-perf/benchmark_cuda_pytorch.py
+
+run_llm_perf_cuda_pytorch_gptq:
+	SUBSET=gptq python llm-perf/benchmark_cuda_pytorch.py
+
+run_llm_perf_cuda_pytorch_awq:
+	SUBSET=awq python llm-perf/benchmark_cuda_pytorch.py

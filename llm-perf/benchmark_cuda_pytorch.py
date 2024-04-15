@@ -12,7 +12,7 @@ from optimum_benchmark.launchers.process.config import ProcessConfig
 from optimum_benchmark.logging_utils import setup_logging
 
 CWD = os.getcwd()
-MACHINE = os.getenv("MACHINE", "a100")
+MACHINE = os.getenv("MACHINE", "1xA100")
 SUBSET = os.getenv("SUBSET", "unquantized")
 PUSH_REPO_ID = f"optimum-benchmark/llm-perf-pytorch-cuda-{SUBSET}-{MACHINE}"
 
