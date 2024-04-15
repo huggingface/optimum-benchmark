@@ -140,6 +140,26 @@ def benchmark_cuda_pytorch():
         except Exception as e:
             os.chdir(CWD)  # go back to original_dir
             LOGGER.error(f"Experiment {experiment_name} failed with model {model}")
+            if "torch.cuda.OutOfMemoryError" in str(e):
+                benchmark_report = BenchmarkReport.from_dict(
+                    {
+                        "memory": "CUDA out of memory error",
+                        "latency": "CUDA out of memory error",
+                        "throughput": "CUDA out of memory error",
+                        "energy": "CUDA out of memory error",
+                        "efficiency": "CUDA out of memory error",
+                    }
+                )
+            elif "gptq" in str(e) and "assert outfeatures % 32 == 0" in str(e):
+                benchmark_report = BenchmarkReport.from_dict(
+                    {
+                        "memory": "GPTQ assertion error",
+                        "latency": "GPTQ assertion error",
+                        "throughput": "GPTQ assertion error",
+                        "energy": "GPTQ assertion error",
+                        "efficiency": "GPTQ assertion error",
+                    }
+                )
             LOGGER.error(e)
             continue
 

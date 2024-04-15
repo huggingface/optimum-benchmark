@@ -47,6 +47,6 @@ jobs:
             --volume ${{ github.workspace }}:/workspace
             --workdir /workspace
           run: |
-            pip install -e .[bitsandbytes,auto-gptq,codecarbon] 
-            pip install packaging && pip install flash-attn einops scipy
+            pip install packaging && pip install flash-attn einops scipy auto-gptq
+            pip install -e .[bitsandbytes,codecarbon]
             python llm-perf/benchmark_cuda_pytorch.py
