@@ -12,12 +12,12 @@ from optimum_benchmark.launchers.process.config import ProcessConfig
 from optimum_benchmark.logging_utils import setup_logging
 
 CWD = os.getcwd()
-PUSH_REPO_ID = os.getenv("PUSH_REPO_ID", "optimum-benchmark/llm-perf-pytorch-cuda-local")
+PUSH_REPO_ID = os.getenv("PUSH_REPO_ID", "optimum-benchmark/llm-perf-pytorch-cuda-A100")
 
 OPEN_LLM_DF = pd.read_csv("hf://datasets/optimum/llm-perf-dataset/open-llm.csv")
-CUSTOM_LLM_DF = pd.read_csv("hf://datasets/optimum/llm-perf-dataset/custom-llm.csv")
-MODELS_DF = pd.concat([OPEN_LLM_DF, CUSTOM_LLM_DF]).sort_values("Size", ascending=True)
-MODELS_LIST = MODELS_DF["Model"].tolist()
+# CUSTOM_LLM_DF = pd.read_csv("hf://datasets/optimum/llm-perf-dataset/custom-llm.csv")
+# MODELS_DF = pd.concat([OPEN_LLM_DF, CUSTOM_LLM_DF])
+MODELS_LIST = OPEN_LLM_DF.sort_values("Size", ascending=True)["Model"].tolist()
 
 GENERATE_KWARGS = {"max_new_tokens": 64, "min_new_tokens": 64}
 INPUT_SHAPES = {"batch_size": 1, "sequence_length": 256}
@@ -28,10 +28,10 @@ WEIGHTS_CONFIGS = {
     "float32": {"torch_dtype": "float32", "quant_scheme": None, "quant_config": {}},
     "float16": {"torch_dtype": "float16", "quant_scheme": None, "quant_config": {}},
     "bfloat16": {"torch_dtype": "bfloat16", "quant_scheme": None, "quant_config": {}},
-    # bnb
-    "4bit-bnb": {"torch_dtype": "float16", "quant_scheme": "bnb", "quant_config": {"load_in_4bit": True}},
-    "8bit-bnb": {"torch_dtype": "float16", "quant_scheme": "bnb", "quant_config": {"load_in_8bit": True}},
-    # gptq
+    # # bnb
+    # "4bit-bnb": {"torch_dtype": "float16", "quant_scheme": "bnb", "quant_config": {"load_in_4bit": True}},
+    # "8bit-bnb": {"torch_dtype": "float16", "quant_scheme": "bnb", "quant_config": {"load_in_8bit": True}},
+    # # gptq
     # "4bit-gptq-exllama-v1": {
     #     "quant_scheme": "gptq",
     #     "torch_dtype": "float16",
