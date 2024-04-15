@@ -32,16 +32,16 @@ WEIGHTS_CONFIGS = {
     "4bit-bnb": {"torch_dtype": "float16", "quant_scheme": "bnb", "quant_config": {"load_in_4bit": True}},
     "8bit-bnb": {"torch_dtype": "float16", "quant_scheme": "bnb", "quant_config": {"load_in_8bit": True}},
     # gptq
-    "4bit-gptq-exllama-v1": {
-        "quant_scheme": "gptq",
-        "torch_dtype": "float16",
-        "quant_config": {"bits": 4, "use_exllama ": True, "version": 1, "model_seqlen": 256},
-    },
-    "4bit-gptq-exllama-v2": {
-        "torch_dtype": "float16",
-        "quant_scheme": "gptq",
-        "quant_config": {"bits": 4, "use_exllama ": True, "version": 2, "model_seqlen": 256},
-    },
+    # "4bit-gptq-exllama-v1": {
+    #     "quant_scheme": "gptq",
+    #     "torch_dtype": "float16",
+    #     "quant_config": {"bits": 4, "use_exllama ": True, "version": 1, "model_seqlen": 256},
+    # },
+    # "4bit-gptq-exllama-v2": {
+    #     "torch_dtype": "float16",
+    #     "quant_scheme": "gptq",
+    #     "quant_config": {"bits": 4, "use_exllama ": True, "version": 2, "model_seqlen": 256},
+    # },
     # # awq
     # "4bit-awq-gemm": {"torch_dtype": "float16", "quant_scheme": "awq", "quant_config": {"bits": 4, "version": "gemm"}},
     # "4bit-awq-gemv": {"torch_dtype": "float16", "quant_scheme": "awq", "quant_config": {"bits": 4, "version": "gemv"}},
@@ -89,8 +89,6 @@ def benchmark_cuda_pytorch():
         torch_dtype = WEIGHTS_CONFIGS[weights_config]["torch_dtype"]
         quant_scheme = WEIGHTS_CONFIGS[weights_config]["quant_scheme"]
         quant_config = WEIGHTS_CONFIGS[weights_config]["quant_config"]
-        experiment_name = f"{weights_config}-{attn_implementation}"
-        subfolder = f"{experiment_name}/{model.replace('/', '--')}"
 
         backend_config = PyTorchConfig(
             model=model,
@@ -104,6 +102,9 @@ def benchmark_cuda_pytorch():
             quantization_config=quant_config,
             attn_implementation=attn_implementation,
         )
+
+        experiment_name = f"{weights_config}-{attn_implementation}"
+        subfolder = f"{experiment_name}/{model.replace('/', '--')}"
 
         experiment_config = ExperimentConfig(
             experiment_name=experiment_name,
@@ -125,42 +126,23 @@ def benchmark_cuda_pytorch():
         except Exception:
             pass
 
-        experiment_config.push_to_hub(
-            subfolder=subfolder,
-            repo_id=PUSH_REPO_ID,
-            private=True,
-        )
+        experiment_config.push_to_hub(subfolder=subfolder, repo_id=PUSH_REPO_ID, private=True)
 
         try:
             benchmark_report = launch(experiment_config)
-            benchmark_report.push_to_hub(
-                subfolder=subfolder,
-                repo_id=PUSH_REPO_ID,
-                private=True,
-            )
+            benchmark_report.push_to_hub(subfolder=subfolder, repo_id=PUSH_REPO_ID, private=True)
         except Exception as e:
             os.chdir(CWD)  # go back to original_dir
             LOGGER.error(f"Experiment {experiment_name} failed with model {model}")
             if "torch.cuda.OutOfMemoryError" in str(e):
-                benchmark_report = BenchmarkReport.from_dict(
-                    {
-                        "memory": "CUDA out of memory error",
-                        "latency": "CUDA out of memory error",
-                        "throughput": "CUDA out of memory error",
-                        "energy": "CUDA out of memory error",
-                        "efficiency": "CUDA out of memory error",
-                    }
-                )
+                benchmark_report = BenchmarkReport.from_targets(["decode", "prefill", "per_token", "error"])
+                benchmark_report.error = "CUDA: Out of memory"
+                benchmark_report.push_to_hub(subfolder=subfolder, repo_id=PUSH_REPO_ID, private=True)
             elif "gptq" in str(e) and "assert outfeatures % 32 == 0" in str(e):
-                benchmark_report = BenchmarkReport.from_dict(
-                    {
-                        "memory": "GPTQ assertion error",
-                        "latency": "GPTQ assertion error",
-                        "throughput": "GPTQ assertion error",
-                        "energy": "GPTQ assertion error",
-                        "efficiency": "GPTQ assertion error",
-                    }
-                )
+                benchmark_report = BenchmarkReport.from_targets(["decode", "prefill", "per_token", "error"])
+                benchmark_report.error = "GPTQ: assert outfeatures % 32 == 0"
+                benchmark_report.push_to_hub(subfolder=subfolder, repo_id=PUSH_REPO_ID, private=True)
+
             LOGGER.error(e)
             continue
 
