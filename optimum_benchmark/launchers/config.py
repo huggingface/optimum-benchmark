@@ -31,11 +31,11 @@ class LauncherConfig(ABC):
                 "Defaulting to 'kill' for now."
             )
             self.device_isolation_action = "kill"
-
-        assert self.device_isolation_action in [
-            "kill",
-            "alert",
-        ], "Device isolation action must be one of 'kill' or 'alert'."
+        elif self.device_isolation:
+            assert self.device_isolation_action in [
+                "kill",
+                "alert",
+            ], "Device isolation action must be one of 'kill' or 'alert'."
 
 
 LauncherConfigT = TypeVar("LauncherConfigT", bound=LauncherConfig)
