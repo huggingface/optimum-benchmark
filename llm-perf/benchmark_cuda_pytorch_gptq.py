@@ -22,10 +22,17 @@ INPUT_SHAPES = {"batch_size": 1, "sequence_length": 256}
 
 ATTENTION_COFIGS = ["eager", "sdpa", "flash_attention_2"]
 WEIGHTS_CONFIGS = {
-    # unquantized
-    "float32": {"torch_dtype": "float32", "quant_scheme": None, "quant_config": {}},
-    "float16": {"torch_dtype": "float16", "quant_scheme": None, "quant_config": {}},
-    "bfloat16": {"torch_dtype": "bfloat16", "quant_scheme": None, "quant_config": {}},
+    # gptq
+    "4bit-gptq-exllama-v1": {
+        "quant_scheme": "gptq",
+        "torch_dtype": "float16",
+        "quant_config": {"bits": 4, "use_exllama ": True, "version": 1, "model_seqlen": 256},
+    },
+    "4bit-gptq-exllama-v2": {
+        "torch_dtype": "float16",
+        "quant_scheme": "gptq",
+        "quant_config": {"bits": 4, "use_exllama ": True, "version": 2, "model_seqlen": 256},
+    },
 }
 
 

@@ -22,10 +22,27 @@ INPUT_SHAPES = {"batch_size": 1, "sequence_length": 256}
 
 ATTENTION_COFIGS = ["eager", "sdpa", "flash_attention_2"]
 WEIGHTS_CONFIGS = {
-    # unquantized
-    "float32": {"torch_dtype": "float32", "quant_scheme": None, "quant_config": {}},
-    "float16": {"torch_dtype": "float16", "quant_scheme": None, "quant_config": {}},
-    "bfloat16": {"torch_dtype": "bfloat16", "quant_scheme": None, "quant_config": {}},
+    # awq
+    "4bit-awq-gemm": {"torch_dtype": "float16", "quant_scheme": "awq", "quant_config": {"bits": 4, "version": "gemm"}},
+    "4bit-awq-gemv": {"torch_dtype": "float16", "quant_scheme": "awq", "quant_config": {"bits": 4, "version": "gemv"}},
+    "4bit-awq-exllama-v1": {
+        "torch_dtype": "float16",
+        "quant_scheme": "awq",
+        "quant_config": {
+            "bits": 4,
+            "version": "exllama",
+            "exllama_config": {"version": 1, "max_input_len": 256, "max_batch_size": 1},
+        },
+    },
+    "4bit-awq-exllama-v2": {
+        "torch_dtype": "float16",
+        "quant_scheme": "awq",
+        "quant_config": {
+            "bits": 4,
+            "version": "exllama",
+            "exllama_config": {"version": 2, "max_input_len": 256, "max_batch_size": 1},
+        },
+    },
 }
 
 

@@ -22,10 +22,9 @@ INPUT_SHAPES = {"batch_size": 1, "sequence_length": 256}
 
 ATTENTION_COFIGS = ["eager", "sdpa", "flash_attention_2"]
 WEIGHTS_CONFIGS = {
-    # unquantized
-    "float32": {"torch_dtype": "float32", "quant_scheme": None, "quant_config": {}},
-    "float16": {"torch_dtype": "float16", "quant_scheme": None, "quant_config": {}},
-    "bfloat16": {"torch_dtype": "bfloat16", "quant_scheme": None, "quant_config": {}},
+    # bnb
+    "4bit-bnb": {"torch_dtype": "float16", "quant_scheme": "bnb", "quant_config": {"load_in_4bit": True}},
+    "8bit-bnb": {"torch_dtype": "float16", "quant_scheme": "bnb", "quant_config": {"load_in_8bit": True}},
 }
 
 
