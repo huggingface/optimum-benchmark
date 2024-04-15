@@ -115,18 +115,22 @@ def assert_system_devices_isolation(isolated_pid: int, device_ids: str):
         devices_pids = {pid for pid in devices_pids if psutil.pid_exists(pid)}
         isolated_children_pids = {child.pid for child in psutil.Process(isolated_pid).children(recursive=True)}
         isolation_children_pids = {child.pid for child in psutil.Process(isolation_pid).children(recursive=True)}
-        permitted_pids = devices_pids | isolated_children_pids | isolation_children_pids
+        permitted_pids = isolated_children_pids | isolation_children_pids
         non_permitted_pids = devices_pids - permitted_pids
 
         if len(non_permitted_pids) > 0:
             LOGGER.error(f"Found non-permitted process(es) running on system device(s): {non_permitted_pids}")
 
             for pid in permitted_pids:
+                if pid in [isolated_pid, isolation_pid]:
+                    # for later
+                    continue
+
                 try:
-                    LOGGER.error(f"Interrupting child process {pid} with an isolation signal...")
+                    LOGGER.error(f"Interrupting isolated child process {pid} with an isolation signal...")
                     os.kill(pid, signal.SIGUSR1)
                 except Exception as e:
-                    LOGGER.error(f"Failed to interrupt child process {pid} with error {e}")
+                    LOGGER.error(f"Failed to interrupt isolated child process {pid} with an isolation signal: {e}")
 
             LOGGER.error(f"Interrupting the isolated process {isolated_pid} with an isolation signal...")
             os.kill(isolated_pid, signal.SIGUSR1)
