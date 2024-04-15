@@ -50,6 +50,10 @@ LIBRARIES_TASKS_MODELS = [
 def test_api_launch(device, benchmark, library, task, model):
     no_weights = False if library != "transformers" else True
     device_ids = get_gpu_device_ids() if device == "cuda" else None
+    launcher_config = ProcessConfig(
+        device_isolation=True if device == "cuda" else False,
+        device_isolation_action="kill",
+    )
 
     if benchmark == "training":
         if library == "transformers":
@@ -78,8 +82,6 @@ def test_api_launch(device, benchmark, library, task, model):
         model=model,
         task=task,
     )
-
-    launcher_config = ProcessConfig(device_isolation=False)
 
     experiment_name = f"{device}_{benchmark}_{library}_{task}_{model}"
     experiment_config = ExperimentConfig(
