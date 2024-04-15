@@ -155,12 +155,29 @@ def benchmark_cuda_pytorch():
             LOGGER.error(f"Experiment {experiment_name} failed with model {model}")
 
             if "torch.cuda.OutOfMemoryError" in str(e):
+                LOGGER.error("CUDA: Out of memory")
                 benchmark_report = BenchmarkReport.from_targets(["decode", "prefill", "per_token", "error"])
                 benchmark_report.error = "CUDA: Out of memory"
                 benchmark_report.push_to_hub(subfolder=subfolder, repo_id=PUSH_REPO_ID, private=True)
             elif "gptq" in str(e) and "assert outfeatures % 32 == 0" in str(e):
+                LOGGER.error("GPTQ: assert outfeatures % 32 == 0")
                 benchmark_report = BenchmarkReport.from_targets(["decode", "prefill", "per_token", "error"])
                 benchmark_report.error = "GPTQ: assert outfeatures % 32 == 0"
+                benchmark_report.push_to_hub(subfolder=subfolder, repo_id=PUSH_REPO_ID, private=True)
+            elif "gptq" in str(e) and "assert infeatures % self.group_size == 0" in str(e):
+                LOGGER.error("GPTQ: assert infeatures % self.group_size == 0")
+                benchmark_report = BenchmarkReport.from_targets(["decode", "prefill", "per_token", "error"])
+                benchmark_report.error = "GPTQ: assert infeatures % self.group_size == 0"
+                benchmark_report.push_to_hub(subfolder=subfolder, repo_id=PUSH_REPO_ID, private=True)
+            elif "does not support Flash Attention 2.0 yet" in str(e):
+                LOGGER.error("Flash Attention 2.0: not supported yet")
+                benchmark_report = BenchmarkReport.from_targets(["decode", "prefill", "per_token", "error"])
+                benchmark_report.error = "Flash Attention 2.0: not supported yet"
+                benchmark_report.push_to_hub(subfolder=subfolder, repo_id=PUSH_REPO_ID, private=True)
+            elif "does not support an attention implementation through torch.nn.functional.scaled_dot_product_attention yet" in str(e):
+                LOGGER.error("SDPA: not supported yet")
+                benchmark_report = BenchmarkReport.from_targets(["decode", "prefill", "per_token", "error"])
+                benchmark_report.error = "SDPA: not supported yet"
                 benchmark_report.push_to_hub(subfolder=subfolder, repo_id=PUSH_REPO_ID, private=True)
             else:
                 LOGGER.error(f"Unknown error: {e}")
