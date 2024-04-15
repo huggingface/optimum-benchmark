@@ -1,4 +1,4 @@
-name: LLM Perf Benchmarks - CUDA PyTorch Single GPU
+name: LLM Perf Benchmarks - CUDA PyTorch
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build_image_and_run_cuda_pytorch_single_gpu_unquantized:
+  build_image_and_run_cuda_pytorch:
     strategy:
       fail-fast: false
       matrix:
