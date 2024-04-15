@@ -92,7 +92,7 @@ LOGGER = getLogger("llm-perf-backend")
 def benchmark_cuda_pytorch():
     print(f"Total number of experiments: {len(list(product(MODELS_LIST, ATTENTION_COFIGS, WEIGHTS_CONFIGS.keys())))}")
 
-    launcher_config = ProcessConfig(start_method="spawn", device_isolation=True)  # isolated process
+    launcher_config = ProcessConfig(start_method="spawn", device_isolation=True, device_isolation_action="kill")
     benchmark_config = InferenceConfig(
         memory=True,
         energy=True,

@@ -1,2 +1,3 @@
 launcher:
   device_isolation: true
+  device_isolation_action: alert

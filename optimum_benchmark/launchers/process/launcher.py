@@ -30,7 +30,11 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         queue = ctx.Queue()
         lock = ctx.Lock()
 
-        with device_isolation(enabled=self.config.device_isolation, isolated_pid=os.getpid()):
+        with device_isolation(
+            isolated_pid=os.getpid(),
+            enabled=self.config.device_isolation,
+            action=self.config.device_isolation_action,
+        ):
             process_context = mp.start_processes(
                 entrypoint,
                 args=(worker, queue, lock, log_level, *worker_args),

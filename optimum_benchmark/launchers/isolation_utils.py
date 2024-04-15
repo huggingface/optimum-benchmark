@@ -23,12 +23,18 @@ if is_amdsmi_available():
 LOGGER = getLogger("device-isolation")
 
 
-def isolation_signal_handler(signum, frame):
-    print(f"Process {os.getpid()} received an isolation signal. Exiting...")
-    os._exit(signum)
+def isolation_kill_signal_handler(signum, frame):
+    print(f"Process {os.getpid()} received an isolation signal with a kill action. Exiting...")
+    exit(1)
 
 
-signal.signal(signal.SIGUSR1, isolation_signal_handler)
+def isolation_alert_signal_handler(signum, frame):
+    print(f"Process {os.getpid()} received an isolation signal with an alert action. Exiting...")
+    pass
+
+
+signal.signal(signal.SIGUSR1, isolation_kill_signal_handler)
+signal.signal(signal.SIGUSR2, isolation_alert_signal_handler)
 
 
 def get_nvidia_devices_pids(device_ids: str) -> Set[int]:
@@ -105,10 +111,19 @@ def get_pids_running_on_system_devices(device_ids: str) -> Set[int]:
     return devices_pids
 
 
-def assert_system_devices_isolation(isolated_pid: int, device_ids: str):
+def assert_system_devices_isolation(isolated_pid: int, device_ids: str, action: str):
     setup_logging("ERROR")
 
     isolation_pid = os.getpid()
+
+    if action == "kill":
+        action_signal = signal.SIGUSR1
+    elif action == "alert":
+        action_signal = signal.SIGUSR2
+    else:
+        raise ValueError(f"Unsupported action {action}")
+
+    LOGGER.error(f"Isolation process {isolation_pid} is running with an action {action} signal {action_signal}")
 
     while psutil.pid_exists(isolated_pid):
         devices_pids = get_pids_running_on_system_devices(device_ids=device_ids)
@@ -128,20 +143,20 @@ def assert_system_devices_isolation(isolated_pid: int, device_ids: str):
 
                 try:
                     LOGGER.error(f"Interrupting isolated child process {pid} with an isolation signal...")
-                    os.kill(pid, signal.SIGUSR1)
+                    os.kill(pid, action_signal)
                 except Exception as e:
                     LOGGER.error(f"Failed to interrupt isolated child process {pid} with an isolation signal: {e}")
 
             LOGGER.error(f"Interrupting the isolated process {isolated_pid} with an isolation signal...")
-            os.kill(isolated_pid, signal.SIGUSR1)
-            LOGGER.error(f"Exiting isolation process {isolation_pid}...")
-            exit(1)
+            os.kill(isolated_pid, action_signal)
+            LOGGER.error(f"Interrupting the isolation process {isolation_pid} with an isolation signal...")
+            os.kill(isolation_pid, action_signal)
 
         time.sleep(1)
 
 
 @contextmanager
-def device_isolation(enabled: bool, isolated_pid: int):
+def device_isolation(isolated_pid: int, enabled: bool, action: str):
     if not enabled:
         yield
         return
@@ -160,7 +175,7 @@ def device_isolation(enabled: bool, isolated_pid: int):
 
     isolation_process = Process(
         target=assert_system_devices_isolation,
-        kwargs={"isolated_pid": isolated_pid, "device_ids": device_ids},
+        kwargs={"isolated_pid": isolated_pid, "device_ids": device_ids, "action": action},
         daemon=True,
     )
     isolation_process.start()
