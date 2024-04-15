@@ -12,7 +12,9 @@ from optimum_benchmark.launchers.process.config import ProcessConfig
 from optimum_benchmark.logging_utils import setup_logging
 
 CWD = os.getcwd()
-PUSH_REPO_ID = os.getenv("PUSH_REPO_ID", "optimum-benchmark/llm-perf-pytorch-cuda-1xA100")
+MACHINE = os.getenv("MACHINE", "a100")
+SUBSET = os.getenv("SUBSET", "unquantized")
+PUSH_REPO_ID = f"optimum-benchmark/llm-perf-pytorch-cuda-{SUBSET}-{MACHINE}"
 
 OPEN_LLM_DF = pd.read_csv("hf://datasets/optimum/llm-perf-dataset/open-llm.csv")
 MODELS_LIST = OPEN_LLM_DF.sort_values("Size", ascending=True)["Model"].tolist()
@@ -21,12 +23,66 @@ GENERATE_KWARGS = {"max_new_tokens": 64, "min_new_tokens": 64}
 INPUT_SHAPES = {"batch_size": 1, "sequence_length": 256}
 
 ATTENTION_COFIGS = ["eager", "sdpa", "flash_attention_2"]
-WEIGHTS_CONFIGS = {
-    # unquantized
-    "float32": {"torch_dtype": "float32", "quant_scheme": None, "quant_config": {}},
-    "float16": {"torch_dtype": "float16", "quant_scheme": None, "quant_config": {}},
-    "bfloat16": {"torch_dtype": "bfloat16", "quant_scheme": None, "quant_config": {}},
-}
+
+if SUBSET == "unquantized":
+    WEIGHTS_CONFIGS = {
+        # unquantized
+        "float32": {"torch_dtype": "float32", "quant_scheme": None, "quant_config": {}},
+        "float16": {"torch_dtype": "float16", "quant_scheme": None, "quant_config": {}},
+        "bfloat16": {"torch_dtype": "bfloat16", "quant_scheme": None, "quant_config": {}},
+    }
+elif SUBSET == "bnb":
+    WEIGHTS_CONFIGS = {
+        # bnb
+        "4bit-bnb": {"torch_dtype": "float16", "quant_scheme": "bnb", "quant_config": {"load_in_4bit": True}},
+        "8bit-bnb": {"torch_dtype": "float16", "quant_scheme": "bnb", "quant_config": {"load_in_8bit": True}},
+    }
+elif SUBSET == "gptq":
+    WEIGHTS_CONFIGS = {
+        # gptq
+        "4bit-gptq-exllama-v1": {
+            "quant_scheme": "gptq",
+            "torch_dtype": "float16",
+            "quant_config": {"bits": 4, "use_exllama ": True, "version": 1, "model_seqlen": 256},
+        },
+        "4bit-gptq-exllama-v2": {
+            "torch_dtype": "float16",
+            "quant_scheme": "gptq",
+            "quant_config": {"bits": 4, "use_exllama ": True, "version": 2, "model_seqlen": 256},
+        },
+    }
+elif SUBSET == "awq":
+    WEIGHTS_CONFIGS = {
+        # awq
+        "4bit-awq-gemm": {
+            "torch_dtype": "float16",
+            "quant_scheme": "awq",
+            "quant_config": {"bits": 4, "version": "gemm"},
+        },
+        "4bit-awq-gemv": {
+            "torch_dtype": "float16",
+            "quant_scheme": "awq",
+            "quant_config": {"bits": 4, "version": "gemv"},
+        },
+        "4bit-awq-exllama-v1": {
+            "torch_dtype": "float16",
+            "quant_scheme": "awq",
+            "quant_config": {
+                "bits": 4,
+                "version": "exllama",
+                "exllama_config": {"version": 1, "max_input_len": 256, "max_batch_size": 1},
+            },
+        },
+        "4bit-awq-exllama-v2": {
+            "torch_dtype": "float16",
+            "quant_scheme": "awq",
+            "quant_config": {
+                "bits": 4,
+                "version": "exllama",
+                "exllama_config": {"version": 2, "max_input_len": 256, "max_batch_size": 1},
+            },
+        },
+    }
 
 
 setup_logging()
@@ -97,6 +153,7 @@ def benchmark_cuda_pytorch():
         except Exception as e:
             os.chdir(CWD)  # go back to original_dir
             LOGGER.error(f"Experiment {experiment_name} failed with model {model}")
+
             if "torch.cuda.OutOfMemoryError" in str(e):
                 benchmark_report = BenchmarkReport.from_targets(["decode", "prefill", "per_token", "error"])
                 benchmark_report.error = "CUDA: Out of memory"
