@@ -230,8 +230,9 @@ def image_classification_preprocessing(
         dataset = dataset.select(range(config.num_samples))
         # Add a pad token if the tokenizer doesn't have one
 
-    def preprocess_function(examples: List[Image]):
-        return processor([image.convert("RGB") for image in examples[config.image_column_name]])
+    def preprocess_function(examples):
+        #return processor([image.convert("RGB") for image in examples[config.image_column_name]])
+        return processor(examples[config.image_column_name].convert("RGB"))
 
     dataset = dataset.map(
         preprocess_function,
