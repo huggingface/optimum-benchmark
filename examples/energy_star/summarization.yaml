@@ -7,7 +7,7 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: energy_star
+experiment_name: summarization
 
 backend:
   device: cuda
