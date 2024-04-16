@@ -29,7 +29,7 @@ def isolation_kill_signal_handler(signum, frame):
 
 
 def isolation_alert_signal_handler(signum, frame):
-    print(f"Process {os.getpid()} received an isolation signal with an alert action. Exiting...")
+    print(f"Process {os.getpid()} received an isolation signal with an alert action. Ignoring...")
     pass
 
 
