@@ -26,6 +26,7 @@ benchmark:
   truncation: True
   input_shapes:
     batch_size: 1
+  max_new_tokens: 100
 
 # hydra/cli specific settings
 hydra:
