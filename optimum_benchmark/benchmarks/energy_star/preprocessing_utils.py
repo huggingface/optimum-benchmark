@@ -237,7 +237,7 @@ def image_classification_preprocessing(
         preprocess_function,
         remove_columns=dataset.features,
         desc="Running processor on dataset",
-        batched=True,
+        batched=False,
     ).with_format("torch")
 
     return dataset
