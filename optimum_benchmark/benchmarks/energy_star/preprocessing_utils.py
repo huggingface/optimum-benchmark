@@ -230,7 +230,7 @@ def object_detection_preprocessing(
         # Add a pad token if the tokenizer doesn't have one
 
     def preprocess_function(examples):
-        processed = image_processor(examples.image_column_name)
+        processed = processor(examples.image_column_name)
 
         return {
             "pixel_values": processed["pixel_values"][0],
