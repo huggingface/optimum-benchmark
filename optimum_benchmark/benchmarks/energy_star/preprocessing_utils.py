@@ -19,7 +19,7 @@ def preprocess(dataset: Dataset, task: str, config: EnergyStarConfig, preprocess
         "image-classification": image_classification_preprocessing,
         'stable-diffusion' : image_generation_preprocessing,
         "automatic-speech-recognition": automatic_speech_recognition_preprocessing,
-        "object-detection": image_classification_preprocessing,
+        "object-detection": object_detection_preprocessing,
         "summarization": text_classification_preprocessing,
     }
 
@@ -218,6 +218,37 @@ def text_generation_preprocessing(
 
     return dataset
 
+def object_detection_preprocessing(
+    dataset: Dataset, config: EnergyStarConfig, processor: PretrainedProcessor
+) -> Dataset:
+    # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
+    if config.input_shapes["batch_size"] == 1:
+        dataset = dataset.filter(lambda example: example[config.image_column_name] != "")
+
+    if config.num_samples != -1:
+        dataset = dataset.select(range(config.num_samples))
+        # Add a pad token if the tokenizer doesn't have one
+
+    def preprocess_function(examples):
+        processed = image_processor(examples.image_column_name|)
+
+        return {
+            "pixel_values": processed["pixel_values"][0],
+            "pixel_mask": processed["pixel_mask"][0],
+        }
+
+    dataset = dataset.map(
+        preprocess_function,
+        remove_columns=dataset.features,
+        desc="Running processor on dataset",
+        batched=False,
+    ).with_format("torch")
+
+    return dataset
+
+
+
+
 
 def image_classification_preprocessing(
     dataset: Dataset, config: EnergyStarConfig, processor: PretrainedProcessor
@@ -230,9 +261,9 @@ def image_classification_preprocessing(
         dataset = dataset.select(range(config.num_samples))
         # Add a pad token if the tokenizer doesn't have one
 
-    def preprocess_function(examples):
-        return processor([image.convert("RGB") for image in examples[config.image_column_name]])
-        #return processor(examples[config.image_column_name].convert("RGB"))
+    def preprocess_function(examples: List[Image]):
+        #return processor([image.convert("RGB") for image in examples[config.image_column_name]])
+        return processor(examples[config.image_column_name].convert("RGB"))
 
     dataset = dataset.map(
         preprocess_function,
