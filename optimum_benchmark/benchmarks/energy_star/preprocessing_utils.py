@@ -230,7 +230,7 @@ def object_detection_preprocessing(
         # Add a pad token if the tokenizer doesn't have one
 
     def preprocess_function(examples):
-        processed = processor(examples[config.image_column_name])
+        processed = processor(examples[config.image_column_name].convert("RGB"))
 
         return {
             "pixel_values": processed["pixel_values"][0],
