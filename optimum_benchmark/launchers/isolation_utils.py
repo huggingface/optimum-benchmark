@@ -135,19 +135,22 @@ def assert_system_devices_isolation(isolated_pid: int, device_ids: str, action: 
             LOGGER.error(f"Found non-permitted process(es) running on system device(s): {non_permitted_pids}")
 
             for pid in permitted_pids:
-                if pid in [isolated_pid, isolation_pid]:
+                if pid in {isolated_pid, isolation_pid}:
                     # for later
+                    continue
+                elif pid in isolation_children_pids:
+                    # causes isssues on rocm
                     continue
 
                 try:
-                    LOGGER.error(f"Interrupting isolated child process {pid} with an isolation signal...")
+                    LOGGER.error(f"Sending an {action} signal to the isolated child process {pid}...")
                     os.kill(pid, action_signal)
                 except Exception as e:
-                    LOGGER.error(f"Failed to interrupt isolated child process {pid} with an isolation signal: {e}")
+                    LOGGER.error(f"Failed to send an {action} signal to the isolated child process {pid}: {e}")
 
-            LOGGER.error(f"Interrupting the isolated process {isolated_pid} with an isolation signal...")
+            LOGGER.error(f"Sending an {action} signal to the isolated process {isolated_pid}...")
             os.kill(isolated_pid, action_signal)
-            LOGGER.error(f"Interrupting the isolation process {isolation_pid} with an isolation signal...")
+            LOGGER.error(f"Sending an {action} signal to the isolation process {isolation_pid}...")
             os.kill(isolation_pid, action_signal)
 
         time.sleep(1)
@@ -173,7 +176,11 @@ def device_isolation(isolated_pid: int, enabled: bool, action: str):
 
     isolation_process = Process(
         target=assert_system_devices_isolation,
-        kwargs={"isolated_pid": isolated_pid, "device_ids": device_ids, "action": action},
+        kwargs={
+            "isolated_pid": isolated_pid,
+            "device_ids": device_ids,
+            "action": action,
+        },
         daemon=True,
     )
     isolation_process.start()

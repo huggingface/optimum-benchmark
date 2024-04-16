@@ -174,7 +174,10 @@ def benchmark_cuda_pytorch():
                 benchmark_report = BenchmarkReport.from_targets(["decode", "prefill", "per_token", "error"])
                 benchmark_report.error = "Flash Attention 2.0: not supported yet"
                 benchmark_report.push_to_hub(subfolder=subfolder, repo_id=PUSH_REPO_ID, private=True)
-            elif "does not support an attention implementation through torch.nn.functional.scaled_dot_product_attention yet" in str(e):
+            elif (
+                "does not support an attention implementation through torch.nn.functional.scaled_dot_product_attention yet"
+                in str(e)
+            ):
                 LOGGER.error("SDPA: not supported yet")
                 benchmark_report = BenchmarkReport.from_targets(["decode", "prefill", "per_token", "error"])
                 benchmark_report.error = "SDPA: not supported yet"
