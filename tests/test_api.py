@@ -52,11 +52,12 @@ LIBRARIES_TASKS_MODELS = [
 @pytest.mark.parametrize("benchmark", ["training", "inference"])
 @pytest.mark.parametrize("library,task,model", LIBRARIES_TASKS_MODELS)
 def test_api_launch(device, benchmark, library, task, model):
-    no_weights = False if library != "transformers" else True
     device_ids = get_gpu_device_ids() if device == "cuda" else None
+    no_weights = False if library != "transformers" else True
+
     launcher_config = ProcessConfig(
-        device_isolation=True if device == "cuda" else False,
-        device_isolation_action="kill",
+        device_isolation=device == "cuda",
+        device_isolation_action="error",
     )
 
     if benchmark == "training":
