@@ -23,18 +23,18 @@ if is_amdsmi_available():
 LOGGER = getLogger("device-isolation")
 
 
-def isolation_kill_signal_handler(signum, frame):
-    print(f"Process {os.getpid()} received an isolation signal with a kill action. Exiting...")
-    exit(1)
+def isolation_error_signal_handler(signum, frame):
+    LOGGER.error(f"Process {os.getpid()} received an isolation signal with an `error` action. Exiting...")
+    raise InterruptedError("Your device is not isolated (other processes are running on it). Exiting...")
 
 
-def isolation_alert_signal_handler(signum, frame):
-    print(f"Process {os.getpid()} received an isolation signal with an alert action. Ignoring...")
+def isolation_warn_signal_handler(signum, frame):
+    LOGGER.warn(f"Process {os.getpid()} received an isolation signal with a `warn` action. Ignoring...")
     pass
 
 
-signal.signal(signal.SIGUSR1, isolation_kill_signal_handler)
-signal.signal(signal.SIGUSR2, isolation_alert_signal_handler)
+signal.signal(signal.SIGUSR1, isolation_error_signal_handler)
+signal.signal(signal.SIGUSR2, isolation_warn_signal_handler)
 
 
 def get_nvidia_devices_pids(device_ids: str) -> Set[int]:
@@ -112,13 +112,11 @@ def get_pids_running_on_system_devices(device_ids: str) -> Set[int]:
 
 
 def assert_system_devices_isolation(isolated_pid: int, device_ids: str, action: str):
-    setup_logging("ERROR")
+    setup_logging("WARNING")
 
-    isolation_pid = os.getpid()
-
-    if action == "kill":
+    if action == "error":
         action_signal = signal.SIGUSR1
-    elif action == "alert":
+    elif action == "warn":
         action_signal = signal.SIGUSR2
     else:
         raise ValueError(f"Unsupported action {action}")
@@ -126,32 +124,15 @@ def assert_system_devices_isolation(isolated_pid: int, device_ids: str, action: 
     while psutil.pid_exists(isolated_pid):
         devices_pids = get_pids_running_on_system_devices(device_ids=device_ids)
         devices_pids = {pid for pid in devices_pids if psutil.pid_exists(pid)}
-        isolated_children_pids = {child.pid for child in psutil.Process(isolated_pid).children(recursive=True)}
-        isolation_children_pids = {child.pid for child in psutil.Process(isolation_pid).children(recursive=True)}
-        permitted_pids = isolated_children_pids | isolation_children_pids
+        permitted_pids = {isolated_pid} | {child.pid for child in psutil.Process(isolated_pid).children(recursive=True)}
         non_permitted_pids = devices_pids - permitted_pids
 
         if len(non_permitted_pids) > 0:
-            LOGGER.error(f"Found non-permitted process(es) running on system device(s): {non_permitted_pids}")
-
-            for pid in permitted_pids:
-                if pid in {isolated_pid, isolation_pid}:
-                    # for later
-                    continue
-                elif pid in isolation_children_pids:
-                    # causes isssues on rocm
-                    continue
-
-                try:
-                    LOGGER.error(f"Sending an {action} signal to the isolated child process {pid}...")
-                    os.kill(pid, action_signal)
-                except Exception as e:
-                    LOGGER.error(f"Failed to send an {action} signal to the isolated child process {pid}: {e}")
-
-            LOGGER.error(f"Sending an {action} signal to the isolated process {isolated_pid}...")
+            LOGGER.warn(f"Found non-permitted process(es) running on system device(s): {non_permitted_pids}")
+            LOGGER.warn(f"Sending an action signal `{action}` to the isolated process {isolated_pid}...")
             os.kill(isolated_pid, action_signal)
-            LOGGER.error(f"Sending an {action} signal to the isolation process {isolation_pid}...")
-            os.kill(isolation_pid, action_signal)
+            LOGGER.warn("Exiting...")
+            exit(0)
 
         time.sleep(1)
 

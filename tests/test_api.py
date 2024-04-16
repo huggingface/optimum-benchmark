@@ -1,6 +1,7 @@
 import gc
 import os
 import time
+from importlib import reload
 from tempfile import TemporaryDirectory
 
 import pandas as pd
@@ -12,7 +13,10 @@ from optimum_benchmark.backends.diffusers_utils import (
     get_diffusers_pretrained_config,
 )
 from optimum_benchmark.backends.pytorch.config import PyTorchConfig
-from optimum_benchmark.backends.timm_utils import extract_timm_shapes_from_config, get_timm_pretrained_config
+from optimum_benchmark.backends.timm_utils import (
+    extract_timm_shapes_from_config,
+    get_timm_pretrained_config,
+)
 from optimum_benchmark.backends.transformers_utils import (
     extract_transformers_shapes_from_artifacts,
     get_transformers_pretrained_config,
@@ -30,7 +34,7 @@ from optimum_benchmark.system_utils import get_gpu_device_ids
 from optimum_benchmark.trackers.latency import LatencyTracker
 from optimum_benchmark.trackers.memory import MemoryTracker
 
-PUSH_REPO_ID = os.environ.get("PUSH_REPO_ID", "optimum-benchmark/misc")
+PUSH_REPO_ID = os.environ.get("PUSH_REPO_ID", "optimum-benchmark/local")
 
 LIBRARIES_TASKS_MODELS = [
     ("timm", "image-classification", "timm/resnet50.a1_in1k"),
@@ -231,6 +235,9 @@ def test_api_latency_tracker(device, backend):
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 @pytest.mark.parametrize("backend", ["pytorch", "other"])
 def test_api_memory_tracker(device, backend):
+    if torch.cuda.is_available():
+        reload(torch.cuda)
+
     device_ids = get_gpu_device_ids() if device == "cuda" else None
     tracker = MemoryTracker(device=device, backend=backend, device_ids=device_ids)
 
@@ -246,6 +253,7 @@ def test_api_memory_tracker(device, backend):
     with tracker.track():
         array = torch.randn((10000, 10000), dtype=torch.float64, device=device)
         expected_memory = array.nbytes / 1e6
+        time.sleep(1)
 
     final_memory = tracker.get_max_memory()
     final_memory.log()

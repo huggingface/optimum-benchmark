@@ -27,15 +27,15 @@ class LauncherConfig(ABC):
         if self.device_isolation and self.device_isolation_action is None:
             LOGGER.warning(
                 "Device isolation is enabled but no action is specified. "
-                "Please set `device_isolation_action` to 'kill' or 'alert' to specify the action."
-                "Defaulting to 'kill' for now."
+                "Please set `device_isolation_action` to either 'error' or 'warn' "
+                "to specify the action. Defaulting to 'warn'."
             )
-            self.device_isolation_action = "kill"
-        elif self.device_isolation:
-            assert self.device_isolation_action in [
-                "kill",
-                "alert",
-            ], "Device isolation action must be one of 'kill' or 'alert'."
+            self.device_isolation_action = "warn"
+        elif self.device_isolation and self.device_isolation_action not in {"error", "warn"}:
+            raise ValueError(
+                f"Unsupported device isolation action {self.device_isolation_action}. "
+                "Please set `device_isolation_action` to either 'error' or 'warn'."
+            )
 
 
 LauncherConfigT = TypeVar("LauncherConfigT", bound=LauncherConfig)
