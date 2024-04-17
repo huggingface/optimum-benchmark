@@ -7,13 +7,13 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: text_generation
+experiment_name: text_generation_mamba1.4B
 
 backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model: gpt2
+  model: ArthurZ/mamba-1.4b
   task: text-generation
 
 launcher:
