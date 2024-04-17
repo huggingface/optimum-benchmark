@@ -210,6 +210,7 @@ def text_generation_preprocessing(
     dataset = dataset.map(
         tokenize_function,
         batched=True,
+        writer_batch_size=50,
         remove_columns=dataset.features,
         desc="Running tokenizer on dataset",
     ).with_format(
