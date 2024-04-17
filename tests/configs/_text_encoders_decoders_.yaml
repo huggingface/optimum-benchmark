@@ -1,0 +1,6 @@
+hydra:
+  mode: MULTIRUN
+  sweeper:
+    params:
+      backend.task: text2text-generation
+      backend.model: hf-internal-testing/tiny-random-T5ForConditionalGeneration

@@ -6,6 +6,7 @@ benchmark:
   latency: true
 
   duration: 1
+  iterations: 1
   warmup_runs: 1
 
   input_shapes:

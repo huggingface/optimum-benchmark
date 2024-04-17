@@ -1,11 +1,11 @@
 import os
+from collections import OrderedDict
 from logging import getLogger
 from typing import Any, Dict
 
 import torch
 from hydra.utils import get_class
 from safetensors.torch import save_file
-from transformers.utils import ModelOutput
 
 from ..base import Backend
 from .config import TRTLLMConfig
@@ -61,29 +61,38 @@ class TRTLLMBackend(Backend[TRTLLMConfig]):
             **self.config.hub_kwargs,
         )
 
-    def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:
+    def prefill(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         return self.pretrained_model.generate(
             input_ids=inputs.get("input_ids"),
             attention_mask=inputs.get("attention_mask"),
-            max_new_tokens=1,
-        )
-
-    def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> ModelOutput:
-        return self.pretrained_model.generate(
-            input_ids=inputs.get("input_ids"),
-            attention_mask=inputs.get("attention_mask"),
-            # important for benchmarking
+            min_length=kwargs.get("min_new_tokens", -1),
             max_new_tokens=kwargs.get("max_new_tokens", -1),
-            min_length=kwargs.get("min_new_tokens", -1),  # why different ?
-            num_beams=kwargs.get("num_beams", 1),
-            # not really important but just in case
             repetition_penalty=kwargs.get("repetition_penalty", 1.0),
             length_penalty=kwargs.get("length_penalty", 1.0),
             pad_token_id=kwargs.get("pad_token_id", 0),
             bos_token_id=kwargs.get("bos_token_id", 1),
             eos_token_id=kwargs.get("eos_token_id", 2),
             temperature=kwargs.get("temperature", 1.0),
-            top_k=kwargs.get("top_k", 50),
+            num_beams=kwargs.get("num_beams", 1),
             top_p=kwargs.get("top_p", 1.0),
+            top_k=kwargs.get("top_k", 50),
+            seed=kwargs.get("seed", 42),
+        )
+
+    def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
+        return self.pretrained_model.generate(
+            input_ids=inputs.get("input_ids"),
+            attention_mask=inputs.get("attention_mask"),
+            min_length=kwargs.get("min_new_tokens", -1),
+            max_new_tokens=kwargs.get("max_new_tokens", -1),
+            repetition_penalty=kwargs.get("repetition_penalty", 1.0),
+            length_penalty=kwargs.get("length_penalty", 1.0),
+            pad_token_id=kwargs.get("pad_token_id", 0),
+            bos_token_id=kwargs.get("bos_token_id", 1),
+            eos_token_id=kwargs.get("eos_token_id", 2),
+            temperature=kwargs.get("temperature", 1.0),
+            num_beams=kwargs.get("num_beams", 1),
+            top_p=kwargs.get("top_p", 1.0),
+            top_k=kwargs.get("top_k", 50),
             seed=kwargs.get("seed", 42),
         )

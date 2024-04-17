@@ -14,6 +14,7 @@ concurrency:
 jobs:
   run_api_cpu_tests:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -26,7 +27,12 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install -e .[testing,timm,diffusers]
+          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+          pip install -e .[testing,timm,diffusers,codecarbon]
 
       - name: Run tests
-        run: pytest -s -k "api and cpu"
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          PUSH_REPO_ID: optimum-benchmark/cpu
+        run: |
+          pytest -s -k "api and cpu"

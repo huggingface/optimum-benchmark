@@ -24,16 +24,20 @@ jobs:
 
       - name: Run tests
         uses: addnab/docker-run-action@v3
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          PUSH_REPO_ID: optimum-benchmark/cuda
         with:
           image: pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime
           options: |
-            --rm 
-            --gpus all 
-            --shm-size 64G 
-            --env USE_CUDA="1" 
-            --env PROCESS_SPECIFIC_VRAM="0" 
+            --rm
+            --gpus all
+            --shm-size 64G
+            --env HF_TOKEN
+            --env PUSH_REPO_ID
+            --env MKL_THREADING_LAYER=GNU
             --volume ${{ github.workspace }}:/workspace
             --workdir /workspace
           run: |
-            pip install -e .[testing,timm,diffusers]
+            pip install -e .[testing,timm,diffusers,codecarbon]
             pytest -s -x -k "api and cuda"

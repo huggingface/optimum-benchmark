@@ -1,4 +1,4 @@
-name: API Misc Tests
+name: CLI CUDA Py-TXI Tests
 
 on:
   workflow_dispatch:
@@ -12,8 +12,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  run_api_misc_tests:
-    runs-on: ubuntu-latest
+  run_cli_cuda_py_txi_tests:
+    runs-on: [single-gpu, nvidia-gpu, a10, ci]
 
     steps:
       - name: Checkout
@@ -27,12 +27,13 @@ jobs:
       - name: Install requirements
         run: |
           pip install --upgrade pip
-          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-          pip install -e .[testing,timm,diffusers,codecarbon]
+          pip install -e .[testing,py-txi]
+
+      - name: Pull TGI docker image
+        run: docker pull ghcr.io/huggingface/text-generation-inference:latest
+
+      - name: Pull TEI docker image
+        run: docker pull ghcr.io/huggingface/text-embeddings-inference:latest
 
       - name: Run tests
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          PUSH_REPO_ID: optimum-benchmark/misc
-        run: |
-          pytest -s -k "api and not (cpu or cuda)"
+        run: pytest -s -k "cli and cuda and py_txi"

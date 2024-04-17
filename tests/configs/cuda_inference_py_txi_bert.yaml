@@ -1,0 +1,10 @@
+defaults:
+  # order of inheritance, last one overrides previous ones
+  - _base_ # inherits from base config
+  - _cuda_ # inherits from cuda config
+  - _inference_ # inherits from inference config
+  - _bert_ # inherits from gpt config
+  - _self_ # hydra 1.1 compatibility
+  - override backend: py-txi
+
+experiment_name: cuda_inference_py_txi_bert

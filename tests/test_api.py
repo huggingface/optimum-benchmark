@@ -1,7 +1,10 @@
 import gc
+import os
 import time
+from importlib import reload
 from tempfile import TemporaryDirectory
 
+import pandas as pd
 import pytest
 import torch
 
@@ -10,13 +13,17 @@ from optimum_benchmark.backends.diffusers_utils import (
     get_diffusers_pretrained_config,
 )
 from optimum_benchmark.backends.pytorch.config import PyTorchConfig
-from optimum_benchmark.backends.timm_utils import extract_timm_shapes_from_config, get_timm_pretrained_config
+from optimum_benchmark.backends.timm_utils import (
+    extract_timm_shapes_from_config,
+    get_timm_pretrained_config,
+)
 from optimum_benchmark.backends.transformers_utils import (
     extract_transformers_shapes_from_artifacts,
     get_transformers_pretrained_config,
     get_transformers_pretrained_processor,
 )
 from optimum_benchmark.benchmarks.inference.config import INPUT_SHAPES, InferenceConfig
+from optimum_benchmark.benchmarks.report import BenchmarkReport
 from optimum_benchmark.benchmarks.training.config import DATASET_SHAPES, TrainingConfig
 from optimum_benchmark.experiment import ExperimentConfig, launch
 from optimum_benchmark.generators.dataset_generator import DatasetGenerator
@@ -24,8 +31,10 @@ from optimum_benchmark.generators.input_generator import InputGenerator
 from optimum_benchmark.import_utils import get_git_revision_hash
 from optimum_benchmark.launchers.process.config import ProcessConfig
 from optimum_benchmark.system_utils import get_gpu_device_ids
-from optimum_benchmark.trackers.latency import LatencyTracker, Timer
+from optimum_benchmark.trackers.latency import LatencyTracker
 from optimum_benchmark.trackers.memory import MemoryTracker
+
+PUSH_REPO_ID = os.environ.get("PUSH_REPO_ID", "optimum-benchmark/local")
 
 LIBRARIES_TASKS_MODELS = [
     ("timm", "image-classification", "timm/resnet50.a1_in1k"),
@@ -43,8 +52,13 @@ LIBRARIES_TASKS_MODELS = [
 @pytest.mark.parametrize("benchmark", ["training", "inference"])
 @pytest.mark.parametrize("library,task,model", LIBRARIES_TASKS_MODELS)
 def test_api_launch(device, benchmark, library, task, model):
-    no_weights = False if library != "transformers" else True
     device_ids = get_gpu_device_ids() if device == "cuda" else None
+    no_weights = False if library != "transformers" else True
+
+    launcher_config = ProcessConfig(
+        device_isolation=device == "cuda",
+        device_isolation_action="error",
+    )
 
     if benchmark == "training":
         if library == "transformers":
@@ -57,10 +71,12 @@ def test_api_launch(device, benchmark, library, task, model):
             memory=True,
             latency=True,
             duration=1,
+            iterations=1,
             warmup_runs=1,
-            input_shapes={"batch_size": 1, "sequence_length": 16},
-            generate_kwargs={"max_new_tokens": 5, "min_new_tokens": 5},
+            input_shapes={"batch_size": 1, "sequence_length": 2},
+            generate_kwargs={"max_new_tokens": 2, "min_new_tokens": 2},
             call_kwargs={"num_inference_steps": 2},
+            energy=torch.version.hip is None,
         )
 
     backend_config = PyTorchConfig(
@@ -72,10 +88,28 @@ def test_api_launch(device, benchmark, library, task, model):
         task=task,
     )
 
+    experiment_name = f"{device}_{benchmark}_{library}_{task}_{model}"
+    experiment_config = ExperimentConfig(
+        experiment_name=experiment_name,
+        benchmark=benchmark_config,
+        launcher=launcher_config,
+        backend=backend_config,
+    )
+    benchmark_report = launch(experiment_config)
+
+    experiment_config.push_to_hub(repo_id=PUSH_REPO_ID, subfolder=experiment_name)
+    benchmark_report.push_to_hub(repo_id=PUSH_REPO_ID, subfolder=experiment_name)
+
+
+def test_api_push_to_hub_mixin():
+    experiment_name = "test_api_push_to_hub_mixin"
+
     launcher_config = ProcessConfig(device_isolation=False)
+    backend_config = PyTorchConfig(model="google-bert/bert-base-uncased", device="cpu")
+    benchmark_config = InferenceConfig(memory=True, latency=True, duration=1, iterations=1, warmup_runs=1)
 
     experiment_config = ExperimentConfig(
-        experiment_name=f"{library}_{task}_{model}_{device}",
+        experiment_name=experiment_name,
         benchmark=benchmark_config,
         launcher=launcher_config,
         backend=backend_config,
@@ -84,11 +118,44 @@ def test_api_launch(device, benchmark, library, task, model):
     benchmark_report = launch(experiment_config)
 
     with TemporaryDirectory() as tempdir:
-        benchmark_report.to_dict()
-        benchmark_report.to_flat_dict()
-        benchmark_report.to_dataframe()
-        benchmark_report.to_csv(f"{tempdir}/benchmark_report.csv")
-        benchmark_report.to_json(f"{tempdir}/benchmark_report.json")
+        # dict/json api
+        experiment_config.save_json(f"{tempdir}/experiment_config.json")
+        assert os.path.exists(f"{tempdir}/experiment_config.json")
+        from_json_experiment_config: ExperimentConfig = ExperimentConfig.from_json(f"{tempdir}/experiment_config.json")
+        assert from_json_experiment_config.to_dict() == experiment_config.to_dict()
+
+        # dataframe/csv api
+        experiment_config.save_csv(f"{tempdir}/experiment_config.csv")
+        assert os.path.exists(f"{tempdir}/experiment_config.csv")
+        from_csv_experiment_config: ExperimentConfig = ExperimentConfig.from_csv(f"{tempdir}/experiment_config.csv")
+        pd.testing.assert_frame_equal(from_csv_experiment_config.to_dataframe(), experiment_config.to_dataframe())
+
+    # Hugging Face Hub API
+    experiment_config.push_to_hub(repo_id=PUSH_REPO_ID, subfolder=experiment_name)
+    from_hub_experiment_config: ExperimentConfig = ExperimentConfig.from_pretrained(
+        repo_id=PUSH_REPO_ID, subfolder=experiment_name
+    )
+    assert from_hub_experiment_config.to_dict() == experiment_config.to_dict()
+
+    with TemporaryDirectory() as tempdir:
+        # dict/json api
+        benchmark_report.save_json(f"{tempdir}/benchmark_report.json")
+        assert os.path.exists(f"{tempdir}/benchmark_report.json")
+        from_json_benchmark_report: BenchmarkReport = BenchmarkReport.from_json(f"{tempdir}/benchmark_report.json")
+        assert from_json_benchmark_report.to_dict() == benchmark_report.to_dict()
+
+        # dataframe/csv api
+        benchmark_report.save_csv(f"{tempdir}/benchmark_report.csv")
+        assert os.path.exists(f"{tempdir}/benchmark_report.csv")
+        from_csv_benchmark_report: BenchmarkReport = BenchmarkReport.from_csv(f"{tempdir}/benchmark_report.csv")
+        pd.testing.assert_frame_equal(from_csv_benchmark_report.to_dataframe(), benchmark_report.to_dataframe())
+
+    # Hugging Face Hub API
+    benchmark_report.push_to_hub(repo_id=PUSH_REPO_ID, subfolder=experiment_name)
+    from_hub_benchmark_report: BenchmarkReport = BenchmarkReport.from_pretrained(
+        repo_id=PUSH_REPO_ID, subfolder=experiment_name
+    )
+    assert from_hub_benchmark_report.to_dict() == benchmark_report.to_dict()
 
 
 @pytest.mark.parametrize("library,task,model", LIBRARIES_TASKS_MODELS)
@@ -140,11 +207,21 @@ def test_api_dataset_generator(library, task, model):
 @pytest.mark.parametrize("backend", ["pytorch", "other"])
 def test_api_latency_tracker(device, backend):
     tracker = LatencyTracker(device=device, backend=backend)
-    timer = Timer()
 
-    timer.reset()
     tracker.reset()
-    while timer.elapsed() < 2:
+    while tracker.elapsed() < 2:
+        with tracker.track():
+            time.sleep(1)
+
+    latency = tracker.get_latency()
+    latency.log()
+
+    assert latency.mean < 1.1
+    assert latency.mean > 0.9
+    assert len(latency.values) == 2
+
+    tracker.reset()
+    while tracker.count() < 2:
         with tracker.track():
             time.sleep(1)
 
@@ -159,6 +236,9 @@ def test_api_latency_tracker(device, backend):
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 @pytest.mark.parametrize("backend", ["pytorch", "other"])
 def test_api_memory_tracker(device, backend):
+    if torch.cuda.is_available():
+        reload(torch.cuda)
+
     device_ids = get_gpu_device_ids() if device == "cuda" else None
     tracker = MemoryTracker(device=device, backend=backend, device_ids=device_ids)
 
@@ -172,7 +252,6 @@ def test_api_memory_tracker(device, backend):
 
     tracker.reset()
     with tracker.track():
-        time.sleep(1)
         array = torch.randn((10000, 10000), dtype=torch.float64, device=device)
         expected_memory = array.nbytes / 1e6
         time.sleep(1)

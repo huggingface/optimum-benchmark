@@ -49,11 +49,9 @@ jobs:
           options: |
             --rm
             --shm-size 64G
-            --env USE_ROCM="1"
             --device /dev/kfd
             --device /dev/dri/${{ env.DEVICE }}
             --volume ${{ github.workspace }}:/workspace
-            --env PROCESS_SPECIFIC_VRAM="0"
             --workdir /workspace
           run: |
             pip install -e .[testing,diffusers,timm,peft,autoawq-rocm,auto-gptq-rocm]

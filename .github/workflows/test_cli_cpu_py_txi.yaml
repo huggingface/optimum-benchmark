@@ -14,16 +14,8 @@ concurrency:
 jobs:
   run_cli_cpu_py_txi_tests:
     runs-on: ubuntu-latest
-    steps:
-      - name: Free disk space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          dotnet: true
-          android: true
-          haskell: true
-          docker-images: true
-          large-packages: false
 
+    steps:
       - name: Checkout
         uses: actions/checkout@v3
 
@@ -35,10 +27,8 @@ jobs:
       - name: Install requirements
         run: |
           pip install --upgrade pip
+          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
           pip install -e .[testing,py-txi]
-
-      - name: Pull TGI docker image
-        run: docker pull ghcr.io/huggingface/text-generation-inference:latest
 
       - name: Pull TEI docker image
         run: docker pull ghcr.io/huggingface/text-embeddings-inference:cpu-latest

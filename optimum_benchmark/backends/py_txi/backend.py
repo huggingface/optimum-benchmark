@@ -116,13 +116,14 @@ class PyTXIBackend(Backend[PyTXIConfig]):
                     gpus=self.config.gpus,
                     devices=self.config.devices,
                     volumes=self.config.volumes,
-                    ports=self.config.ports,
                     environment=self.config.environment,
+                    ports=self.config.ports,
                     dtype=self.config.dtype,
                     sharded=self.config.sharded,
                     quantize=self.config.quantize,
                     num_shard=self.config.num_shard,
-                    enable_cuda_graphs=self.config.enable_cuda_graphs,
+                    speculate=self.config.speculate,
+                    cuda_graphs=self.config.cuda_graphs,
                     disable_custom_kernels=self.config.disable_custom_kernels,
                     trust_remote_code=self.config.trust_remote_code,
                     max_concurrent_requests=self.config.max_concurrent_requests,
@@ -136,8 +137,8 @@ class PyTXIBackend(Backend[PyTXIConfig]):
                     gpus=self.config.gpus,
                     devices=self.config.devices,
                     volumes=self.config.volumes,
-                    ports=self.config.ports,
                     environment=self.config.environment,
+                    ports=self.config.ports,
                     dtype=self.config.dtype,
                     pooling=self.config.pooling,
                     max_concurrent_requests=self.config.max_concurrent_requests,
@@ -147,33 +148,30 @@ class PyTXIBackend(Backend[PyTXIConfig]):
             raise NotImplementedError(f"TXI does not support task {self.config.task}")
 
     def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        input_key = "inputs" if "inputs" in inputs else "input_ids"
-        inputs = self.pretrained_processor.batch_decode(inputs[input_key].tolist())
-
         if self.config.task in TEXT_GENERATION_TASKS:
+            inputs = self.pretrained_processor.batch_decode(inputs["input_ids"].tolist())
             return {"prompt": inputs}
         elif self.config.task in TEXT_EMBEDDING_TASKS:
+            inputs = self.pretrained_processor.batch_decode(inputs["input_ids"].tolist())
             return {"text": inputs}
         else:
             raise NotImplementedError(f"TXI does not support task {self.config.task}")
 
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> List[str]:
-        if self.config.task in TEXT_GENERATION_TASKS:
-            return self.pretrained_model.generate(
-                **inputs,
-                do_sample=kwargs.get("do_sample", False),
-                max_new_tokens=kwargs.get("max_new_tokens", 1),
-            )
-        elif self.config.task in TEXT_EMBEDDING_TASKS:
-            return self.pretrained_model.encode(**inputs, **kwargs)
-        else:
-            raise NotImplementedError(f"TXI does not support task {self.config.task}")
+        return self.pretrained_model.encode(**inputs, **kwargs)
+
+    def prefill(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> Dict[str, Any]:
+        return self.pretrained_model.generate(
+            **inputs,
+            do_sample=kwargs.get("do_sample", False),
+            max_new_tokens=kwargs.get("max_new_tokens"),
+        )
 
     def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> List[str]:
         return self.pretrained_model.generate(
             **inputs,
             do_sample=kwargs.get("do_sample", False),
-            max_new_tokens=kwargs.get("max_new_tokens", 1),
+            max_new_tokens=kwargs.get("max_new_tokens"),
         )
 
     def clean(self) -> None:
