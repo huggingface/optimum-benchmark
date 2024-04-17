@@ -240,7 +240,7 @@ def object_detection_preprocessing(
         preprocess_function,
         remove_columns=dataset.features,
         desc="Running processor on dataset",
-        batch=False,
+        batched=False,
         writer_batch_size=50,
     ).with_format("torch")
 
