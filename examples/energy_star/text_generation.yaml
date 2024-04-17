@@ -7,13 +7,13 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: text_generation_opt_125m
+experiment_name: text_generation_olmo_1B
 
 backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model: facebook/opt-125m
+  model: allenai/OLMo-1B
   task: text-generation
 
 launcher:
