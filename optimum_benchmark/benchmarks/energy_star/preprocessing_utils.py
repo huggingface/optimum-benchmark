@@ -204,7 +204,8 @@ def text_generation_preprocessing(
             examples[config.text_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length=50
+            max_length=50,
+            return_token_type_ids=False
             #max_length=tokenizer.model_max_length - config.generate_kwargs['max_new_tokens'],
         )
 
