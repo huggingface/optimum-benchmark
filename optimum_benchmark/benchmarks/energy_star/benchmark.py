@@ -205,9 +205,11 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
                 inputs = backend.prepare_inputs(inputs)
                 _ = backend.generate(inputs, self.config.generate_kwargs)
 
-        decode_energy = self.energy_tracker.get_energy()
+        generate_energy = self.energy_tracker.get_energy()
+        decode_energy = generate_energy - prefill_energy
         decode_volume = self.atomic_decode_volume * self.config.num_samples
 
+        self.report.decode.energy = decode_energy
         self.report.decode.efficiency = Efficiency.from_energy(
             decode_energy, decode_volume, unit=TEXT_GENERATION_EFFICIENCY_UNIT
         )
