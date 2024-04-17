@@ -17,7 +17,7 @@ backend:
   task: text-generation
 
 launcher:
-  device_isolation: false
+  device_isolation: true
 
 benchmark:
   dataset_name: EnergyStarAI/text_generation
