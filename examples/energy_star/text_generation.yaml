@@ -7,13 +7,13 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: text_generation_mamba1.4B
+experiment_name: text_generation_opt-2.7B
 
 backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model: ArthurZ/mamba-1.4b
+  model: facebook/opt-2.7b
   task: text-generation
 
 launcher:
