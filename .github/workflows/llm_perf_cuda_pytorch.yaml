@@ -1,0 +1,59 @@
+name: LLM Perf Benchmarks - CUDA PyTorch
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Every day at 00:00 UTC
+    - cron: "0 0 * * *"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build_image_and_run_cuda_pytorch:
+    strategy:
+      fail-fast: false
+      matrix:
+        subset: [unquantized, bnb, awq, gptq]
+        machine: [{ name: 1xA10, runs-on: [single-gpu, nvidia-gpu, a10, ci] }]
+
+    runs-on: ${{ matrix.machine.runs-on }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Build image
+        run: docker build
+          --build-arg USER_ID=$(id -u)
+          --build-arg GROUP_ID=$(id -g)
+          --build-arg TORCH_CUDA=cu121
+          --build-arg CUDA_VERSION=12.1.1
+          --tag llm-perf-cuda:12.1.1
+          docker/cuda
+
+      - name: Run benchmarks
+        uses: addnab/docker-run-action@v3
+        env:
+          SUBSET: ${{ matrix.subset }}
+          MACHINE: ${{ matrix.machine.name }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        with:
+          image: llm-perf-cuda:12.1.1
+          options: |
+            --rm
+            --gpus all
+            --shm-size 64G
+            --env SUBSET
+            --env MACHINE
+            --env HF_TOKEN
+            --env MKL_THREADING_LAYER=GNU
+            --env HF_HUB_ENABLE_HF_TRANSFER=1
+            --volume ${{ github.workspace }}:/workspace
+            --workdir /workspace
+          run: |
+            pip install -e .[codecarbon]
+            pip install packaging && pip install flash-attn einops scipy auto-gptq optimum bitsandbytes autoawq
+            pip install -U transformers huggingface_hub[hf_transfer]
+            python llm-perf/benchmark_cuda_pytorch.py

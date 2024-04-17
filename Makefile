@@ -18,18 +18,21 @@ install:
 
 ## Build docker
 
-build_docker_cpu:
+build_cpu_image:
 	docker build --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t opt-bench-cpu:22.04 docker/cpu
 
-build_docker_cuda:
-	docker build --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t opt-bench-cuda:11.8.0 docker/cuda
+build_cuda_118_image:
+	docker build --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) --build-arg TORCH_CUDA=cu118 --build-arg CUDA_VERSION=11.8.0 -t opt-bench-cuda:11.8.0 docker/cuda
 
-build_docker_rocm:
+build_cuda_121_image:
+	docker build --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) --build-arg TORCH_CUDA=cu121 --build-arg CUDA_VERSION=12.1.1 -t opt-bench-cuda:12.1.1 docker/cuda
+
+build_rocm_image:
 	docker build --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t opt-bench-rocm:5.7.1 docker/rocm
 
 # Run docker
 
-run_docker_cpu:
+run_cpu_container:
 	docker run \
 	-it \
 	--rm \
@@ -38,10 +41,11 @@ run_docker_cpu:
 	--workdir /workspace \
 	opt-bench-cpu:22.04
 
-run_docker_cuda:
+run_cuda_118_container:
 	docker run \
 	-it \
 	--rm \
+	--pid host \
 	--gpus all \
 	--shm-size 64G \
 	--volume $(PWD):/workspace \
@@ -49,7 +53,19 @@ run_docker_cuda:
 	--workdir /workspace \
 	opt-bench-cuda:11.8.0
 
-run_docker_rocm:
+run_cuda_121_container:
+	docker run \
+	-it \
+	--rm \
+	--pid host \
+	--gpus all \
+	--shm-size 64G \
+	--volume $(PWD):/workspace \
+	--entrypoint /bin/bash \
+	--workdir /workspace \
+	opt-bench-cuda:12.1.1
+
+run_rocm_container:
 	docker run \
 	-it \
 	--rm \
@@ -152,3 +168,22 @@ test_cli_rocm_pytorch_multi_gpu:
 
 test_cli_rocm_pytorch_single_gpu:
 	pytest -s -k "cli and rocm and pytorch and not (dp or ddp or device_map or deepspeed) and not (bnb or awq)"
+
+# llm-perf
+
+install_llm_perf_cuda_pytorch:
+	pip install packaging && pip install flash-attn einops scipy auto-gptq optimum bitsandbytes autoawq
+	pip install -U transformers huggingface_hub[hf_transfer]
+	pip install -e .[codecarbon]
+
+run_llm_perf_cuda_pytorch_unquantized:
+	SUBSET=unquantized python llm-perf/benchmark_cuda_pytorch.py
+
+run_llm_perf_cuda_pytorch_bnb:
+	SUBSET=bnb python llm-perf/benchmark_cuda_pytorch.py
+
+run_llm_perf_cuda_pytorch_gptq:
+	SUBSET=gptq python llm-perf/benchmark_cuda_pytorch.py
+
+run_llm_perf_cuda_pytorch_awq:
+	SUBSET=awq python llm-perf/benchmark_cuda_pytorch.py

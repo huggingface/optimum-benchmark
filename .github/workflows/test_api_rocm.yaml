@@ -48,7 +48,6 @@ jobs:
           image: opt-bench-rocm:${{ matrix.image.rocm_version }}
           options: |
             --rm
-            --pid host
             --shm-size 64G
             --env HF_TOKEN
             --env PUSH_REPO_ID
@@ -57,5 +56,5 @@ jobs:
             --volume ${{ github.workspace }}:/workspace
             --workdir /workspace
           run: |
-            pip install -e .[testing,timm,diffusers,codecarbon]
+            pip install -e .[testing,timm,diffusers]
             pytest -s -x -k "api and cuda"

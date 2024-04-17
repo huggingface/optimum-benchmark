@@ -46,10 +46,8 @@ class BenchmarkMeasurements:
 @dataclass
 class BenchmarkReport(PushToHubMixin):
     @classmethod
-    def make_report(cls, targets: List[str]) -> "BenchmarkReport":
-        return make_dataclass(
-            cls_name="report", fields=[(target, BenchmarkMeasurements) for target in targets], bases=(cls,)
-        )({t: BenchmarkMeasurements() for t in targets})
+    def from_targets(cls, targets: List[str]) -> "BenchmarkReport":
+        return cls.from_dict({target: BenchmarkMeasurements() for target in targets})
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "PushToHubMixin":
