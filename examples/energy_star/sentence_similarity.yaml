@@ -9,6 +9,10 @@ defaults:
 
 experiment_name: sentence_similarity
 
+launcher:
+  device_isolation: true
+  device_isolation_action: warn
+
 backend:
   device: cuda
   device_ids: 0
@@ -16,9 +20,6 @@ backend:
   model: WhereIsAI/UAE-Large-V1
   task: sentence-similarity
   library: transformers
-
-launcher:
-  device_isolation: true
 
 benchmark:
   dataset_name: EnergyStarAI/sentence_similarity

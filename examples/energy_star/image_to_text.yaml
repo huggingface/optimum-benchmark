@@ -9,15 +9,16 @@ defaults:
 
 experiment_name: image_to_text
 
+launcher:
+  device_isolation: true
+  device_isolation_action: warn
+
 backend:
   device: cuda
   device_ids: 0
   no_weights: true
   model: Salesforce/blip-image-captioning-base
   task: image-to-text
-
-launcher:
-  device_isolation: true
 
 benchmark:
   dataset_name: EnergyStarAI/image_captioning

@@ -9,15 +9,16 @@ defaults:
 
 experiment_name: image_generation
 
+launcher:
+  device_isolation: true
+  device_isolation_action: warn
+
 backend:
   device: cuda
   device_ids: 0
   no_weights: false
   model: segmind/tiny-sd
   task: stable-diffusion
-
-launcher:
-  device_isolation: true
 
 benchmark:
   dataset_name: EnergyStarAI/image_generation

@@ -18,6 +18,7 @@ backend:
 
 launcher:
   device_isolation: true
+  device_isolation_action: warn
 
 benchmark:
   dataset_name: EnergyStarAI/image_classification
