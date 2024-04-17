@@ -7,13 +7,13 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: text_generation_opt-2.7B
+experiment_name: text_generation_distilgpt2
 
 backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model: facebook/opt-2.7b
+  model: distilbert/distilgpt2
   task: text-generation
 
 launcher:
