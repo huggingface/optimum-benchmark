@@ -231,7 +231,6 @@ def object_detection_preprocessing(
 
     def preprocess_function(examples):
         processed = processor(examples[config.image_column_name].convert("RGB"))
-
         return {
             "pixel_values": processed["pixel_values"][0],
             "pixel_mask": processed["pixel_mask"][0],
@@ -242,6 +241,7 @@ def object_detection_preprocessing(
         remove_columns=dataset.features,
         desc="Running processor on dataset",
         batched=False,
+        write_batch_size=50,
     ).with_format("torch")
 
     return dataset
