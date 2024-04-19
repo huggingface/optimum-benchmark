@@ -1,9 +1,9 @@
+import multiprocessing as mp
 import os
 import signal
 import time
 from contextlib import contextmanager
 from logging import getLogger
-from multiprocessing import Process
 from typing import Set
 
 from ..import_utils import is_amdsmi_available, is_psutil_available, is_pynvml_available
@@ -25,7 +25,7 @@ LOGGER = getLogger("device-isolation")
 
 def isolation_error_signal_handler(signum, frame):
     LOGGER.error(f"Process {os.getpid()} received an isolation signal with an `error` action. Exiting...")
-    raise InterruptedError("Your device is not isolated (other processes are running on it). Exiting...")
+    os._exit(1)
 
 
 def isolation_warn_signal_handler(signum, frame):
@@ -111,7 +111,16 @@ def get_pids_running_on_system_devices(device_ids: str) -> Set[int]:
     return devices_pids
 
 
-def assert_system_devices_isolation(isolated_pid: int, device_ids: str, action: str):
+def get_process_children_pids(pid: int) -> Set[int]:
+    """Returns the set of pids of the children of the given process."""
+    process = psutil.Process(pid)
+    children = process.children(recursive=True)
+    children_pids = {child.pid for child in children}
+
+    return children_pids
+
+
+def assert_system_devices_isolation(isolated_pids: set, device_ids: str, action: str):
     setup_logging("WARNING")
 
     if action == "error":
@@ -121,25 +130,34 @@ def assert_system_devices_isolation(isolated_pid: int, device_ids: str, action: 
     else:
         raise ValueError(f"Unsupported action {action}")
 
-    while psutil.pid_exists(isolated_pid):
+    while any(psutil.pid_exists(pid) for pid in isolated_pids):
         devices_pids = get_pids_running_on_system_devices(device_ids=device_ids)
         devices_pids = {pid for pid in devices_pids if psutil.pid_exists(pid)}
-        permitted_pids = {isolated_pid} | {child.pid for child in psutil.Process(isolated_pid).children(recursive=True)}
+
+        permitted_pids = set()
+        for pid in isolated_pids:
+            permitted_pids.add(pid)
+            permitted_pids |= get_process_children_pids(pid)
+        permitted_pids = {pid for pid in permitted_pids if psutil.pid_exists(pid)}
+
         non_permitted_pids = devices_pids - permitted_pids
 
         if len(non_permitted_pids) > 0:
             LOGGER.warn(f"Found non-permitted process(es) running on system device(s): {non_permitted_pids}")
-            LOGGER.warn(f"Sending an action signal `{action}` to the isolated process {isolated_pid}...")
-            os.kill(isolated_pid, action_signal)
-            LOGGER.warn("Exiting...")
-            exit(0)
+
+            for pid in isolated_pids:
+                LOGGER.warn(f"Sending an action signal `{action}` to isolated process {pid}")
+                os.kill(pid, action_signal)
+
+            LOGGER.warn("Exiting the isolation process...")
+            exit(1)
 
         time.sleep(1)
 
 
 @contextmanager
-def device_isolation(isolated_pid: int, enabled: bool, action: str):
-    if not enabled:
+def device_isolation(enable: bool, action: str, isolated_pids: set):
+    if not enable:
         yield
         return
 
@@ -155,19 +173,21 @@ def device_isolation(isolated_pid: int, enabled: bool, action: str):
             "Device isolation requires CUDA_VISIBLE_DEVICES or ROCR_VISIBLE_DEVICES to be set but none were found."
         )
 
-    isolation_process = Process(
+    LOGGER.info(f"\t+ Isolated device(s) [{device_ids}]")
+    LOGGER.info(f"\t+ Isolated process(es) [{isolated_pids}]")
+    LOGGER.info(f"\t+ Sending an action signal `{action}` in case of non-isolation")
+
+    isolation_process = mp.Process(
         target=assert_system_devices_isolation,
         kwargs={
-            "isolated_pid": isolated_pid,
+            "isolated_pids": isolated_pids,
             "device_ids": device_ids,
             "action": action,
         },
         daemon=True,
     )
     isolation_process.start()
-
-    LOGGER.info(f"\t+ Launched device(s) isolation process {isolation_process.pid}")
-    LOGGER.info(f"\t+ Isolating device(s) [{device_ids}]")
+    LOGGER.info(f"\t+ Started device(s) isolation process {isolation_process.pid}")
 
     yield
 

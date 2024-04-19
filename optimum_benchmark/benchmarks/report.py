@@ -46,13 +46,9 @@ class BenchmarkMeasurements:
 @dataclass
 class BenchmarkReport(PushToHubMixin):
     @classmethod
-    def from_targets(cls, targets: List[str]) -> "BenchmarkReport":
-        return cls.from_dict({target: BenchmarkMeasurements() for target in targets})
-
-    @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "PushToHubMixin":
         return make_dataclass(
-            cls_name="report", fields=[(target, BenchmarkMeasurements) for target in data.keys()], bases=(cls,)
+            cls_name="BenchmarkReport", fields=[(target, BenchmarkMeasurements) for target in data.keys()], bases=(cls,)
         )(**data)
 
     def log_memory(self):
@@ -106,7 +102,7 @@ class BenchmarkReport(PushToHubMixin):
             measurements = [getattr(report, target) for report in reports]
             aggregated_measurements[target] = BenchmarkMeasurements.aggregate(measurements)
 
-        return cls(**aggregated_measurements)
+        return cls.from_dict(aggregated_measurements)
 
     @classproperty
     def default_filename(self) -> str:

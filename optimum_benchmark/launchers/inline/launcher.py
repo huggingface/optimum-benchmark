@@ -18,9 +18,9 @@ class InlineLauncher(Launcher[InlineConfig]):
 
     def launch(self, worker: Callable, *worker_args) -> BenchmarkReport:
         with device_isolation(
-            isolated_pid=os.getpid(),
-            enabled=self.config.device_isolation,
+            enable=self.config.device_isolation,
             action=self.config.device_isolation_action,
+            isolated_pids={os.getpid()},
         ):
             LOGGER.info("\t+ Launching benchmark in the main process.")
             report = worker(*worker_args)

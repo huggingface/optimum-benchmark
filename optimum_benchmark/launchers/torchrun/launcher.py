@@ -53,9 +53,9 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
         lock = ctx.Lock()
 
         with device_isolation(
-            isolated_pid=os.getpid(),
-            enabled=self.config.device_isolation,
+            enable=self.config.device_isolation,
             action=self.config.device_isolation_action,
+            isolated_pids={mp.current_process().pid},
         ):
             LOGGER.info(f"\t+ Launching torchrun agent with {self.config.nproc_per_node} worker processes")
             launch_agent(
@@ -69,7 +69,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
 
         if len(reports) > 1:
             LOGGER.info(f"\t+ Merging benchmark reports from {len(reports)} workers")
-            report = reports[0].aggregate(reports)
+            report = BenchmarkReport.aggregate(reports)
         elif len(reports) == 1:
             report = reports[0]
         else:

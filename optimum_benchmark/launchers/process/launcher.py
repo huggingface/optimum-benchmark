@@ -1,8 +1,6 @@
-import os
+import multiprocessing as mp
 from logging import getLogger
 from typing import Callable
-
-import torch.multiprocessing as mp
 
 from ...benchmarks.report import BenchmarkReport
 from ...logging_utils import setup_logging
@@ -24,41 +22,34 @@ class ProcessLauncher(Launcher[ProcessConfig]):
             mp.set_start_method(self.config.start_method, force=True)
 
     def launch(self, worker: Callable, *worker_args) -> BenchmarkReport:
-        log_level = getLogger().getEffectiveLevel()
-
         ctx = mp.get_context(self.config.start_method)
+        log_level = ctx.get_logger().getEffectiveLevel()
         queue = ctx.Queue()
         lock = ctx.Lock()
 
+        process = mp.Process(target=target, args=(worker, queue, lock, log_level, *worker_args), daemon=False)
+        process.start()
+
         with device_isolation(
-            isolated_pid=os.getpid(),
-            enabled=self.config.device_isolation,
+            enable=self.config.device_isolation,
             action=self.config.device_isolation_action,
+            isolated_pids={mp.current_process().pid, process.pid},
         ):
-            process_context = mp.start_processes(
-                entrypoint,
-                args=(worker, queue, lock, log_level, *worker_args),
-                start_method=self.config.start_method,
-                daemon=False,
-                join=False,
-                nprocs=1,
-            )
-            LOGGER.info(f"\t+ Launched benchmark in isolated process {process_context.pids()[0]}.")
-            while not process_context.join():
-                pass
+            LOGGER.info(f"\t+ Launched benchmark in another process with PID {process.pid}.")
+            process.join()
 
         report: BenchmarkReport = queue.get()
 
         return report
 
 
-def entrypoint(i, worker, queue, lock, log_level, *worker_args):
+def target(worker, queue, lock, log_level, *worker_args):
     """
     This a pickalable function that correctly sets up the logging configuration for the worker process,
     and puts the output of the worker function into a lock-protected queue.
     """
 
-    setup_logging(log_level, prefix=f"PROC-{i}")
+    setup_logging(log_level, prefix="PROCESS")
 
     worker_output = worker(*worker_args)
 
