@@ -57,7 +57,6 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             action=self.config.device_isolation_action,
             isolated_pids={mp.current_process().pid},
         ):
-            LOGGER.info(f"\t+ Launching torchrun agent with {self.config.nproc_per_node} processes per node.")
             _ = launch_agent(
                 entrypoint=entrypoint,
                 args=(worker, queue, lock, log_level, *worker_args),
@@ -69,11 +68,9 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
         while not queue.empty():
             reports.append(queue.get())
 
-        if len(reports) > 1:
+        if len(reports) > 0:
             LOGGER.info(f"\t+ Merging benchmark reports from {len(reports)} workers")
             report = BenchmarkReport.aggregate(reports)
-        elif len(reports) == 1:
-            report = reports[0]
         else:
             raise ValueError("No benchmark report was returned by the workers")
 

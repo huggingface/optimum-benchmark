@@ -27,13 +27,14 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         queue = ctx.Queue()
         lock = ctx.Lock()
 
+        process = mp.Process(target=target, args=(worker, queue, lock, log_level, *worker_args), daemon=False)
+        process.start()
+
         with device_isolation(
             enable=self.config.device_isolation,
             action=self.config.device_isolation_action,
-            isolated_pids={mp.current_process().pid},
+            isolated_pids={process.pid},
         ):
-            process = mp.Process(target=target, args=(worker, queue, lock, log_level, *worker_args), daemon=False)
-            process.start()
             process.join()
 
         report: BenchmarkReport = queue.get()
