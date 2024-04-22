@@ -27,15 +27,13 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         queue = ctx.Queue()
         lock = ctx.Lock()
 
-        process = mp.Process(target=target, args=(worker, queue, lock, log_level, *worker_args), daemon=False)
-        process.start()
-
         with device_isolation(
             enable=self.config.device_isolation,
             action=self.config.device_isolation_action,
-            isolated_pids={mp.current_process().pid, process.pid},
+            isolated_pids={mp.current_process().pid},
         ):
-            LOGGER.info(f"\t+ Launched benchmark in another process with PID {process.pid}.")
+            process = mp.Process(target=target, args=(worker, queue, lock, log_level, *worker_args), daemon=False)
+            process.start()
             process.join()
 
         report: BenchmarkReport = queue.get()
@@ -50,6 +48,7 @@ def target(worker, queue, lock, log_level, *worker_args):
     """
 
     setup_logging(log_level, prefix="PROCESS")
+    LOGGER.info(f"\t+ Running benchmark in isolated process with PID {mp.current_process().pid}.")
 
     worker_output = worker(*worker_args)
 

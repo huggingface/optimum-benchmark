@@ -27,9 +27,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             LOGGER.info(f"\t+ Setting multiprocessing start method to {self.config.start_method}.")
             mp.set_start_method(self.config.start_method, force=True)
 
-    def launch(self, worker: Callable, *worker_args) -> Dict[str, Any]:
-        log_level = getLogger().getEffectiveLevel()
-        launch_config = LaunchConfig(
+        self.launch_config = LaunchConfig(
             min_nodes=self.config.min_nodes,
             max_nodes=self.config.max_nodes,
             nproc_per_node=self.config.nproc_per_node,
@@ -48,7 +46,9 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             log_dir=self.config.log_dir,
         )
 
+    def launch(self, worker: Callable, *worker_args) -> Dict[str, Any]:
         ctx = mp.get_context(self.config.start_method)
+        log_level = ctx.get_logger().getEffectiveLevel()
         queue = ctx.Queue()
         lock = ctx.Lock()
 
@@ -57,9 +57,11 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             action=self.config.device_isolation_action,
             isolated_pids={mp.current_process().pid},
         ):
-            LOGGER.info(f"\t+ Launching torchrun agent with {self.config.nproc_per_node} worker processes")
-            launch_agent(
-                entrypoint=entrypoint, args=(worker, queue, lock, log_level, *worker_args), config=launch_config
+            LOGGER.info(f"\t+ Launching torchrun agent with {self.config.nproc_per_node} processes per node.")
+            _ = launch_agent(
+                entrypoint=entrypoint,
+                args=(worker, queue, lock, log_level, *worker_args),
+                config=self.launch_config,
             )
 
         reports: List[BenchmarkReport] = []
@@ -84,14 +86,16 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
 @record
 def entrypoint(worker, queue, lock, log_level, *worker_args):
     """
-    This a pickalable function that correctly sets up the logging configuration
+    This a pickalable function that correctly sets up the logging configuration for the worker process,
+    and puts the output of the worker function into a lock-protected queue.
     """
 
     rank = int(os.environ["RANK"])
     torch.cuda.set_device(rank) if torch.cuda.is_available() else None
     setup_logging(level=log_level, prefix=f"RANK-{rank}") if rank == 0 else setup_logging(level="ERROR")
+    LOGGER.info(f"\t+ Running benchmark in isolated process with rank {rank} and PID {mp.current_process().pid}.")
 
-    torch.distributed.init_process_group(backend="nccl" if torch.cuda.is_available() else "gloo")
+    torch.distributed.init_process_group()
     torch.distributed.barrier()
 
     output = worker(*worker_args)

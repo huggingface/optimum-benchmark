@@ -22,7 +22,7 @@ class InlineLauncher(Launcher[InlineConfig]):
             action=self.config.device_isolation_action,
             isolated_pids={os.getpid()},
         ):
-            LOGGER.info("\t+ Launching benchmark in the main process.")
+            LOGGER.info(f"\t+ Running benchmark in the main process with PID {os.getpid()}.")
             report = worker(*worker_args)
 
         return report
