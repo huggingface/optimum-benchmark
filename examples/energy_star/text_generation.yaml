@@ -7,7 +7,7 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: text_generation_mistral_8x22B
+experiment_name: text_generation_aya101
 
 launcher:
   device_isolation: true
@@ -17,7 +17,7 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model: mistral-community/Mixtral-8x22B-v0.1
+  model: CohereForAI/aya-101
   task: text-generation
 
 benchmark:
