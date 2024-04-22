@@ -36,6 +36,7 @@ run_cpu_container:
 	docker run \
 	-it \
 	--rm \
+	--pid host \
 	--volume $(PWD):/workspace \
 	--entrypoint /bin/bash \
 	--workdir /workspace \
@@ -69,6 +70,7 @@ run_rocm_container:
 	docker run \
 	-it \
 	--rm \
+	--pid host \
 	--shm-size 64G \
 	--device /dev/kfd \
 	--device /dev/dri \
@@ -177,13 +179,13 @@ install_llm_perf_cuda_pytorch:
 	pip install -e .[codecarbon]
 
 run_llm_perf_cuda_pytorch_unquantized:
-	SUBSET=unquantized python llm-perf/benchmark_cuda_pytorch.py
+	SUBSET=unquantized python llm_perf/benchmark_cuda_pytorch.py
 
 run_llm_perf_cuda_pytorch_bnb:
-	SUBSET=bnb python llm-perf/benchmark_cuda_pytorch.py
+	SUBSET=bnb python llm_perf/benchmark_cuda_pytorch.py
 
 run_llm_perf_cuda_pytorch_gptq:
-	SUBSET=gptq python llm-perf/benchmark_cuda_pytorch.py
+	SUBSET=gptq python llm_perf/benchmark_cuda_pytorch.py
 
 run_llm_perf_cuda_pytorch_awq:
-	SUBSET=awq python llm-perf/benchmark_cuda_pytorch.py
+	SUBSET=awq python llm_perf/benchmark_cuda_pytorch.py

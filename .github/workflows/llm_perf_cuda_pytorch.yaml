@@ -53,7 +53,7 @@ jobs:
             --volume ${{ github.workspace }}:/workspace
             --workdir /workspace
           run: |
-            pip install -e .[codecarbon]
             pip install packaging && pip install flash-attn einops scipy auto-gptq optimum bitsandbytes autoawq
             pip install -U transformers huggingface_hub[hf_transfer]
-            python llm-perf/benchmark_cuda_pytorch.py
+            pip install -e .[codecarbon]
+            python llm_perf/benchmark_cuda_pytorch.py
