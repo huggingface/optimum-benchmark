@@ -19,7 +19,6 @@ backend:
   no_weights: true
   model: tiiuae/falcon-7b
   task: text-generation
-  trust_remote_code: True
 
 benchmark:
   dataset_name: EnergyStarAI/text_generation
