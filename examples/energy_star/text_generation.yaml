@@ -7,7 +7,7 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: text_generation_falcon-7b
+experiment_name: text_generation_llama-2-13b
 
 launcher:
   device_isolation: true
@@ -17,7 +17,7 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model: tiiuae/falcon-7b
+  model: meta-llama/Llama-2-13b-hf
   task: text-generation
 
 benchmark:
