@@ -7,7 +7,7 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: text_generation_starling7B
+experiment_name: text_generation_falcon-7b
 
 launcher:
   device_isolation: true
@@ -17,8 +17,9 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model: berkeley-nest/Starling-LM-7B-alpha
+  model: tiiuae/falcon-7b
   task: text-generation
+  trust_remote_code: True
 
 benchmark:
   dataset_name: EnergyStarAI/text_generation
