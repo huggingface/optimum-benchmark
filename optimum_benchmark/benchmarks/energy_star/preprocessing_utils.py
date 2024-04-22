@@ -15,6 +15,7 @@ def preprocess(dataset: Dataset, task: str, config: EnergyStarConfig, preprocess
         "text-classification": text_classification_preprocessing,
         "question-answering": question_answering_preprocessing,
         "text-generation": text_generation_preprocessing,
+        "text2text-generation": text_generation_preprocessing,
         "summarization": text_classification_preprocessing,
         "stable-diffusion": image_generation_preprocessing,
         "automatic-speech-recognition": automatic_speech_recognition_preprocessing,
