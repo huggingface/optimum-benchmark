@@ -7,7 +7,7 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: text_generation_distilgpt2
+experiment_name: text_generation_mistral_7B
 
 launcher:
   device_isolation: true
@@ -17,7 +17,7 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model: distilbert/distilgpt2
+  model: Mistral-7B-v0.1
   task: text-generation
 
 benchmark:
