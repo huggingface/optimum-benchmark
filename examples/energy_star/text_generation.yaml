@@ -7,7 +7,7 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: text_generation_aya101
+experiment_name: text_generation_gpt2xl
 
 launcher:
   device_isolation: true
@@ -17,7 +17,7 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model: CohereForAI/aya-101
+  model: openai-community/gpt2-xl
   task: text-generation
 
 benchmark:
