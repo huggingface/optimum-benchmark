@@ -7,7 +7,7 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: text_generation_llama3_8B
+experiment_name: text_generation_mixtral-8x22B
 
 launcher:
   device_isolation: true
@@ -15,10 +15,11 @@ launcher:
 
 backend:
   device: cuda
-  device_ids: 0
+  device_ids: 0,1,2,3,4,5,6,7
   no_weights: true
-  model: meta-llama/Meta-Llama-3-8B
+  model: mistral-community/Mixtral-8x22B-v0.1
   task: text-generation
+  device_map: auto
 
 benchmark:
   dataset_name: EnergyStarAI/text_generation
