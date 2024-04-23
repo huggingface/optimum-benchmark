@@ -7,7 +7,7 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: sentence_similarity_SFR_mistral
+experiment_name: sentence_similarity_GritLM-7B
 
 launcher:
   device_isolation: true
@@ -17,7 +17,7 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model: Salesforce/SFR-Embedding-Mistral
+  model: GritLM/GritLM-7B
   task: sentence-similarity
   library: transformers
 
