@@ -7,7 +7,7 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: sentence_similarity_UAE-Large
+experiment_name: sentence_similarity_udever-bloom-7b1
 
 launcher:
   device_isolation: true
@@ -17,7 +17,7 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model: WhereIsAI/UAE-Large-V1
+  model: izhx/udever-bloom-7b1
   task: sentence-similarity
   library: transformers
 
