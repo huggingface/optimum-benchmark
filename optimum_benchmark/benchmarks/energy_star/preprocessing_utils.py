@@ -48,7 +48,7 @@ def feature_extraction_preprocessing(
             examples[config.text_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length=config.max_length if config.max_length != -1 else None,
+            max_length=tokenizer.model_max_length if tokenizer.model_max_length != None else 500,
         )
 
     dataset = dataset.map(
@@ -72,6 +72,10 @@ def summarization_preprocessing(
     if config.num_samples != -1:
         dataset = dataset.select(range(config.num_samples))
 
+    # Add a pad token if the tokenizer doesn't have one
+    if getattr(tokenizer, "pad_token", None) is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
     padding = False if config.input_shapes["batch_size"] == 1 else True
 
     def tokenize_function(examples):
@@ -79,7 +83,7 @@ def summarization_preprocessing(
             examples[config.text_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length=config.max_length if config.max_length != -1 else None,
+            max_length=tokenizer.model_max_length if tokenizer.model_max_length != None else 500,
         )
 
     dataset = dataset.map(
@@ -112,7 +116,7 @@ def text_classification_preprocessing(
             examples[config.text_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length=config.max_length if config.max_length != -1 else None,
+            max_length=tokenizer.model_max_length if tokenizer.model_max_length != None else 500,
         )
 
     dataset = dataset.map(
@@ -162,7 +166,7 @@ def question_answering_preprocessing(
             examples[config.context_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length=config.max_length if config.max_length != -1 else None,
+            max_length=tokenizer.model_max_length if tokenizer.model_max_length != None else 500,
         )
 
     dataset = dataset.map(
@@ -197,7 +201,7 @@ def text_generation_preprocessing(
             truncation=config.truncation,
             return_token_type_ids=False,
             padding=padding,
-            max_length=50,
+            max_length=tokenizer.model_max_length if tokenizer.model_max_length != None else 50,
             # max_length=tokenizer.model_max_length - config.generate_kwargs['max_new_tokens'],
         )
 
@@ -317,7 +321,7 @@ def sentence_similarity_preprocessing(
             examples[config.sentence2_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length=config.max_length if config.max_length != -1 else None,
+            max_length=tokenizer.model_max_length if tokenizer.model_max_length != None else 500,
         )
 
     dataset = dataset.map(
