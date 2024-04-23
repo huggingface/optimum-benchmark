@@ -15,10 +15,11 @@ launcher:
 
 backend:
   device: cuda
-  device_ids: 0
+  device_ids: 0,1,2,3,4
   no_weights: true
   model: mistral-community/Mixtral-8x22B-v0.1
   task: text-generation
+  device_map: auto
 
 benchmark:
   dataset_name: EnergyStarAI/text_generation
