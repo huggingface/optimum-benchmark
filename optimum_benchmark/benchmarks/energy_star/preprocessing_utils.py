@@ -16,7 +16,7 @@ def preprocess(dataset: Dataset, task: str, config: EnergyStarConfig, preprocess
         "question-answering": question_answering_preprocessing,
         "text-generation": text_generation_preprocessing,
         "text2text-generation": text_generation_preprocessing,
-        "summarization": text_classification_preprocessing,
+        "summarization": summarization_preprocessing,
         "stable-diffusion": image_generation_preprocessing,
         "automatic-speech-recognition": automatic_speech_recognition_preprocessing,
         "image-to-text": image_to_text_preprocessing,
@@ -62,6 +62,34 @@ def feature_extraction_preprocessing(
 
     return dataset
 
+def summarization_preprocessing(
+    dataset: Dataset, config: EnergyStarConfig, tokenizer: PreTrainedTokenizer
+) -> Dataset:
+    # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
+    if config.input_shapes["batch_size"] == 1:
+        dataset = dataset.filter(lambda example: example[config.text_column_name] != "")
+
+    if config.num_samples != -1:
+        dataset = dataset.select(range(config.num_samples))
+
+    padding = False if config.input_shapes["batch_size"] == 1 else True
+
+    def tokenize_function(examples):
+        return tokenizer(
+            examples[config.text_column_name],
+            padding=padding,
+            truncation=config.truncation,
+            max_length=config.max_length if config.max_length != -1 else None,
+        )
+
+    dataset = dataset.map(
+        tokenize_function,
+        batched=True,
+        remove_columns=dataset.features,
+        desc="Running tokenizer on dataset",
+    ).with_format("torch")
+
+    return dataset
 
 def text_classification_preprocessing(
     dataset: Dataset, config: EnergyStarConfig, tokenizer: PreTrainedTokenizer
