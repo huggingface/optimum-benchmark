@@ -7,7 +7,7 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: summarization_flan-t5-base
+experiment_name: summarization_pegasus-large
 
 launcher:
   device_isolation: true
@@ -17,7 +17,7 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model: marianna13/flan-t5-base-summarization
+  model: google/pegasus-large
   task: summarization
 
 benchmark:
