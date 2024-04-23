@@ -19,7 +19,7 @@ backend:
   no_weights: true
   model: Salesforce/SFR-Embedding-Mistral
   task: sentence-similarity
-  library: sentence_transformers
+  library: transformers
 
 benchmark:
   dataset_name: EnergyStarAI/sentence_similarity
