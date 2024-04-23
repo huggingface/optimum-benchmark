@@ -7,7 +7,7 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: summarization_distilbart-cnn-12-6
+experiment_name: summarization_flan-t5-large
 
 launcher:
   device_isolation: true
@@ -17,7 +17,7 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model: sshleifer/distilbart-cnn-12-6
+  model: stacked-summaries/flan-t5-large-stacked-samsum-1024
   task: summarization
 
 benchmark:
