@@ -29,8 +29,8 @@ benchmark:
     batch_size: 1
 
   generate_kwargs:
-    max_new_tokens: 5
-    min_new_tokens: 5
+    max_length: 10
+    min_new_tokens: 10
 
 # hydra/cli specific settings
 hydra:
