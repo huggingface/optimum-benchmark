@@ -7,7 +7,7 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: image_to_text
+experiment_name: image_to_text_blip_base
 
 launcher:
   device_isolation: true
