@@ -192,10 +192,10 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
             for inputs in tqdm(self.dataloader):
                 inputs = backend.prepare_inputs(inputs)
                 _ = backend.prefill(inputs, prefill_kwargs)
-                print("input length: " + str(inputs["input_ids"].size(dim=1)))
-                print("batch size: " + str(input_shapes["batch_size"]))
+                print("input length: " + str())
+                print("batch size: " + str(self.config.input_shapes["batch_size"]))
                 try:
-                    prefill_volume += len(inputs["input_ids"]) * input_shapes["batch_size"]
+                    prefill_volume += inputs["input_ids"].size(dim=1)
                 except:
                     prefill_volume +=1
         prefill_energy = self.energy_tracker.get_energy()
