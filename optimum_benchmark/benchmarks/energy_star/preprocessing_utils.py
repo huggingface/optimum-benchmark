@@ -28,7 +28,7 @@ def preprocess(dataset: Dataset, task: str, config: EnergyStarConfig, preprocess
 
 
 def feature_extraction_preprocessing(
-    dataset: Dataset, config: EnergyStarConfig, tokenizer: PreTrainedTokenizer
+    dataset: Dataset, config: EnergyStarConfig, tokenizer: PreTrainedTokenizer,  pretrained_config: PretrainedConfig,
 ) -> Dataset:
     # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
     if config.input_shapes["batch_size"] == 1:
@@ -48,8 +48,9 @@ def feature_extraction_preprocessing(
             examples[config.text_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length=tokenizer.model_max_length if tokenizer.model_max_length != None else backend.pretrained_config.max_position_embeddings if backend.pretrained_config.max_position_embeddings != None else 500,
+            max_length=tokenizer.model_max_length -1  if tokenizer.model_max_length != None else pretrained_config.max_position_embeddings-1 if pretrained_config.max_position_embeddings != None else 500,
         )
+
 
     dataset = dataset.map(
         tokenize_function,
@@ -63,7 +64,7 @@ def feature_extraction_preprocessing(
     return dataset
 
 def summarization_preprocessing(
-    dataset: Dataset, config: EnergyStarConfig, tokenizer: PreTrainedTokenizer
+    dataset: Dataset, config: EnergyStarConfig, tokenizer: PreTrainedTokenizer,  pretrained_config: PretrainedConfig,
 ) -> Dataset:
     # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
     if config.input_shapes["batch_size"] == 1:
@@ -83,8 +84,9 @@ def summarization_preprocessing(
             examples[config.text_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length=tokenizer.model_max_length if tokenizer.model_max_length != None else model.max_position_embeddings if model.max_position_embeddings != None else 500,
+            max_length=tokenizer.model_max_length -1  if tokenizer.model_max_length != None else pretrained_config.max_position_embeddings-1 if pretrained_config.max_position_embeddings != None else 500,
         )
+
     dataset = dataset.map(
         tokenize_function,
         batched=True,
@@ -115,10 +117,9 @@ def text_classification_preprocessing(
             examples[config.text_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length= pretrained_config.max_position_embeddings-1 if pretrained_config.max_position_embeddings != None else 500,
+            max_length=tokenizer.model_max_length -1  if tokenizer.model_max_length != None else pretrained_config.max_position_embeddings-1 if pretrained_config.max_position_embeddings != None else 500,
         )
-    print(pretrained_config.max_position_embeddings)
-    print(pretrained_config.max_position_embeddings-1)
+
     dataset = dataset.map(
         tokenize_function,
         batched=True,
@@ -130,7 +131,7 @@ def text_classification_preprocessing(
 
 
 def image_generation_preprocessing(
-    dataset: Dataset, config: EnergyStarConfig, processor: PretrainedProcessor
+    dataset: Dataset, config: EnergyStarConfig, processor: PretrainedProcessor,  pretrained_config: PretrainedConfig,
 ) -> Dataset:
     # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
     if config.input_shapes["batch_size"] == 1:
@@ -143,7 +144,7 @@ def image_generation_preprocessing(
 
 
 def question_answering_preprocessing(
-    dataset: Dataset, config: EnergyStarConfig, tokenizer: PreTrainedTokenizer
+    dataset: Dataset, config: EnergyStarConfig, tokenizer: PreTrainedTokenizer,  pretrained_config: PretrainedConfig,
 ) -> Dataset:
     # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
     if config.input_shapes["batch_size"] == 1:
@@ -166,8 +167,9 @@ def question_answering_preprocessing(
             examples[config.context_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length=tokenizer.model_max_length if tokenizer.model_max_length != None else model.max_position_embeddings if model.max_position_embeddings != None else 500,
+            max_length=tokenizer.model_max_length -1  if tokenizer.model_max_length != None else pretrained_config.max_position_embeddings-1 if pretrained_config.max_position_embeddings != None else 500,
         )
+
 
     dataset = dataset.map(
         tokenize_function,
@@ -180,7 +182,7 @@ def question_answering_preprocessing(
 
 
 def text_generation_preprocessing(
-    dataset: Dataset, config: EnergyStarConfig, tokenizer: PreTrainedTokenizer
+    dataset: Dataset, config: EnergyStarConfig, tokenizer: PreTrainedTokenizer,  pretrained_config: PretrainedConfig,
 ) -> Dataset:
     # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
     if config.input_shapes["batch_size"] == 1:
@@ -201,8 +203,7 @@ def text_generation_preprocessing(
             truncation=config.truncation,
             return_token_type_ids=False,
             padding=padding,
-            max_length=tokenizer.model_max_length if tokenizer.model_max_length != None else model.max_position_embeddings if model.max_position_embeddings != None else 500,
-            # max_length=tokenizer.model_max_length - config.generate_kwargs['max_new_tokens'],
+            max_length=tokenizer.model_max_length -1  if tokenizer.model_max_length != None else pretrained_config.max_position_embeddings-1 if pretrained_config.max_position_embeddings != None else 500,
         )
 
     dataset = dataset.map(
@@ -216,7 +217,8 @@ def text_generation_preprocessing(
     return dataset
 
 
-def image_preprocessing(dataset: Dataset, config: EnergyStarConfig, processor: PretrainedProcessor) -> Dataset:
+def image_preprocessing(dataset: Dataset, config: EnergyStarConfig, processor: PretrainedProcessor,  pretrained_config: PretrainedConfig,
+) -> Dataset:
     # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
     if config.input_shapes["batch_size"] == 1:
         dataset = dataset.filter(lambda example: example[config.image_column_name] != "")
@@ -240,7 +242,8 @@ def image_preprocessing(dataset: Dataset, config: EnergyStarConfig, processor: P
     return dataset
 
 
-def image_to_text_preprocessing(dataset: Dataset, config: EnergyStarConfig, processor: PretrainedProcessor) -> Dataset:
+def image_to_text_preprocessing(dataset: Dataset, config: EnergyStarConfig, processor: PretrainedProcessor,  pretrained_config: PretrainedConfig,
+) -> Dataset:
     # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
     if config.input_shapes["batch_size"] == 1:
         dataset = dataset.filter(lambda example: example[config.image_column_name] != "")
@@ -265,7 +268,7 @@ def image_to_text_preprocessing(dataset: Dataset, config: EnergyStarConfig, proc
 
 
 def automatic_speech_recognition_preprocessing(
-    dataset: Dataset, config: EnergyStarConfig, processor: PretrainedProcessor
+    dataset: Dataset, config: EnergyStarConfig, processor: PretrainedProcessor,  pretrained_config: PretrainedConfig,
 ) -> Dataset:
     # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
     if config.input_shapes["batch_size"] == 1:
@@ -298,7 +301,7 @@ def automatic_speech_recognition_preprocessing(
 
 
 def sentence_similarity_preprocessing(
-    dataset: Dataset, config: EnergyStarConfig, tokenizer: PreTrainedTokenizer
+    dataset: Dataset, config: EnergyStarConfig, tokenizer: PreTrainedTokenizer,  pretrained_config: PretrainedConfig,
 ) -> Dataset:
     # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
     if config.input_shapes["batch_size"] == 1:
@@ -321,8 +324,9 @@ def sentence_similarity_preprocessing(
             examples[config.sentence2_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length=tokenizer.model_max_length if tokenizer.model_max_length != None else model.max_position_embeddings if model.max_position_embeddings != None else 500,
+            max_length=tokenizer.model_max_length -1  if tokenizer.model_max_length != None else pretrained_config.max_position_embeddings-1 if pretrained_config.max_position_embeddings != None else 500,
         )
+
 
     dataset = dataset.map(
         tokenize_function,
