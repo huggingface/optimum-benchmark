@@ -24,7 +24,7 @@ def preprocess(dataset: Dataset, task: str, config: EnergyStarConfig, preprocess
         "object-detection": image_preprocessing,
     }
 
-    return task_to_preprocessing[task](dataset, config, preprocessor)
+    return task_to_preprocessing[task](dataset, config, preprocessor, pretrained_config)
 
 
 def feature_extraction_preprocessing(
