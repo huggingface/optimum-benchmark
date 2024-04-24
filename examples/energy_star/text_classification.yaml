@@ -7,7 +7,7 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: text_classification_gpt2-large-imdb
+experiment_name: text_classification_roberta_base
 
 launcher:
   device_isolation: true
@@ -17,7 +17,7 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model: edbeeching/gpt2-large-imdb
+  model: cardiffnlp/twitter-roberta-base-sentiment
   task: text-classification
 
 benchmark:
