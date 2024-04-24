@@ -95,7 +95,7 @@ def summarization_preprocessing(
     return dataset
 
 def text_classification_preprocessing(
-    dataset: Dataset, config: EnergyStarConfig, tokenizer: PreTrainedTokenizer, pretrained_config: PretrainedConfig
+    dataset: Dataset, config: EnergyStarConfig, tokenizer: PreTrainedTokenizer, pretrained_config: PretrainedConfig,
 ) -> Dataset:
     # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
     if config.input_shapes["batch_size"] == 1:
