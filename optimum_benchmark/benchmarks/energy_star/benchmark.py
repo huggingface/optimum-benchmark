@@ -192,8 +192,10 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
             for inputs in tqdm(self.dataloader):
                 inputs = backend.prepare_inputs(inputs)
                 _ = backend.prefill(inputs, prefill_kwargs)
-                prefill_volume += inputs["input_ids"].size(dim=1)
-
+                if input["input_ids"]:
+                    prefill_volume += inputs["input_ids"].size(dim=1)
+                else:
+                    prefill_volume +=1
         prefill_energy = self.energy_tracker.get_energy()
 
         self.report.prefill.energy = prefill_energy
