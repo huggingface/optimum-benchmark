@@ -7,13 +7,13 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: image_classification_convnext-tiny-224
+experiment_name: image_classification_mit-b5
 
 backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model: facebook/convnext-tiny-224
+  model: nvidia/mit-b5
   task: image-classification
 
 launcher:
