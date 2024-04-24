@@ -48,7 +48,7 @@ def feature_extraction_preprocessing(
             examples[config.text_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length=tokenizer.model_max_length if tokenizer.model_max_length != None else model.max_position_embeddings if model.max_position_embeddings != None else 500,
+            max_length=tokenizer.model_max_length if tokenizer.model_max_length != None else backend.pretrained_config.max_position_embeddings if backend.pretrained_config.max_position_embeddings != None else 500,
         )
 
     dataset = dataset.map(
@@ -115,9 +115,9 @@ def text_classification_preprocessing(
             examples[config.text_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length=tokenizer.model_max_length -1  if tokenizer.model_max_length != None else config.model.max_position_embeddings -1 if config.model.max_position_embeddings != None else 500,
+            max_length=tokenizer.model_max_length -1  if tokenizer.model_max_length != None else backend.pretrained_config.max_position_embeddings -1 if backend.pretrained_config.max_position_embeddings != None else 500,
         )
-    print(config.model.max_position_embeddings)
+    print(backend.pretrained_config.max_position_embeddings)
     dataset = dataset.map(
         tokenize_function,
         batched=True,
