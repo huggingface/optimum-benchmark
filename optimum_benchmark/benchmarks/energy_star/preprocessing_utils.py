@@ -83,9 +83,8 @@ def summarization_preprocessing(
             examples[config.text_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length=tokenizer.model_max_length if tokenizer.model_max_length != None else 500 if tokenizer.model_max_length > 10000000000000000 else 500,
+            max_length=tokenizer.model_max_length if tokenizer.model_max_length != None else 100 if tokenizer.model_max_length > 10000000000000000 else 500,
         )
-    print(tokenizer.model_max_length)
     dataset = dataset.map(
         tokenize_function,
         batched=True,
