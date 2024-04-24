@@ -282,7 +282,7 @@ def automatic_speech_recognition_preprocessing(
 
     def preprocess_function(examples):
         audio = examples[config.audio_column_name]
-        outputs = processor(audio["array"], sampling_rate=audio["sampling_rate"], return_tensors="pt").input_features
+        outputs = processor(audio["array"], sampling_rate=audio["sampling_rate"]).input_features
         return outputs
 
     dataset = dataset.map(
