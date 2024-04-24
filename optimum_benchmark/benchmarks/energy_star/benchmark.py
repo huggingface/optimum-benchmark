@@ -124,6 +124,7 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
                 task=backend.config.task,
                 config=self.config,
                 preprocessor=backend.pretrained_processor,
+                pretrained_config= backend.pretrained_config,
             )
 
         self.report.preprocess.energy = self.energy_tracker.get_energy()
