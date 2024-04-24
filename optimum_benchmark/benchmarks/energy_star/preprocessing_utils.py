@@ -115,9 +115,9 @@ def text_classification_preprocessing(
             examples[config.text_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length=tokenizer.model_max_length -1  if tokenizer.model_max_length != None else backend.pretrained_config.max_position_embeddings -1 if backend.pretrained_config.max_position_embeddings != None else 500,
+            max_length=tokenizer.model_max_length -1  if tokenizer.model_max_length != None else config.backend.pretrained_config.max_position_embeddings -1 if config.backend.pretrained_config.max_position_embeddings != None else 500,
         )
-    print(backend.pretrained_config.max_position_embeddings)
+    print(config.backend.pretrained_config.max_position_embeddings)
     dataset = dataset.map(
         tokenize_function,
         batched=True,
