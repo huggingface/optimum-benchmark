@@ -7,7 +7,7 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: object_detection
+experiment_name: object_detection_detr_resnet_50
 
 launcher:
   device_isolation: true
