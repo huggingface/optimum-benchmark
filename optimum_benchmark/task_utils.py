@@ -90,6 +90,7 @@ IMAGE_DIFFUSION_TASKS = [
 ]
 
 TEXT_GENERATION_TASKS = [
+    "image-to-text",
     "conversational",
     "text-generation",
     "text2text-generation",
