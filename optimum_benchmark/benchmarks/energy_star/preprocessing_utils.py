@@ -8,7 +8,7 @@ from ...backends.transformers_utils import PretrainedProcessor, PretrainedConfig
 from .config import EnergyStarConfig
 
 
-def preprocess(dataset: Dataset, task: str, config: EnergyStarConfig, preprocessor: PretrainedProcessor) -> Dataset:
+def preprocess(dataset: Dataset, task: str, config: EnergyStarConfig, preprocessor: PretrainedProcessor,  pretrained_config: PretrainedConfig) -> Dataset:
     task_to_preprocessing = {
         "feature-extraction": feature_extraction_preprocessing,
         "sentence-similarity": sentence_similarity_preprocessing,
