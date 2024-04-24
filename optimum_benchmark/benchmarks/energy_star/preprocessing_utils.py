@@ -285,9 +285,9 @@ def automatic_speech_recognition_preprocessing(
         outputs = processor(audio["array"], sampling_rate=audio["sampling_rate"])
 
         # The processor may add an extra dimension so we squeeze it
-        for key, value in outputs.items():
-            if isinstance(value, list) and len(value) == 1:
-                outputs[key] = value[0]
+        # for key, value in outputs.items():
+        #     if isinstance(value, list) and len(value) == 1:
+        #         outputs[key] = value[0]
 
         return outputs
 
