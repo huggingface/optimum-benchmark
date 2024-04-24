@@ -7,7 +7,7 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: question_answering
+experiment_name: question_answering_roberta_base
 
 launcher:
   device_isolation: true
