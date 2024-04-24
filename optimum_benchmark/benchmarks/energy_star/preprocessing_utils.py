@@ -203,7 +203,7 @@ def text_generation_preprocessing(
             truncation=config.truncation,
             return_token_type_ids=False,
             padding=padding,
-            max_length=tokenizer.model_max_length -1  if tokenizer.model_max_length != None else pretrained_config.max_position_embeddings-1 if pretrained_config.max_position_embeddings != None else 500,
+            max_length= pretrained_config.max_position_embeddings if pretrained_config.max_position_embeddings != None else 500,
         )
 
     dataset = dataset.map(
