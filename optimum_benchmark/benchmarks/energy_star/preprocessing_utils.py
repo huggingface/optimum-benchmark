@@ -48,8 +48,8 @@ def feature_extraction_preprocessing(
             examples[config.text_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length=tokenizer.model_max_length -1  if tokenizer.model_max_length != None else pretrained_config.max_position_embeddings-1 if pretrained_config.max_position_embeddings != None else 500,
-        )
+            max_length = getattr(pretrained_config, "max_position_embeddings", 512)
+            )
 
 
     dataset = dataset.map(
@@ -84,8 +84,8 @@ def summarization_preprocessing(
             examples[config.text_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length=tokenizer.model_max_length -1  if tokenizer.model_max_length != None else pretrained_config.max_position_embeddings-1 if pretrained_config.max_position_embeddings != None else 500,
-        )
+            max_length = getattr(pretrained_config, "max_position_embeddings", 512)
+            )
 
     dataset = dataset.map(
         tokenize_function,
@@ -117,8 +117,8 @@ def text_classification_preprocessing(
             examples[config.text_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length=tokenizer.model_max_length -1  if tokenizer.model_max_length != None else pretrained_config.max_position_embeddings-1 if pretrained_config.max_position_embeddings != None else 500,
-        )
+            max_length = getattr(pretrained_config, "max_position_embeddings", 512)
+            )
 
     dataset = dataset.map(
         tokenize_function,
@@ -167,8 +167,8 @@ def question_answering_preprocessing(
             examples[config.context_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length=tokenizer.model_max_length -1  if tokenizer.model_max_length != None else pretrained_config.max_position_embeddings-1 if pretrained_config.max_position_embeddings != None else 500,
-        )
+            max_length = getattr(pretrained_config, "max_position_embeddings", 512)
+            )
 
 
     dataset = dataset.map(
@@ -203,8 +203,8 @@ def text_generation_preprocessing(
             truncation=config.truncation,
             return_token_type_ids=False,
             padding=padding,
-            max_length= pretrained_config.max_position_embeddings if pretrained_config.max_position_embeddings != None else 500,
-        )
+            max_length = getattr(pretrained_config, "max_position_embeddings", 512)
+            )
 
     dataset = dataset.map(
         tokenize_function,
@@ -324,10 +324,8 @@ def sentence_similarity_preprocessing(
             examples[config.sentence2_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length=tokenizer.model_max_length -1  if tokenizer.model_max_length != None else pretrained_config.max_position_embeddings-1 if pretrained_config.max_position_embeddings != None else 500,
-        )
-
-
+            max_length = getattr(pretrained_config, "max_position_embeddings", 512)
+            )
     dataset = dataset.map(
         tokenize_function,
         batched=True,
