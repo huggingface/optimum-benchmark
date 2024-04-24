@@ -193,7 +193,7 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
                 inputs = backend.prepare_inputs(inputs)
                 _ = backend.prefill(inputs, prefill_kwargs)
                 try:
-                    print(inputs)
+                    print(inputs.keys())
                     #prefill_volume += inputs["input_ids"].size(dim=1)
                     prefill_volume += len(inputs) * input_shapes["batch_size"]
                 except:
