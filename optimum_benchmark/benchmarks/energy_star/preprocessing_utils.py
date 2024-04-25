@@ -3,6 +3,7 @@ from typing import Dict
 from datasets import Dataset
 from PIL.Image import Image
 from transformers import PreTrainedTokenizer
+import numpy as np
 
 from ...backends.transformers_utils import PretrainedProcessor, PretrainedConfig
 from .config import EnergyStarConfig
@@ -288,6 +289,8 @@ def automatic_speech_recognition_preprocessing(
         for key, value in outputs.items():
             if isinstance(value, list) and len(value) == 1:
                 outputs[key] = value[0]
+            elif isinstance(value, np.ndarray) and value.shape[0] == 1:
+                outputs[key] = value.squeeze(0)
 
         return outputs
 
