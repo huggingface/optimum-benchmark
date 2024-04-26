@@ -1,6 +1,6 @@
 defaults:
   - backend: pytorch # default backend
-  - launcher: torchrun 
+  - launcher: torchrun
   - benchmark: energy_star # default benchmark
   - experiment # inheriting experiment schema
   - _self_ # for hydra 1.1 compatibility
@@ -39,10 +39,10 @@ benchmark:
 hydra:
   run:
     # where to store run results
-    dir: runs/${experiment_name}
+    dir: runs/${experiment_name}/${now:%Y-%m-%d-%H-%M-%S}
   sweep:
     # where to store sweep results
-    dir: sweeps/${experiment_name}
+    dir: sweeps/${experiment_name}/${now:%Y-%m-%d-%H-%M-%S}
   job:
     # change working directory to the run directory
     chdir: true
