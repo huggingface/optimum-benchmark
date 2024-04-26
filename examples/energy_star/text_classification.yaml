@@ -32,10 +32,10 @@ benchmark:
 hydra:
   run:
     # where to store run results
-    dir: runs/${task}/${experiment_name}/${now:%Y-%m-%d-%H-%M-%S}
+    dir: runs/${backend.task}/${experiment_name}/${now:%Y-%m-%d-%H-%M-%S}
   sweep:
     # where to store sweep results
-    dir: sweeps/${task}/${experiment_name}/${now:%Y-%m-%d-%H-%M-%S}
+    dir: sweeps/${backend.task}/${experiment_name}/${now:%Y-%m-%d-%H-%M-%S}
   job:
     # change working directory to the run directory
     chdir: true
