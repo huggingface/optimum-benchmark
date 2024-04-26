@@ -52,7 +52,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             target=target,
             args=(worker, queue, lock, log_level, *worker_args),
             kwargs={"start_method": self.config.start_method, "launch_config": self.launch_config},
-            daemon=True,
+            daemon=False,
         )
         process.start()
 
