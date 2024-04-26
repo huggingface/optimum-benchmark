@@ -35,9 +35,9 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         ):
             process.join()
 
-            if process.exitcode != 0:
-                LOGGER.error(f"\t+ Process exited with code {process.exitcode}, forwarding it to the main process.")
-                exit(process.exitcode)
+            if queue.empty() and process.exitcode != 0:
+                LOGGER.error(f"\t+ Process exited with code {process.exitcode}.")
+                raise ValueError("No benchmark report was returned by the workers")
 
         report: BenchmarkReport = queue.get()
 

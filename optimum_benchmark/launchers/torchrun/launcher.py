@@ -63,11 +63,11 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
         ):
             process.join()
 
-            if process.exitcode != 0:
-                LOGGER.error(f"\t+ Process exited with exit code {process.exitcode}, forwarding exit code.")
-                exit(process.exitcode)
+            if queue.empty() and process.exitcode != 0:
+                LOGGER.error(f"\t+ Process exited with code {process.exitcode}.")
+                raise ValueError("No benchmark report was returned by the workers")
 
-        report: BenchmarkReport = queue.get()
+            report: BenchmarkReport = queue.get()
 
         return report
 
