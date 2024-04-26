@@ -25,7 +25,7 @@ LOGGER = getLogger("device-isolation")
 
 def isolation_error_signal_handler(signum, frame):
     LOGGER.error(f"Process {os.getpid()} received an isolation signal with an `error` action. Exiting...")
-    os._exit(1)
+    raise SystemExit(1)
 
 
 def isolation_warn_signal_handler(signum, frame):

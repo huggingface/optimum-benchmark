@@ -378,7 +378,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             dtype=self.amp_dtype,
             enabled=self.config.amp_autocast,
         ):
-            return self.pretrained_model.generate(**inputs, **kwargs)
+            return self.pretrained_model.generate(**inputs, **kwargs, synced_gpus=self.config.deepspeed_inference)
 
     @torch.inference_mode()
     def call(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
