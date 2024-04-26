@@ -4,9 +4,8 @@ from typing import Any, Callable, Dict, List
 
 import torch.distributed
 import torch.multiprocessing as mp
-from torch.distributed.elastic.multiprocessing import Std
 from torch.distributed.elastic.multiprocessing.errors import record
-from torch.distributed.launcher.api import LaunchConfig, launch_agent
+from torch.distributed.launcher.api import LaunchConfig, elastic_launch
 
 from ...benchmarks.report import BenchmarkReport
 from ...logging_utils import setup_logging
@@ -31,19 +30,16 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             min_nodes=self.config.min_nodes,
             max_nodes=self.config.max_nodes,
             nproc_per_node=self.config.nproc_per_node,
-            role=self.config.role,
-            monitor_interval=self.config.monitor_interval,
             run_id=self.config.rdzv_id,
+            role=self.config.role,
             rdzv_endpoint=self.config.rdzv_endpoint,
             rdzv_backend=self.config.rdzv_backend,
             rdzv_configs=self.config.rdzv_configs,
+            rdzv_timeout=self.config.rdzv_timeout,
             max_restarts=self.config.max_restarts,
+            monitor_interval=self.config.monitor_interval,
             start_method=self.config.start_method,
-            metrics_cfg=self.config.metrics_cfg,
-            redirects=Std.from_str(self.config.redirects),
-            tee=Std.from_str(self.config.tee),
             local_addr=self.config.local_addr,
-            log_dir=self.config.log_dir,
         )
 
     def launch(self, worker: Callable, *worker_args) -> Dict[str, Any]:
@@ -57,14 +53,12 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             action=self.config.device_isolation_action,
             isolated_pids={mp.current_process().pid},
         ):
-            _ = launch_agent(
-                entrypoint=entrypoint,
-                args=(worker, queue, lock, log_level, *worker_args),
-                config=self.launch_config,
-            )
+            elastic_agent_launcher = elastic_launch(config=self.launch_config, entrypoint=entrypoint)
+            _ = elastic_agent_launcher(worker, queue, lock, log_level, *worker_args)
 
         reports: List[BenchmarkReport] = []
 
+        # gather reports from all workers
         while not queue.empty():
             reports.append(queue.get())
 
@@ -89,7 +83,7 @@ def entrypoint(worker, queue, lock, log_level, *worker_args):
 
     rank = int(os.environ["RANK"])
     torch.cuda.set_device(rank) if torch.cuda.is_available() else None
-    setup_logging(level=log_level, prefix=f"RANK-{rank}") if rank == 0 else setup_logging(level="ERROR")
+    (setup_logging(level=log_level, prefix=f"RANK-{rank}") if rank == 0 else setup_logging(level="ERROR"))
     LOGGER.info(f"\t+ Running benchmark in isolated process with rank {rank} and PID {mp.current_process().pid}.")
 
     torch.distributed.init_process_group()

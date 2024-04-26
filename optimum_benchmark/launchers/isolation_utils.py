@@ -184,7 +184,7 @@ def device_isolation(enable: bool, action: str, isolated_pids: set):
             "device_ids": device_ids,
             "action": action,
         },
-        daemon=True,
+        daemon=True,  # so that the process is killed when the main process is killed
     )
     isolation_process.start()
     LOGGER.info(f"\t+ Started device(s) isolation process {isolation_process.pid}")

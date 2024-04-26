@@ -27,15 +27,23 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         queue = ctx.Queue()
         lock = ctx.Lock()
 
-        process = mp.Process(target=target, args=(worker, queue, lock, log_level, *worker_args), daemon=False)
+        process = mp.Process(
+            target=target,
+            args=(worker, queue, lock, log_level, *worker_args),
+            daemon=False,  # can't be daemon because it spawns a memory tracking process
+        )
         process.start()
 
         with device_isolation(
             enable=self.config.device_isolation,
             action=self.config.device_isolation_action,
-            isolated_pids={process.pid},
+            isolated_pids={mp.current_process().pid},
         ):
             process.join()
+
+            if process.exitcode != 0:
+                LOGGER.error(f"\t+ Process exited with exit code {process.exitcode}, forwarding exit code.")
+                exit(process.exitcode)
 
         report: BenchmarkReport = queue.get()
 
