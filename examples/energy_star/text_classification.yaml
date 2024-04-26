@@ -7,7 +7,7 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: text_classification_bert_base
+experiment_name: text_classification-bert_base
 
 launcher:
   device_isolation: true
@@ -32,10 +32,10 @@ benchmark:
 hydra:
   run:
     # where to store run results
-    dir: runs/${experiment_name}
+    dir: runs/${task}/${experiment_name}/${now:%Y-%m-%d-%H-%M-%S}
   sweep:
     # where to store sweep results
-    dir: sweeps/${experiment_name}
+    dir: sweeps/${task}/${experiment_name}/${now:%Y-%m-%d-%H-%M-%S}
   job:
     # change working directory to the run directory
     chdir: true
