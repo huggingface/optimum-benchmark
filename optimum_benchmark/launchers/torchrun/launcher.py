@@ -1,6 +1,5 @@
-import os
 from logging import getLogger
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict
 
 import torch.distributed
 import torch.multiprocessing as mp
@@ -51,84 +50,64 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
         process = mp.Process(
             target=target,
             args=(worker, queue, lock, log_level, *worker_args),
-            kwargs={"start_method": self.config.start_method, "launch_config": self.launch_config},
+            kwargs={"launch_config": self.launch_config},
             daemon=False,
         )
         process.start()
 
         with device_isolation(
-            enable=self.config.device_isolation,
-            action=self.config.device_isolation_action,
-            isolated_pids={process.pid},
+            enable=self.config.device_isolation, action=self.config.device_isolation_action, isolated_pids={process.pid}
         ):
             process.join()
 
-            if queue.empty() and process.exitcode != 0:
-                LOGGER.error(f"\t+ Process exited with code {process.exitcode}.")
-                raise ValueError("No benchmark report was returned by the workers")
+            if process.exitcode != 0 and queue.empty():
+                raise RuntimeError(f"Process exited with code {process.exitcode}.")
 
-            report: BenchmarkReport = queue.get()
+            reports = []
+            while not queue.empty():
+                reports.append(queue.get())
+
+            if len(reports) != self.config.nproc_per_node:
+                raise RuntimeError(
+                    f"Number of gathered reports ({len(reports)}) does not match the number of processes ({self.config.nproc_per_node})."
+                )
+
+            report = BenchmarkReport.aggregate(reports)
+            report.log()
 
         return report
 
 
-def target(worker, queue, lock, log_level, *worker_args, start_method: str, launch_config: LaunchConfig):
-    """
-    This a pickalable function that correctly sets up the logging configuration for the worker process,
-    and puts the output of the worker function into a lock-protected queue.
-    """
-
-    setup_logging(log_level, prefix="PROCESS")
+def target(worker, queue, lock, log_level, *worker_args, launch_config: LaunchConfig):
+    setup_logging(level=log_level, prefix="PROCESS")
     LOGGER.info(f"\t+ Running benchmark in isolated process with PID {mp.current_process().pid}.")
-
-    sub_ctx = mp.get_context(start_method)
-    sub_log_level = sub_ctx.get_logger().getEffectiveLevel()
-    sub_queue = sub_ctx.Queue()
-    sub_lock = sub_ctx.Lock()
-
     elastic_agent_launcher = elastic_launch(config=launch_config, entrypoint=entrypoint)
-    _ = elastic_agent_launcher(worker, sub_queue, sub_lock, sub_log_level, *worker_args)
-
-    # gather reports from all workers
-    reports: List[BenchmarkReport] = []
-    while not sub_queue.empty():
-        reports.append(sub_queue.get())
-
-    if len(reports) > 0:
-        LOGGER.info(f"\t+ Merging benchmark reports from {len(reports)} workers")
-        report = BenchmarkReport.aggregate(reports)
-    else:
-        raise ValueError("No benchmark report was returned by the workers")
-
-    # Log the final report
-    report.log()
-
-    lock.acquire()
-    queue.put(report)
-    lock.release()
+    elastic_agent_launcher(worker, queue, lock, log_level, *worker_args)
 
 
 @record
 def entrypoint(worker, queue, lock, log_level, *worker_args):
-    """
-    This a pickalable function that correctly sets up the logging configuration for the worker process,
-    and puts the output of the worker function into a lock-protected queue.
-    """
-
-    rank = int(os.environ["RANK"])
-    (setup_logging(level=log_level, prefix=f"RANK-{rank}") if rank == 0 else setup_logging(level="ERROR"))
-    LOGGER.info(f"\t+ Running benchmark in isolated process with rank {rank} and PID {mp.current_process().pid}.")
-
-    torch.cuda.set_device(rank) if torch.cuda.is_available() else None
-
     torch.distributed.init_process_group()
-    torch.distributed.barrier()
 
+    rank = torch.distributed.get_rank()
+
+    if rank == 0:
+        setup_logging(level=log_level, prefix=f"RANK-{rank}")
+    else:
+        setup_logging(level="ERROR", prefix=f"RANK-{rank}")
+
+    LOGGER.info(f"\t+ Running benchmark in isolated process with PID {mp.current_process().pid} and rank {rank}.")
+
+    # TODO: move this to pytorch backend
+    if torch.cuda.is_available():
+        torch.cuda.set_device(rank % torch.cuda.device_count())
+
+    torch.distributed.barrier()
     output = worker(*worker_args)
-
     torch.distributed.barrier()
-    torch.distributed.destroy_process_group()
 
     lock.acquire()
     queue.put(output)
     lock.release()
+
+    torch.distributed.destroy_process_group()
