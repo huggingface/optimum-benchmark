@@ -18,7 +18,11 @@ from transformers import (
     TrainingArguments,
 )
 
-from ...import_utils import is_deepspeed_available, is_torch_distributed_available, is_zentorch_available
+from ...import_utils import (
+    is_deepspeed_available,
+    is_torch_distributed_available,
+    is_zentorch_available,
+)
 from ..base import Backend
 from ..peft_utils import apply_peft
 from ..transformers_utils import random_init_weights
@@ -125,11 +129,11 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
     def validate_library(self) -> None:
         if self.config.library == "timm":
-            LOGGER.info(f"\t+ Using Timm method {self.automodel_class.__name__}")
+            LOGGER.info(f"\t+ Using Timm's {self.automodel_class.__name__}")
         elif self.config.library == "diffusers":
-            LOGGER.info(f"\t+ Using Pipeline class {self.automodel_class.__name__}")
+            LOGGER.info(f"\t+ Using Diffusers Pipeline {self.automodel_class.__name__}")
         elif self.config.library == "transformers":
-            LOGGER.info(f"\t+ Using AutoModel class {self.automodel_class.__name__}")
+            LOGGER.info(f"\t+ Using AutoModel {self.automodel_class.__name__}")
         else:
             raise ValueError(f"Library {self.config.library} not supported")
 
@@ -161,7 +165,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                         **self.config.hub_kwargs,
                         **self.automodel_kwargs,
                     )
-                LOGGER.info("\t+ Materializing model on CPU")
+                LOGGER.info("\t+ Materializing model on CPU to avoid OOM")
                 self.pretrained_model.to_empty(device="cpu")
                 LOGGER.info("\t+ Tying model weights")
                 self.pretrained_model.tie_weights()
@@ -180,7 +184,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             torch.distributed.barrier()  # better safe than hanging
         elif self.is_quantized:
             # we can't use device context manager on quantized models
-            LOGGER.info("\t+ Loading Quantized model")
+            LOGGER.info(f"\t+ Loading Transformers {self.quantization_config.quant_method} model")
             self.pretrained_model = self.automodel_class.from_pretrained(
                 pretrained_model_name_or_path=self.config.model,
                 device_map=self.config.device_map or torch.device(self.config.device),
@@ -188,7 +192,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 **self.automodel_kwargs,
             )
         elif self.config.device_map is not None:
-            # we can't use device context manager since device_map is specified
             LOGGER.info(f"\t+ Loading model with device map: {self.config.device_map}")
             self.pretrained_model = self.automodel_class.from_pretrained(
                 pretrained_model_name_or_path=self.config.model,
@@ -197,11 +200,15 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 **self.automodel_kwargs,
             )
         else:
-            LOGGER.info(f"\t+ Loading model directly on device: {self.config.device}")
-            with torch.device(self.config.device):
-                self.pretrained_model = self.automodel_class.from_pretrained(
-                    pretrained_model_name_or_path=self.config.model, **self.config.hub_kwargs, **self.automodel_kwargs
-                )
+            LOGGER.info("\t+ Loading Transformers model")
+            self.pretrained_model = self.automodel_class.from_pretrained(
+                pretrained_model_name_or_path=self.config.model,
+                **self.config.hub_kwargs,
+                **self.automodel_kwargs,
+            )
+            if self.config.device != "cpu":
+                LOGGER.info(f"\t+ Moving model to device: {self.config.device}")
+                self.pretrained_model.to(self.config.device)
 
     def create_no_weights_model(self) -> None:
         if self.pretrained_config is None:
@@ -248,17 +255,26 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         if self.is_gptq_quantized:
             LOGGER.info("\t+ Processing GPTQ config")
             self.quantization_config = GPTQConfig(
-                **dict(getattr(self.pretrained_config, "quantization_config", {}), **self.config.quantization_config)
+                **dict(
+                    getattr(self.pretrained_config, "quantization_config", {}),
+                    **self.config.quantization_config,
+                )
             )
         elif self.is_awq_quantized:
             LOGGER.info("\t+ Processing AWQ config")
             self.quantization_config = AwqConfig(
-                **dict(getattr(self.pretrained_config, "quantization_config", {}), **self.config.quantization_config)
+                **dict(
+                    getattr(self.pretrained_config, "quantization_config", {}),
+                    **self.config.quantization_config,
+                )
             )
         elif self.is_bnb_quantized:
             LOGGER.info("\t+ Processing BitsAndBytes config")
             self.quantization_config = BitsAndBytesConfig(
-                **dict(getattr(self.pretrained_config, "quantization_config", {}), **self.config.quantization_config)
+                **dict(
+                    getattr(self.pretrained_config, "quantization_config", {}),
+                    **self.config.quantization_config,
+                )
             )
         else:
             raise ValueError(f"Quantization scheme {self.config.quantization_scheme} not recognized")
@@ -306,11 +322,11 @@ class PyTorchBackend(Backend[PyTorchConfig]):
     def automodel_kwargs(self) -> Dict[str, Any]:
         kwargs = {}
 
-        if self.is_quantized:
-            kwargs["quantization_config"] = self.quantization_config
-
         if self.config.torch_dtype is not None:
             kwargs["torch_dtype"] = getattr(torch, self.config.torch_dtype)
+
+        if self.is_quantized:
+            kwargs["quantization_config"] = self.quantization_config
 
         if self.config.attn_implementation is not None:
             kwargs["attn_implementation"] = self.config.attn_implementation
@@ -339,17 +355,29 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
     @torch.inference_mode()
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
-        with torch.autocast(device_type=self.config.device, dtype=self.amp_dtype, enabled=self.config.amp_autocast):
+        with torch.autocast(
+            device_type=self.config.device,
+            dtype=self.amp_dtype,
+            enabled=self.config.amp_autocast,
+        ):
             return self.pretrained_model.forward(**inputs, **kwargs)
 
     @torch.inference_mode()
     def prefill(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
-        with torch.autocast(device_type=self.config.device, dtype=self.amp_dtype, enabled=self.config.amp_autocast):
+        with torch.autocast(
+            device_type=self.config.device,
+            dtype=self.amp_dtype,
+            enabled=self.config.amp_autocast,
+        ):
             return self.pretrained_model.generate(**inputs, **kwargs)
 
     @torch.inference_mode()
     def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
-        with torch.autocast(device_type=self.config.device, dtype=self.amp_dtype, enabled=self.config.amp_autocast):
+        with torch.autocast(
+            device_type=self.config.device,
+            dtype=self.amp_dtype,
+            enabled=self.config.amp_autocast,
+        ):
             return self.pretrained_model.generate(**inputs, **kwargs)
 
     @torch.inference_mode()
