@@ -46,8 +46,6 @@ class ProcessLauncher(Launcher[ProcessConfig]):
 def target(worker, queue, lock, log_level, *worker_args):
     setup_logging(log_level, prefix="ISOLATED-PROCESS")
 
-    LOGGER.info(f"\t+ Running benchmark in isolated process with PID {mp.current_process().pid}.")
-
     worker_output = worker(*worker_args)
 
     lock.acquire()
