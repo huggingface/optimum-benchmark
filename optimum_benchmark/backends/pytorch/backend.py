@@ -44,15 +44,28 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         super().__init__(config)
         self.validate_library()
 
-        if is_torch_distributed_available() and os.environ.get("RANK", None) is not None:
-            LOGGER.info("\t+ Initializing torch.distributed process group")
-            torch.distributed.init_process_group()
+        if self.config.deepspeed_inference and self.is_quantized:
+            raise ValueError("Deepspeed-Inference is not compatible with Transformers quantization")
 
-            if self.config.device == "cuda" and torch.cuda.is_available():
+        # Quantization
+        if self.is_quantized:
+            LOGGER.info("\t+ Processing quantization config")
+            self.process_quantization_config()
+
+        # Distributed
+        if is_torch_distributed_available() and os.environ.get("RANK", None) is not None:
+            if not torch.distributed.is_initialized():
+                LOGGER.info("\t+ Initializing torch.distributed process group")
+                torch.distributed.init_process_group()
+
+            LOGGER.info("\t+ Waiting for torch.distributed process group to synchronize")
+            torch.distributed.barrier()
+
+            if self.config.device == "cuda":
                 LOGGER.info("\t+ Setting torch.distributed cuda device")
                 torch.cuda.set_device(torch.distributed.get_rank() % torch.cuda.device_count())
 
-        # Thread settings
+        # Threads
         if self.config.inter_op_num_threads is not None:
             LOGGER.info(f"\t+ Setting pytorch inter_op_num_threads({self.config.inter_op_num_threads}))")
             torch.set_num_threads(self.config.inter_op_num_threads)
@@ -60,23 +73,20 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             LOGGER.info(f"\t+ Setting pytorch intra_op_num_threads({self.config.intra_op_num_threads}))")
             torch.set_num_interop_threads(self.config.intra_op_num_threads)
 
-        # Mixed precision
-        if self.config.amp_dtype:
-            LOGGER.info(f"\t+ Setting mixed precision dtype to {self.config.amp_dtype}")
-            self.amp_dtype = getattr(torch, self.config.amp_dtype)
-        else:
-            self.amp_dtype = None
+        # Autocast
+        if self.config.autocast_enabled:
+            LOGGER.info("\t+ Enabling automatic mixed precision")
+            torch.set_autocast_enabled(True)
 
-        # Quantization
-        if self.is_quantized:
-            LOGGER.info("\t+ Processing quantization config")
-            self.process_quantization_config()
-        else:
-            self.quantization_config = None
-
-        if self.config.deepspeed_inference:
-            if self.quantization_config is not None:
-                raise ValueError("Deepspeed-Inference is not compatible with Transformers quantization")
+            if self.config.autocast_dtype is not None:
+                if self.config.device == "cpu":
+                    LOGGER.info(f"\t+ Setting autocast cpu dtype to {self.config.autocast_dtype}")
+                    torch.set_autocast_cpu_dtype(getattr(torch, self.config.autocast_dtype))
+                elif self.config.device == "cuda":
+                    LOGGER.info(f"\t+ Setting autocast gpu dtype to {self.config.autocast_dtype}")
+                    torch.set_autocast_gpu_dtype(getattr(torch, self.config.autocast_dtype))
+                else:
+                    raise ValueError(f"Device {self.config.device} not supported for autocast")
 
         LOGGER.info("\t+ Creating backend temporary directory")
         self.tmpdir = TemporaryDirectory()
@@ -104,14 +114,15 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             LOGGER.info("\t+ Enabling BetterTransformer")
             self.pretrained_model.to_bettertransformer()
 
+        # PEFT
+        if self.config.peft_type is not None:
+            LOGGER.info("\t+ Applying PEFT")
+            self.pretrained_model = apply_peft(self.pretrained_model, self.config.peft_type, self.config.peft_config)
+
         # Torch compile
         if self.config.torch_compile:
-            if self.config.device == "cuda" and torch.cuda.get_device_capability(0)[0] >= 8:
-                LOGGER.info("\t+ Setting float32_matmul_precision to high")
-                torch.set_float32_matmul_precision("high")
-
             if self.config.library == "diffusers":
-                LOGGER.info("\t+ Using torch.compile to compile unet and vae")
+                LOGGER.info("\t+ Using torch.compile on unet and vae")
                 self.pretrained_model.unet = torch.compile(
                     self.pretrained_model.unet, **self.config.torch_compile_config
                 )
@@ -119,14 +130,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                     self.pretrained_model.vae.decode, **self.config.torch_compile_config
                 )
             else:
-                LOGGER.info("\t+ Using torch.compile on forward pass")
-                self.pretrained_model.forward = torch.compile(
-                    self.pretrained_model.forward, **self.config.torch_compile_config
-                )
-
-        if self.config.peft_type is not None:
-            LOGGER.info("\t+ Applying PEFT")
-            self.pretrained_model = apply_peft(self.pretrained_model, self.config.peft_type, self.config.peft_config)
+                LOGGER.info("\t+ Using torch.compile on model")
+                self.pretrained_model = torch.compile(self.pretrained_model, **self.config.torch_compile_config)
 
         self.tmpdir.cleanup()
 
@@ -147,6 +152,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             if self.config.device != "cpu":
                 LOGGER.info(f"\t+ Moving model to device: {self.config.device}")
                 self.pretrained_model.to(self.config.device)
+
         elif self.config.library == "diffusers":
             LOGGER.info("\t+ Loading Diffusion pipeline")
             self.pretrained_model = self.automodel_class.from_pretrained(
@@ -159,6 +165,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             if self.config.device_map is None and self.config.device != "cpu":
                 LOGGER.info(f"\t+ Moving pipeline to device: {self.config.device}")
                 self.pretrained_model.to(self.config.device)
+
         elif self.config.deepspeed_inference:
             if self.config.no_weights:
                 with torch.device("meta"):
@@ -185,23 +192,26 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             LOGGER.info("\t+ Initializing DeepSpeed Inference Engine")
             self.pretrained_model = init_inference(self.pretrained_model, config=self.config.deepspeed_inference_config)
             torch.distributed.barrier()  # better safe than hanging
+
         elif self.is_quantized:
             # we can't use device context manager on quantized models
-            LOGGER.info(f"\t+ Loading Transformers {self.quantization_config.quant_method} model")
+            LOGGER.info(f"\t+ Loading {self.quantization_config.quant_method}-quantized model")
             self.pretrained_model = self.automodel_class.from_pretrained(
                 pretrained_model_name_or_path=self.config.model,
                 device_map=self.config.device_map or torch.device(self.config.device),
                 **self.config.hub_kwargs,
                 **self.automodel_kwargs,
             )
+
         elif self.config.device_map is not None:
-            LOGGER.info(f"\t+ Loading model with device map: {self.config.device_map}")
+            LOGGER.info(f"\t+ Loading Transformers model with device map: {self.config.device_map}")
             self.pretrained_model = self.automodel_class.from_pretrained(
                 pretrained_model_name_or_path=self.config.model,
                 device_map=self.config.device_map,
                 **self.config.hub_kwargs,
                 **self.automodel_kwargs,
             )
+
         else:
             LOGGER.info("\t+ Loading Transformers model")
             self.pretrained_model = self.automodel_class.from_pretrained(
@@ -347,18 +357,15 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
     @torch.inference_mode()
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
-        with torch.autocast(device_type=self.config.device, dtype=self.amp_dtype, enabled=self.config.amp_autocast):
-            return self.pretrained_model.forward(**inputs, **kwargs)
+        return self.pretrained_model.forward(**inputs, **kwargs)
 
     @torch.inference_mode()
     def prefill(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
-        with torch.autocast(device_type=self.config.device, dtype=self.amp_dtype, enabled=self.config.amp_autocast):
-            return self.pretrained_model.generate(**inputs, **kwargs)
+        return self.pretrained_model.generate(**inputs, **kwargs)
 
     @torch.inference_mode()
     def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
-        with torch.autocast(device_type=self.config.device, dtype=self.amp_dtype, enabled=self.config.amp_autocast):
-            return self.pretrained_model.generate(**inputs, **kwargs)
+        return self.pretrained_model.generate(**inputs, **kwargs)
 
     @torch.inference_mode()
     def call(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:

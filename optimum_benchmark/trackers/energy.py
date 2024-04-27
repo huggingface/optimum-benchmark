@@ -167,9 +167,6 @@ class EnergyTracker:
         if self.asynchronous:
             torch.cuda.synchronize()
 
-        if self.distributed:
-            torch.distributed.barrier()
-
         self.emission_tracker.start_task()
 
         yield
@@ -179,9 +176,6 @@ class EnergyTracker:
         with open(f"{file_prefix}_codecarbon.json", "w") as f:
             LOGGER.info(f"\t+ Saving codecarbon emission data to {file_prefix}_codecarbon.json")
             dump(asdict(emission_data), f, indent=4)
-
-        if self.distributed:
-            torch.distributed.barrier()
 
         if self.asynchronous:
             torch.cuda.synchronize()

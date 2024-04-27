@@ -133,18 +133,12 @@ class MemoryTracker:
 
     @contextmanager
     def track(self):
-        if self.distributed:
-            torch.distributed.barrier()
-
         if self.track_cuda_pytorch_memory:
             yield from self._cuda_pytorch_memory()
         elif self.device == "cuda":
             yield from self._cuda_memory()
         else:
             yield from self._cpu_memory()
-
-        if self.distributed:
-            torch.distributed.barrier()
 
     def _cuda_pytorch_memory(self):
         torch.cuda.empty_cache()
