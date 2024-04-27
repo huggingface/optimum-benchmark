@@ -27,7 +27,7 @@ jobs:
       - name: Target devices
         run: |
           echo "DEVICE: $DEVICE"
-          echo "DEVICE: $DEVICE" >> $GITHUB_ENV
+          echo "DEVICE=$DEVICE" >> $GITHUB_ENV
 
       - name: Build image
         run: docker build
