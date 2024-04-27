@@ -18,11 +18,7 @@ from transformers import (
     TrainingArguments,
 )
 
-from ...import_utils import (
-    is_deepspeed_available,
-    is_torch_distributed_available,
-    is_zentorch_available,
-)
+from ...import_utils import is_deepspeed_available, is_torch_distributed_available, is_zentorch_available
 from ..base import Backend
 from ..peft_utils import apply_peft
 from ..transformers_utils import random_init_weights
@@ -202,9 +198,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         else:
             LOGGER.info("\t+ Loading Transformers model")
             self.pretrained_model = self.automodel_class.from_pretrained(
-                pretrained_model_name_or_path=self.config.model,
-                **self.config.hub_kwargs,
-                **self.automodel_kwargs,
+                pretrained_model_name_or_path=self.config.model, **self.config.hub_kwargs, **self.automodel_kwargs
             )
             if self.config.device != "cpu":
                 LOGGER.info(f"\t+ Moving model to device: {self.config.device}")
@@ -255,26 +249,17 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         if self.is_gptq_quantized:
             LOGGER.info("\t+ Processing GPTQ config")
             self.quantization_config = GPTQConfig(
-                **dict(
-                    getattr(self.pretrained_config, "quantization_config", {}),
-                    **self.config.quantization_config,
-                )
+                **dict(getattr(self.pretrained_config, "quantization_config", {}), **self.config.quantization_config)
             )
         elif self.is_awq_quantized:
             LOGGER.info("\t+ Processing AWQ config")
             self.quantization_config = AwqConfig(
-                **dict(
-                    getattr(self.pretrained_config, "quantization_config", {}),
-                    **self.config.quantization_config,
-                )
+                **dict(getattr(self.pretrained_config, "quantization_config", {}), **self.config.quantization_config)
             )
         elif self.is_bnb_quantized:
             LOGGER.info("\t+ Processing BitsAndBytes config")
             self.quantization_config = BitsAndBytesConfig(
-                **dict(
-                    getattr(self.pretrained_config, "quantization_config", {}),
-                    **self.config.quantization_config,
-                )
+                **dict(getattr(self.pretrained_config, "quantization_config", {}), **self.config.quantization_config)
             )
         else:
             raise ValueError(f"Quantization scheme {self.config.quantization_scheme} not recognized")
@@ -355,30 +340,18 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
     @torch.inference_mode()
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
-        with torch.autocast(
-            device_type=self.config.device,
-            dtype=self.amp_dtype,
-            enabled=self.config.amp_autocast,
-        ):
+        with torch.autocast(device_type=self.config.device, dtype=self.amp_dtype, enabled=self.config.amp_autocast):
             return self.pretrained_model.forward(**inputs, **kwargs)
 
     @torch.inference_mode()
     def prefill(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
-        with torch.autocast(
-            device_type=self.config.device,
-            dtype=self.amp_dtype,
-            enabled=self.config.amp_autocast,
-        ):
+        with torch.autocast(device_type=self.config.device, dtype=self.amp_dtype, enabled=self.config.amp_autocast):
             return self.pretrained_model.generate(**inputs, **kwargs)
 
     @torch.inference_mode()
     def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
-        with torch.autocast(
-            device_type=self.config.device,
-            dtype=self.amp_dtype,
-            enabled=self.config.amp_autocast,
-        ):
-            return self.pretrained_model.generate(**inputs, **kwargs, synced_gpus=self.config.deepspeed_inference)
+        with torch.autocast(device_type=self.config.device, dtype=self.amp_dtype, enabled=self.config.amp_autocast):
+            return self.pretrained_model.generate(**inputs, **kwargs)
 
     @torch.inference_mode()
     def call(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:

@@ -10,7 +10,7 @@ from torch.distributed.launcher.api import LaunchConfig, elastic_launch
 from ...benchmarks.report import BenchmarkReport
 from ...logging_utils import setup_logging
 from ..base import Launcher
-from ..isolation_utils import device_isolation
+from ..device_isolation_utils import device_isolation_context
 from .config import TorchrunConfig
 
 LOGGER = getLogger("torchrun")
@@ -48,39 +48,42 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
         queue = ctx.Queue()
         lock = ctx.Lock()
 
-        process = mp.Process(
+        isolated_process = mp.Process(
             target=target,
             args=(worker, queue, lock, log_level, *worker_args),
             kwargs={"launch_config": self.launch_config},
             daemon=False,
         )
-        process.start()
+        isolated_process.start()
 
-        with device_isolation(
-            enable=self.config.device_isolation, action=self.config.device_isolation_action, isolated_pids={process.pid}
+        with device_isolation_context(
+            enable=self.config.device_isolation, action=self.config.device_isolation_action, pid=isolated_process.pid
         ):
-            process.join()
+            isolated_process.join()
 
-            if process.exitcode != 0 and queue.empty():
-                raise RuntimeError(f"Process exited with code {process.exitcode}.")
+        if isolated_process.exitcode != 0:
+            raise RuntimeError(f"Process exited with non-zero code {isolated_process.exitcode}.")
+        elif queue.empty():
+            raise RuntimeError("No report was returned by the isolated process.")
 
-            reports = []
-            while not queue.empty():
-                reports.append(queue.get())
+        reports = []
+        while not queue.empty():
+            reports.append(queue.get())
 
-            if len(reports) != self.config.nproc_per_node:
-                raise RuntimeError(
-                    f"Number of gathered reports ({len(reports)}) does not match the number of processes ({self.config.nproc_per_node})."
-                )
+        if len(reports) != self.config.nproc_per_node:
+            raise RuntimeError(
+                f"Number of gathered reports ({len(reports)}) does not match the number of processes ({self.config.nproc_per_node})."
+            )
 
-            report = BenchmarkReport.aggregate(reports)
-            report.log()
+        report = BenchmarkReport.aggregate(reports)
+        report.log()
 
         return report
 
 
 def target(worker, queue, lock, log_level, *worker_args, launch_config: LaunchConfig):
     setup_logging(level=log_level, prefix="ISOLATED-PROCESS")
+    LOGGER.info(f"Running benchmark in isolated process [{mp.current_process().pid}].")
 
     elastic_agent_launcher = elastic_launch(config=launch_config, entrypoint=entrypoint)
     elastic_agent_launcher(worker, queue, lock, log_level, *worker_args)

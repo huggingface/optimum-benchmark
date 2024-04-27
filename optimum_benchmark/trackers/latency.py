@@ -164,8 +164,12 @@ class LatencyTracker:
         self.end_events.append(time.perf_counter())
 
     def get_latency(self) -> Latency:
-        if self.backend == "pytorch" and self.device == "cuda":
-            torch.cuda.synchronize()  # synchronize the device to make sure all events have been recorded
+        if self.distributed:
+            torch.distributed.barrier()
+
+        if self.asynchronous:
+            torch.cuda.synchronize()
+
             latencies_list = [
                 self.start_events[i].elapsed_time(self.end_events[i]) / 1e3 for i in range(len(self.start_events))
             ]
@@ -199,6 +203,7 @@ class StepLatencyTrainerCallback(TrainerCallback):
         self.device = device
         self.backend = backend
         self.asynchronous = self.backend == "pytorch" and self.device == "cuda"
+        self.distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
         self.start_events: List[Union[float, torch.cuda.Event]] = []
         self.end_events: List[Union[float, torch.cuda.Event]] = []
@@ -222,8 +227,12 @@ class StepLatencyTrainerCallback(TrainerCallback):
             self.end_events.append(time.perf_counter())
 
     def get_latency(self) -> Latency:
+        if self.distributed:
+            torch.distributed.barrier()
+
         if self.asynchronous:
-            torch.cuda.synchronize()  # synchronize the device to make sure all events have been recorded
+            torch.cuda.synchronize()
+
             latencies_list = [
                 self.start_events[i].elapsed_time(self.end_events[i]) / 1e3 for i in range(len(self.start_events))
             ]
@@ -302,8 +311,12 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         return scores
 
     def get_prefill_latency(self) -> Latency:
+        if self.distributed:
+            torch.distributed.barrier()
+
         if self.asynchronous:
-            torch.cuda.synchronize()  # synchronize the device to make sure all events have been recorded
+            torch.cuda.synchronize()
+
             latencies_list = [
                 self.prefill_start_events[i].elapsed_time(self.prefill_end_events[i]) / 1e3
                 for i in range(len(self.prefill_start_events))
@@ -319,8 +332,12 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
 
     def get_decode_latency(self) -> Latency:
+        if self.distributed:
+            torch.distributed.barrier()
+
         if self.asynchronous:
-            torch.cuda.synchronize()  # synchronize the device to make sure all events have been recorded
+            torch.cuda.synchronize()
+
             latencies_list = [
                 self.decode_start_events[i].elapsed_time(self.decode_end_events[i]) / 1e3
                 for i in range(len(self.decode_start_events))
@@ -335,8 +352,12 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
 
     def get_per_token_latency(self) -> Latency:
+        if self.distributed:
+            torch.distributed.barrier()
+
         if self.asynchronous:
-            torch.cuda.synchronize()  # synchronize the device to make sure all events have been recorded
+            torch.cuda.synchronize()
+
             latencies_list = [
                 self.per_token_events[i].elapsed_time(self.per_token_events[i + 1]) / 1e3
                 for i in range(0, len(self.per_token_events) - 1)

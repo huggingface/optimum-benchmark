@@ -5,7 +5,7 @@ from typing import Callable
 from ...benchmarks.report import BenchmarkReport
 from ...logging_utils import setup_logging
 from ..base import Launcher
-from ..isolation_utils import device_isolation
+from ..device_isolation_utils import device_isolation_context
 from .config import ProcessConfig
 
 LOGGER = getLogger("process")
@@ -27,24 +27,27 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         queue = ctx.Queue()
         lock = ctx.Lock()
 
-        process = mp.Process(target=target, args=(worker, queue, lock, log_level, *worker_args), daemon=False)
-        process.start()
+        isolated_process = mp.Process(target=target, args=(worker, queue, lock, log_level, *worker_args), daemon=False)
+        isolated_process.start()
 
-        with device_isolation(
-            enable=self.config.device_isolation, action=self.config.device_isolation_action, isolated_pids={process.pid}
+        with device_isolation_context(
+            enable=self.config.device_isolation, action=self.config.device_isolation_action, pid=isolated_process.pid
         ):
-            process.join()
+            isolated_process.join()
 
-            if process.exitcode != 0 and queue.empty():
-                raise RuntimeError(f"Process exited with code {process.exitcode}.")
+        if isolated_process.exitcode != 0:
+            raise RuntimeError(f"Process exited with non-zero code {isolated_process.exitcode}")
+        elif queue.empty():
+            raise RuntimeError("No report was returned by the isolated process.")
 
-            report: BenchmarkReport = queue.get()
+        report: BenchmarkReport = queue.get()
 
         return report
 
 
 def target(worker, queue, lock, log_level, *worker_args):
     setup_logging(log_level, prefix="ISOLATED-PROCESS")
+    LOGGER.info(f"Running benchmark in isolated process [{mp.current_process().pid}].")
 
     worker_output = worker(*worker_args)
 
