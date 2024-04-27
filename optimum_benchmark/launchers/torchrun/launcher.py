@@ -2,7 +2,6 @@ import os
 from logging import getLogger
 from typing import Any, Callable, Dict
 
-import torch.distributed
 import torch.multiprocessing as mp
 from torch.distributed.elastic.multiprocessing.errors import record
 from torch.distributed.launcher.api import LaunchConfig, elastic_launch
@@ -98,16 +97,7 @@ def entrypoint(worker, queue, lock, log_level, *worker_args):
     else:
         setup_logging(level="ERROR", prefix=f"TORCHRUN-RANK-{rank}")
 
-    if torch.cuda.is_available():
-        torch.cuda.set_device(rank % torch.cuda.device_count())
-
-    torch.distributed.init_process_group()
-    torch.distributed.barrier()
-
     output = worker(*worker_args)
-
-    torch.distributed.barrier()
-    torch.distributed.destroy_process_group()
 
     lock.acquire()
     queue.put(output)

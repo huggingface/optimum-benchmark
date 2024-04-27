@@ -1,4 +1,3 @@
-import gc
 import os
 from collections import OrderedDict
 from logging import getLogger
@@ -44,6 +43,14 @@ class PyTorchBackend(Backend[PyTorchConfig]):
     def __init__(self, config: PyTorchConfig):
         super().__init__(config)
         self.validate_library()
+
+        if is_torch_distributed_available() and os.environ.get("RANK", None) is not None:
+            LOGGER.info("\t+ Initializing torch.distributed process group")
+            torch.distributed.init_process_group()
+
+            if self.config.device == "cuda" and torch.cuda.is_available():
+                LOGGER.info("\t+ Setting torch.distributed cuda device")
+                torch.cuda.set_device(torch.distributed.get_rank() % torch.cuda.device_count())
 
         # Thread settings
         if self.config.inter_op_num_threads is not None:
@@ -384,10 +391,19 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         torch.cuda.manual_seed_all(self.config.seed)
 
     def clean(self) -> None:
-        super().clean()
+        if is_torch_distributed_available() and torch.distributed.is_initialized():
+            LOGGER.info("\t+ Waiting for torch.distributed process group to synchronize")
+            torch.distributed.barrier()
+
+            LOGGER.info("\t+ Destroying torch.distributed process group")
+            torch.distributed.destroy_process_group()
+
+        if torch.cuda.is_available():
+            LOGGER.info("\t+ Emptying CUDA cache")
+            torch.cuda.empty_cache()
 
         if hasattr(self, "tmpdir"):
             LOGGER.info("\t+ Cleaning backend temporary directory")
             self.tmpdir.cleanup()
 
-        gc.collect()
+        super().clean()

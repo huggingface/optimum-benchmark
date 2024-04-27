@@ -125,6 +125,5 @@ class Backend(Generic[BackendConfigT], ABC):
             del self.pretrained_model
 
     def clean(self) -> None:
-        LOGGER.info(f"Cleaning {self.NAME} backend")
         self.delete_pretrained_model()
         gc.collect()
