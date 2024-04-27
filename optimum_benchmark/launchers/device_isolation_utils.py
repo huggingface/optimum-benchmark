@@ -108,8 +108,18 @@ def get_pids_running_on_system_devices(device_ids: str) -> Set[int]:
     return devices_pids
 
 
-def get_process_children_pids(pid: int) -> Set[int]:
+def get_children_pids(pid: int) -> Set[int]:
     """Returns the set of pids of the children of the given process."""
+    if not is_psutil_available():
+        raise ValueError(
+            "The library psutil is required to get the children pids of a process, but is not installed. "
+            "Please install the official and cross-platform psutil library through `pip install psutil`."
+        )
+
+    if not psutil.pid_exists(pid):
+        LOGGER.warn(f"Process with pid [{pid}] does not exist.")
+        return set()
+
     process = psutil.Process(pid)
     children = process.children(recursive=True)
     children_pids = {child.pid for child in children}
@@ -124,10 +134,10 @@ def assert_device_isolation(action: str, pid: int, device_ids: str):
 
     while psutil.pid_exists(pid):
         device_pids = get_pids_running_on_system_devices(device_ids=device_ids)
-        device_pids = {p for p in device_pids if psutil.pid_exists(pid)}
+        device_pids = {p for p in device_pids if psutil.pid_exists(p)}
 
-        permitted_pids = {pid} | get_process_children_pids(pid)
-        permitted_pids = {p for p in permitted_pids if psutil.pid_exists(pid)}
+        permitted_pids = {pid} | get_children_pids(pid)
+        permitted_pids = {p for p in permitted_pids if psutil.pid_exists(p)}
 
         foreign_pids = device_pids - permitted_pids
 
