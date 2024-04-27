@@ -91,9 +91,9 @@ def launch(experiment_config: ExperimentConfig) -> BenchmarkReport:
         launcher: Launcher = launcher_factory(launcher_config)
         # Run the experiment
         report = launcher.launch(run, experiment_config)
-    except Exception as e:
-        LOGGER.error("Error during experiment")
-        exception = e
+    except Exception as error:
+        LOGGER.error("Error during experiment", exc_info=True)
+        exception = error
     else:
         exception = None
 
