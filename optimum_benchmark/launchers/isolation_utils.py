@@ -115,7 +115,7 @@ def get_process_children_pids(pid: int) -> Set[int]:
 
 
 def assert_system_devices_isolation(isolated_pids: set, device_ids: str, action: str):
-    setup_logging("INFO", prefix="DEVICE-ISOLATION")
+    setup_logging("INFO", prefix="DEVICE-ISOLATION-PROCESS")
 
     assert action in ["warn", "error", "kill"], f"Unsupported action `{action}`"
 
@@ -142,8 +142,8 @@ def assert_system_devices_isolation(isolated_pids: set, device_ids: str, action:
                 elif action == "kill":
                     os.kill(pid, signal.SIGKILL)
 
-            LOGGER.warn("Exiting the isolation process...")
-            exit(1)
+            LOGGER.info("Exiting the isolation process...")
+            exit(0)
 
         time.sleep(1)
 
@@ -168,7 +168,6 @@ def device_isolation(enable: bool, action: str, isolated_pids: set):
 
     LOGGER.info(f"\t+ Isolated device(s) [{device_ids}]")
     LOGGER.info(f"\t+ Isolated process(es) [{isolated_pids}]")
-    LOGGER.info(f"\t+ Sending an action signal `{action}` in case of non-isolation")
 
     isolation_process = mp.Process(
         target=assert_system_devices_isolation,
@@ -177,15 +176,15 @@ def device_isolation(enable: bool, action: str, isolated_pids: set):
             "device_ids": device_ids,
             "action": action,
         },
-        daemon=True,  # so that the process is killed when the main process is killed
+        daemon=True,  # so that the process is terminated when the main process finishes
     )
     isolation_process.start()
-    LOGGER.info(f"\t+ Started device(s) isolation process {isolation_process.pid}")
+    LOGGER.info("\t+ Started device(s) isolation process")
 
     yield
 
     if isolation_process.is_alive():
-        LOGGER.info("\t+ Closing device(s) isolation process...")
+        LOGGER.warn("\t+ Device(s) isolation process is still alive, killing it...")
         isolation_process.kill()
         isolation_process.join()
         isolation_process.close()

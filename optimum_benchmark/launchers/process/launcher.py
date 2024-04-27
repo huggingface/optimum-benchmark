@@ -44,12 +44,8 @@ class ProcessLauncher(Launcher[ProcessConfig]):
 
 
 def target(worker, queue, lock, log_level, *worker_args):
-    """
-    This a pickalable function that correctly sets up the logging configuration for the worker process,
-    and puts the output of the worker function into a lock-protected queue.
-    """
+    setup_logging(log_level, prefix="ISOLATED-PROCESS")
 
-    setup_logging(log_level, prefix="PROCESS")
     LOGGER.info(f"\t+ Running benchmark in isolated process with PID {mp.current_process().pid}.")
 
     worker_output = worker(*worker_args)
