@@ -153,7 +153,7 @@ def assert_device_isolation(action: str, pid: int, device_ids: str):
 
 
 @contextmanager
-def device_isolation_context(enable: bool, action: Optional[str], pid: Optional[int], device_ids: Optional[str]):
+def device_isolation_context(enable: bool, action: str, pid: int, device_ids: Optional[str] = None):
     if not enable:
         yield
         return
