@@ -25,16 +25,10 @@ LOGGER = getLogger("device-isolation")
 
 def isolation_error_signal_handler(signum, frame):
     LOGGER.error(f"Process {os.getpid()} received an isolation signal with an `error` action. Exiting...")
-    raise SystemExit(1)
-
-
-def isolation_warn_signal_handler(signum, frame):
-    LOGGER.warn(f"Process {os.getpid()} received an isolation signal with a `warn` action. Ignoring...")
-    pass
+    raise RuntimeError("Received an isolation signal with an `error` action")
 
 
 signal.signal(signal.SIGUSR1, isolation_error_signal_handler)
-signal.signal(signal.SIGUSR2, isolation_warn_signal_handler)
 
 
 def get_nvidia_devices_pids(device_ids: str) -> Set[int]:
@@ -121,14 +115,9 @@ def get_process_children_pids(pid: int) -> Set[int]:
 
 
 def assert_system_devices_isolation(isolated_pids: set, device_ids: str, action: str):
-    setup_logging("WARNING")
+    setup_logging("INFO", prefix="DEVICE-ISOLATION")
 
-    if action == "error":
-        action_signal = signal.SIGUSR1
-    elif action == "warn":
-        action_signal = signal.SIGUSR2
-    else:
-        raise ValueError(f"Unsupported action {action}")
+    assert action in ["warn", "error", "kill"], f"Unsupported action `{action}`"
 
     while any(psutil.pid_exists(pid) for pid in isolated_pids):
         devices_pids = get_pids_running_on_system_devices(device_ids=device_ids)
@@ -143,11 +132,15 @@ def assert_system_devices_isolation(isolated_pids: set, device_ids: str, action:
         non_permitted_pids = devices_pids - permitted_pids
 
         if len(non_permitted_pids) > 0:
-            LOGGER.warn(f"Found non-permitted process(es) running on system device(s): {non_permitted_pids}")
+            LOGGER.info(f"Found non-permitted process(es) running on system device(s): {non_permitted_pids}")
 
             for pid in isolated_pids:
-                LOGGER.warn(f"Sending an action signal `{action}` to isolated process {pid}")
-                os.kill(pid, action_signal)
+                if action == "warn":
+                    LOGGER.warn(f"Process {pid} is not isolated and is running on system device(s)")
+                elif action == "error":
+                    os.kill(pid, signal.SIGUSR1)
+                elif action == "kill":
+                    os.kill(pid, signal.SIGKILL)
 
             LOGGER.warn("Exiting the isolation process...")
             exit(1)
