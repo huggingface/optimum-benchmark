@@ -15,3 +15,9 @@ backend:
 benchmark:
   input_shapes:
     batch_size: 2
+
+hydra:
+  launcher:
+    n_jobs: 1
+  sweeper:
+    max_batch_size: 1
