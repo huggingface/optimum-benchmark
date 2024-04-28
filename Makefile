@@ -37,7 +37,6 @@ run_cpu_container:
 	-it \
 	--rm \
 	--pid host \
-	--ipc private \
 	--volume $(PWD):/workspace \
 	--entrypoint /bin/bash \
 	--workdir /workspace \
@@ -49,7 +48,6 @@ run_cuda_118_container:
 	--rm \
 	--pid host \
 	--gpus all \
-	--ipc private \
 	--shm-size 64G \
 	--volume $(PWD):/workspace \
 	--entrypoint /bin/bash \
@@ -62,7 +60,6 @@ run_cuda_121_container:
 	--rm \
 	--pid host \
 	--gpus all \
-	--ipc private \
 	--shm-size 64G \
 	--volume $(PWD):/workspace \
 	--entrypoint /bin/bash \
@@ -73,7 +70,6 @@ run_rocm_container:
 	docker run \
 	-it \
 	--rm \
-	--ipc private \
 	--shm-size 64G \
 	--device /dev/kfd \
 	--device /dev/dri \

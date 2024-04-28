@@ -49,7 +49,6 @@ jobs:
           image: opt-bench-rocm:${{ matrix.image.rocm_version }}
           options: |
             --rm
-            --ipc private
             --shm-size 64G
             --device /dev/kfd
             --device /dev/dri/${{ env.DEVICE0 }}

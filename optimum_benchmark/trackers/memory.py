@@ -152,20 +152,23 @@ class MemoryTracker:
 
     def _cuda_pytorch_memory(self):
         for device in range(self.num_pytorch_devices):
+            torch.cuda.synchronize(device=device)
             try:
-                torch.cuda.synchronize(device=device)
                 torch.cuda.reset_peak_memory_stats(device=device)
             except Exception as e:
                 LOGGER.warning(f"\t\t+ Could not reset max memory stats for device {device}: {e}")
 
         yield from self._cuda_memory()
 
-        self.max_allocated_memory = sum(
-            torch.cuda.max_memory_allocated(device=device) / 1e6 for device in range(self.num_pytorch_devices)
-        )
-        self.max_reserved_memory = sum(
-            torch.cuda.max_memory_reserved(device=device) / 1e6 for device in range(self.num_pytorch_devices)
-        )
+        self.max_allocated_memory = 0
+        self.max_reserved_memory = 0
+
+        for device in range(self.num_pytorch_devices):
+            try:
+                self.max_allocated_memory += torch.cuda.max_memory_allocated(device=device) / 1e6
+                self.max_reserved_memory += torch.cuda.max_memory_reserved(device=device) / 1e6
+            except Exception as e:
+                LOGGER.warning(f"\t\t+ Could not get max memory stats for device {device}: {e}")
 
     def _cuda_memory(self):
         child_connection, parent_connection = Pipe()
