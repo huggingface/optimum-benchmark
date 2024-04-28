@@ -164,21 +164,21 @@ class EnergyTracker:
 
     @contextmanager
     def track(self, file_prefix: str = "task"):
-        if self.is_asynchronous:
-            torch.cuda.synchronize()
-
         if self.is_distributed:
             torch.distributed.barrier()
+
+        if self.is_asynchronous:
+            torch.cuda.synchronize()
 
         self.emission_tracker.start_task()
 
         yield
 
-        if self.is_asynchronous:
-            torch.cuda.synchronize()
-
         if self.is_distributed:
             torch.distributed.barrier()
+
+        if self.is_asynchronous:
+            torch.cuda.synchronize()
 
         emission_data: EmissionsData = self.emission_tracker.stop_task()
 

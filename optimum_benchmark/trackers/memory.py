@@ -107,12 +107,11 @@ class MemoryTracker:
 
         if self.monitored_pid is None:
             self.monitored_pid = int(os.environ.get("ISOLATED_PROCESS_PID", os.getpid()))
-
-        LOGGER.info("\t+ Tracking RAM memory")
+            LOGGER.info(f"\t+ Tracking RAM memory of process with PID [{self.monitored_pid}]")
 
         if self.device == "cuda":
             self.device_ids = list(map(int, self.device_ids.split(",")))
-            LOGGER.info(f"\t+ Tracking VRAM memory of CUDA devices {self.device_ids}")
+            LOGGER.info(f"\t+ Tracking VRAM memory of CUDA devices with IDs [{self.device_ids}]")
 
         if self.uses_cuda_pytorch_allocator:
             self.num_pytorch_devices = torch.cuda.device_count()
@@ -138,6 +137,9 @@ class MemoryTracker:
 
     @contextmanager
     def track(self):
+        if self.is_distributed:
+            torch.distributed.barrier()
+
         if self.uses_cuda_pytorch_allocator:
             yield from self._cuda_pytorch_memory()
         elif self.device == "cuda":
@@ -145,21 +147,18 @@ class MemoryTracker:
         else:
             yield from self._cpu_memory()
 
-    def _cuda_pytorch_memory(self):
         if self.is_distributed:
             torch.distributed.barrier()
 
+    def _cuda_pytorch_memory(self):
         for device in range(self.num_pytorch_devices):
             try:
+                torch.cuda.synchronize(device=device)
                 torch.cuda.reset_peak_memory_stats(device=device)
             except Exception as e:
                 LOGGER.warning(f"\t\t+ Could not reset max memory stats for device {device}: {e}")
 
-        torch.cuda.synchronize()
-
         yield from self._cuda_memory()
-
-        torch.cuda.synchronize()
 
         self.max_allocated_memory = sum(
             torch.cuda.max_memory_allocated(device=device) / 1e6 for device in range(self.num_pytorch_devices)
@@ -167,9 +166,6 @@ class MemoryTracker:
         self.max_reserved_memory = sum(
             torch.cuda.max_memory_reserved(device=device) / 1e6 for device in range(self.num_pytorch_devices)
         )
-
-        if self.is_distributed:
-            torch.distributed.barrier()
 
     def _cuda_memory(self):
         child_connection, parent_connection = Pipe()

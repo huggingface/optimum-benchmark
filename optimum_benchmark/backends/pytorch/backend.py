@@ -26,7 +26,6 @@ from .config import PyTorchConfig
 
 if is_deepspeed_available():
     import deepspeed
-    import deepspeed.comm
 
 
 if is_zentorch_available():
@@ -349,23 +348,14 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
     @torch.inference_mode()
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
-        if self.config.deepspeed_inference:
-            deepspeed.comm.barrier()
-
         return self.pretrained_model.forward(**inputs, **kwargs)
 
     @torch.inference_mode()
     def prefill(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
-        if self.config.deepspeed_inference:
-            deepspeed.comm.barrier()
-
         return self.pretrained_model.generate(**inputs, **kwargs)
 
     @torch.inference_mode()
     def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
-        if self.config.deepspeed_inference:
-            deepspeed.comm.barrier()
-
         return self.pretrained_model.generate(**inputs, **kwargs)
 
     @torch.inference_mode()
