@@ -29,6 +29,7 @@ jobs:
           options: |
             --rm
             --gpus all
+            --ipc private
             --shm-size 64G
             --env MKL_THREADING_LAYER=GNU
             --volume ${{ github.workspace }}:/workspace

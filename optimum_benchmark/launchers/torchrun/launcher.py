@@ -89,20 +89,6 @@ def target(worker, queue, lock, log_level, *worker_args, launch_config: LaunchCo
     elastic_agent_launcher = elastic_launch(config=launch_config, entrypoint=entrypoint)
     elastic_agent_launcher(worker, queue, lock, log_level, *worker_args)
 
-    if len(mp.active_children()) > 0:
-        LOGGER.warning("There are still active child processes. Terminating them.")
-        for child in mp.active_children():
-            LOGGER.warning(f"Terminating child process [{child.pid}].")
-            child.terminate()
-            child.join()
-
-            if child.is_alive():
-                LOGGER.error(f"Failed to terminate child process [{child.pid} gracefully. Killing it.")
-                child.kill()
-                child.join()
-
-            child.close()
-
 
 @record
 def entrypoint(worker, queue, lock, log_level, *worker_args):
@@ -113,7 +99,7 @@ def entrypoint(worker, queue, lock, log_level, *worker_args):
     if rank == 0:
         setup_logging(level=log_level, prefix=f"TORCHRUN-RANK-{rank}")
     else:
-        setup_logging(level="ERROR", prefix=f"TORCHRUN-RANK-{rank}")
+        setup_logging(level=log_level, prefix=f"TORCHRUN-RANK-{rank}")
 
     if torch.cuda.is_available():
         LOGGER.info("\t+ Setting torch.distributed cuda device")
