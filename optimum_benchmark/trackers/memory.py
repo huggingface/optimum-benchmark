@@ -138,9 +138,6 @@ class MemoryTracker:
 
     @contextmanager
     def track(self):
-        if self.is_distributed:
-            torch.distributed.barrier()
-
         if self.uses_cuda_pytorch_allocator:
             yield from self._cuda_pytorch_memory()
         elif self.device == "cuda":
@@ -148,11 +145,10 @@ class MemoryTracker:
         else:
             yield from self._cpu_memory()
 
+    def _cuda_pytorch_memory(self):
         if self.is_distributed:
             torch.distributed.barrier()
 
-    def _cuda_pytorch_memory(self):
-        torch.cuda.empty_cache()
         for device in range(self.num_pytorch_devices):
             try:
                 torch.cuda.reset_peak_memory_stats(device=device)
@@ -169,7 +165,9 @@ class MemoryTracker:
         self.max_reserved_memory = sum(
             torch.cuda.max_memory_reserved(device=device) / 1e6 for device in range(self.num_pytorch_devices)
         )
-        torch.cuda.empty_cache()
+
+        if self.is_distributed:
+            torch.distributed.barrier()
 
     def _cuda_memory(self):
         child_connection, parent_connection = Pipe()

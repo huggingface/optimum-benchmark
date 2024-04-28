@@ -89,6 +89,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             LOGGER.info("\t+ Loading model with pretrained weights")
             self.load_model_from_pretrained()
 
+        self.tmpdir.cleanup()
+
         # KV-Cache
         if self.config.cache_implementation is not None:
             LOGGER.info(f"\t+ Setting cache implementation to {self.config.cache_implementation}")
@@ -130,7 +132,9 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 model=self.pretrained_model, config=self.config.deepspeed_inference_config
             )
 
-        self.tmpdir.cleanup()
+        if is_torch_distributed_available() and torch.distributed.is_initialized():
+            LOGGER.info("\t+ Waiting for torch.distributed process group to synchronize")
+            torch.distributed.barrier()
 
     def validate_library(self) -> None:
         if self.config.library == "timm":
@@ -395,6 +399,10 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         torch.cuda.manual_seed_all(self.config.seed)
 
     def clean(self) -> None:
+        if is_torch_distributed_available() and torch.distributed.is_initialized():
+            LOGGER.info("\t+ Waiting for torch.distributed process group to synchronize")
+            torch.distributed.barrier()
+
         if hasattr(self, "tmpdir"):
             LOGGER.info("\t+ Cleaning backend temporary directory")
             self.tmpdir.cleanup()
@@ -403,7 +411,3 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             LOGGER.info("\t+ Deleting pretrained model")
             del self.pretrained_model
             gc.collect()
-
-        if self.config.device == "cuda":
-            LOGGER.info("\t+ Emptying CUDA cache")
-            torch.cuda.empty_cache()

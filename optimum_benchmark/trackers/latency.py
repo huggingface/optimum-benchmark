@@ -164,8 +164,8 @@ class LatencyTracker:
         self.end_events.append(time.perf_counter())
 
     def get_latency(self) -> Latency:
-        if self.is_distributed:
-            torch.distributed.barrier()
+        # if self.is_distributed:
+        #     torch.distributed.barrier()
 
         if self.is_asynchronous:
             torch.cuda.synchronize()
@@ -227,8 +227,8 @@ class StepLatencyTrainerCallback(TrainerCallback):
             self.end_events.append(time.perf_counter())
 
     def get_latency(self) -> Latency:
-        if self.is_distributed:
-            torch.distributed.barrier()
+        # if self.is_distributed:
+        #     torch.distributed.barrier()
 
         if self.is_asynchronous:
             torch.cuda.synchronize()
@@ -311,8 +311,8 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         return scores
 
     def get_prefill_latency(self) -> Latency:
-        if self.is_distributed:
-            torch.distributed.barrier()
+        # if self.is_distributed:
+        #     torch.distributed.barrier()
 
         if self.is_asynchronous:
             torch.cuda.synchronize()
@@ -332,8 +332,8 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
 
     def get_decode_latency(self) -> Latency:
-        if self.is_distributed:
-            torch.distributed.barrier()
+        # if self.is_distributed:
+        #     torch.distributed.barrier()
 
         if self.is_asynchronous:
             torch.cuda.synchronize()
@@ -352,8 +352,8 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
 
     def get_per_token_latency(self) -> Latency:
-        if self.is_distributed:
-            torch.distributed.barrier()
+        # if self.is_distributed:
+        #     torch.distributed.barrier()
 
         if self.is_asynchronous:
             torch.cuda.synchronize()
