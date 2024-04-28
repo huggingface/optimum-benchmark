@@ -117,9 +117,6 @@ class TorchORTBackend(Backend[TorchORTConfig]):
             LOGGER.info("\t+ Waiting for torch.distributed process group to synchronize")
             torch.distributed.barrier()
 
-            LOGGER.info("\t+ Destroying torch.distributed process group")
-            torch.distributed.destroy_process_group()
-
         if self.config.device == "cuda" and torch.cuda.is_available():
             LOGGER.info("\t+ Emptying CUDA cache")
             torch.cuda.empty_cache()

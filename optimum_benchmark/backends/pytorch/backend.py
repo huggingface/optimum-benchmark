@@ -130,6 +130,10 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 model=self.pretrained_model, config=self.config.deepspeed_inference_config
             )
 
+        if is_torch_distributed_available() and torch.distributed.is_initialized():
+            LOGGER.info("\t+ Waiting for torch.distributed process group to synchronize")
+            torch.distributed.barrier()
+
         self.tmpdir.cleanup()
 
     def validate_library(self) -> None:
@@ -395,6 +399,10 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         torch.cuda.manual_seed_all(self.config.seed)
 
     def clean(self) -> None:
+        if is_torch_distributed_available() and torch.distributed.is_initialized():
+            LOGGER.info("\t+ Waiting for torch.distributed process group to synchronize")
+            torch.distributed.barrier()
+
         if hasattr(self, "tmpdir"):
             LOGGER.info("\t+ Cleaning backend temporary directory")
             self.tmpdir.cleanup()
