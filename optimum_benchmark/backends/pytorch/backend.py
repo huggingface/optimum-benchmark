@@ -18,7 +18,7 @@ from transformers import (
     TrainingArguments,
 )
 
-from ...import_utils import is_deepspeed_available, is_torch_distributed_available, is_zentorch_available
+from ...import_utils import is_deepspeed_available, is_zentorch_available
 from ..base import Backend
 from ..peft_utils import apply_peft
 from ..transformers_utils import random_init_weights
@@ -28,8 +28,6 @@ if is_deepspeed_available():
     import deepspeed
     import deepspeed.comm
 
-if is_torch_distributed_available():
-    import torch.distributed
 
 if is_zentorch_available():
     import zentorch  # type: ignore # noqa: F401
@@ -315,10 +313,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         )
 
     @property
-    def is_distributed(self) -> bool:
-        return is_torch_distributed_available() and torch.distributed.is_initialized()
-
-    @property
     def automodel_kwargs(self) -> Dict[str, Any]:
         kwargs = {}
 
@@ -356,21 +350,21 @@ class PyTorchBackend(Backend[PyTorchConfig]):
     @torch.inference_mode()
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         if self.config.deepspeed_inference:
-            torch.distributed.barrier(group=deepspeed.comm.get_world_group())
+            deepspeed.comm.barrier()
 
         return self.pretrained_model.forward(**inputs, **kwargs)
 
     @torch.inference_mode()
     def prefill(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         if self.config.deepspeed_inference:
-            torch.distributed.barrier(group=deepspeed.comm.get_world_group())
+            deepspeed.comm.barrier()
 
         return self.pretrained_model.generate(**inputs, **kwargs)
 
     @torch.inference_mode()
     def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         if self.config.deepspeed_inference:
-            torch.distributed.barrier(group=deepspeed.comm.get_world_group())
+            deepspeed.comm.barrier()
 
         return self.pretrained_model.generate(**inputs, **kwargs)
 

@@ -9,16 +9,12 @@ from optimum.onnxruntime import ORTTrainer, ORTTrainingArguments
 from safetensors.torch import save_file
 from transformers import TrainerCallback
 
-from ...import_utils import is_torch_distributed_available
 from ..base import Backend
 from ..peft_utils import apply_peft
 from ..transformers_utils import random_init_weights
 from .config import TorchORTConfig
 
 LOGGER = getLogger("torch-ort")
-
-if is_torch_distributed_available():
-    import torch.distributed
 
 
 class TorchORTBackend(Backend[TorchORTConfig]):
@@ -113,10 +109,6 @@ class TorchORTBackend(Backend[TorchORTConfig]):
         LOGGER.info("\t+ Finished training")
 
     def clean(self) -> None:
-        if is_torch_distributed_available() and torch.distributed.is_initialized():
-            LOGGER.info("\t+ Waiting for torch.distributed process group to synchronize")
-            torch.distributed.barrier()
-
         if self.config.device == "cuda" and torch.cuda.is_available():
             LOGGER.info("\t+ Emptying CUDA cache")
             torch.cuda.empty_cache()
