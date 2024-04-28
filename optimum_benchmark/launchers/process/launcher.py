@@ -1,4 +1,5 @@
 import multiprocessing as mp
+import os
 from logging import getLogger
 from typing import Callable
 
@@ -46,8 +47,9 @@ class ProcessLauncher(Launcher[ProcessConfig]):
 
 
 def target(worker, queue, lock, log_level, *worker_args):
-    setup_logging(log_level, prefix="ISOLATED-PROCESS")
-    LOGGER.info(f"Running benchmark in isolated process [{mp.current_process().pid}].")
+    os.environ["ISOLATED_PROCESS_PID"] = str(os.getpid())
+    setup_logging(level=log_level, prefix="ISOLATED-PROCESS")
+    LOGGER.info(f"Running benchmark in isolated process [{os.getpid()}].")
 
     worker_output = worker(*worker_args)
 

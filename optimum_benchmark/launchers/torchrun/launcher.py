@@ -1,8 +1,9 @@
+import multiprocessing as mp
 import os
 from logging import getLogger
 from typing import Any, Callable, Dict
 
-import torch.multiprocessing as mp
+import torch.distributed
 from torch.distributed.elastic.multiprocessing.errors import record
 from torch.distributed.launcher.api import LaunchConfig, elastic_launch
 
@@ -81,8 +82,9 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
 
 
 def target(worker, queue, lock, log_level, *worker_args, launch_config: LaunchConfig):
+    os.environ["ISOLATED_PROCESS_PID"] = str(os.getpid())
     setup_logging(level=log_level, prefix="ISOLATED-PROCESS")
-    LOGGER.info(f"Running benchmark in isolated process [{mp.current_process().pid}].")
+    LOGGER.info(f"Running benchmark in isolated process [{os.getpid()}].")
 
     elastic_agent_launcher = elastic_launch(config=launch_config, entrypoint=entrypoint)
     elastic_agent_launcher(worker, queue, lock, log_level, *worker_args)
@@ -90,15 +92,25 @@ def target(worker, queue, lock, log_level, *worker_args, launch_config: LaunchCo
 
 @record
 def entrypoint(worker, queue, lock, log_level, *worker_args):
-    rank = int(os.environ["RANK"])
+    torch.distributed.init_process_group()
+
+    rank = torch.distributed.get_rank()
 
     if rank == 0:
         setup_logging(level=log_level, prefix=f"TORCHRUN-RANK-{rank}")
     else:
         setup_logging(level="ERROR", prefix=f"TORCHRUN-RANK-{rank}")
 
+    if torch.cuda.is_available():
+        LOGGER.info("\t+ Setting torch.distributed cuda device")
+        torch.cuda.set_device(rank % torch.cuda.device_count())
+
+    torch.distributed.barrier()
     output = worker(*worker_args)
+    torch.distributed.barrier()
 
     lock.acquire()
     queue.put(output)
     lock.release()
+
+    torch.distributed.destroy_process_group()

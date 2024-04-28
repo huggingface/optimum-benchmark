@@ -57,7 +57,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         if self.config.inter_op_num_threads is not None:
             LOGGER.info(f"\t+ Setting pytorch inter_op_num_threads({self.config.inter_op_num_threads}))")
             torch.set_num_threads(self.config.inter_op_num_threads)
-
         if self.config.intra_op_num_threads is not None:
             LOGGER.info(f"\t+ Setting pytorch intra_op_num_threads({self.config.intra_op_num_threads}))")
             torch.set_num_interop_threads(self.config.intra_op_num_threads)
@@ -80,6 +79,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         LOGGER.info("\t+ Creating backend temporary directory")
         self.tmpdir = TemporaryDirectory()
 
+        # Model
         if self.config.no_weights and (self.config.library == "diffusers" or self.config.library == "timm"):
             raise ValueError("Diffusion pipelines and Timm models don't support no weights")
         elif self.config.no_weights:
@@ -89,6 +89,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             LOGGER.info("\t+ Loading model with pretrained weights")
             self.load_model_from_pretrained()
 
+        # KV-Cache
         if self.config.cache_implementation is not None:
             LOGGER.info(f"\t+ Setting cache implementation to {self.config.cache_implementation}")
             self.pretrained_model.generation_config.cache_implementation = self.config.cache_implementation
@@ -128,14 +129,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.pretrained_model = deepspeed.init_inference(
                 model=self.pretrained_model, config=self.config.deepspeed_inference_config
             )
-
-        if is_torch_distributed_available() and torch.distributed.is_initialized():
-            if self.config.device == "cuda" and torch.cuda.is_available():
-                LOGGER.info("\t+ Setting torch.distributed cuda device")
-                torch.cuda.set_device(torch.distributed.get_rank() % torch.cuda.device_count())
-
-            LOGGER.info("\t+ Waiting for torch.distributed process group to synchronize")
-            torch.distributed.barrier(device_ids=[torch.cuda.current_device()] if torch.cuda.is_available() else None)
 
         self.tmpdir.cleanup()
 
@@ -321,6 +314,10 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         )
 
     @property
+    def is_distributed(self) -> bool:
+        return is_torch_distributed_available() and torch.distributed.is_initialized()
+
+    @property
     def automodel_kwargs(self) -> Dict[str, Any]:
         kwargs = {}
 
@@ -398,23 +395,15 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         torch.cuda.manual_seed_all(self.config.seed)
 
     def clean(self) -> None:
-        if is_torch_distributed_available() and torch.distributed.is_initialized():
-            LOGGER.info("\t+ Waiting for torch.distributed process group to synchronize")
-            torch.distributed.barrier(device_ids=[torch.cuda.current_device()] if torch.cuda.is_available() else None)
-
-            LOGGER.info("\t+ Destroying torch.distributed process group")
-            torch.distributed.destroy_process_group()
-
-        if hasattr(self, "pretrained_model"):
-            LOGGER.info("\t+ Deleting pretrained model")
-            del self.pretrained_model
-
-        if torch.cuda.is_available():
-            LOGGER.info("\t+ Emptying CUDA cache")
-            torch.cuda.empty_cache()
-
         if hasattr(self, "tmpdir"):
             LOGGER.info("\t+ Cleaning backend temporary directory")
             self.tmpdir.cleanup()
 
-        gc.collect()
+        if hasattr(self, "pretrained_model"):
+            LOGGER.info("\t+ Deleting pretrained model")
+            del self.pretrained_model
+            gc.collect()
+
+        if self.config.device == "cuda":
+            LOGGER.info("\t+ Emptying CUDA cache")
+            torch.cuda.empty_cache()

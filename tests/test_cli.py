@@ -26,6 +26,9 @@ def test_cli_configs(config_name):
         config_name,
         # to run the tests faster (comment for debugging)
         "hydra/launcher=joblib",
+        "hydra.launcher.n_jobs=-1",
+        "hydra.launcher.batch_size=1",
+        "hydra.launcher.prefer=threads",
     ]
 
     popen = run_subprocess_and_log_stream_output(LOGGER, args)

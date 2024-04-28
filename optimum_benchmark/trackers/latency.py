@@ -123,10 +123,10 @@ class LatencyTracker:
     def __init__(self, device: str, backend: str):
         self.device = device
         self.backend = backend
-        self.asynchronous = self.backend == "pytorch" and self.device == "cuda"
-        self.distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
+        self.is_asynchronous = self.backend == "pytorch" and self.device == "cuda"
+        self.is_distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
-        if self.asynchronous:
+        if self.is_asynchronous:
             LOGGER.info("\t+ Tracking latency using Pytorch CUDA events")
         else:
             LOGGER.info("\t+ Tracking latency using CPU performance counter")
@@ -142,7 +142,7 @@ class LatencyTracker:
 
     @contextmanager
     def track(self):
-        if self.asynchronous:
+        if self.is_asynchronous:
             yield from self._pytorch_cuda_latency()
         else:
             yield from self._cpu_latency()
@@ -164,7 +164,10 @@ class LatencyTracker:
         self.end_events.append(time.perf_counter())
 
     def get_latency(self) -> Latency:
-        if self.asynchronous:
+        if self.is_distributed:
+            torch.distributed.barrier()
+
+        if self.is_asynchronous:
             torch.cuda.synchronize()
 
             latencies_list = [
@@ -199,8 +202,8 @@ class StepLatencyTrainerCallback(TrainerCallback):
     def __init__(self, device: str, backend: str) -> None:
         self.device = device
         self.backend = backend
-        self.asynchronous = self.backend == "pytorch" and self.device == "cuda"
-        self.distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
+        self.is_asynchronous = self.backend == "pytorch" and self.device == "cuda"
+        self.is_distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
         self.start_events: List[Union[float, torch.cuda.Event]] = []
         self.end_events: List[Union[float, torch.cuda.Event]] = []
@@ -210,21 +213,24 @@ class StepLatencyTrainerCallback(TrainerCallback):
         self.end_events = []
 
     def on_step_begin(self, *args, **kwargs):
-        if self.asynchronous:
+        if self.is_asynchronous:
             self.start_events.append(torch.cuda.Event(enable_timing=True))
             self.start_events[-1].record()
         else:
             self.start_events.append(time.perf_counter())
 
     def on_step_end(self, *args, **kwargs):
-        if self.asynchronous:
+        if self.is_asynchronous:
             self.end_events.append(torch.cuda.Event(enable_timing=True))
             self.end_events[-1].record()
         else:
             self.end_events.append(time.perf_counter())
 
     def get_latency(self) -> Latency:
-        if self.asynchronous:
+        if self.is_distributed:
+            torch.distributed.barrier()
+
+        if self.is_asynchronous:
             torch.cuda.synchronize()
 
             latencies_list = [
@@ -242,8 +248,8 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
     def __init__(self, device: str, backend: str):
         self.device = device
         self.backend = backend
-        self.asynchronous = self.backend == "pytorch" and self.device == "cuda"
-        self.distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
+        self.is_asynchronous = self.backend == "pytorch" and self.device == "cuda"
+        self.is_distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
         self.start_time: Optional[float] = None
         self.next_is_prefill_end_decode_start: Optional[bool] = None
@@ -266,7 +272,7 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
 
     @contextmanager
     def track(self):
-        if self.asynchronous:
+        if self.is_asynchronous:
             self.prefill_start_events.append(torch.cuda.Event(enable_timing=True))
             self.prefill_start_events[-1].record()
         else:
@@ -278,7 +284,7 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
 
         self.next_is_prefill_end_decode_start = None
 
-        if self.asynchronous:
+        if self.is_asynchronous:
             self.decode_end_events.append(torch.cuda.Event(enable_timing=True))
             self.decode_end_events[-1].record()
         else:
@@ -289,7 +295,7 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
             self.next_is_prefill_end_decode_start is not None
         ), "PerTokenLatencyLogitsProcessor should only be called inside of track() context"
 
-        if self.asynchronous:
+        if self.is_asynchronous:
             event = torch.cuda.Event(enable_timing=True)
             event.record()
         else:
@@ -305,7 +311,10 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         return scores
 
     def get_prefill_latency(self) -> Latency:
-        if self.asynchronous:
+        if self.is_distributed:
+            torch.distributed.barrier()
+
+        if self.is_asynchronous:
             torch.cuda.synchronize()
 
             latencies_list = [
@@ -323,7 +332,10 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
 
     def get_decode_latency(self) -> Latency:
-        if self.asynchronous:
+        if self.is_distributed:
+            torch.distributed.barrier()
+
+        if self.is_asynchronous:
             torch.cuda.synchronize()
 
             latencies_list = [
@@ -340,7 +352,10 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
 
     def get_per_token_latency(self) -> Latency:
-        if self.asynchronous:
+        if self.is_distributed:
+            torch.distributed.barrier()
+
+        if self.is_asynchronous:
             torch.cuda.synchronize()
 
             latencies_list = [
