@@ -164,32 +164,32 @@ class EnergyTracker:
 
     @contextmanager
     def track(self, file_prefix: str = "task"):
-        if self.is_distributed:
-            torch.distributed.barrier()
-
         if self.is_asynchronous:
             torch.cuda.synchronize()
+
+        if self.is_distributed:
+            torch.distributed.barrier()
 
         self.emission_tracker.start_task()
 
         yield
 
-        emission_data: EmissionsData = self.emission_tracker.stop_task()
-
-        self.cpu_energy = emission_data.cpu_energy
-        self.gpu_energy = emission_data.gpu_energy
-        self.ram_energy = emission_data.ram_energy
-        self.total_energy = emission_data.energy_consumed
-
-        with open(f"{file_prefix}_codecarbon.json", "w") as f:
-            LOGGER.info(f"\t+ Saving codecarbon emission data to {file_prefix}_codecarbon.json")
-            dump(asdict(emission_data), f, indent=4)
-
         if self.is_asynchronous:
             torch.cuda.synchronize()
 
         if self.is_distributed:
             torch.distributed.barrier()
+
+        emission_data: EmissionsData = self.emission_tracker.stop_task()
+
+        with open(f"{file_prefix}_codecarbon.json", "w") as f:
+            LOGGER.info(f"\t+ Saving codecarbon emission data to {file_prefix}_codecarbon.json")
+            dump(asdict(emission_data), f, indent=4)
+
+        self.cpu_energy = emission_data.cpu_energy
+        self.gpu_energy = emission_data.gpu_energy
+        self.ram_energy = emission_data.ram_energy
+        self.total_energy = emission_data.energy_consumed
 
     def get_energy(self) -> Energy:
         return Energy(

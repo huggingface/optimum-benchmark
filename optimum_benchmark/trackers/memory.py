@@ -156,7 +156,9 @@ class MemoryTracker:
                 LOGGER.warning(f"\t\t+ Could not reset max memory stats for device {device}: {e}")
 
         torch.cuda.synchronize()
+
         yield from self._cuda_memory()
+
         torch.cuda.synchronize()
 
         self.max_allocated_memory = sum(

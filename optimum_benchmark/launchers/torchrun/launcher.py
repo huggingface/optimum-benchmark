@@ -93,24 +93,25 @@ def target(worker, queue, lock, log_level, *worker_args, launch_config: LaunchCo
 @record
 def entrypoint(worker, queue, lock, log_level, *worker_args):
     torch.distributed.init_process_group()
+    process_group = torch.distributed.group.WORLD
 
-    rank = torch.distributed.get_rank()
+    rank = torch.distributed.get_rank(group=process_group)
 
     if rank == 0:
         setup_logging(level=log_level, prefix=f"TORCHRUN-RANK-{rank}")
     else:
-        setup_logging(level=log_level, prefix=f"TORCHRUN-RANK-{rank}")
+        setup_logging(level="ERROR", prefix=f"TORCHRUN-RANK-{rank}")
 
     if torch.cuda.is_available():
         LOGGER.info("\t+ Setting torch.distributed cuda device")
         torch.cuda.set_device(rank % torch.cuda.device_count())
 
-    torch.distributed.barrier()
+    torch.distributed.barrier(group=process_group)
     output = worker(*worker_args)
-    torch.distributed.barrier()
+    torch.distributed.barrier(group=process_group)
 
     lock.acquire()
     queue.put(output)
     lock.release()
 
-    torch.distributed.destroy_process_group()
+    torch.distributed.destroy_process_group(group=process_group)

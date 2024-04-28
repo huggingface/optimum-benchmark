@@ -26,6 +26,7 @@ from .config import PyTorchConfig
 
 if is_deepspeed_available():
     import deepspeed
+    import deepspeed.comm
 
 if is_torch_distributed_available():
     import torch.distributed
@@ -131,10 +132,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.pretrained_model = deepspeed.init_inference(
                 model=self.pretrained_model, config=self.config.deepspeed_inference_config
             )
-
-        if is_torch_distributed_available() and torch.distributed.is_initialized():
-            LOGGER.info("\t+ Waiting for torch.distributed process group to synchronize")
-            torch.distributed.barrier()
 
     def validate_library(self) -> None:
         if self.config.library == "timm":
@@ -358,14 +355,23 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
     @torch.inference_mode()
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
+        if self.config.deepspeed_inference:
+            torch.distributed.barrier(group=deepspeed.comm.get_world_group())
+
         return self.pretrained_model.forward(**inputs, **kwargs)
 
     @torch.inference_mode()
     def prefill(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
+        if self.config.deepspeed_inference:
+            torch.distributed.barrier(group=deepspeed.comm.get_world_group())
+
         return self.pretrained_model.generate(**inputs, **kwargs)
 
     @torch.inference_mode()
     def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
+        if self.config.deepspeed_inference:
+            torch.distributed.barrier(group=deepspeed.comm.get_world_group())
+
         return self.pretrained_model.generate(**inputs, **kwargs)
 
     @torch.inference_mode()
@@ -399,10 +405,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         torch.cuda.manual_seed_all(self.config.seed)
 
     def clean(self) -> None:
-        if is_torch_distributed_available() and torch.distributed.is_initialized():
-            LOGGER.info("\t+ Waiting for torch.distributed process group to synchronize")
-            torch.distributed.barrier()
-
         if hasattr(self, "tmpdir"):
             LOGGER.info("\t+ Cleaning backend temporary directory")
             self.tmpdir.cleanup()
@@ -411,3 +413,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             LOGGER.info("\t+ Deleting pretrained model")
             del self.pretrained_model
             gc.collect()
+
+        if self.config.device == "cuda":
+            LOGGER.info("\t+ Emptying CUDA cache")
+            torch.cuda.empty_cache()
