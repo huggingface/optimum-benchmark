@@ -15,7 +15,10 @@ class InlineLauncher(Launcher[InlineConfig]):
         super().__init__(config)
 
     def launch(self, worker: Callable, *worker_args) -> BenchmarkReport:
-        LOGGER.warn("\t+ Running benchmark in the main process. This is not recommended for benchmarking.")
+        LOGGER.warn(
+            "\t+ Running benchmark in the main process. "
+            "This is only recommended for debugging purposes and not for benchmarking."
+        )
         report = worker(*worker_args)
 
         return report

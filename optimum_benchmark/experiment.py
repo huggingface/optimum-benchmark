@@ -63,6 +63,7 @@ def run(experiment_config: ExperimentConfig) -> BenchmarkReport:
     # Benchmark the backend
     benchmark.run(backend)
     report = benchmark.get_report()
+    backend.clean()
 
     return report
 
@@ -89,7 +90,7 @@ def launch(experiment_config: ExperimentConfig) -> BenchmarkReport:
         launcher_config: LauncherConfig = experiment_config.launcher
         launcher_factory: Type[Launcher] = get_class(launcher_config._target_)
         launcher: Launcher = launcher_factory(launcher_config)
-        # Run the experiment
+        # Launch the experiment
         report = launcher.launch(run, experiment_config)
     except Exception as error:
         LOGGER.error("Error during experiment", exc_info=True)

@@ -24,7 +24,7 @@ from ..transformers_utils import random_init_weights
 from .config import PyTorchConfig
 
 if is_deepspeed_available():
-    from deepspeed import init_inference
+    import deepspeed
 
 if is_torch_distributed_available():
     import torch.distributed
@@ -47,11 +47,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         if self.config.deepspeed_inference and self.is_quantized:
             raise ValueError("Deepspeed-Inference is not compatible with Transformers quantization")
 
-        # Quantization
-        if self.is_quantized:
-            LOGGER.info("\t+ Processing quantization config")
-            self.process_quantization_config()
-
         # Distributed
         if is_torch_distributed_available() and os.environ.get("RANK", None) is not None:
             if not torch.distributed.is_initialized():
@@ -65,10 +60,16 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 LOGGER.info("\t+ Setting torch.distributed cuda device")
                 torch.cuda.set_device(torch.distributed.get_rank() % torch.cuda.device_count())
 
+        # Quantization
+        if self.is_quantized:
+            LOGGER.info("\t+ Processing quantization config")
+            self.process_quantization_config()
+
         # Threads
         if self.config.inter_op_num_threads is not None:
             LOGGER.info(f"\t+ Setting pytorch inter_op_num_threads({self.config.inter_op_num_threads}))")
             torch.set_num_threads(self.config.inter_op_num_threads)
+
         if self.config.intra_op_num_threads is not None:
             LOGGER.info(f"\t+ Setting pytorch intra_op_num_threads({self.config.intra_op_num_threads}))")
             torch.set_num_interop_threads(self.config.intra_op_num_threads)
@@ -133,6 +134,15 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 LOGGER.info("\t+ Using torch.compile on model")
                 self.pretrained_model = torch.compile(self.pretrained_model, **self.config.torch_compile_config)
 
+        # DeepSpeed
+        if self.config.deepspeed_inference:
+            torch.distributed.barrier()  # better safe than hanging
+            LOGGER.info("\t+ Initializing DeepSpeed Inference Engine")
+            self.pretrained_model = deepspeed.init_inference(
+                model=self.pretrained_model, config=self.config.deepspeed_inference_config
+            )
+            torch.distributed.barrier()  # better safe than hanging
+
         self.tmpdir.cleanup()
 
     def validate_library(self) -> None:
@@ -168,8 +178,9 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         elif self.config.deepspeed_inference:
             if self.config.no_weights:
+                # with big models, loading no_weights_model on cpu is very slow
                 with torch.device("meta"):
-                    LOGGER.info("\t+ Loading model on meta device for fast initialization")
+                    LOGGER.info("\t+ Loading Transformers model on meta device for fast initialization")
                     self.pretrained_model = self.automodel_class.from_pretrained(
                         pretrained_model_name_or_path=self.config.model,
                         **self.config.hub_kwargs,
@@ -180,18 +191,12 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 LOGGER.info("\t+ Tying model weights")
                 self.pretrained_model.tie_weights()
             else:
-                LOGGER.info("\t+ Loading model on cpu to avoid OOM")
-                with torch.device("cpu"):
-                    self.pretrained_model = self.automodel_class.from_pretrained(
-                        pretrained_model_name_or_path=self.config.model,
-                        **self.config.hub_kwargs,
-                        **self.automodel_kwargs,
-                    )
-
-            torch.distributed.barrier()  # better safe than hanging
-            LOGGER.info("\t+ Initializing DeepSpeed Inference Engine")
-            self.pretrained_model = init_inference(self.pretrained_model, config=self.config.deepspeed_inference_config)
-            torch.distributed.barrier()  # better safe than hanging
+                LOGGER.info("\t+ Loading Transformers model")
+                self.pretrained_model = self.automodel_class.from_pretrained(
+                    pretrained_model_name_or_path=self.config.model,
+                    **self.config.hub_kwargs,
+                    **self.automodel_kwargs,
+                )
 
         elif self.is_quantized:
             # we can't use device context manager on quantized models
@@ -199,6 +204,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.pretrained_model = self.automodel_class.from_pretrained(
                 pretrained_model_name_or_path=self.config.model,
                 device_map=self.config.device_map or torch.device(self.config.device),
+                # quantized models are more compatible with device_map dispatcher than (to(device))
                 **self.config.hub_kwargs,
                 **self.automodel_kwargs,
             )
@@ -249,8 +255,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             # tricking from_pretrained to load the model as if it was quantized
 
         LOGGER.info("\t+ Saving no weights model pretrained config")
-        if self.config.library == "transformers":
-            self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
+        self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
 
     def load_model_with_no_weights(self) -> None:
         LOGGER.info("\t+ Creating no weights model")
@@ -283,7 +288,10 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
     @property
     def is_quantized(self) -> bool:
-        return self.config.quantization_scheme is not None or hasattr(self.pretrained_config, "quantization_config")
+        return self.config.quantization_scheme is not None or (
+            hasattr(self.pretrained_config, "quantization_config")
+            and self.pretrained_config.quantization_config.get("quant_method", None) is not None
+        )
 
     @property
     def is_bnb_quantized(self) -> bool:
@@ -308,15 +316,19 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
     @property
     def is_exllamav2(self) -> bool:
-        return (self.is_gptq_quantized or self.is_awq_quantized) and (
-            (
-                hasattr(self.pretrained_config, "quantization_config")
-                and hasattr(self.pretrained_config.quantization_config, "exllama_config")
-                and self.pretrained_config.quantization_config.exllama_config.get("version", None) == 2
-            )
-            or (
-                "exllama_config" in self.config.quantization_config
-                and self.config.quantization_config["exllama_config"].get("version", None) == 2
+        return (
+            self.is_quantized
+            and (self.is_gptq_quantized or self.is_awq_quantized)
+            and (
+                (
+                    hasattr(self.pretrained_config, "quantization_config")
+                    and hasattr(self.pretrained_config.quantization_config, "exllama_config")
+                    and self.pretrained_config.quantization_config.exllama_config.get("version", None) == 2
+                )
+                or (
+                    "exllama_config" in self.config.quantization_config
+                    and self.config.quantization_config["exllama_config"].get("version", None) == 2
+                )
             )
         )
 
@@ -405,7 +417,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             LOGGER.info("\t+ Destroying torch.distributed process group")
             torch.distributed.destroy_process_group()
 
-        if torch.cuda.is_available():
+        if self.config.device == "cuda" and torch.cuda.is_available():
             LOGGER.info("\t+ Emptying CUDA cache")
             torch.cuda.empty_cache()
 
