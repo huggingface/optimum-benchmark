@@ -1,3 +1,4 @@
+import gc
 import os
 from collections import OrderedDict
 from logging import getLogger
@@ -134,7 +135,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 torch.cuda.set_device(torch.distributed.get_rank() % torch.cuda.device_count())
 
             LOGGER.info("\t+ Waiting for torch.distributed process group to synchronize")
-            torch.distributed.barrier()
+            torch.distributed.barrier(device_ids=[torch.cuda.current_device()] if torch.cuda.is_available() else None)
 
         self.tmpdir.cleanup()
 
@@ -399,12 +400,16 @@ class PyTorchBackend(Backend[PyTorchConfig]):
     def clean(self) -> None:
         if is_torch_distributed_available() and torch.distributed.is_initialized():
             LOGGER.info("\t+ Waiting for torch.distributed process group to synchronize")
-            torch.distributed.barrier()
+            torch.distributed.barrier(device_ids=[torch.cuda.current_device()] if torch.cuda.is_available() else None)
 
             LOGGER.info("\t+ Destroying torch.distributed process group")
             torch.distributed.destroy_process_group()
 
-        if self.config.device == "cuda" and torch.cuda.is_available():
+        if hasattr(self, "pretrained_model"):
+            LOGGER.info("\t+ Deleting pretrained model")
+            del self.pretrained_model
+
+        if torch.cuda.is_available():
             LOGGER.info("\t+ Emptying CUDA cache")
             torch.cuda.empty_cache()
 
@@ -412,4 +417,4 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             LOGGER.info("\t+ Cleaning backend temporary directory")
             self.tmpdir.cleanup()
 
-        super().clean()
+        gc.collect()

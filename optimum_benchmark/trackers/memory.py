@@ -142,7 +142,6 @@ class MemoryTracker:
 
     def _cuda_pytorch_memory(self):
         torch.cuda.empty_cache()
-        torch.cuda.synchronize()
 
         for device in range(self.num_pytorch_devices):
             try:
@@ -159,7 +158,6 @@ class MemoryTracker:
             torch.cuda.max_memory_reserved(device=device) / 1e6 for device in range(self.num_pytorch_devices)
         )
 
-        torch.cuda.synchronize()
         torch.cuda.empty_cache()
 
     def _cuda_memory(self):
