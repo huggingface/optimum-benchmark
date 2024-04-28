@@ -47,19 +47,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         if self.config.deepspeed_inference and self.is_quantized:
             raise ValueError("Deepspeed-Inference is not compatible with Transformers quantization")
 
-        # Distributed
-        if is_torch_distributed_available() and os.environ.get("RANK", None) is not None:
-            if not torch.distributed.is_initialized():
-                LOGGER.info("\t+ Initializing torch.distributed process group")
-                torch.distributed.init_process_group()
-
-            LOGGER.info("\t+ Waiting for torch.distributed process group to synchronize")
-            torch.distributed.barrier()
-
-            if self.config.device == "cuda":
-                LOGGER.info("\t+ Setting torch.distributed cuda device")
-                torch.cuda.set_device(torch.distributed.get_rank() % torch.cuda.device_count())
-
         # Quantization
         if self.is_quantized:
             LOGGER.info("\t+ Processing quantization config")
@@ -136,12 +123,18 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         # DeepSpeed
         if self.config.deepspeed_inference:
-            torch.distributed.barrier()  # better safe than hanging
             LOGGER.info("\t+ Initializing DeepSpeed Inference Engine")
             self.pretrained_model = deepspeed.init_inference(
                 model=self.pretrained_model, config=self.config.deepspeed_inference_config
             )
-            torch.distributed.barrier()  # better safe than hanging
+
+        if is_torch_distributed_available() and torch.distributed.is_initialized():
+            if self.config.device == "cuda" and torch.cuda.is_available():
+                LOGGER.info("\t+ Setting torch.distributed cuda device")
+                torch.cuda.set_device(torch.distributed.get_rank() % torch.cuda.device_count())
+
+            LOGGER.info("\t+ Waiting for torch.distributed process group to synchronize")
+            torch.distributed.barrier()
 
         self.tmpdir.cleanup()
 
@@ -176,35 +169,14 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 LOGGER.info(f"\t+ Moving pipeline to device: {self.config.device}")
                 self.pretrained_model.to(self.config.device)
 
-        elif self.config.deepspeed_inference:
-            if self.config.no_weights:
-                # with big models, loading no_weights_model on cpu is very slow
-                with torch.device("meta"):
-                    LOGGER.info("\t+ Loading Transformers model on meta device for fast initialization")
-                    self.pretrained_model = self.automodel_class.from_pretrained(
-                        pretrained_model_name_or_path=self.config.model,
-                        **self.config.hub_kwargs,
-                        **self.automodel_kwargs,
-                    )
-                LOGGER.info("\t+ Materializing model on CPU to avoid OOM")
-                self.pretrained_model.to_empty(device="cpu")
-                LOGGER.info("\t+ Tying model weights")
-                self.pretrained_model.tie_weights()
-            else:
-                LOGGER.info("\t+ Loading Transformers model")
-                self.pretrained_model = self.automodel_class.from_pretrained(
-                    pretrained_model_name_or_path=self.config.model,
-                    **self.config.hub_kwargs,
-                    **self.automodel_kwargs,
-                )
-
         elif self.is_quantized:
-            # we can't use device context manager on quantized models
             LOGGER.info(f"\t+ Loading {self.quantization_config.quant_method}-quantized model")
             self.pretrained_model = self.automodel_class.from_pretrained(
                 pretrained_model_name_or_path=self.config.model,
                 device_map=self.config.device_map or torch.device(self.config.device),
                 # quantized models are more compatible with device_map dispatcher than (to(device))
+                # using to(device) on quantized models sometimes leaves some layers on cpu or raises
+                # an error because the layers are already on the device
                 **self.config.hub_kwargs,
                 **self.automodel_kwargs,
             )
@@ -261,11 +233,26 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         LOGGER.info("\t+ Creating no weights model")
         self.create_no_weights_model()
 
-        with random_init_weights():
-            original_model, self.config.model = self.config.model, self.no_weights_model
-            LOGGER.info("\t+ Loading no weights AutoModel")
-            self.load_model_from_pretrained()
-            self.config.model = original_model
+        if self.config.deepspeed_inference:
+            with torch.device("meta"):
+                # with big models, loading no_weights_model is very slow (randomizing every weight)
+                # so we load the model on meta device to speed up the process and then move it to cpu
+                LOGGER.info("\t+ Loading Transformers model on meta device for fast initialization")
+                self.pretrained_model = self.automodel_class.from_pretrained(
+                    pretrained_model_name_or_path=self.config.model,
+                    **self.config.hub_kwargs,
+                    **self.automodel_kwargs,
+                )
+            LOGGER.info("\t+ Materializing meta model on CPU to avoid OOM")
+            self.pretrained_model.to_empty(device="cpu")
+            LOGGER.info("\t+ Tying model weights")
+            self.pretrained_model.tie_weights()
+        else:
+            with random_init_weights():
+                original_model, self.config.model = self.config.model, self.no_weights_model
+                LOGGER.info("\t+ Loading no weights AutoModel")
+                self.load_model_from_pretrained()
+                self.config.model = original_model
 
     def process_quantization_config(self) -> None:
         if self.is_gptq_quantized:

@@ -120,7 +120,7 @@ class TorchORTBackend(Backend[TorchORTConfig]):
             LOGGER.info("\t+ Destroying torch.distributed process group")
             torch.distributed.destroy_process_group()
 
-        if torch.cuda.is_available():
+        if self.config.device == "cuda" and torch.cuda.is_available():
             LOGGER.info("\t+ Emptying CUDA cache")
             torch.cuda.empty_cache()
 
