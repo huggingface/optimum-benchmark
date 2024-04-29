@@ -7,7 +7,7 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: text_classification-distilroberta_base
+experiment_name: text_classification-distilbert_base_uncased
 
 launcher:
   device_isolation: true
@@ -17,7 +17,7 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model: j-hartmann/emotion-english-distilroberta-base
+  model: distilbert/distilbert-base-uncased-finetuned-sst-2-english
   task: text-classification
 
 benchmark:
