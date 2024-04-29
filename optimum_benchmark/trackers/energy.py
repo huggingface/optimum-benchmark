@@ -134,8 +134,8 @@ class EnergyTracker:
         try:
             # TODO: use pynvml and amdsmi directly to get the GPU power consumption
             self.emission_tracker = EmissionsTracker(
-                log_level="warning",  # "info" for more verbosity
-                tracking_mode="machine",  # "machine" for machine-level tracking
+                log_level="debug",  # "info" for more verbosity
+                tracking_mode="process",  # "machine" for machine-level tracking
                 gpu_ids=self.device_ids,
                 output_file="codecarbon.csv",
                 measure_power_secs=POWER_CONSUMPTION_SAMPLING_RATE,
