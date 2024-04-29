@@ -44,7 +44,7 @@ def test_cli_exit_code(launcher):
         "--config-name",
         "_base_",
         f"launcher={launcher}",
-        "experiment_name=test",
+        "benchmark_name=test",
         # compatible task and model
         "backend.task=text-classification",
         "backend.model=bert-base-uncased",
@@ -61,7 +61,7 @@ def test_cli_exit_code(launcher):
         "--config-name",
         "_base_",
         f"launcher={launcher}",
-        "experiment_name=test",
+        "benchmark_name=test",
         # incompatible task and model to trigger error
         "backend.task=image-classification",
         "backend.model=bert-base-uncased",

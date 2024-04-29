@@ -8,4 +8,4 @@ defaults:
   - _self_ # hydra 1.1 compatibility
   - override backend: pytorch
 
-experiment_name: cuda_inference_pytorch_diffusers
+benchmark_name: cuda_inference_pytorch_diffusers

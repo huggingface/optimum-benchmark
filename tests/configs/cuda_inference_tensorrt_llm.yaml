@@ -6,7 +6,7 @@ defaults:
   - _self_ # hydra 1.1 compatibility
   - override backend: tensorrt-llm
 
-experiment_name: cuda_inference_tensorrt_llm
+benchmark_name: cuda_inference_tensorrt_llm
 
 backend:
   model: TinyLlama/TinyLlama-1.1B-Chat-v1.0
