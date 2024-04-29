@@ -7,7 +7,7 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: text_classification-roberta-base
+experiment_name: text_classification-distilroberta
 
 launcher:
   device_isolation: true
@@ -17,7 +17,7 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model: SamLowe/roberta-base-go_emotions
+  model: mrm8488/distilroberta-finetuned-financial-news-sentiment-analysis
   task: text-classification
 
 benchmark:
