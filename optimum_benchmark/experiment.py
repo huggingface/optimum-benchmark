@@ -45,22 +45,25 @@ class ExperimentConfig(PushToHubMixin):
         return "experiment_config.json"
 
 
-def run(benchmark_config: BenchmarkConfig, backend_config: BackendConfig) -> BenchmarkReport:
+def run(experiment_config: ExperimentConfig) -> BenchmarkReport:
     """
     Runs a benchmark using specified backend and benchmark configurations
     """
 
     # Allocate requested backend
+    backend_config: BackendConfig = experiment_config.backend
     backend_factory: Type[Backend] = get_class(backend_config._target_)
     backend: Backend = backend_factory(backend_config)
 
     # Allocate requested benchmark
+    benchmark_config: BenchmarkConfig = experiment_config.benchmark
     benchmark_factory: Type[Benchmark] = get_class(benchmark_config._target_)
     benchmark: Benchmark = benchmark_factory(benchmark_config)
 
     # Benchmark the backend
     benchmark.run(backend)
     report = benchmark.get_report()
+    backend.clean()
 
     return report
 
@@ -70,35 +73,33 @@ def launch(experiment_config: ExperimentConfig) -> BenchmarkReport:
     Runs an experiment using specified launcher configuration/logic
     """
 
-    # We keep track of the main benchmark process PID to be able to
-    # track its memory usage in isolated and distributed setups
-    os.environ["BENCHMARK_PID"] = str(os.getpid())
-
     if os.environ.get("BENCHMARK_INTERFACE", "API") == "API":
         # We launch the experiment in a temporary directory to avoid
         # polluting the current working directory with temporary files
         LOGGER.info("Launching experiment in a temporary directory.")
-        tmpdir = TemporaryDirectory()
         original_dir = os.getcwd()
+        tmpdir = TemporaryDirectory()
         os.chdir(tmpdir.name)
 
     try:
         # Allocate requested launcher
         launcher_config: LauncherConfig = experiment_config.launcher
         launcher_factory: Type[Launcher] = get_class(launcher_config._target_)
-        launcher: Launcher = launcher_factory(experiment_config.launcher)
-        report = launcher.launch(run, experiment_config.benchmark, experiment_config.backend)
-        error = None
-    except Exception as e:
-        LOGGER.error("Error during experiment")
-        error = e
+        launcher: Launcher = launcher_factory(launcher_config)
+        # Launch the experiment
+        report = launcher.launch(run, experiment_config)
+    except Exception as error:
+        LOGGER.error("Error during experiment", exc_info=True)
+        exception = error
+    else:
+        exception = None
 
     if os.environ.get("BENCHMARK_INTERFACE", "API") == "API":
         LOGGER.info("Cleaning up experiment temporary directory.")
         os.chdir(original_dir)
         tmpdir.cleanup()
 
-    if error is not None:
-        raise error
+    if exception is not None:
+        raise exception
 
     return report

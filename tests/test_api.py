@@ -13,10 +13,7 @@ from optimum_benchmark.backends.diffusers_utils import (
     get_diffusers_pretrained_config,
 )
 from optimum_benchmark.backends.pytorch.config import PyTorchConfig
-from optimum_benchmark.backends.timm_utils import (
-    extract_timm_shapes_from_config,
-    get_timm_pretrained_config,
-)
+from optimum_benchmark.backends.timm_utils import extract_timm_shapes_from_config, get_timm_pretrained_config
 from optimum_benchmark.backends.transformers_utils import (
     extract_transformers_shapes_from_artifacts,
     get_transformers_pretrained_config,
@@ -55,10 +52,7 @@ def test_api_launch(device, benchmark, library, task, model):
     device_ids = get_gpu_device_ids() if device == "cuda" else None
     no_weights = False if library != "transformers" else True
 
-    launcher_config = ProcessConfig(
-        device_isolation=device == "cuda",
-        device_isolation_action="error",
-    )
+    launcher_config = ProcessConfig(device_isolation=device == "cuda", device_isolation_action="error")
 
     if benchmark == "training":
         if library == "transformers":
@@ -80,20 +74,12 @@ def test_api_launch(device, benchmark, library, task, model):
         )
 
     backend_config = PyTorchConfig(
-        device=device,
-        device_ids=device_ids,
-        no_weights=no_weights,
-        library=library,
-        model=model,
-        task=task,
+        device=device, device_ids=device_ids, no_weights=no_weights, library=library, model=model, task=task
     )
 
     experiment_name = f"{device}_{benchmark}_{library}_{task}_{model}"
     experiment_config = ExperimentConfig(
-        experiment_name=experiment_name,
-        benchmark=benchmark_config,
-        launcher=launcher_config,
-        backend=backend_config,
+        experiment_name=experiment_name, benchmark=benchmark_config, launcher=launcher_config, backend=backend_config
     )
     benchmark_report = launch(experiment_config)
 
@@ -109,10 +95,7 @@ def test_api_push_to_hub_mixin():
     benchmark_config = InferenceConfig(memory=True, latency=True, duration=1, iterations=1, warmup_runs=1)
 
     experiment_config = ExperimentConfig(
-        experiment_name=experiment_name,
-        benchmark=benchmark_config,
-        launcher=launcher_config,
-        backend=backend_config,
+        experiment_name=experiment_name, benchmark=benchmark_config, launcher=launcher_config, backend=backend_config
     )
 
     benchmark_report = launch(experiment_config)

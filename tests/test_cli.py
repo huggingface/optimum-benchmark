@@ -7,6 +7,7 @@ from optimum_benchmark.logging_utils import run_subprocess_and_log_stream_output
 
 LOGGER = getLogger("test-cli")
 
+
 TEST_CONFIG_DIR = "/".join(__file__.split("/")[:-1] + ["configs"])
 TEST_CONFIG_NAMES = [
     config.split(".")[0]
@@ -25,22 +26,29 @@ def test_cli_configs(config_name):
         config_name,
         # to run the tests faster (comment for debugging)
         "hydra/launcher=joblib",
+        "hydra.launcher.n_jobs=-1",
+        "hydra.launcher.batch_size=1",
+        "hydra.launcher.prefer=threads",
     ]
 
     popen = run_subprocess_and_log_stream_output(LOGGER, args)
     assert popen.returncode == 0, f"Failed to run {config_name}"
 
 
-def test_cli_exit_code():
+@pytest.mark.parametrize("launcher", ["inline", "process", "torchrun"])
+def test_cli_exit_code(launcher):
     args_0 = [
         "optimum-benchmark",
         "--config-dir",
         TEST_CONFIG_DIR,
         "--config-name",
-        "cpu_inference_pytorch_text_encoders",
+        "_base_",
+        f"launcher={launcher}",
+        "experiment_name=test",
         # compatible task and model
         "backend.task=text-classification",
         "backend.model=bert-base-uncased",
+        "backend.device=cpu",
     ]
 
     popen_0 = run_subprocess_and_log_stream_output(LOGGER, args_0)
@@ -51,10 +59,13 @@ def test_cli_exit_code():
         "--config-dir",
         TEST_CONFIG_DIR,
         "--config-name",
-        "cpu_inference_pytorch_text_encoders",
+        "_base_",
+        f"launcher={launcher}",
+        "experiment_name=test",
         # incompatible task and model to trigger error
         "backend.task=image-classification",
         "backend.model=bert-base-uncased",
+        "backend.device=cpu",
     ]
 
     popen_1 = run_subprocess_and_log_stream_output(LOGGER, args_1)

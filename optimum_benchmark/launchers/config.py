@@ -27,14 +27,15 @@ class LauncherConfig(ABC):
         if self.device_isolation and self.device_isolation_action is None:
             LOGGER.warning(
                 "Device isolation is enabled but no action is specified. "
-                "Please set `device_isolation_action` to either 'error' or 'warn' "
-                "to specify the action. Defaulting to 'warn'."
+                "Please set `device_isolation_action` to either `error`, `warn`, or `kill`. "
+                "Defaulting to `warn`."
             )
             self.device_isolation_action = "warn"
-        elif self.device_isolation and self.device_isolation_action not in {"error", "warn"}:
+
+        elif self.device_isolation and self.device_isolation_action not in {"error", "warn", "kill"}:
             raise ValueError(
                 f"Unsupported device isolation action {self.device_isolation_action}. "
-                "Please set `device_isolation_action` to either 'error' or 'warn'."
+                "Please set `device_isolation_action` to either `error`, `warn`, or `kill`."
             )
 
 

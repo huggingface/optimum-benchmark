@@ -1,13 +1,12 @@
+import multiprocessing as mp
 import os
 from logging import getLogger
 from typing import Callable
 
-import torch.multiprocessing as mp
-
 from ...benchmarks.report import BenchmarkReport
 from ...logging_utils import setup_logging
 from ..base import Launcher
-from ..isolation_utils import device_isolation
+from ..device_isolation_utils import device_isolation_context
 from .config import ProcessConfig
 
 LOGGER = getLogger("process")
@@ -24,41 +23,33 @@ class ProcessLauncher(Launcher[ProcessConfig]):
             mp.set_start_method(self.config.start_method, force=True)
 
     def launch(self, worker: Callable, *worker_args) -> BenchmarkReport:
-        log_level = getLogger().getEffectiveLevel()
-
         ctx = mp.get_context(self.config.start_method)
+        log_level = ctx.get_logger().getEffectiveLevel()
         queue = ctx.Queue()
         lock = ctx.Lock()
 
-        with device_isolation(
-            isolated_pid=os.getpid(),
-            enabled=self.config.device_isolation,
-            action=self.config.device_isolation_action,
+        isolated_process = mp.Process(target=target, args=(worker, queue, lock, log_level, *worker_args), daemon=False)
+        isolated_process.start()
+
+        with device_isolation_context(
+            enable=self.config.device_isolation, action=self.config.device_isolation_action, pid=isolated_process.pid
         ):
-            process_context = mp.start_processes(
-                entrypoint,
-                args=(worker, queue, lock, log_level, *worker_args),
-                start_method=self.config.start_method,
-                daemon=False,
-                join=False,
-                nprocs=1,
-            )
-            LOGGER.info(f"\t+ Launched benchmark in isolated process {process_context.pids()[0]}.")
-            while not process_context.join():
-                pass
+            isolated_process.join()
+
+        if isolated_process.exitcode != 0:
+            raise RuntimeError(f"Process exited with non-zero code {isolated_process.exitcode}")
+        elif queue.empty():
+            raise RuntimeError("No report was returned by the isolated process.")
 
         report: BenchmarkReport = queue.get()
 
         return report
 
 
-def entrypoint(i, worker, queue, lock, log_level, *worker_args):
-    """
-    This a pickalable function that correctly sets up the logging configuration for the worker process,
-    and puts the output of the worker function into a lock-protected queue.
-    """
-
-    setup_logging(log_level, prefix=f"PROC-{i}")
+def target(worker, queue, lock, log_level, *worker_args):
+    os.environ["ISOLATED_PROCESS_PID"] = str(os.getpid())
+    setup_logging(level=log_level, prefix="ISOLATED-PROCESS")
+    LOGGER.info(f"Running benchmark in isolated process [{os.getpid()}].")
 
     worker_output = worker(*worker_args)
 

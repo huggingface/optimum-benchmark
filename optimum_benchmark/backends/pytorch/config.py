@@ -23,10 +23,6 @@ class PyTorchConfig(BackendConfig):
     device_map: Optional[str] = None
     torch_dtype: Optional[str] = None
 
-    # automatic mixed precision options
-    amp_autocast: bool = False
-    amp_dtype: Optional[str] = None
-
     # optimization options
     eval_mode: bool = True
     to_bettertransformer: bool = False
@@ -34,7 +30,11 @@ class PyTorchConfig(BackendConfig):
     attn_implementation: Optional[str] = None
     cache_implementation: Optional[str] = None
 
-    # compilation options
+    # automatic mixed precision options
+    autocast_enabled: bool = False
+    autocast_dtype: Optional[str] = None
+
+    # torch compile options
     torch_compile: bool = False
     torch_compile_config: Dict[str, Any] = field(default_factory=dict)
 
@@ -59,13 +59,14 @@ class PyTorchConfig(BackendConfig):
         if self.torch_dtype is not None and self.torch_dtype not in TORCH_DTYPES:
             raise ValueError(f"`torch_dtype` must be one of {TORCH_DTYPES}. Got {self.torch_dtype} instead.")
 
-        if self.amp_dtype is not None and self.amp_dtype not in AMP_DTYPES:
-            raise ValueError(f"`amp_dtype` must be one of {AMP_DTYPES}. Got {self.amp_dtype} instead.")
+        if self.autocast_dtype is not None and self.autocast_dtype not in AMP_DTYPES:
+            raise ValueError(f"`autocast_dtype` must be one of {AMP_DTYPES}. Got {self.autocast_dtype} instead.")
 
         if self.quantization_scheme is not None:
             if self.quantization_scheme not in QUANTIZATION_CONFIGS:
                 raise ValueError(
-                    f"`quantization_scheme` must be one of {list(QUANTIZATION_CONFIGS.keys())}. Got {self.quantization_scheme} instead."
+                    f"`quantization_scheme` must be one of {list(QUANTIZATION_CONFIGS.keys())}. "
+                    f"Got {self.quantization_scheme} instead."
                 )
 
             if self.quantization_scheme == "bnb" and is_rocm_system():

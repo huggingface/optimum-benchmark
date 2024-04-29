@@ -70,7 +70,6 @@ run_rocm_container:
 	docker run \
 	-it \
 	--rm \
-	--pid host \
 	--shm-size 64G \
 	--device /dev/kfd \
 	--device /dev/dri \
