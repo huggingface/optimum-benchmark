@@ -3,7 +3,7 @@ from logging import getLogger
 from typing import Any, Dict, Union
 
 from ...system_utils import is_rocm_system
-from ..config import BenchmarkConfig
+from ..config import ScenarioConfig
 
 LOGGER = getLogger("energy_star")
 
@@ -11,9 +11,9 @@ INPUT_SHAPES = {"batch_size": 1}
 
 
 @dataclass
-class EnergyStarConfig(BenchmarkConfig):
+class EnergyStarConfig(ScenarioConfig):
     name: str = "energy_star"
-    _target_: str = "optimum_benchmark.benchmarks.energy_star.benchmark.EnergyStarBenchmark"
+    _target_: str = "optimum_benchmark.scenarios.energy_star.scenario.EnergyStarScenario"
 
     # dataset options
     dataset_name: str = field(default="", metadata={"help": "Name of the dataset on the HF Hub."})
@@ -32,8 +32,8 @@ class EnergyStarConfig(BenchmarkConfig):
         default=-1, metadata={"help": "Maximum length to use by one of the truncation/padding parameters"}
     )
 
-    # benchmark options
-    warmup_runs: int = field(default=10, metadata={"help": "Number of warmup runs to perform before benchmarking"})
+    # scenario options
+    warmup_runs: int = field(default=10, metadata={"help": "Number of warmup runs to perform before scenarioing"})
 
     # tracking options
     energy: bool = field(default=True, metadata={"help": "Measure energy usage"})

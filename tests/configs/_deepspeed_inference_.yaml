@@ -12,6 +12,6 @@ backend:
     tensor_parallel:
       tp_size: 2
 
-benchmark:
+scenario:
   input_shapes:
     batch_size: 2

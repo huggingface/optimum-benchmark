@@ -2,10 +2,10 @@ from dataclasses import dataclass, make_dataclass
 from logging import getLogger
 from typing import Any, Dict, List, Optional
 
-from ..hub_utils import PushToHubMixin, classproperty
-from ..trackers.energy import Efficiency, Energy
-from ..trackers.latency import Latency, Throughput
-from ..trackers.memory import Memory
+from .hub_utils import PushToHubMixin, classproperty
+from .trackers.energy import Efficiency, Energy
+from .trackers.latency import Latency, Throughput
+from .trackers.memory import Memory
 
 LOGGER = getLogger("report")
 
@@ -46,9 +46,9 @@ class BenchmarkMeasurements:
 @dataclass
 class BenchmarkReport(PushToHubMixin):
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "PushToHubMixin":
+    def from_dict(cls, data: Dict[str, Any]) -> "BenchmarkReport":
         return make_dataclass(
-            cls_name="BenchmarkReport", fields=[(target, BenchmarkMeasurements) for target in data.keys()], bases=(cls,)
+            cls_name=cls.__name__, fields=[(target, BenchmarkMeasurements) for target in data.keys()], bases=(cls,)
         )(**data)
 
     def log_memory(self):

@@ -6,11 +6,11 @@ from transformers import default_data_collator
 
 from ...backends.base import Backend, BackendConfigT
 from ...generators.dataset_generator import DatasetGenerator
+from ...report import BenchmarkMeasurements, BenchmarkReport
 from ...trackers.energy import Efficiency, EnergyTracker
 from ...trackers.latency import StepLatencyTrainerCallback, Throughput
 from ...trackers.memory import MemoryTracker
-from ..base import Benchmark
-from ..report import BenchmarkMeasurements, BenchmarkReport
+from ..base import Scenario
 from .config import TrainingConfig
 
 LOGGER = getLogger("training")
@@ -26,7 +26,7 @@ class TrainingReport(BenchmarkReport):
     train: BenchmarkMeasurements
 
 
-class TrainingBenchmark(Benchmark[TrainingConfig]):
+class TrainingScenario(Scenario[TrainingConfig]):
     NAME = "training"
 
     def __init__(self, config: TrainingConfig) -> None:
@@ -122,5 +122,5 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
     def train_volume(self) -> int:
         return self.overall_volume - self.warmup_volume
 
-    def get_report(self) -> TrainingReport:
+    def get_report(self) -> BenchmarkReport:
         return self.report

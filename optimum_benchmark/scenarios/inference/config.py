@@ -3,7 +3,7 @@ from logging import getLogger
 from typing import Any, Dict, Optional
 
 from ...system_utils import is_rocm_system
-from ..config import BenchmarkConfig
+from ..config import ScenarioConfig
 
 LOGGER = getLogger("inference")
 
@@ -11,9 +11,9 @@ INPUT_SHAPES = {"batch_size": 2, "num_choices": 2, "sequence_length": 16}
 
 
 @dataclass
-class InferenceConfig(BenchmarkConfig):
+class InferenceConfig(ScenarioConfig):
     name: str = "inference"
-    _target_: str = "optimum_benchmark.benchmarks.inference.benchmark.InferenceBenchmark"
+    _target_: str = "optimum_benchmark.scenarios.inference.scenario.InferenceScenario"
 
     # benchmark options
     iterations: int = field(

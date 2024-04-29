@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from logging import getLogger
 from typing import Any, Dict
 
-from ..config import BenchmarkConfig
+from ..config import ScenarioConfig
 
 LOGGER = getLogger("training")
 
@@ -29,9 +29,9 @@ DATASET_SHAPES = {"dataset_size": 500, "sequence_length": 16, "num_choices": 1}
 
 
 @dataclass
-class TrainingConfig(BenchmarkConfig):
+class TrainingConfig(ScenarioConfig):
     name: str = "training"
-    _target_: str = "optimum_benchmark.benchmarks.training.benchmark.TrainingBenchmark"
+    _target_: str = "optimum_benchmark.scenarios.training.scenario.TrainingScenario"
 
     # training options
     max_steps: int = 140
@@ -58,13 +58,13 @@ class TrainingConfig(BenchmarkConfig):
 
         if self.max_steps != self.training_arguments["max_steps"]:
             LOGGER.warning(
-                f"`benchmark.max_steps` ({self.max_steps}) and `benchmark.training_arguments.max_steps` "
+                f"`scenario.max_steps` ({self.max_steps}) and `scenario.training_arguments.max_steps` "
                 f"({self.training_arguments['max_steps']}) are different. "
-                "Using `benchmark.training_arguments.max_steps`."
+                "Using `scenario.training_arguments.max_steps`."
             )
             self.max_steps = self.training_arguments["max_steps"]
 
         if self.warmup_steps > self.max_steps:
             raise ValueError(
-                f"`benchmark.warmup_steps` ({self.warmup_steps}) must be smaller than `benchmark.max_steps` ({self.max_steps})"
+                f"`scenario.warmup_steps` ({self.warmup_steps}) must be smaller than `scenario.max_steps` ({self.max_steps})"
             )

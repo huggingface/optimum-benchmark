@@ -7,12 +7,12 @@ from transformers import LogitsProcessorList
 from ...backends.base import Backend, BackendConfigT
 from ...generators.input_generator import InputGenerator
 from ...import_utils import is_torch_distributed_available
+from ...report import BenchmarkMeasurements, BenchmarkReport
 from ...task_utils import IMAGE_DIFFUSION_TASKS, TEXT_GENERATION_TASKS
 from ...trackers.energy import Efficiency, EnergyTracker
 from ...trackers.latency import LatencyTracker, PerTokenLatencyLogitsProcessor, Throughput
 from ...trackers.memory import MemoryTracker
-from ..base import Benchmark
-from ..report import BenchmarkMeasurements, BenchmarkReport
+from ..base import Scenario
 from .config import InferenceConfig
 
 if is_torch_distributed_available():
@@ -75,7 +75,7 @@ class InferenceReport(BenchmarkReport):
     forward: BenchmarkMeasurements
 
 
-class InferenceBenchmark(Benchmark[InferenceConfig]):
+class InferenceScenario(Scenario[InferenceConfig]):
     NAME = "inference"
 
     def __init__(self, config: InferenceConfig) -> None:
@@ -104,7 +104,9 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             self.config.generate_kwargs = {**TEXT_GENERATION_DEFAULT_KWARGS, **self.config.generate_kwargs}
             LOGGER.info("\t+ Initializing Text Generation report")
             self.report = TextGenerationReport(
-                decode=BenchmarkMeasurements(), prefill=BenchmarkMeasurements(), per_token=BenchmarkMeasurements()
+                per_token=BenchmarkMeasurements(),
+                prefill=BenchmarkMeasurements(),
+                decode=BenchmarkMeasurements(),
             )
 
         elif backend.config.task in IMAGE_DIFFUSION_TASKS:
@@ -447,5 +449,5 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             * (self.config.generate_kwargs["max_new_tokens"] - 1)  # 1 token is generated during prefill
         )
 
-    def get_report(self) -> InferenceReport:
+    def get_report(self) -> BenchmarkReport:
         return self.report

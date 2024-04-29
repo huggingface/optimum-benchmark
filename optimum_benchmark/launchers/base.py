@@ -2,7 +2,7 @@ from abc import ABC
 from logging import getLogger
 from typing import Callable, ClassVar, Generic
 
-from ..benchmarks.report import BenchmarkReport
+from ..report import BenchmarkReport
 from .config import LauncherConfigT
 
 LOGGER = getLogger("launcher")

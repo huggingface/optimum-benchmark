@@ -7,8 +7,8 @@ import torch.distributed
 from torch.distributed.elastic.multiprocessing.errors import record
 from torch.distributed.launcher.api import LaunchConfig, elastic_launch
 
-from ...benchmarks.report import BenchmarkReport
 from ...logging_utils import setup_logging
+from ...report import BenchmarkReport
 from ..base import Launcher
 from ..device_isolation_utils import device_isolation_context
 from .config import TorchrunConfig
@@ -68,7 +68,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
 
         reports = []
         while not queue.empty():
-            reports.append(queue.get())
+            reports.append(queue.get(block=True))
 
         if len(reports) != self.config.nproc_per_node:
             raise RuntimeError(
@@ -107,11 +107,11 @@ def entrypoint(worker, queue, lock, log_level, *worker_args):
         torch.cuda.set_device(rank % torch.cuda.device_count())
 
     torch.distributed.barrier()
-    output = worker(*worker_args)
+    report = worker(*worker_args)
     torch.distributed.barrier()
 
     lock.acquire()
-    queue.put(output)
+    queue.put(report, block=True)
     lock.release()
 
     torch.distributed.destroy_process_group()

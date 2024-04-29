@@ -81,19 +81,19 @@ run_rocm_container:
 ## Install extras
 
 install_api_misc:
-	pip install -e .[testing,timm,diffusers,peft]
+	pip install -e .[testing,timm,diffusers,peft,codecarbon]
 
 install_api_cpu:
-	pip install -e .[testing,timm,diffusers,peft]
+	pip install -e .[testing,timm,diffusers,peft,codecarbon]
 
 install_api_cuda:
-	pip install -e .[testing,timm,diffusers,peft]
+	pip install -e .[testing,timm,diffusers,peft,codecarbon]
 
 install_api_rocm:
-	pip install -e .[testing,timm,diffusers,peft]
+	pip install -e .[testing,timm,diffusers,peft,codecarbon]
 
 install_cli_misc:
-	pip install -e .[testing,timm,diffusers,peft]
+	pip install -e .[testing,timm,diffusers,peft,codecarbon]
 
 install_cli_cpu_pytorch:
 	pip install -e .[testing,peft,timm,diffusers]

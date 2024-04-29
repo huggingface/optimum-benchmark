@@ -3,21 +3,21 @@ from logging import getLogger
 from typing import ClassVar, Generic
 
 from ..backends.base import Backend
-from .config import BenchmarkConfigT
-from .report import BenchmarkReport
+from ..report import BenchmarkReport
+from .config import ScenarioConfigT
 
 LOGGER = getLogger("benchmark")
 
 
-class Benchmark(Generic[BenchmarkConfigT], ABC):
+class Scenario(Generic[ScenarioConfigT], ABC):
     NAME: ClassVar[str]
 
-    def __init__(self, config: BenchmarkConfigT) -> None:
+    def __init__(self, config: ScenarioConfigT) -> None:
         LOGGER.info(f"Allocating {self.NAME} benchmark")
         self.config = config
 
     def run(self, backend: Backend) -> None:
-        raise NotImplementedError("Benchmark must implement run method")
+        raise NotImplementedError("Scenario must implement run method")
 
     def get_report(self) -> BenchmarkReport:
-        raise NotImplementedError("Benchmark must implement report method")
+        raise NotImplementedError("Scenario must implement report method")

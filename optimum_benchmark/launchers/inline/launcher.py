@@ -1,7 +1,7 @@
 from logging import getLogger
 from typing import Callable
 
-from ...benchmarks.report import BenchmarkReport
+from ...report import BenchmarkReport
 from ..base import Launcher
 from .config import InlineConfig
 

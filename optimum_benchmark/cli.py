@@ -14,20 +14,20 @@ from .backends.py_txi.config import PyTXIConfig
 from .backends.pytorch.config import PyTorchConfig
 from .backends.tensorrt_llm.config import TRTLLMConfig
 from .backends.torch_ort.config import TorchORTConfig
-from .benchmarks.energy_star.config import EnergyStarConfig
-from .benchmarks.inference.config import InferenceConfig
-from .benchmarks.report import BenchmarkReport
-from .benchmarks.training.config import TrainingConfig
-from .experiment import ExperimentConfig, launch
+from .benchmark import BenchmarkConfig, launch
 from .launchers.inline.config import InlineConfig
 from .launchers.process.config import ProcessConfig
 from .launchers.torchrun.config import TorchrunConfig
+from .report import BenchmarkReport
+from .scenarios.energy_star.config import EnergyStarConfig
+from .scenarios.inference.config import InferenceConfig
+from .scenarios.training.config import TrainingConfig
 
 LOGGER = getLogger("cli")
 
 # Register configurations
 cs = ConfigStore.instance()
-cs.store(name="experiment", node=ExperimentConfig)
+cs.store(name="benchmark", node=BenchmarkConfig)
 # backends configurations
 cs.store(group="backend", name=OVConfig.name, node=OVConfig)
 cs.store(group="backend", name=PyTorchConfig.name, node=PyTorchConfig)
@@ -37,10 +37,10 @@ cs.store(group="backend", name=TRTLLMConfig.name, node=TRTLLMConfig)
 cs.store(group="backend", name=INCConfig.name, node=INCConfig)
 cs.store(group="backend", name=PyTXIConfig.name, node=PyTXIConfig)
 cs.store(group="backend", name=LLMSwarmConfig.name, node=LLMSwarmConfig)
-# benchmarks configurations
-cs.store(group="benchmark", name=TrainingConfig.name, node=TrainingConfig)
-cs.store(group="benchmark", name=InferenceConfig.name, node=InferenceConfig)
-cs.store(group="benchmark", name=EnergyStarConfig.name, node=EnergyStarConfig)
+# scenarios configurations
+cs.store(group="scenario", name=TrainingConfig.name, node=TrainingConfig)
+cs.store(group="scenario", name=InferenceConfig.name, node=InferenceConfig)
+cs.store(group="scenario", name=EnergyStarConfig.name, node=EnergyStarConfig)
 # launchers configurations
 cs.store(group="launcher", name=InlineConfig.name, node=InlineConfig)
 cs.store(group="launcher", name=ProcessConfig.name, node=ProcessConfig)
@@ -49,7 +49,7 @@ cs.store(group="launcher", name=TorchrunConfig.name, node=TorchrunConfig)
 
 # optimum-benchmark
 @hydra.main(version_base=None)
-def benchmark_cli(experiment_config: DictConfig) -> None:
+def benchmark_cli(benchmark_config: DictConfig) -> None:
     os.environ["BENCHMARK_INTERFACE"] = "CLI"
 
     if glob.glob("benchmark_report.json") and os.environ.get("OVERRIDE_BENCHMARKS", "0") != "1":
@@ -59,8 +59,8 @@ def benchmark_cli(experiment_config: DictConfig) -> None:
         return
 
     # Instantiate the experiment configuration and trigger its __post_init__
-    experiment_config: ExperimentConfig = OmegaConf.to_object(experiment_config)
-    experiment_config.save_json("experiment_config.json")
+    benchmark_config: BenchmarkConfig = OmegaConf.to_object(benchmark_config)
+    benchmark_config.save_json("benchmark_config.json")
 
-    benchmark_report: BenchmarkReport = launch(experiment_config=experiment_config)
+    benchmark_report: BenchmarkReport = launch(benchmark_config=benchmark_config)
     benchmark_report.save_json("benchmark_report.json")
