@@ -64,7 +64,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
         if isolated_process.exitcode != 0:
             raise RuntimeError(f"Process exited with non-zero code {isolated_process.exitcode}.")
         elif queue.empty():
-            raise RuntimeError("No report was returned by the isolated process.")
+            raise RuntimeError("No report was found in the queue.")
 
         reports = []
         while not queue.empty():
@@ -87,31 +87,37 @@ def target(worker, queue, lock, log_level, *worker_args, launch_config: LaunchCo
     LOGGER.info(f"Running benchmark in isolated process [{os.getpid()}].")
 
     elastic_agent_launcher = elastic_launch(config=launch_config, entrypoint=entrypoint)
-    elastic_agent_launcher(worker, queue, lock, log_level, *worker_args)
+    outputs = elastic_agent_launcher(worker, log_level, *worker_args)
+
+    lock.acquire()
+    for _, output in outputs.items():
+        queue.put(output)
+    lock.release()
 
 
 @record
-def entrypoint(worker, queue, lock, log_level, *worker_args):
-    torch.distributed.init_process_group()
-    rank = torch.distributed.get_rank()
+def entrypoint(worker, log_level, *worker_args):
+    rank = os.environ.get("RANK", "0")
 
     if rank == "0":
         setup_logging(level=log_level, prefix=f"RANK-{rank}")
-    elif os.environ.get("LOG_ALL_RANKS", None) == "1":
+    elif os.environ.get("LOG_ALL_RANKS", "0") == "1":
         setup_logging(level=log_level, prefix=f"RANK-{rank}")
     else:
         setup_logging(level="ERROR", prefix=f"RANK-{rank}")
 
+    LOGGER.info("Initializing torch.distributed process group.")
+    torch.distributed.init_process_group()
+
     if torch.cuda.is_available():
-        LOGGER.info("\t+ Setting torch.distributed cuda device")
-        torch.cuda.set_device(rank % torch.cuda.device_count())
+        LOGGER.info(f"\t+ Setting torch.distributed cuda device to {rank}.")
+        torch.cuda.set_device(rank)
 
     torch.distributed.barrier()
     output = worker(*worker_args)
     torch.distributed.barrier()
 
-    lock.acquire()
-    queue.put(output)
-    lock.release()
-
+    LOGGER.info("Destroying torch.distributed process group.")
     torch.distributed.destroy_process_group()
+
+    return output
