@@ -198,7 +198,7 @@ def text2text_generation_preprocessing(
 
 
     def tokenize_function(examples):
-        examples[config.text_column_name] = config.dataset_prefix + examples[config.text_column_name]
+        examples[config.text_column_name] = [config.dataset_prefix + example[config.text_column_name] for example in examples]
         return tokenizer(
             examples[config.text_column_name],
             truncation=config.truncation,
