@@ -26,10 +26,10 @@ TEXT_GENERATION_DEFAULT_KWARGS = {
     "num_return_sequences": 1,
     "max_new_tokens": 100,
     "min_new_tokens": 100,
-    "temperature": 1.0,
     "do_sample": False,
     "use_cache": True,
     "pad_token_id": 0,
+    "eos_token_id": 0,
     "num_beams": 1,
 }
 TEXT_GENERATION_PREFILL_OVERRIDES = {
@@ -134,21 +134,20 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             **self.config.call_kwargs,
         )
 
-        LOGGER.info("\t+ Warming up backend for Inference")
-        for _ in range(self.config.warmup_runs):
-            if backend.config.task in TEXT_GENERATION_TASKS:
-                _ = backend.generate(self.inputs, {**self.config.generate_kwargs, **TEXT_GENERATION_WARMUP_OVERRIDES})
-            elif backend.config.task in IMAGE_DIFFUSION_TASKS:
-                _ = backend.call(self.inputs, {**self.config.call_kwargs, **IMAGE_DIFFUSION_WARMUP_OVERRIDES})
-            else:
-                _ = backend.forward(self.inputs, self.config.forward_kwargs)
-
         if backend.config.task in TEXT_GENERATION_TASKS:
-            LOGGER.info("\t+ Additional warmup for Text Generation")
+            LOGGER.info("\t+ Warming up backend for Text Generation")
             _ = backend.generate(self.inputs, self.config.generate_kwargs)
+            for _ in range(self.config.warmup_runs):
+                _ = backend.generate(self.inputs, {**self.config.generate_kwargs, **TEXT_GENERATION_WARMUP_OVERRIDES})
         elif backend.config.task in IMAGE_DIFFUSION_TASKS:
-            LOGGER.info("\t+ Additional warmup for Image Diffusion")
+            LOGGER.info("\t+ Warming up backend for Image Diffusion")
             _ = backend.call(self.inputs, self.config.call_kwargs)
+            for _ in range(self.config.warmup_runs):
+                _ = backend.call(self.inputs, {**self.config.call_kwargs, **IMAGE_DIFFUSION_WARMUP_OVERRIDES})
+        else:
+            LOGGER.info("\t+ Warming up backend for Inference")
+            for _ in range(self.config.warmup_runs):
+                _ = backend.forward(self.inputs, self.config.forward_kwargs)
 
         if self.config.memory:
             if backend.config.task in TEXT_GENERATION_TASKS:
