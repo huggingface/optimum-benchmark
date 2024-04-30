@@ -27,6 +27,7 @@ benchmark:
   truncation: True
   input_shapes:
     batch_size: 1
+  dataset_prefix: "" 
 
   generate_kwargs:
     max_new_tokens: 10

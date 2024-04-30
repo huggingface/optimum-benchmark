@@ -18,7 +18,7 @@ backend:
   device_ids: 0
   no_weights: true
   model: google-t5/t5-base
-  task: text-classification-t5
+  task: text2text-generation
 
 benchmark:
   dataset_name: EnergyStarAI/text_classification
@@ -27,6 +27,7 @@ benchmark:
   truncation: True
   input_shapes:
     batch_size: 1
+  dataset_prefix: 'sst2 sentence: ' 
 
   generate_kwargs:
     max_new_tokens: 10

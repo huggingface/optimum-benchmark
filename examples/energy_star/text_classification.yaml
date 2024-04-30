@@ -17,7 +17,7 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model: lvwerra/distilbert-imdb
+  model: nlptown/bert-base-multilingual-uncased-sentiment
   task: text-classification
 
 benchmark:
