@@ -118,7 +118,8 @@ def text_classification_preprocessing(
             examples[config.text_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length = getattr(pretrained_config, "max_position_embeddings", 512)
+            #max_length = getattr(pretrained_config, "max_position_embeddings", 512)
+            max_length=512
             )
 
     dataset = dataset.map(
