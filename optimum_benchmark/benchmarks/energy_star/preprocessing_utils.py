@@ -210,7 +210,7 @@ def text2text_generation_preprocessing(
             max_length = getattr(pretrained_config, "max_position_embeddings", 512)- len(tokenizer(config.dataset_prefix))
             )
 
-    dataset = dataset.map(add_prefix)
+    dataset = dataset.map(lambda batch: {config.text_column_name: add_prefix(batch[config.text_column_name])}, batched=True)
 
     dataset = dataset.map(
         tokenize_function,
