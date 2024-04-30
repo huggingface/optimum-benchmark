@@ -17,7 +17,7 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model: google-t5/t5-base
+  model: google-t5/t5-small
   task: text2text-generation
 
 benchmark:
@@ -27,7 +27,7 @@ benchmark:
   truncation: True
   input_shapes:
     batch_size: 1
-  dataset_prefix: 'sst2 sentence: ' 
+  dataset_prefix: 'sst2 sentence: '
 
   generate_kwargs:
     max_new_tokens: 10
