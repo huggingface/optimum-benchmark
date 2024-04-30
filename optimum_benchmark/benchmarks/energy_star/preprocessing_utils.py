@@ -196,10 +196,9 @@ def text2text_generation_preprocessing(
 
     padding = False if config.input_shapes["batch_size"] == 1 else True
 
-    def add_prefix(examples):
-        for e in examples:
-            e[config.text_column_name] = config.dataset_prefix + e[config.text_column_name]
-        return examples
+    def add_prefix(example):
+        example[config.text_column_name] = config.dataset_prefix + example[config.text_column_name]
+        return example
 
     def tokenize_function(examples):
         return tokenizer(
@@ -210,8 +209,8 @@ def text2text_generation_preprocessing(
             max_length = getattr(pretrained_config, "max_position_embeddings", 512)- len(tokenizer(config.dataset_prefix))
             )
 
-    dataset = dataset.map(lambda batch: {config.text_column_name: add_prefix(batch[config.text_column_name])}, batched=True)
-
+    dataset=dataset.map(add_prefix)
+    
     dataset = dataset.map(
         tokenize_function,
         batched=True,
