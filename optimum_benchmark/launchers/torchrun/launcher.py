@@ -97,9 +97,9 @@ def target(worker, queue, lock, log_level, *worker_args, launch_config: LaunchCo
 
 @record
 def entrypoint(worker, log_level, *worker_args):
-    rank = os.environ.get("RANK", "0")
+    rank = int(os.environ.get("RANK", "0"))
 
-    if rank == "0":
+    if rank == 0:
         setup_logging(level=log_level, prefix=f"RANK-{rank}")
     elif os.environ.get("LOG_ALL_RANKS", "0") == "1":
         setup_logging(level=log_level, prefix=f"RANK-{rank}")
