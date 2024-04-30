@@ -6,18 +6,15 @@ from ..backends.base import Backend
 from ..report import BenchmarkReport
 from .config import ScenarioConfigT
 
-LOGGER = getLogger("benchmark")
+LOGGER = getLogger("scenario")
 
 
 class Scenario(Generic[ScenarioConfigT], ABC):
     NAME: ClassVar[str]
 
     def __init__(self, config: ScenarioConfigT) -> None:
-        LOGGER.info(f"Allocating {self.NAME} benchmark")
+        LOGGER.info(f"Allocating {self.NAME} scenario")
         self.config = config
 
-    def run(self, backend: Backend) -> None:
+    def run(self, backend: Backend) -> BenchmarkReport:
         raise NotImplementedError("Scenario must implement run method")
-
-    def get_report(self) -> BenchmarkReport:
-        raise NotImplementedError("Scenario must implement report method")

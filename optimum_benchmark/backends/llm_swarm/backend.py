@@ -87,8 +87,8 @@ class LLMSwarmBackend(Backend[LLMSwarmConfig]):
     def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> List[str]:
         return asyncio.run(self.batch_client_call(inputs, kwargs))
 
-    def clean(self) -> None:
-        super().clean()
+    def cleanup(self) -> None:
+        super().cleanup()
 
         if hasattr(self, "llm_swarm"):
             LOGGER.info("Cleaning up LLM Swarm")

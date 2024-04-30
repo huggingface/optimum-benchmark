@@ -209,8 +209,8 @@ class OVBackend(Backend[OVConfig]):
     def call(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         return self.pretrained_model(**inputs, **kwargs)
 
-    def clean(self) -> None:
-        super().clean()
+    def cleanup(self) -> None:
+        super().cleanup()
 
         if hasattr(self, "tmpdir"):
             self.tmpdir.cleanup()

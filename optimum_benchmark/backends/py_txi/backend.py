@@ -23,9 +23,10 @@ class PyTXIBackend(Backend[PyTXIConfig]):
     def __init__(self, config: PyTXIConfig) -> None:
         super().__init__(config)
 
+        self.volume = list(self.config.volumes.keys())[0]
+
         LOGGER.info("\t+ Creating backend temporary directory")
         self.tmpdir = TemporaryDirectory()
-        self.volume = list(self.config.volumes.keys())[0]
 
         if self.config.no_weights:
             LOGGER.info("\t+ Loading no weights model")
@@ -174,8 +175,8 @@ class PyTXIBackend(Backend[PyTXIConfig]):
             max_new_tokens=kwargs.get("max_new_tokens"),
         )
 
-    def clean(self) -> None:
-        super().clean()
+    def cleanup(self) -> None:
+        super().cleanup()
 
         if hasattr(self, "tmpdir"):
             LOGGER.info("\t+ Cleaning temporary directory")

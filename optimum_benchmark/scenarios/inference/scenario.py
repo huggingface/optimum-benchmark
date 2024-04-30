@@ -81,7 +81,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
     def __init__(self, config: InferenceConfig) -> None:
         super().__init__(config)
 
-    def run(self, backend: Backend[BackendConfigT]) -> None:
+    def run(self, backend: Backend[BackendConfigT]) -> BenchmarkReport:
         if is_torch_distributed_available() and torch.distributed.is_initialized():
             LOGGER.info("\t+ Distributing batch size across processes")
             if self.config.input_shapes["batch_size"] % torch.distributed.get_world_size() != 0:
@@ -186,6 +186,8 @@ class InferenceScenario(Scenario[InferenceConfig]):
 
             self.report.log_energy()
             self.report.log_efficiency()
+
+        return self.report
 
     ## Memory tracking
     def run_text_generation_memory_tracking(self, backend: Backend[BackendConfigT]):
@@ -448,6 +450,3 @@ class InferenceScenario(Scenario[InferenceConfig]):
             * self.config.generate_kwargs["num_beams"]  # at each beam stage there are num_beams tokens generated
             * (self.config.generate_kwargs["max_new_tokens"] - 1)  # 1 token is generated during prefill
         )
-
-    def get_report(self) -> BenchmarkReport:
-        return self.report

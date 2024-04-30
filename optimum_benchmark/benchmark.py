@@ -61,9 +61,14 @@ def run(benchmark_config: BenchmarkConfig) -> BenchmarkReport:
     scenario: Scenario = scenario_factory(scenario_config)
 
     # Benchmark the backend
-    scenario.run(backend)
-    report = scenario.get_report()
-    backend.clean()
+    try:
+        report = scenario.run(backend)
+    except Exception as error:
+        LOGGER.error("Error during benchmark execution", exc_info=True)
+        backend.cleanup()
+        raise error
+    else:
+        backend.cleanup()
 
     return report
 
@@ -81,15 +86,15 @@ def launch(benchmark_config: BenchmarkConfig) -> BenchmarkReport:
         tmpdir = TemporaryDirectory()
         os.chdir(tmpdir.name)
 
+    # Allocate requested launcher
+    launcher_config: LauncherConfig = benchmark_config.launcher
+    launcher_factory: Type[Launcher] = get_class(launcher_config._target_)
+    launcher: Launcher = launcher_factory(launcher_config)
+
     try:
-        # Allocate requested launcher
-        launcher_config: LauncherConfig = benchmark_config.launcher
-        launcher_factory: Type[Launcher] = get_class(launcher_config._target_)
-        launcher: Launcher = launcher_factory(launcher_config)
-        # Launch the benchmark
         report = launcher.launch(run, benchmark_config)
     except Exception as error:
-        LOGGER.error("Error during benchmark", exc_info=True)
+        LOGGER.error("Error during benchmark launch", exc_info=True)
         exception = error
     else:
         exception = None

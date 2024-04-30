@@ -169,8 +169,8 @@ class INCBackend(Backend[INCConfig]):
     def generate(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         return self.pretrained_model.generate(**input, **kwargs)
 
-    def clean(self) -> None:
-        super().clean()
+    def cleanup(self) -> None:
+        super().cleanup()
 
         if hasattr(self, "tmpdir"):
             LOGGER.info("\t+ Cleaning backend temporary directory")

@@ -120,8 +120,9 @@ class Backend(Generic[BackendConfigT], ABC):
         """
         raise NotImplementedError("Backend must implement train method")
 
-    def clean(self) -> None:
+    def cleanup(self) -> None:
         if hasattr(self, "pretrained_model"):
+            LOGGER.info("\t+ Deleting pretrained model")
             del self.pretrained_model
 
         gc.collect()

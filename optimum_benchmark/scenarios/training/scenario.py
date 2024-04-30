@@ -32,7 +32,7 @@ class TrainingScenario(Scenario[TrainingConfig]):
     def __init__(self, config: TrainingConfig) -> None:
         super().__init__(config)
 
-    def run(self, backend: Backend[BackendConfigT]) -> None:
+    def run(self, backend: Backend[BackendConfigT]) -> TrainingReport:
         LOGGER.info("\t+ Creating dataset generator")
         dataset_generator = DatasetGenerator(
             task=backend.config.task, model_shapes=backend.model_shapes, dataset_shapes=self.config.dataset_shapes
@@ -102,6 +102,8 @@ class TrainingScenario(Scenario[TrainingConfig]):
                 self.report.overall.energy, volume=self.overall_volume, unit=TRAIN_EFFICIENCY_UNIT
             )
 
+        return self.report
+
     @property
     def overall_volume(self) -> int:
         return (
@@ -121,6 +123,3 @@ class TrainingScenario(Scenario[TrainingConfig]):
     @property
     def train_volume(self) -> int:
         return self.overall_volume - self.warmup_volume
-
-    def get_report(self) -> BenchmarkReport:
-        return self.report
