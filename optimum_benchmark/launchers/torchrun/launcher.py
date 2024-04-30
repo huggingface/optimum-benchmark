@@ -1,4 +1,5 @@
 import multiprocessing as mp
+import multiprocessing.synchronize as mp_sync
 import os
 from logging import getLogger
 from typing import Any, Callable, Dict
@@ -64,11 +65,14 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
         if isolated_process.exitcode != 0:
             raise RuntimeError(f"Process exited with non-zero code {isolated_process.exitcode}.")
         elif queue.empty():
-            raise RuntimeError("No report was found in the queue.")
+            raise RuntimeError("Queue is empty 😥")
 
         reports = []
+
         while not queue.empty():
+            lock.acquire()
             reports.append(queue.get())
+            lock.release()
 
         if len(reports) != self.config.nproc_per_node:
             raise RuntimeError(
@@ -81,22 +85,17 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
         return report
 
 
-def target(worker, queue, lock, log_level, *worker_args, launch_config: LaunchConfig):
+def target(worker, queue: mp.Queue, lock: mp_sync.Lock, log_level, *worker_args, launch_config: LaunchConfig):
     os.environ["ISOLATED_PROCESS_PID"] = str(os.getpid())
     setup_logging(level=log_level, prefix="ISOLATED-PROCESS")
     LOGGER.info(f"Running benchmark in isolated process [{os.getpid()}].")
 
     elastic_agent_launcher = elastic_launch(config=launch_config, entrypoint=entrypoint)
-    outputs = elastic_agent_launcher(worker, log_level, *worker_args)
-
-    lock.acquire()
-    for _, output in outputs.items():
-        queue.put(output)
-    lock.release()
+    elastic_agent_launcher(worker, queue, lock, log_level, *worker_args)
 
 
 @record
-def entrypoint(worker, log_level, *worker_args):
+def entrypoint(worker, queue: mp.Queue, lock: mp_sync.Lock, log_level, *worker_args):
     rank = int(os.environ.get("RANK", "0"))
 
     if rank == 0:
@@ -106,18 +105,20 @@ def entrypoint(worker, log_level, *worker_args):
     else:
         setup_logging(level="ERROR", prefix=f"RANK-{rank}")
 
-    LOGGER.info("Initializing torch.distributed process group.")
-    torch.distributed.init_process_group()
-
     if torch.cuda.is_available():
         LOGGER.info(f"\t+ Setting torch.distributed cuda device to {rank}.")
         torch.cuda.set_device(rank)
 
+    LOGGER.info("Initializing torch.distributed process group.")
+    torch.distributed.init_process_group()
     torch.distributed.barrier()
+
     output = worker(*worker_args)
+
+    lock.acquire()
+    queue.put(output)
+    lock.release()
+
     torch.distributed.barrier()
-
-    LOGGER.info("Destroying torch.distributed process group.")
     torch.distributed.destroy_process_group()
-
-    return output
+    LOGGER.info("Destroyed torch.distributed process group.")
