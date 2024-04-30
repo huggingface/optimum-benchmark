@@ -17,7 +17,7 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model: mrm8488/distilroberta-finetuned-financial-news-sentiment-analysis
+  model: lvwerra/distilbert-imdb
   task: text-classification
 
 benchmark:
