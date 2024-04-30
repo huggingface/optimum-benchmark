@@ -27,7 +27,7 @@ LOGGER = getLogger("benchmark")
 
 @dataclass
 class BenchmarkConfig(PushToHubMixin):
-    # Experiment name
+    # Benchmark name
     benchmark_name: str
 
     # BACKEND CONFIGURATION
@@ -64,7 +64,7 @@ def run(benchmark_config: BenchmarkConfig) -> BenchmarkReport:
     try:
         report = scenario.run(backend)
     except Exception as error:
-        LOGGER.error("Error during benchmark execution", exc_info=True)
+        LOGGER.error("Error during scenario execution", exc_info=True)
         backend.cleanup()
         raise error
     else:
