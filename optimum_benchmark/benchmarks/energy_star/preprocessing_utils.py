@@ -14,6 +14,7 @@ def preprocess(dataset: Dataset, task: str, config: EnergyStarConfig, preprocess
         "feature-extraction": feature_extraction_preprocessing,
         "sentence-similarity": sentence_similarity_preprocessing,
         "text-classification": text_classification_preprocessing,
+        "text-classification-t5": text_classification_t5,
         "question-answering": question_answering_preprocessing,
         "text-generation": text_generation_preprocessing,
         "text2text-generation": text_generation_preprocessing,
@@ -118,9 +119,48 @@ def text_classification_preprocessing(
             examples[config.text_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length = getattr(pretrained_config, "max_position_embeddings", 512)    
+            max_length = getattr(pretrained_config, "max_position_embeddings", 512)
             )
 
+    dataset = dataset.map(
+        tokenize_function,
+        batched=True,
+        remove_columns=dataset.features,
+        desc="Running tokenizer on dataset",
+    ).with_format("torch")
+
+    return dataset
+
+def text_classification_t5(
+    dataset: Dataset, config: EnergyStarConfig, tokenizer: PreTrainedTokenizer, pretrained_config: PretrainedConfig,
+) -> Dataset:
+    # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
+    if config.input_shapes["batch_size"] == 1:
+        dataset = dataset.filter(lambda example: example[config.text_column_name] != "")
+
+    if config.num_samples != -1:
+        dataset = dataset.select(range(config.num_samples))
+
+    # Add a pad token if the tokenizer doesn't have one
+    if getattr(tokenizer, "pad_token", None) is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    padding = False if config.input_shapes["batch_size"] == 1 else True
+
+    def add_prefix(example):
+        example['text'] = 'sst2 sentence: ' + example['text']
+    return example
+
+    def tokenize_function(examples):
+        examples[config.text_column_name] = 'sst2 sentence: ' + examples[config.text_column_name]
+        return tokenizer(
+            examples[config.text_column_name],
+            padding=padding,
+            truncation=config.truncation,
+            max_length = getattr(pretrained_config, "max_position_embeddings", 512) - len(tokenizer('sst2 sentence: '))
+            )
+
+    dataset = dataset.map(add_prefix)
     dataset = dataset.map(
         tokenize_function,
         batched=True,
