@@ -118,7 +118,8 @@ def text_classification_preprocessing(
             examples[config.text_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length = getattr(pretrained_config, "max_position_embeddings", 512)
+            #max_length = getattr(pretrained_config, "max_position_embeddings", 512)
+            max_length = 512
             )
 
     dataset = dataset.map(
@@ -210,7 +211,6 @@ def text2text_generation_preprocessing(
             )
 
     dataset=dataset.map(add_prefix)
-    
     dataset = dataset.map(
         tokenize_function,
         batched=True,
