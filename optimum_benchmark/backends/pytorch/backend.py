@@ -120,8 +120,16 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                     self.pretrained_model.vae.decode, **self.config.torch_compile_config
                 )
             else:
-                LOGGER.info("\t+ Using torch.compile on model")
-                self.pretrained_model = torch.compile(self.pretrained_model, **self.config.torch_compile_config)
+                if self.config.torch_compile_target == "forward":
+                    LOGGER.info("\t+ Using torch.compile on forward")
+                    self.pretrained_model.forward = torch.compile(
+                        self.pretrained_model.forward, **self.config.torch_compile_config
+                    )
+                elif self.config.torch_compile_target == "model":
+                    LOGGER.info("\t+ Using torch.compile on model")
+                    self.pretrained_model = torch.compile(self.pretrained_model, **self.config.torch_compile_config)
+                else:
+                    raise ValueError(f"Target {self.config.torch_compile_target} not supported")
 
         # DeepSpeed
         if self.config.deepspeed_inference:
@@ -145,11 +153,11 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             LOGGER.info("\t+ Loading Timm model")
             self.pretrained_model = self.automodel_class(model_name=self.config.model)
             if self.config.device != "cpu":
-                LOGGER.info(f"\t+ Moving model to device: {self.config.device}")
-                self.pretrained_model.to(self.config.device)
+                LOGGER.info(f"\t+ Moving Timm model to device: {self.config.device}")
+                self.pretrained_model = self.pretrained_model.to(self.config.device)
 
         elif self.config.library == "diffusers":
-            LOGGER.info("\t+ Loading Diffusion pipeline")
+            LOGGER.info("\t+ Loading Diffusion Pipeline")
             self.pretrained_model = self.automodel_class.from_pretrained(
                 pretrained_model_name_or_path=self.config.model,
                 pretrained_model_or_path=self.config.model,
@@ -158,8 +166,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 **self.automodel_kwargs,
             )
             if self.config.device_map is None and self.config.device != "cpu":
-                LOGGER.info(f"\t+ Moving pipeline to device: {self.config.device}")
-                self.pretrained_model.to(self.config.device)
+                LOGGER.info(f"\t+ Moving Diffusion Pipeline to device: {self.config.device}")
+                self.pretrained_model = self.pretrained_model.to(self.config.device)
 
         elif self.is_quantized:
             LOGGER.info(f"\t+ Loading {self.quantization_config.quant_method}-quantized model")
@@ -188,8 +196,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 pretrained_model_name_or_path=self.config.model, **self.config.hub_kwargs, **self.automodel_kwargs
             )
             if self.config.device != "cpu":
-                LOGGER.info(f"\t+ Moving model to device: {self.config.device}")
-                self.pretrained_model.to(self.config.device)
+                LOGGER.info(f"\t+ Moving Transformers model to device: {self.config.device}")
+                self.pretrained_model = self.pretrained_model.to(self.config.device)
 
     def create_no_weights_model(self) -> None:
         if self.pretrained_config is None:
@@ -222,8 +230,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
 
     def load_model_with_no_weights(self) -> None:
-        LOGGER.info("\t+ Creating no weights model")
         self.create_no_weights_model()
+        original_model, self.config.model = self.config.model, self.no_weights_model
 
         if self.config.deepspeed_inference:
             with torch.device("meta"):
@@ -237,14 +245,21 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 )
             LOGGER.info("\t+ Materializing meta model on CPU to avoid OOM")
             self.pretrained_model.to_empty(device="cpu")
-            LOGGER.info("\t+ Tying model weights")
-            self.pretrained_model.tie_weights()
+
+        elif not self.is_quantized and self.config.device_map is None:
+            with torch.device(self.config.device):
+                LOGGER.info("\t+ Loading Transformers model using device context manager for fast initialization")
+                self.pretrained_model = self.automodel_class.from_pretrained(
+                    pretrained_model_name_or_path=self.no_weights_model,
+                    **self.config.hub_kwargs,
+                    **self.automodel_kwargs,
+                )
+
         else:
             with random_init_weights():
-                original_model, self.config.model = self.config.model, self.no_weights_model
-                LOGGER.info("\t+ Loading no weights AutoModel")
                 self.load_model_from_pretrained()
-                self.config.model = original_model
+
+        self.config.model = original_model
 
     def process_quantization_config(self) -> None:
         if self.is_gptq_quantized:
