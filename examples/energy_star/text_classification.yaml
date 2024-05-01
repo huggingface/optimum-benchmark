@@ -17,7 +17,7 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model: j-hartmann/sentiment-roberta-large-english-3-classes/
+  model: j-hartmann/sentiment-roberta-large-english-3-classes
   task: text-classification
 
 benchmark:

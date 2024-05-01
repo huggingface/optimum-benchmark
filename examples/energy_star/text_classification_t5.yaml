@@ -17,7 +17,7 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model: google-t5/t5-small
+  model: google-t5/t5-large
   task: text2text-generation
 
 benchmark:
