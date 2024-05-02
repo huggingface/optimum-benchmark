@@ -17,7 +17,7 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model: facebook/opt-125m
+  model: openai-community/gpt2
   task: text-generation
 
 benchmark:
