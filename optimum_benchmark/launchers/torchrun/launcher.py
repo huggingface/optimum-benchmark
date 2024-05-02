@@ -65,14 +65,19 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
         if isolated_process.exitcode != 0:
             raise RuntimeError(f"Process exited with non-zero code {isolated_process.exitcode}.")
         elif queue.empty():
-            raise RuntimeError("Queue is empty 😥")
+            raise RuntimeError("Queue is empty after the isolated process has finished.")
 
         reports = []
 
         while not queue.empty():
-            reports.append(queue.get())
+            try:
+                reports.append(queue.get(timeout=10))
+            except Exception as e:
+                LOGGER.warning(f"Failed to get report from queue: {e}")
 
-        if len(reports) != self.config.nproc_per_node:
+        if len(reports) == 0:
+            raise RuntimeError("No reports were gathered from the isolated processes.")
+        elif len(reports) != self.config.nproc_per_node:
             raise RuntimeError(
                 f"Number of gathered reports ({len(reports)}) does not match the number of processes ({self.config.nproc_per_node})."
             )
@@ -108,19 +113,20 @@ def entrypoint(worker, queue: mp.Queue, lock: mp_sync.Lock, log_level, *worker_a
         torch.cuda.set_device(rank)
         device_ids = [rank]
     else:
-        device_ids = []
+        device_ids = None
 
-    LOGGER.info("Initializing torch.distributed process group.")
+    LOGGER.info("Initializing torch.distributed.")
     torch.distributed.init_process_group()
     torch.distributed.barrier(device_ids=device_ids)
 
     output = worker(*worker_args)
 
     torch.distributed.barrier(device_ids=device_ids)
-    torch.distributed.destroy_process_group()
-    LOGGER.info("Destroyed torch.distributed process group.")
 
     lock.acquire()
-    LOGGER.info("Putting output in queue.")
     queue.put(output)
     lock.release()
+
+    torch.distributed.barrier(device_ids=device_ids)
+    torch.distributed.destroy_process_group()
+    LOGGER.info("Destroyed torch.distributed process group.")

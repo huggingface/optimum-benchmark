@@ -154,6 +154,8 @@ class MemoryTracker:
         self.max_allocated_memory = 0
         self.max_reserved_memory = 0
 
+        torch.cuda.synchronize()
+
         for device in range(self.num_pytorch_devices):
             try:
                 torch.cuda.reset_peak_memory_stats(device=device)
@@ -161,6 +163,8 @@ class MemoryTracker:
                 LOGGER.warning(f"\t\t+ Could not reset max memory stats for device {device}: {e}")
 
         yield from self._cuda_memory()
+
+        torch.cuda.synchronize()
 
         for device in range(self.num_pytorch_devices):
             try:
