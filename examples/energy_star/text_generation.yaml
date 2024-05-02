@@ -17,7 +17,7 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model: openai-community/gpt2
+  model: distilbert/distilgpt2
   task: text-generation
 
 benchmark:
