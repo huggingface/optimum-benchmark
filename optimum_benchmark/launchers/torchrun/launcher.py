@@ -105,15 +105,13 @@ def entrypoint(worker, queue: mp.Queue, lock: mp_sync.Lock, log_level, *worker_a
 
     if torch.cuda.is_available():
         LOGGER.info(f"\t+ Setting torch.distributed cuda device to {rank}.")
-        device_id = torch.device("cuda", rank)
-        torch.cuda.set_device(device_id)
+        torch.cuda.set_device(rank)
         device_ids = [rank]
     else:
-        device_id = None
         device_ids = []
 
     LOGGER.info("Initializing torch.distributed process group.")
-    torch.distributed.init_process_group(device_id=device_id)
+    torch.distributed.init_process_group()
     torch.distributed.barrier(device_ids=device_ids)
 
     output = worker(*worker_args)
