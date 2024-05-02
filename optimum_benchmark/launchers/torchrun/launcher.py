@@ -70,9 +70,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
         reports = []
 
         while not queue.empty():
-            lock.acquire()
             reports.append(queue.get())
-            lock.release()
 
         if len(reports) != self.config.nproc_per_node:
             raise RuntimeError(
@@ -107,18 +105,24 @@ def entrypoint(worker, queue: mp.Queue, lock: mp_sync.Lock, log_level, *worker_a
 
     if torch.cuda.is_available():
         LOGGER.info(f"\t+ Setting torch.distributed cuda device to {rank}.")
-        torch.cuda.set_device(rank)
+        device_id = torch.device("cuda", rank)
+        torch.cuda.set_device(device_id)
+        device_ids = [rank]
+    else:
+        device_id = None
+        device_ids = []
 
     LOGGER.info("Initializing torch.distributed process group.")
-    torch.distributed.init_process_group()
-    torch.distributed.barrier()
+    torch.distributed.init_process_group(device_id=device_id)
+    torch.distributed.barrier(device_ids=device_ids)
 
     output = worker(*worker_args)
 
-    lock.acquire()
-    queue.put(output)
-    lock.release()
-
-    torch.distributed.barrier()
+    torch.distributed.barrier(device_ids=device_ids)
     torch.distributed.destroy_process_group()
     LOGGER.info("Destroyed torch.distributed process group.")
+
+    lock.acquire()
+    LOGGER.info("Putting output in queue.")
+    queue.put(output)
+    lock.release()
