@@ -197,27 +197,51 @@ def text2text_generation_preprocessing(
 
     padding = False if config.input_shapes["batch_size"] == 1 else True
 
-    def add_prefix(example):
-        example[config.text_column_name] = config.dataset_prefix + example[config.text_column_name]
+    def add_single_prefix(example):
+        example[config.text_column_name] = config.dataset_prefix1 + example[config.text_column_name]
         return example
 
-    def tokenize_function(examples):
+    def add_qa_prefix(example):
+        example[config.text_column_name] = config.dataset_prefix1 + example[config.question_column_name] + config.dataset_prefix2 + examples[config.context_column_name]
+        return example
+
+    def tokenize_function_double(examples):
         return tokenizer(
             examples[config.text_column_name],
             truncation=config.truncation,
             return_token_type_ids=False,
             padding=padding,
-            max_length = getattr(pretrained_config, "max_position_embeddings", 512)- len(tokenizer(config.dataset_prefix))
+            max_length = getattr(pretrained_config, "max_position_embeddings", 512)- len(tokenizer(config.dataset_prefix1) + tokenizer(config.dataset_prefix2))
             )
 
-    dataset=dataset.map(add_prefix)
-    dataset = dataset.map(
-        tokenize_function,
-        batched=True,
-        writer_batch_size=50,
-        remove_columns=dataset.features,
-        desc="Running tokenizer on dataset",
-    ).with_format("torch")
+    def tokenize_function_single(examples):
+        return tokenizer(
+            examples[config.text_column_name],
+            truncation=config.truncation,
+            return_token_type_ids=False,
+            padding=padding,
+            max_length = getattr(pretrained_config, "max_position_embeddings", 512)- len(tokenizer(config.dataset_prefix1))
+            )
+
+    if backend.task in ['question-answering']:
+        dataset=dataset.map(add_qa_prefix)
+        dataset = dataset.map(
+            tokenize_function_double,
+            batched=True,
+            writer_batch_size=50,
+            remove_columns=dataset.features,
+            desc="Running tokenizer on dataset",
+        ).with_format("torch")
+
+    elif backend.task in ['text_classification']:
+        dataset=dataset.map(add_single_prefix)
+        dataset = dataset.map(
+            tokenize_function_single,
+            batched=True,
+            writer_batch_size=50,
+            remove_columns=dataset.features,
+            desc="Running tokenizer on dataset",
+        ).with_format("torch")
 
     return dataset
 

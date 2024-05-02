@@ -31,7 +31,8 @@ class EnergyStarConfig(BenchmarkConfig):
     max_length: int = field(
         default=-1, metadata={"help": "Maximum length to use by one of the truncation/padding parameters"}
     )
-    dataset_prefix : str = field(default = "", metadata={"help": "Prefix to add to text2textgeneration input."})
+    dataset_prefix1 : str = field(default = "", metadata={"help": "Prefix to add to text2textgeneration input."})
+    dataset_prefix2 : str = field(default = "", metadata={"help": "Prefix to add to text2textgeneration input."})
 
     # text dataset options
     image_column_name: str = field(default="image", metadata={"help": "Name of the column with the image input."})
