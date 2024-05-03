@@ -208,7 +208,7 @@ def text2text_generation_preprocessing(
             truncation=config.truncation,
             return_token_type_ids=False,
             padding=padding,
-            max_length = getattr(pretrained_config, "max_position_embeddings", 512)- len(tokenizer(config.dataset_prefix1) + tokenizer(config.dataset_prefix2))
+            max_length = getattr(pretrained_config, "max_position_embeddings", 512)- (len(tokenizer(config.dataset_prefix1) + len(tokenizer(config.dataset_prefix2))))
             )
 
     def tokenize_function_single(examples):
