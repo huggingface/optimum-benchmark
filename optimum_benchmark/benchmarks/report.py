@@ -18,6 +18,18 @@ class BenchmarkMeasurements:
     energy: Optional[Energy] = None
     efficiency: Optional[Efficiency] = None
 
+    def __post_init__(self):
+        if isinstance(self.memory, dict):
+            self.memory = Memory(**self.memory)
+        if isinstance(self.latency, dict):
+            self.latency = Latency(**self.latency)
+        if isinstance(self.throughput, dict):
+            self.throughput = Throughput(**self.throughput)
+        if isinstance(self.energy, dict):
+            self.energy = Energy(**self.energy)
+        if isinstance(self.efficiency, dict):
+            self.efficiency = Efficiency(**self.efficiency)
+
     @staticmethod
     def aggregate(measurements: List["BenchmarkMeasurements"]) -> "BenchmarkMeasurements":
         memory = Memory.aggregate([m.memory for m in measurements]) if measurements[0].memory is not None else None
@@ -49,7 +61,12 @@ class BenchmarkReport(PushToHubMixin):
     def from_dict(cls, data: Dict[str, Any]) -> "PushToHubMixin":
         return make_dataclass(
             cls_name=cls.__name__, fields=[(target, BenchmarkMeasurements) for target in data.keys()], bases=(cls,)
-        )(**{target: BenchmarkMeasurements(**data[target]) for target in data.keys()})
+        )(**data)
+
+    def __post_init__(self):
+        for target in self.to_dict().keys():
+            if isinstance(getattr(self, target), dict):
+                setattr(self, target, BenchmarkMeasurements(**getattr(self, target)))
 
     def log_memory(self):
         for target in self.to_dict().keys():

@@ -40,7 +40,7 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         if not os.path.exists("isolated_process_report.json"):
             raise RuntimeError("Could not find report from isolated process.")
 
-        LOGGER.info("Loading report from isolated process.")
+        LOGGER.info("\t+ Loading report from isolated process.")
         report: BenchmarkReport = BenchmarkReport.from_json("isolated_process_report.json")
         report.log()
 

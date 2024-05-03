@@ -64,7 +64,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
 
         reports = []
 
-        LOGGER.info("Gatehring reports from all ranks.")
+        LOGGER.info("\t+ Gatehring reports from all ranks.")
         for rank in range(self.config.nproc_per_node):
             if not os.path.isfile(f"rank_{rank}_report.json"):
                 raise RuntimeError(f"Could not find report from rank {rank}.")
@@ -72,7 +72,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             report = BenchmarkReport.from_json(f"rank_{rank}_report.json")
             reports.append(report)
 
-        LOGGER.info("Aggregating reports from all ranks.")
+        LOGGER.info("\t+ Aggregating reports from all ranks.")
         report = BenchmarkReport.aggregate(reports)
         report.log()
 
