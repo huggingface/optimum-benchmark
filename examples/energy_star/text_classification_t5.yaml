@@ -28,7 +28,8 @@ benchmark:
   input_shapes:
     batch_size: 1
   dataset_prefix1: 'sst2 sentence: '
-
+  t5_task: question_answering
+  
   generate_kwargs:
     max_new_tokens: 10
     min_new_tokens: 10

@@ -29,6 +29,7 @@ benchmark:
     batch_size: 1
   dataset_prefix1: 'question: '
   dataset_prefix2: ' context: '
+  t5_task: question_answering
 
 # hydra/cli specific settings
 hydra:
