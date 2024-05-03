@@ -185,9 +185,6 @@ def text2text_generation_preprocessing(
     dataset: Dataset, config: EnergyStarConfig, tokenizer: PreTrainedTokenizer,  pretrained_config: PretrainedConfig,
 ) -> Dataset:
     # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
-    if config.input_shapes["batch_size"] == 1:
-        dataset = dataset.filter(lambda example: example[config.text_column_name] != "")
-
     if config.num_samples != -1:
         dataset = dataset.select(range(config.num_samples))
 
