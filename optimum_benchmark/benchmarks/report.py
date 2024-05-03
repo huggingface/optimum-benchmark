@@ -49,7 +49,7 @@ class BenchmarkReport(PushToHubMixin):
     def from_dict(cls, data: Dict[str, Any]) -> "PushToHubMixin":
         return make_dataclass(
             cls_name="BenchmarkReport", fields=[(target, BenchmarkMeasurements) for target in data.keys()], bases=(cls,)
-        )(**data)
+        )(**{target: BenchmarkMeasurements(**data[target]) for target in data.keys()})
 
     def log_memory(self):
         for target in self.to_dict().keys():
