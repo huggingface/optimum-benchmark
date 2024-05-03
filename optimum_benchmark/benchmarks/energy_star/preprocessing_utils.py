@@ -199,7 +199,7 @@ def text2text_generation_preprocessing(
         return example
 
     def add_qa_prefix(example):
-        example[config.text_column_name] = config.dataset_prefix1 + example[config.question_column_name] + config.dataset_prefix2 + examples[config.context_column_name]
+        example[config.text_column_name] = config.dataset_prefix1 + str(example[config.question_column_name]) + str(config.dataset_prefix2) + examples[config.context_column_name]
         return example
 
     def tokenize_function_double(examples):
