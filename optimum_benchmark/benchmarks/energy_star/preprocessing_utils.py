@@ -220,7 +220,7 @@ def text2text_generation_preprocessing(
             max_length = getattr(pretrained_config, "max_position_embeddings", 512)- len(tokenizer(config.dataset_prefix1))
             )
 
-    if config.t5_task in ['question-answering']:
+    if config.t5_task in ['question_answering']:
         dataset=dataset.map(add_qa_prefix)
         dataset = dataset.map(
             tokenize_function_double,
