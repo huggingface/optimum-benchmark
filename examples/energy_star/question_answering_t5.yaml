@@ -23,6 +23,7 @@ backend:
 benchmark:
   dataset_name: EnergyStarAI/extractive_qa
   num_samples: 1000
+  text_column_name: question
   question_column_name: question
   context_column_name: context
   input_shapes:
