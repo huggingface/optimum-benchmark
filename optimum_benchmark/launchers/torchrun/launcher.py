@@ -1,8 +1,7 @@
 import multiprocessing as mp
-import multiprocessing.synchronize as mp_sync
 import os
 from logging import getLogger
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Union
 
 import torch.distributed
 from torch.distributed.elastic.multiprocessing.errors import record
@@ -43,15 +42,13 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             local_addr=self.config.local_addr,
         )
 
-    def launch(self, worker: Callable, *worker_args) -> Dict[str, Any]:
+    def launch(self, worker: Callable[..., BenchmarkReport], *worker_args: Any) -> BenchmarkReport:
         ctx = mp.get_context(self.config.start_method)
         log_level = ctx.get_logger().getEffectiveLevel()
-        queue = ctx.Queue()
-        lock = ctx.Lock()
 
         isolated_process = mp.Process(
             target=target,
-            args=(worker, queue, lock, log_level, *worker_args),
+            args=(worker, log_level, *worker_args),
             kwargs={"launch_config": self.launch_config},
             daemon=False,
         )
@@ -64,41 +61,41 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
 
         if isolated_process.exitcode != 0:
             raise RuntimeError(f"Process exited with non-zero code {isolated_process.exitcode}.")
-        elif queue.empty():
-            raise RuntimeError("Queue is empty after the isolated process has finished.")
 
         reports = []
 
-        while not queue.empty():
-            try:
-                reports.append(queue.get(timeout=10))
-            except Exception as e:
-                LOGGER.warning(f"Failed to get report from queue: {e}")
+        LOGGER.info("Gatehring reports from all ranks.")
+        for rank in range(self.config.nproc_per_node):
+            if not os.path.isfile(f"rank_{rank}_report.json"):
+                raise RuntimeError(f"Could not find report from rank {rank}.")
 
-        if len(reports) == 0:
-            raise RuntimeError("No reports were gathered from the isolated processes.")
-        elif len(reports) != self.config.nproc_per_node:
-            raise RuntimeError(
-                f"Number of gathered reports ({len(reports)}) does not match the number of processes ({self.config.nproc_per_node})."
-            )
+            report = BenchmarkReport.from_json(f"rank_{rank}_report.json")
+            reports.append(report)
 
+        LOGGER.info("Aggregating reports from all ranks.")
         report = BenchmarkReport.aggregate(reports)
         report.log()
 
         return report
 
 
-def target(worker, queue: mp.Queue, lock: mp_sync.Lock, log_level, *worker_args, launch_config: LaunchConfig):
-    os.environ["ISOLATED_PROCESS_PID"] = str(os.getpid())
+def target(
+    worker: Callable[..., BenchmarkReport], log_level: Union[str, int], *worker_args: Any, launch_config: LaunchConfig
+):
+    isolated_process_pid = os.getpid()
+    os.environ["ISOLATED_PROCESS_PID"] = str(isolated_process_pid)
+
     setup_logging(level=log_level, prefix="ISOLATED-PROCESS")
-    LOGGER.info(f"Running benchmark in isolated process [{os.getpid()}].")
+    LOGGER.info(f"Running benchmark in isolated process [{isolated_process_pid}].")
 
     elastic_agent_launcher = elastic_launch(config=launch_config, entrypoint=entrypoint)
-    elastic_agent_launcher(worker, queue, lock, log_level, *worker_args)
+    elastic_agent_launcher(worker, log_level, *worker_args)
+
+    LOGGER.info("Exiting isolated process.")
 
 
 @record
-def entrypoint(worker, queue: mp.Queue, lock: mp_sync.Lock, log_level, *worker_args):
+def entrypoint(worker: Callable[..., BenchmarkReport], log_level: Union[str, int], *worker_args: Any):
     rank = int(os.environ.get("RANK", "0"))
 
     if rank == 0:
@@ -111,22 +108,16 @@ def entrypoint(worker, queue: mp.Queue, lock: mp_sync.Lock, log_level, *worker_a
     if torch.cuda.is_available():
         LOGGER.info(f"\t+ Setting torch.distributed cuda device to {rank}.")
         torch.cuda.set_device(rank)
-        device_ids = [rank]
-    else:
-        device_ids = None
 
-    LOGGER.info("Initializing torch.distributed.")
+    LOGGER.info("Initializing torch.distributed process group.")
     torch.distributed.init_process_group()
-    torch.distributed.barrier(device_ids=device_ids)
 
-    output = worker(*worker_args)
+    report = worker(*worker_args)
 
-    torch.distributed.barrier(device_ids=device_ids)
+    LOGGER.info(f"Saving report from rank {rank}.")
+    report.save_json(f"rank_{rank}_report.json")
 
-    lock.acquire()
-    queue.put(output)
-    lock.release()
-
-    torch.distributed.barrier(device_ids=device_ids)
+    LOGGER.info("Destroying torch.distributed process group.")
     torch.distributed.destroy_process_group()
-    LOGGER.info("Destroyed torch.distributed process group.")
+
+    LOGGER.info("Exiting torchrun rank.")
