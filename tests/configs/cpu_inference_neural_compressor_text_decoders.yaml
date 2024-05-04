@@ -8,4 +8,4 @@ defaults:
   - _self_ # hydra 1.1 compatibility
   - override backend: neural-compressor
 
-benchmark_name: cpu_inference_neural_compressor_text_decoders
+name: cpu_inference_neural_compressor_text_decoders

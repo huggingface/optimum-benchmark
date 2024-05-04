@@ -8,28 +8,24 @@ import pandas as pd
 import pytest
 import torch
 
+from optimum_benchmark import Benchmark, BenchmarkConfig, InferenceConfig, ProcessConfig, PyTorchConfig, TrainingConfig
 from optimum_benchmark.backends.diffusers_utils import (
     extract_diffusers_shapes_from_model,
     get_diffusers_pretrained_config,
 )
-from optimum_benchmark.backends.pytorch.config import PyTorchConfig
 from optimum_benchmark.backends.timm_utils import extract_timm_shapes_from_config, get_timm_pretrained_config
 from optimum_benchmark.backends.transformers_utils import (
     extract_transformers_shapes_from_artifacts,
     get_transformers_pretrained_config,
     get_transformers_pretrained_processor,
 )
-from optimum_benchmark.benchmark import BenchmarkConfig, launch
 from optimum_benchmark.generators.dataset_generator import DatasetGenerator
 from optimum_benchmark.generators.input_generator import InputGenerator
 from optimum_benchmark.import_utils import get_git_revision_hash
-from optimum_benchmark.launchers.process.config import ProcessConfig
-from optimum_benchmark.report import BenchmarkReport
-from optimum_benchmark.scenarios.inference.config import INPUT_SHAPES, InferenceConfig
-from optimum_benchmark.scenarios.training.config import DATASET_SHAPES, TrainingConfig
+from optimum_benchmark.scenarios.inference.config import INPUT_SHAPES
+from optimum_benchmark.scenarios.training.config import DATASET_SHAPES
 from optimum_benchmark.system_utils import get_gpu_device_ids
-from optimum_benchmark.trackers.latency import LatencyTracker
-from optimum_benchmark.trackers.memory import MemoryTracker
+from optimum_benchmark.trackers import LatencyTracker, MemoryTracker
 
 PUSH_REPO_ID = os.environ.get("PUSH_REPO_ID", "optimum-benchmark/local")
 
@@ -49,6 +45,7 @@ LIBRARIES_TASKS_MODELS = [
 @pytest.mark.parametrize("scenario", ["training", "inference"])
 @pytest.mark.parametrize("library,task,model", LIBRARIES_TASKS_MODELS)
 def test_api_launch(device, scenario, library, task, model):
+    benchmark_name = f"{device}_{scenario}_{library}_{task}_{model}"
     device_ids = get_gpu_device_ids() if device == "cuda" else None
     no_weights = False if library != "transformers" else True
 
@@ -62,29 +59,33 @@ def test_api_launch(device, scenario, library, task, model):
 
     elif scenario == "inference":
         scenario_config = InferenceConfig(
-            memory=True,
+            energy=torch.version.hip is None,
             latency=True,
+            memory=True,
             duration=1,
             iterations=1,
             warmup_runs=1,
             input_shapes={"batch_size": 1, "sequence_length": 2},
             generate_kwargs={"max_new_tokens": 2, "min_new_tokens": 2},
             call_kwargs={"num_inference_steps": 2},
-            energy=torch.version.hip is None,
         )
 
     backend_config = PyTorchConfig(
         device=device, device_ids=device_ids, no_weights=no_weights, library=library, model=model, task=task
     )
 
-    benchmark_name = f"{device}_{scenario}_{library}_{task}_{model}"
     benchmark_config = BenchmarkConfig(
-        benchmark_name=benchmark_name, scenario=scenario_config, launcher=launcher_config, backend=backend_config
+        name=benchmark_name,
+        scenario=scenario_config,
+        launcher=launcher_config,
+        backend=backend_config,
     )
-    benchmark_report = launch(benchmark_config)
+    benchmark = Benchmark(benchmark_config)
+    benchmark_report = benchmark.launch()
 
-    benchmark_config.push_to_hub(repo_id=PUSH_REPO_ID, subfolder=benchmark_name)
     benchmark_report.push_to_hub(repo_id=PUSH_REPO_ID, subfolder=benchmark_name)
+    benchmark_config.push_to_hub(repo_id=PUSH_REPO_ID, subfolder=benchmark_name)
+    benchmark.push_to_hub(repo_id=PUSH_REPO_ID, subfolder=benchmark_name)
 
 
 def test_api_push_to_hub_mixin():
@@ -93,52 +94,37 @@ def test_api_push_to_hub_mixin():
     launcher_config = ProcessConfig(device_isolation=False)
     backend_config = PyTorchConfig(model="google-bert/bert-base-uncased", device="cpu")
     scenario_config = InferenceConfig(memory=True, latency=True, duration=1, iterations=1, warmup_runs=1)
-
     benchmark_config = BenchmarkConfig(
-        benchmark_name=benchmark_name, scenario=scenario_config, launcher=launcher_config, backend=backend_config
+        name=benchmark_name,
+        scenario=scenario_config,
+        launcher=launcher_config,
+        backend=backend_config,
     )
+    benchmark = Benchmark(benchmark_config)
+    benchmark_report = benchmark.launch()
 
-    benchmark_report = launch(benchmark_config)
+    for artifact_name, artifact in [
+        ("benchmark_config", benchmark_config),
+        ("benchmark_report", benchmark_report),
+        ("benchmark", benchmark),
+    ]:
+        with TemporaryDirectory() as tempdir:
+            # dict/json api
+            artifact.save_json(f"{tempdir}/{artifact_name}.json")
+            assert os.path.exists(f"{tempdir}/{artifact_name}.json")
+            from_json_artifact = artifact.__class__.from_json(f"{tempdir}/{artifact_name}.json")
+            assert from_json_artifact.to_dict() == artifact.to_dict()
 
-    with TemporaryDirectory() as tempdir:
-        # dict/json api
-        benchmark_config.save_json(f"{tempdir}/benchmark_config.json")
-        assert os.path.exists(f"{tempdir}/benchmark_config.json")
-        from_json_benchmark_config: BenchmarkConfig = BenchmarkConfig.from_json(f"{tempdir}/benchmark_config.json")
-        assert from_json_benchmark_config.to_dict() == benchmark_config.to_dict()
+            # dataframe/csv api
+            artifact.save_csv(f"{tempdir}/{artifact_name}.csv")
+            assert os.path.exists(f"{tempdir}/{artifact_name}.csv")
+            from_csv_artifact = artifact.__class__.from_csv(f"{tempdir}/{artifact_name}.csv")
+            pd.testing.assert_frame_equal(from_csv_artifact.to_dataframe(), artifact.to_dataframe())
 
-        # dataframe/csv api
-        benchmark_config.save_csv(f"{tempdir}/benchmark_config.csv")
-        assert os.path.exists(f"{tempdir}/benchmark_config.csv")
-        from_csv_benchmark_config: BenchmarkConfig = BenchmarkConfig.from_csv(f"{tempdir}/benchmark_config.csv")
-        pd.testing.assert_frame_equal(from_csv_benchmark_config.to_dataframe(), benchmark_config.to_dataframe())
-
-    # Hugging Face Hub API
-    benchmark_config.push_to_hub(repo_id=PUSH_REPO_ID, subfolder=benchmark_name)
-    from_hub_benchmark_config: BenchmarkConfig = BenchmarkConfig.from_pretrained(
-        repo_id=PUSH_REPO_ID, subfolder=benchmark_name
-    )
-    assert from_hub_benchmark_config.to_dict() == benchmark_config.to_dict()
-
-    with TemporaryDirectory() as tempdir:
-        # dict/json api
-        benchmark_report.save_json(f"{tempdir}/benchmark_report.json")
-        assert os.path.exists(f"{tempdir}/benchmark_report.json")
-        from_json_benchmark_report: BenchmarkReport = BenchmarkReport.from_json(f"{tempdir}/benchmark_report.json")
-        assert from_json_benchmark_report.to_dict() == benchmark_report.to_dict()
-
-        # dataframe/csv api
-        benchmark_report.save_csv(f"{tempdir}/benchmark_report.csv")
-        assert os.path.exists(f"{tempdir}/benchmark_report.csv")
-        from_csv_benchmark_report: BenchmarkReport = BenchmarkReport.from_csv(f"{tempdir}/benchmark_report.csv")
-        pd.testing.assert_frame_equal(from_csv_benchmark_report.to_dataframe(), benchmark_report.to_dataframe())
-
-    # Hugging Face Hub API
-    benchmark_report.push_to_hub(repo_id=PUSH_REPO_ID, subfolder=benchmark_name)
-    from_hub_benchmark_report: BenchmarkReport = BenchmarkReport.from_pretrained(
-        repo_id=PUSH_REPO_ID, subfolder=benchmark_name
-    )
-    assert from_hub_benchmark_report.to_dict() == benchmark_report.to_dict()
+        # Hugging Face Hub API
+        artifact.push_to_hub(repo_id=PUSH_REPO_ID, subfolder=benchmark_name)
+        from_hub_artifact = artifact.__class__.from_pretrained(repo_id=PUSH_REPO_ID, subfolder=benchmark_name)
+        assert from_hub_artifact.to_dict() == artifact.to_dict()
 
 
 @pytest.mark.parametrize("library,task,model", LIBRARIES_TASKS_MODELS)

@@ -8,4 +8,4 @@ defaults:
   - _self_ # hydra 1.1 compatibility
   - override backend: openvino
 
-benchmark_name: cpu_inference_openvino_text_decoders
+name: cpu_inference_openvino_text_decoders

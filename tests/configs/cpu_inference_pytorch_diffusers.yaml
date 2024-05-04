@@ -7,4 +7,4 @@ defaults:
   - _self_ # hydra 1.1 compatibility
   - override backend: pytorch
 
-benchmark_name: cpu_inference_pytorch_diffusers
+name: cpu_inference_pytorch_diffusers

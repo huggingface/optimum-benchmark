@@ -1,20 +1,19 @@
 defaults:
-  - benchmark # inheriting benchmark schema
+  - benchmark # parent schema
   - backend: pytorch # default backend
   - launcher: process # default launcher
   - scenario: inference # default scenario
-  - override hydra/hydra_logging: colorlog # colored logging
-  - override hydra/job_logging: colorlog # colored logging
   - _self_
 
-# hydra/cli specific settings
+# hydra-cli specific settings/features
 hydra:
   run:
     # where to store run results
-    dir: tests/runs/${benchmark_name}
+    dir: tests/runs/${name}
   sweep:
-    # where to store sweep results
-    dir: tests/sweeps/${benchmark_name}
+    # where to store multirun results
+    dir: tests/multiruns/${name}
+    subdir: ${hydra.job.override_dirname}
   job:
     # change working directory to the run directory
     chdir: true

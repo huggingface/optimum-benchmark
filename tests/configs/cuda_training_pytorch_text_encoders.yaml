@@ -9,4 +9,4 @@ defaults:
   - _self_ # hydra 1.1 compatibility
   - override backend: pytorch
 
-benchmark_name: cuda_training_pytorch_text_encoders
+name: cuda_training_pytorch_text_encoders
