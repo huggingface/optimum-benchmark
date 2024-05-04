@@ -14,7 +14,7 @@ class Launcher(Generic[LauncherConfigT], ABC):
     config: LauncherConfigT
 
     def __init__(self, config: LauncherConfigT):
-        LOGGER.info(f"ََAllocating {self.NAME} launcher")
+        LOGGER.info(f"Allocating {self.NAME} launcher")
         self.config = config
 
     def launch(self, worker: Callable, *worker_args) -> BenchmarkReport:

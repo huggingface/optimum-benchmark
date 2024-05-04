@@ -36,6 +36,7 @@ class PyTorchConfig(BackendConfig):
 
     # torch compile options
     torch_compile: bool = False
+    torch_compile_target: str = "forward"
     torch_compile_config: Dict[str, Any] = field(default_factory=dict)
 
     # quantization options

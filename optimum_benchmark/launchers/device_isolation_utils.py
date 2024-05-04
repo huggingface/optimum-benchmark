@@ -197,7 +197,7 @@ def device_isolation_context(enable: bool, action: str, pid: int, device_ids: Op
     device_isolation_process.start()
 
     LOGGER.info(
-        f"\t+ Started device(s) isolation process [{device_isolation_process.pid}], monitoring "
+        f"Started device(s) isolation process [{device_isolation_process.pid}], monitoring "
         f"the isolated process [{pid}], running on device(s) [{device_ids}], with action [{action}]."
     )
 

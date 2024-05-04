@@ -8,11 +8,7 @@ from typing import Any, Dict, Optional
 import pandas as pd
 from flatten_dict import flatten, unflatten
 from huggingface_hub import create_repo, hf_hub_download, upload_file
-
-try:
-    from typing import Self
-except ImportError:
-    from typing_extensions import Self
+from typing_extensions import Self
 
 LOGGER = getLogger(__name__)
 

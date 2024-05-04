@@ -1,12 +1,11 @@
 from contextlib import ExitStack
-from dataclasses import dataclass
 from logging import getLogger
 
 from transformers import default_data_collator
 
 from ...backends.base import Backend, BackendConfigT
 from ...generators.dataset_generator import DatasetGenerator
-from ...report import BenchmarkMeasurements, BenchmarkReport
+from ...report import BenchmarkReport
 from ...trackers.energy import Efficiency, EnergyTracker
 from ...trackers.latency import StepLatencyTrainerCallback, Throughput
 from ...trackers.memory import MemoryTracker
@@ -19,20 +18,13 @@ TRAIN_THROUGHPUT_UNIT = "samples/s"
 TRAIN_EFFICIENCY_UNIT = "samples/kWh"
 
 
-@dataclass
-class TrainingReport(BenchmarkReport):
-    overall: BenchmarkMeasurements
-    warmup: BenchmarkMeasurements
-    train: BenchmarkMeasurements
-
-
 class TrainingScenario(Scenario[TrainingConfig]):
     NAME = "training"
 
     def __init__(self, config: TrainingConfig) -> None:
         super().__init__(config)
 
-    def run(self, backend: Backend[BackendConfigT]) -> TrainingReport:
+    def run(self, backend: Backend[BackendConfigT]) -> BenchmarkReport:
         LOGGER.info("\t+ Creating dataset generator")
         dataset_generator = DatasetGenerator(
             task=backend.config.task, model_shapes=backend.model_shapes, dataset_shapes=self.config.dataset_shapes
@@ -42,9 +34,7 @@ class TrainingScenario(Scenario[TrainingConfig]):
         training_dataset = dataset_generator()
 
         LOGGER.info("\t+ Initializing training report")
-        self.report = TrainingReport(
-            overall=BenchmarkMeasurements(), warmup=BenchmarkMeasurements(), train=BenchmarkMeasurements()
-        )
+        self.report = BenchmarkReport.from_list(targets=["overall", "warmup", "train"])
 
         training_callbackes = []
         if self.config.latency:

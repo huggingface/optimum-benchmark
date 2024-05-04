@@ -1,5 +1,4 @@
 import time
-from dataclasses import dataclass
 from logging import getLogger
 
 from transformers import LogitsProcessorList
@@ -7,7 +6,7 @@ from transformers import LogitsProcessorList
 from ...backends.base import Backend, BackendConfigT
 from ...generators.input_generator import InputGenerator
 from ...import_utils import is_torch_distributed_available
-from ...report import BenchmarkMeasurements, BenchmarkReport
+from ...report import BenchmarkReport
 from ...task_utils import IMAGE_DIFFUSION_TASKS, TEXT_GENERATION_TASKS
 from ...trackers.energy import Efficiency, EnergyTracker
 from ...trackers.latency import LatencyTracker, PerTokenLatencyLogitsProcessor, Throughput
@@ -26,10 +25,10 @@ TEXT_GENERATION_DEFAULT_KWARGS = {
     "num_return_sequences": 1,
     "max_new_tokens": 100,
     "min_new_tokens": 100,
-    "temperature": 1.0,
     "do_sample": False,
     "use_cache": True,
     "pad_token_id": 0,
+    "eos_token_id": 0,
     "num_beams": 1,
 }
 TEXT_GENERATION_PREFILL_OVERRIDES = {
@@ -56,23 +55,6 @@ INFERENCE_THROUGHPUT_UNIT = "samples/s"
 TEXT_GENERATION_EFFICIENCY_UNIT = "tokens/kWh"
 IMAGE_DIFFUSION_EFFICIENCY_UNIT = "images/kWh"
 INFERENCE_EFFICIENCY_UNIT = "samples/kWh"
-
-
-@dataclass
-class TextGenerationReport(BenchmarkReport):
-    prefill: BenchmarkMeasurements
-    decode: BenchmarkMeasurements
-    per_token: BenchmarkMeasurements
-
-
-@dataclass
-class ImageDiffusionReport(BenchmarkReport):
-    call: BenchmarkMeasurements
-
-
-@dataclass
-class InferenceReport(BenchmarkReport):
-    forward: BenchmarkMeasurements
 
 
 class InferenceScenario(Scenario[InferenceConfig]):
@@ -103,11 +85,8 @@ class InferenceScenario(Scenario[InferenceConfig]):
             LOGGER.info("\t+ Updating Text Generation kwargs with default values")
             self.config.generate_kwargs = {**TEXT_GENERATION_DEFAULT_KWARGS, **self.config.generate_kwargs}
             LOGGER.info("\t+ Initializing Text Generation report")
-            self.report = TextGenerationReport(
-                per_token=BenchmarkMeasurements(),
-                prefill=BenchmarkMeasurements(),
-                decode=BenchmarkMeasurements(),
-            )
+
+            self.report = BenchmarkReport.from_list(targets=["prefill", "decode", "per_token"])
 
         elif backend.config.task in IMAGE_DIFFUSION_TASKS:
             LOGGER.info("\t+ Generating Image Diffusion inputs")
@@ -117,7 +96,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
             LOGGER.info("\t+ Updating Image Diffusion kwargs with default values")
             self.config.call_kwargs = {**IMAGE_DIFFUSION_DEFAULT_KWARGS, **self.config.call_kwargs}
             LOGGER.info("\t+ Initializing Image Diffusion report")
-            self.report = ImageDiffusionReport(call=BenchmarkMeasurements())
+            self.report = BenchmarkReport.from_list(targets=["call"])
 
         else:
             LOGGER.info("\t+ Generating Inference inputs")
@@ -125,7 +104,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
             LOGGER.info("\t+ Preparing Inference inputs")
             self.inputs = backend.prepare_inputs(self.inputs)
             LOGGER.info("\t+ Initializing Inference report")
-            self.report = InferenceReport(forward=BenchmarkMeasurements())
+            self.report = BenchmarkReport.from_list(targets=["forward"])
 
         LOGGER.info("\t+ Preparing backend for Inference")
         backend.prepare_for_inference(
@@ -136,21 +115,20 @@ class InferenceScenario(Scenario[InferenceConfig]):
             **self.config.call_kwargs,
         )
 
-        LOGGER.info("\t+ Warming up backend for Inference")
-        for _ in range(self.config.warmup_runs):
-            if backend.config.task in TEXT_GENERATION_TASKS:
-                _ = backend.generate(self.inputs, {**self.config.generate_kwargs, **TEXT_GENERATION_WARMUP_OVERRIDES})
-            elif backend.config.task in IMAGE_DIFFUSION_TASKS:
-                _ = backend.call(self.inputs, {**self.config.call_kwargs, **IMAGE_DIFFUSION_WARMUP_OVERRIDES})
-            else:
-                _ = backend.forward(self.inputs, self.config.forward_kwargs)
-
         if backend.config.task in TEXT_GENERATION_TASKS:
-            LOGGER.info("\t+ Additional warmup for Text Generation")
+            LOGGER.info("\t+ Warming up backend for Text Generation")
             _ = backend.generate(self.inputs, self.config.generate_kwargs)
+            for _ in range(self.config.warmup_runs):
+                _ = backend.generate(self.inputs, {**self.config.generate_kwargs, **TEXT_GENERATION_WARMUP_OVERRIDES})
         elif backend.config.task in IMAGE_DIFFUSION_TASKS:
-            LOGGER.info("\t+ Additional warmup for Image Diffusion")
+            LOGGER.info("\t+ Warming up backend for Image Diffusion")
             _ = backend.call(self.inputs, self.config.call_kwargs)
+            for _ in range(self.config.warmup_runs):
+                _ = backend.call(self.inputs, {**self.config.call_kwargs, **IMAGE_DIFFUSION_WARMUP_OVERRIDES})
+        else:
+            LOGGER.info("\t+ Warming up backend for Inference")
+            for _ in range(self.config.warmup_runs):
+                _ = backend.forward(self.inputs, self.config.forward_kwargs)
 
         if self.config.memory:
             if backend.config.task in TEXT_GENERATION_TASKS:
