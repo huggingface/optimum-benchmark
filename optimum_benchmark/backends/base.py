@@ -39,7 +39,7 @@ class Backend(Generic[BackendConfigT], ABC):
     pretrained_processor: Optional[PretrainedProcessor]
 
     def __init__(self, config: BackendConfigT):
-        LOGGER.info(f"َAllocating {self.NAME} backend")
+        LOGGER.info(f"Allocating {self.NAME} backend")
         self.config = config
         self.seed()
 
