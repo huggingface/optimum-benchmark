@@ -1,13 +1,23 @@
 import logging
 import logging.config
-import os
 from logging import Logger
 from subprocess import PIPE, STDOUT, Popen
 from typing import Optional
 
-from omegaconf import OmegaConf
 
-API_JOB_LOGGING = {
+class ListHandler(logging.Handler):
+    def __init__(self):
+        super().__init__()
+        self.logs = []
+
+    def emit(self, record):
+        self.logs.append(self.format(record))
+
+    def get_logs(self):
+        return self.logs
+
+
+LOGGING_CONFIG = {
     "version": 1,
     "formatters": {
         "simple": {"format": "[%(asctime)s][%(name)s][%(levelname)s] - %(message)s"},
@@ -17,28 +27,45 @@ API_JOB_LOGGING = {
             "log_colors": {"DEBUG": "purple", "INFO": "green", "WARNING": "yellow", "CRITICAL": "red", "ERROR": "red"},
         },
     },
-    "handlers": {"console": {"formatter": "colorlog", "stream": "ext://sys.stdout", "class": "logging.StreamHandler"}},
-    "root": {"level": "INFO", "handlers": ["console"]},
+    "handlers": {
+        "console": {"formatter": "colorlog", "stream": "ext://sys.stdout", "class": "logging.StreamHandler"},
+        "file": {"formatter": "simple", "filename": "benchmark.log", "class": "logging.FileHandler"},
+        "colored_file": {"formatter": "colorlog", "filename": "benchmark.log", "class": "logging.FileHandler"},
+        "list": {"formatter": "simple", "class": "optimum_benchmark.logging_utils.ListHandler"},
+        "colored_list": {"formatter": "colorlog", "class": "optimum_benchmark.logging_utils.ListHandler"},
+    },
+    "root": {"level": "INFO", "handlers": ["console", "file", "colored_file", "list", "colored_list"]},
     "disable_existing_loggers": False,
 }
 
 
-def setup_logging(level: str = "INFO", prefix: Optional[str] = None):
-    if os.environ.get("BENCHMARK_INTERFACE", "API") == "CLI":
-        hydra_config = OmegaConf.load(".hydra/hydra.yaml")
-        job_logging = OmegaConf.to_container(hydra_config.hydra.job_logging, resolve=True)
-    else:
-        job_logging = API_JOB_LOGGING.copy()
+def get_logs(colored: bool = False):
+    """
+    Returns the logs of the benchmark
+    """
 
-    job_logging["root"]["level"] = level
+    for handler in logging.getLogger().handlers:
+        if isinstance(handler, ListHandler) and colored and "colored" in handler.get_name():
+            return handler.get_logs()
+        elif isinstance(handler, ListHandler) and not colored and "colored" not in handler.get_name():
+            return handler.get_logs()
+
+    return []
+
+
+def setup_logging(level: str = "INFO", prefix: Optional[str] = None):
+    logging_config = LOGGING_CONFIG.copy()
+    logging_config["root"]["level"] = level
 
     if prefix is not None:
-        job_logging["formatters"]["simple"]["format"] = f"[{prefix}]" + job_logging["formatters"]["simple"]["format"]
-        job_logging["formatters"]["colorlog"]["format"] = (
-            f"[{prefix}]" + job_logging["formatters"]["colorlog"]["format"]
+        logging_config["formatters"]["simple"]["format"] = (
+            f"[{prefix}]" + logging_config["formatters"]["simple"]["format"]
+        )
+        logging_config["formatters"]["colorlog"]["format"] = (
+            f"[{prefix}]" + logging_config["formatters"]["colorlog"]["format"]
         )
 
-    logging.config.dictConfig(job_logging)
+    logging.config.dictConfig(logging_config)
 
 
 def run_subprocess_and_log_stream_output(logger: Logger, args):

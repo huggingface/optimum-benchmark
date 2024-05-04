@@ -90,5 +90,5 @@ setup(
     version=OPTIMUM_BENCHMARK_VERSION,
     install_requires=INSTALL_REQUIRES,
     extras_require=EXTRAS_REQUIRE,
-    entry_points={"console_scripts": ["optimum-benchmark=optimum_benchmark.cli:benchmark_cli"]},
+    entry_points={"console_scripts": ["optimum-benchmark=optimum_benchmark.cli:main"]},
 )

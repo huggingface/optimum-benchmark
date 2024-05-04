@@ -6,27 +6,60 @@ import hydra
 from hydra.core.config_store import ConfigStore
 from omegaconf import DictConfig, OmegaConf
 
-from .backends.llm_swarm.config import LLMSwarmConfig
-from .backends.neural_compressor.config import INCConfig
-from .backends.onnxruntime.config import ORTConfig
-from .backends.openvino.config import OVConfig
-from .backends.py_txi.config import PyTXIConfig
-from .backends.pytorch.config import PyTorchConfig
-from .backends.tensorrt_llm.config import TRTLLMConfig
-from .backends.torch_ort.config import TorchORTConfig
-from .benchmark import BenchmarkConfig, launch
-from .launchers.inline.config import InlineConfig
-from .launchers.process.config import ProcessConfig
-from .launchers.torchrun.config import TorchrunConfig
-from .report import BenchmarkReport
-from .scenarios.energy_star.config import EnergyStarConfig
-from .scenarios.inference.config import InferenceConfig
-from .scenarios.training.config import TrainingConfig
+from . import (
+    Benchmark,
+    BenchmarkConfig,
+    BenchmarkReport,
+    EnergyStarConfig,
+    INCConfig,
+    InferenceConfig,
+    InlineConfig,
+    LLMSwarmConfig,
+    ORTConfig,
+    OVConfig,
+    ProcessConfig,
+    PyTorchConfig,
+    PyTXIConfig,
+    TorchORTConfig,
+    TorchrunConfig,
+    TrainingConfig,
+    TRTLLMConfig,
+)
+from .experiment import ExperimentConfig, launch  # deprecated
+from .logging_utils import setup_logging
 
-LOGGER = getLogger("cli")
+LOGGER = getLogger("hydra-cli")
+
+
+class DeprecatedTrainingConfig(TrainingConfig):
+    def __post_init__(self):
+        if os.environ.get("BENCHMARK_INTERFACE", "API") == "CLI":
+            LOGGER.warning("The `benchmark: training` schema is deprecated. Please use `scenario: training` instead.")
+
+        super().__post_init__()
+
+
+class DeprecatedInferenceConfig(InferenceConfig):
+    def __post_init__(self):
+        if os.environ.get("BENCHMARK_INTERFACE", "API") == "CLI":
+            LOGGER.warning("The `benchmark: inference` schema is deprecated. Please use `scenario: inference` instead.")
+
+        super().__post_init__()
+
+
+class DeprecatedEnergyStarConfig(EnergyStarConfig):
+    def __post_init__(self):
+        if os.environ.get("BENCHMARK_INTERFACE", "API") == "CLI":
+            LOGGER.warning(
+                "The `benchmark: energy_star` schema is deprecated. Please use `scenario: energy_star` instead."
+            )
+
+        super().__post_init__()
+
 
 # Register configurations
 cs = ConfigStore.instance()
+# benchmark configuration
 cs.store(name="benchmark", node=BenchmarkConfig)
 # backends configurations
 cs.store(group="backend", name=OVConfig.name, node=OVConfig)
@@ -46,11 +79,26 @@ cs.store(group="launcher", name=InlineConfig.name, node=InlineConfig)
 cs.store(group="launcher", name=ProcessConfig.name, node=ProcessConfig)
 cs.store(group="launcher", name=TorchrunConfig.name, node=TorchrunConfig)
 
+# deprecated
+cs.store(group="benchmark", name=TrainingConfig.name, node=DeprecatedTrainingConfig)
+cs.store(group="benchmark", name=InferenceConfig.name, node=DeprecatedInferenceConfig)
+cs.store(group="benchmark", name=EnergyStarConfig.name, node=DeprecatedEnergyStarConfig)
+
+LOGGING_SETUP_DONE = False
+
 
 # optimum-benchmark
 @hydra.main(version_base=None)
-def benchmark_cli(benchmark_config: DictConfig) -> None:
+def main(config: DictConfig) -> None:
     os.environ["BENCHMARK_INTERFACE"] = "CLI"
+
+    global LOGGING_SETUP_DONE
+
+    if not LOGGING_SETUP_DONE:
+        setup_logging(level="INFO", prefix="MAIN-PROCESS")
+        LOGGING_SETUP_DONE = True
+    else:
+        setup_logging(level="INFO")
 
     if glob.glob("benchmark_report.json") and os.environ.get("OVERRIDE_BENCHMARKS", "0") != "1":
         LOGGER.warning(
@@ -58,9 +106,20 @@ def benchmark_cli(benchmark_config: DictConfig) -> None:
         )
         return
 
-    # Instantiate the experiment configuration and trigger its __post_init__
-    benchmark_config: BenchmarkConfig = OmegaConf.to_object(benchmark_config)
-    benchmark_config.save_json("benchmark_config.json")
+    # Instantiates the configuration with the right class and triggers its __post_init__
+    config = OmegaConf.to_object(config)
 
-    benchmark_report: BenchmarkReport = launch(benchmark_config=benchmark_config)
-    benchmark_report.save_json("benchmark_report.json")
+    if isinstance(config, ExperimentConfig):
+        experiment_config = config
+        experiment_config.save_json("experiment_config.json")
+        benchmark_report: BenchmarkReport = launch(experiment_config=experiment_config)
+        benchmark_report.save_json("benchmark_report.json")
+
+    elif isinstance(config, BenchmarkConfig):
+        benchmark_config = config
+        benchmark_config.save_json("benchmark_config.json")
+        benchmark = Benchmark(config=benchmark_config)
+        benchmark_report = benchmark.launch()
+        benchmark_report.save_json("benchmark_report.json")
+        # this one is new
+        benchmark.save_json("benchmark.json")
