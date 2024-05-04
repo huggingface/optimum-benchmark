@@ -151,8 +151,12 @@ class MemoryTracker:
             torch.distributed.barrier()
 
     def _cuda_pytorch_memory(self):
+        self.max_allocated_memory = 0
+        self.max_reserved_memory = 0
+
+        torch.cuda.synchronize()
+
         for device in range(self.num_pytorch_devices):
-            torch.cuda.synchronize(device=device)
             try:
                 torch.cuda.reset_peak_memory_stats(device=device)
             except Exception as e:
@@ -160,8 +164,7 @@ class MemoryTracker:
 
         yield from self._cuda_memory()
 
-        self.max_allocated_memory = 0
-        self.max_reserved_memory = 0
+        torch.cuda.synchronize()
 
         for device in range(self.num_pytorch_devices):
             try:

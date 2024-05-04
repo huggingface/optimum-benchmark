@@ -1,7 +1,7 @@
 import multiprocessing as mp
 import os
 from logging import getLogger
-from typing import Callable
+from typing import Any, Callable, Union
 
 from ...benchmarks.report import BenchmarkReport
 from ...logging_utils import setup_logging
@@ -25,10 +25,8 @@ class ProcessLauncher(Launcher[ProcessConfig]):
     def launch(self, worker: Callable, *worker_args) -> BenchmarkReport:
         ctx = mp.get_context(self.config.start_method)
         log_level = ctx.get_logger().getEffectiveLevel()
-        queue = ctx.Queue()
-        lock = ctx.Lock()
 
-        isolated_process = mp.Process(target=target, args=(worker, queue, lock, log_level, *worker_args), daemon=False)
+        isolated_process = mp.Process(target=target, args=(worker, log_level, *worker_args), daemon=False)
         isolated_process.start()
 
         with device_isolation_context(
@@ -38,21 +36,27 @@ class ProcessLauncher(Launcher[ProcessConfig]):
 
         if isolated_process.exitcode != 0:
             raise RuntimeError(f"Process exited with non-zero code {isolated_process.exitcode}")
-        elif queue.empty():
-            raise RuntimeError("No report was returned by the isolated process.")
 
-        report: BenchmarkReport = queue.get()
+        if not os.path.exists("isolated_process_report.json"):
+            raise RuntimeError("Could not find report from isolated process.")
+
+        LOGGER.info("\t+ Loading report from isolated process.")
+        report: BenchmarkReport = BenchmarkReport.from_json("isolated_process_report.json")
+        report.log()
 
         return report
 
 
-def target(worker, queue, lock, log_level, *worker_args):
-    os.environ["ISOLATED_PROCESS_PID"] = str(os.getpid())
+def target(worker: Callable[..., BenchmarkReport], log_level: Union[int, str], *worker_args: Any) -> None:
+    isolated_process_pid = os.getpid()
+    os.environ["ISOLATED_PROCESS_PID"] = str(isolated_process_pid)
+
     setup_logging(level=log_level, prefix="ISOLATED-PROCESS")
-    LOGGER.info(f"Running benchmark in isolated process [{os.getpid()}].")
+    LOGGER.info(f"Running benchmark in isolated process [{isolated_process_pid}].")
 
-    worker_output = worker(*worker_args)
+    report = worker(*worker_args)
 
-    lock.acquire()
-    queue.put(worker_output)
-    lock.release()
+    LOGGER.info("Saving report from isolated process.")
+    report.save_json("isolated_process_report.json")
+
+    LOGGER.info("Exiting isolated process.")
