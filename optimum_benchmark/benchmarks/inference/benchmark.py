@@ -1,5 +1,4 @@
 import time
-from dataclasses import dataclass
 from logging import getLogger
 
 from transformers import LogitsProcessorList
@@ -12,7 +11,7 @@ from ...trackers.energy import Efficiency, EnergyTracker
 from ...trackers.latency import LatencyTracker, PerTokenLatencyLogitsProcessor, Throughput
 from ...trackers.memory import MemoryTracker
 from ..base import Benchmark
-from ..report import BenchmarkMeasurements, BenchmarkReport
+from ..report import BenchmarkReport
 from .config import InferenceConfig
 
 if is_torch_distributed_available():
@@ -58,23 +57,6 @@ IMAGE_DIFFUSION_EFFICIENCY_UNIT = "images/kWh"
 INFERENCE_EFFICIENCY_UNIT = "samples/kWh"
 
 
-@dataclass
-class TextGenerationReport(BenchmarkReport):
-    prefill: BenchmarkMeasurements
-    decode: BenchmarkMeasurements
-    per_token: BenchmarkMeasurements
-
-
-@dataclass
-class ImageDiffusionReport(BenchmarkReport):
-    call: BenchmarkMeasurements
-
-
-@dataclass
-class InferenceReport(BenchmarkReport):
-    forward: BenchmarkMeasurements
-
-
 class InferenceBenchmark(Benchmark[InferenceConfig]):
     NAME = "inference"
 
@@ -103,9 +85,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             LOGGER.info("\t+ Updating Text Generation kwargs with default values")
             self.config.generate_kwargs = {**TEXT_GENERATION_DEFAULT_KWARGS, **self.config.generate_kwargs}
             LOGGER.info("\t+ Initializing Text Generation report")
-            self.report = TextGenerationReport(
-                decode=BenchmarkMeasurements(), prefill=BenchmarkMeasurements(), per_token=BenchmarkMeasurements()
-            )
+            self.report = BenchmarkReport.from_list(targets=["prefill", "decode", "per_token"])
 
         elif backend.config.task in IMAGE_DIFFUSION_TASKS:
             LOGGER.info("\t+ Generating Image Diffusion inputs")
@@ -115,7 +95,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             LOGGER.info("\t+ Updating Image Diffusion kwargs with default values")
             self.config.call_kwargs = {**IMAGE_DIFFUSION_DEFAULT_KWARGS, **self.config.call_kwargs}
             LOGGER.info("\t+ Initializing Image Diffusion report")
-            self.report = ImageDiffusionReport(call=BenchmarkMeasurements())
+            self.report = BenchmarkReport.from_list(targets=["call"])
 
         else:
             LOGGER.info("\t+ Generating Inference inputs")
@@ -123,7 +103,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             LOGGER.info("\t+ Preparing Inference inputs")
             self.inputs = backend.prepare_inputs(self.inputs)
             LOGGER.info("\t+ Initializing Inference report")
-            self.report = InferenceReport(forward=BenchmarkMeasurements())
+            self.report = BenchmarkReport.from_list(targets=["forward"])
 
         LOGGER.info("\t+ Preparing backend for Inference")
         backend.prepare_for_inference(
@@ -446,5 +426,5 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             * (self.config.generate_kwargs["max_new_tokens"] - 1)  # 1 token is generated during prefill
         )
 
-    def get_report(self) -> InferenceReport:
+    def get_report(self) -> BenchmarkReport:
         return self.report

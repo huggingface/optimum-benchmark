@@ -1,5 +1,4 @@
 from contextlib import ExitStack
-from dataclasses import dataclass
 from logging import getLogger
 
 from transformers import default_data_collator
@@ -10,20 +9,13 @@ from ...trackers.energy import Efficiency, EnergyTracker
 from ...trackers.latency import StepLatencyTrainerCallback, Throughput
 from ...trackers.memory import MemoryTracker
 from ..base import Benchmark
-from ..report import BenchmarkMeasurements, BenchmarkReport
+from ..report import BenchmarkReport
 from .config import TrainingConfig
 
 LOGGER = getLogger("training")
 
 TRAIN_THROUGHPUT_UNIT = "samples/s"
 TRAIN_EFFICIENCY_UNIT = "samples/kWh"
-
-
-@dataclass
-class TrainingReport(BenchmarkReport):
-    overall: BenchmarkMeasurements
-    warmup: BenchmarkMeasurements
-    train: BenchmarkMeasurements
 
 
 class TrainingBenchmark(Benchmark[TrainingConfig]):
@@ -42,9 +34,7 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
         training_dataset = dataset_generator()
 
         LOGGER.info("\t+ Initializing training report")
-        self.report = TrainingReport(
-            overall=BenchmarkMeasurements(), warmup=BenchmarkMeasurements(), train=BenchmarkMeasurements()
-        )
+        self.report = BenchmarkReport.from_list(targets=["overall", "warmup", "train"])
 
         training_callbackes = []
         if self.config.latency:
@@ -122,5 +112,5 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
     def train_volume(self) -> int:
         return self.overall_volume - self.warmup_volume
 
-    def get_report(self) -> TrainingReport:
+    def get_report(self) -> BenchmarkReport:
         return self.report

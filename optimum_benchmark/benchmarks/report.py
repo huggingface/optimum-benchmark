@@ -19,53 +19,47 @@ class BenchmarkMeasurements:
     efficiency: Optional[Efficiency] = None
 
     def __post_init__(self):
-        if isinstance(self.memory, dict):
+        if self.memory and isinstance(self.memory, dict):
             self.memory = Memory(**self.memory)
-        if isinstance(self.latency, dict):
+        if self.latency and isinstance(self.latency, dict):
             self.latency = Latency(**self.latency)
-        if isinstance(self.throughput, dict):
+        if self.throughput and isinstance(self.throughput, dict):
             self.throughput = Throughput(**self.throughput)
-        if isinstance(self.energy, dict):
+        if self.energy and isinstance(self.energy, dict):
             self.energy = Energy(**self.energy)
-        if isinstance(self.efficiency, dict):
+        if self.efficiency and isinstance(self.efficiency, dict):
             self.efficiency = Efficiency(**self.efficiency)
 
     @staticmethod
     def aggregate(measurements: List["BenchmarkMeasurements"]) -> "BenchmarkMeasurements":
-        memory = Memory.aggregate([m.memory for m in measurements]) if measurements[0].memory is not None else None
-        latency = Latency.aggregate([m.latency for m in measurements]) if measurements[0].latency is not None else None
-        throughput = (
-            Throughput.aggregate([m.throughput for m in measurements if m.throughput is not None])
-            if measurements[0].throughput is not None
-            else None
-        )
-        energy = (
-            Energy.aggregate([m.energy for m in measurements if m.energy is not None])
-            if measurements[0].energy is not None
-            else None
-        )
-        efficiency = (
-            Efficiency.aggregate([m.efficiency for m in measurements if m.efficiency is not None])
-            if measurements[0].efficiency is not None
-            else None
-        )
+        assert len(measurements) > 0, "No measurements to aggregate"
 
-        return BenchmarkMeasurements(
-            memory=memory, latency=latency, throughput=throughput, energy=energy, efficiency=efficiency
-        )
+        m0 = measurements[0]
+
+        memory = Memory.aggregate([m.memory for m in measurements]) if m0.memory is not None else None
+        latency = Latency.aggregate([m.latency for m in measurements]) if m0.latency is not None else None
+        throughput = Throughput.aggregate([m.throughput for m in measurements]) if m0.throughput is not None else None
+        energy = Energy.aggregate([m.energy for m in measurements]) if m0.energy is not None else None
+        efficiency = Efficiency.aggregate([m.efficiency for m in measurements]) if m0.efficiency is not None else None
+
+        return BenchmarkMeasurements(memory, latency, throughput, energy, efficiency)
 
 
 @dataclass
 class BenchmarkReport(PushToHubMixin):
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "PushToHubMixin":
-        return make_dataclass(
-            cls_name=cls.__name__, fields=[(target, BenchmarkMeasurements) for target in data.keys()], bases=(cls,)
-        )(**data)
+    def from_list(cls, targets: List[str]) -> "BenchmarkReport":
+        return cls.from_dict({target: None for target in targets})
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "BenchmarkReport":
+        return make_dataclass(cls_name=cls.__name__, fields=data.keys(), bases=(cls,))(**data)
 
     def __post_init__(self):
         for target in self.to_dict().keys():
-            if isinstance(getattr(self, target), dict):
+            if not getattr(self, target):
+                setattr(self, target, BenchmarkMeasurements())
+            elif isinstance(getattr(self, target), dict):
                 setattr(self, target, BenchmarkMeasurements(**getattr(self, target)))
 
     def log_memory(self):
