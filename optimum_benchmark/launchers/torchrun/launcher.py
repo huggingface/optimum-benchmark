@@ -59,21 +59,20 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
         ):
             isolated_process.join()
 
-        if isolated_process.exitcode != 0:
-            raise RuntimeError(f"Process exited with non-zero code {isolated_process.exitcode}.")
+        retrieved_all_reports = all(
+            os.path.isfile(f"rank_{rank}_report.json") for rank in range(self.config.nproc_per_node)
+        )
 
-        reports = []
+        if isolated_process.exitcode != 0 and not retrieved_all_reports:
+            raise RuntimeError(f"Process exited with non-zero code {isolated_process.exitcode}.")
+        elif not retrieved_all_reports:
+            raise RuntimeError("Could not retrieve all reports from ranks.")
 
         LOGGER.info("\t+ Gatehring reports from all ranks.")
-        for rank in range(self.config.nproc_per_node):
-            if not os.path.isfile(f"rank_{rank}_report.json"):
-                raise RuntimeError(f"Could not find report from rank {rank}.")
-
-            report = BenchmarkReport.from_json(f"rank_{rank}_report.json")
-            reports.append(report)
-
+        reports = [BenchmarkReport.from_json(f"rank_{rank}_report.json") for rank in range(self.config.nproc_per_node)]
         LOGGER.info("\t+ Aggregating reports from all ranks.")
         report = BenchmarkReport.aggregate(reports)
+        LOGGER.info("\t+ Logging aggregated report.")
         report.log()
 
         return report
@@ -85,7 +84,7 @@ def target(
     isolated_process_pid = os.getpid()
     os.environ["ISOLATED_PROCESS_PID"] = str(isolated_process_pid)
 
-    setup_logging(level=log_level, format_prefix="ISOLATED-PROCESS")
+    setup_logging(level=log_level, prefix="ISOLATED-PROCESS")
     LOGGER.info(f"Running benchmark in isolated process [{isolated_process_pid}].")
 
     elastic_agent_launcher = elastic_launch(config=launch_config, entrypoint=entrypoint)
@@ -98,10 +97,12 @@ def target(
 def entrypoint(worker: Callable[..., BenchmarkReport], log_level: Union[str, int], *worker_args: Any):
     rank = int(os.environ.get("RANK", "0"))
 
-    if rank == 0 or (os.environ.get("LOG_ALL_RANKS", "0") == "1"):
-        setup_logging(level=log_level, format_prefix=f"RANK-{rank}")
+    if rank == 0:
+        setup_logging(level=log_level, prefix=f"RANK-{rank}")
+    elif os.environ.get("LOG_ALL_RANKS", "0") == "1":
+        setup_logging(level=log_level, prefix=f"RANK-{rank}")
     else:
-        setup_logging(level="ERROR", format_prefix=f"RANK-{rank}")
+        setup_logging(level="ERROR", prefix=f"RANK-{rank}")
 
     if torch.cuda.is_available():
         LOGGER.info(f"\t+ Setting torch.distributed cuda device to {rank}.")
@@ -119,3 +120,4 @@ def entrypoint(worker: Callable[..., BenchmarkReport], log_level: Union[str, int
     torch.distributed.destroy_process_group()
 
     LOGGER.info("Exiting torchrun rank.")
+    exit(0)
