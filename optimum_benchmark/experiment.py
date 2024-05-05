@@ -1,25 +1,20 @@
 import os
 from dataclasses import dataclass, field
 from logging import getLogger
-from typing import TYPE_CHECKING, Any, Dict, Type
+from typing import Any, Dict, Type
 
+from hydra.utils import get_class
+
+from .backends.base import Backend
 from .backends.config import BackendConfig
 from .hub_utils import PushToHubMixin, classproperty
 from .import_utils import get_hf_libs_info
+from .launchers.base import Launcher
 from .launchers.config import LauncherConfig
 from .report import BenchmarkReport
+from .scenarios.base import Scenario
 from .scenarios.config import ScenarioConfig
 from .system_utils import get_system_info
-
-if TYPE_CHECKING:
-    # avoid importing any torch to be able to set
-    # the CUDA_VISIBLE_DEVICES environment variable
-    # in BackendConfig __post_init__
-    from .backends.base import Backend
-    from .launchers.base import Launcher
-    from .scenarios.base import Scenario
-
-from hydra.utils import get_class
 
 LOGGER = getLogger("experiment")
 

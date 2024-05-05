@@ -46,10 +46,12 @@ LIBRARIES_TASKS_MODELS = [
 @pytest.mark.parametrize("library,task,model", LIBRARIES_TASKS_MODELS)
 def test_api_launch(device, scenario, library, task, model):
     benchmark_name = f"{device}_{scenario}_{library}_{task}_{model}"
+
     device_ids = get_gpu_device_ids() if device == "cuda" else None
     no_weights = False if library != "transformers" else True
+    device_isolation = device == "cuda"
 
-    launcher_config = ProcessConfig(device_isolation=device == "cuda", device_isolation_action="error")
+    launcher_config = ProcessConfig(device_isolation=device_isolation, device_isolation_action="error")
 
     if scenario == "training":
         if library == "transformers":
@@ -73,35 +75,32 @@ def test_api_launch(device, scenario, library, task, model):
     backend_config = PyTorchConfig(
         device=device, device_ids=device_ids, no_weights=no_weights, library=library, model=model, task=task
     )
-
     benchmark_config = BenchmarkConfig(
-        name=benchmark_name,
-        scenario=scenario_config,
-        launcher=launcher_config,
-        backend=backend_config,
+        name=benchmark_name, scenario=scenario_config, launcher=launcher_config, backend=backend_config
     )
-    benchmark = Benchmark(benchmark_config)
-    benchmark_report = benchmark.launch()
+    benchmark_report = Benchmark.launch(benchmark_config)
 
     benchmark_report.push_to_hub(repo_id=PUSH_REPO_ID, subfolder=benchmark_name)
     benchmark_config.push_to_hub(repo_id=PUSH_REPO_ID, subfolder=benchmark_name)
+
+    benchmark = Benchmark(config=benchmark_config, report=benchmark_report)
     benchmark.push_to_hub(repo_id=PUSH_REPO_ID, subfolder=benchmark_name)
 
 
 def test_api_push_to_hub_mixin():
     benchmark_name = "test_api_push_to_hub_mixin"
 
-    launcher_config = ProcessConfig(device_isolation=False)
-    backend_config = PyTorchConfig(model="google-bert/bert-base-uncased", device="cpu")
     scenario_config = InferenceConfig(memory=True, latency=True, duration=1, iterations=1, warmup_runs=1)
+    backend_config = PyTorchConfig(model="google-bert/bert-base-uncased", device="cpu")
+    launcher_config = ProcessConfig(device_isolation=False)
     benchmark_config = BenchmarkConfig(
         name=benchmark_name,
         scenario=scenario_config,
         launcher=launcher_config,
         backend=backend_config,
     )
-    benchmark = Benchmark(benchmark_config)
-    benchmark_report = benchmark.launch()
+    benchmark_report = Benchmark.launch(benchmark_config)
+    benchmark = Benchmark(config=benchmark_config, report=benchmark_report)
 
     for artifact_name, artifact in [
         ("benchmark_config", benchmark_config),

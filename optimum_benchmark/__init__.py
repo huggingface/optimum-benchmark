@@ -11,6 +11,7 @@ from .backends import (
 )
 from .base import Benchmark
 from .config import BenchmarkConfig
+from .experiment import ExperimentConfig, launch, run
 from .launchers import InlineConfig, LauncherConfig, ProcessConfig, TorchrunConfig
 from .report import BenchmarkReport
 from .scenarios import EnergyStarConfig, InferenceConfig, ScenarioConfig, TrainingConfig
@@ -36,4 +37,7 @@ __all__ = [
     "TorchORTConfig",
     "TRTLLMConfig",
     "TorchrunConfig",
+    "ExperimentConfig",
+    "launch",
+    "run",
 ]

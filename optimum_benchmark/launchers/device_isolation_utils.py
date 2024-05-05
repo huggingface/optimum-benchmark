@@ -128,7 +128,7 @@ def get_children_pids(pid: int) -> Set[int]:
 
 
 def assert_device_isolation(action: str, pid: int, device_ids: str):
-    setup_logging("INFO", prefix="DEVICE-ISOLATION-PROCESS")
+    setup_logging("INFO", format_prefix="DEVICE-ISOLATION-PROCESS")
 
     assert action in ["warn", "error", "kill"], f"Unsupported action `{action}`"
 

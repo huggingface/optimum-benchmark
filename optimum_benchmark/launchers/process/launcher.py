@@ -22,7 +22,7 @@ class ProcessLauncher(Launcher[ProcessConfig]):
             LOGGER.info(f"\t+ Setting multiprocessing start method to {self.config.start_method}.")
             mp.set_start_method(self.config.start_method, force=True)
 
-    def launch(self, worker: Callable, *worker_args) -> BenchmarkReport:
+    def launch(self, worker: Callable[..., BenchmarkReport], *worker_args: Any) -> BenchmarkReport:
         ctx = mp.get_context(self.config.start_method)
         log_level = ctx.get_logger().getEffectiveLevel()
 
@@ -54,7 +54,7 @@ def target(worker: Callable[..., BenchmarkReport], log_level: Union[int, str], *
     isolated_process_pid = os.getpid()
     os.environ["ISOLATED_PROCESS_PID"] = str(isolated_process_pid)
 
-    setup_logging(level=log_level, prefix="ISOLATED-PROCESS")
+    setup_logging(level=log_level, format_prefix="ISOLATED-PROCESS")
     LOGGER.info(f"Running benchmark in isolated process [{isolated_process_pid}].")
 
     report = worker(*worker_args)

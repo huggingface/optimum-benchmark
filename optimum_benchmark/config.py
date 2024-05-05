@@ -23,9 +23,6 @@ class BenchmarkConfig(PushToHubMixin):
     # ENVIRONMENT CONFIGURATION
     environment: Dict[str, Any] = field(default_factory=lambda: {**get_system_info(), **get_hf_libs_info()})
 
-    push_to_hub: bool = False
-    push_to_hub_kwargs: Dict[str, Any] = field(default_factory=dict)
-
     @classproperty
     def default_filename(cls) -> str:
         return "benchmark_config.json"

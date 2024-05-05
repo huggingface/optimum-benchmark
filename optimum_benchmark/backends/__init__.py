@@ -18,5 +18,4 @@ __all__ = [
     "PyTXIConfig",
     "LLMSwarmConfig",
     "BackendConfig",
-    "Backend",
 ]

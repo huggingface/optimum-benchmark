@@ -8,19 +8,19 @@ OPTIMUM_BENCHMARK_VERSION = "0.2.0"
 
 MIN_OPTIMUM_VERSION = "1.16.0"
 INSTALL_REQUIRES = [
-    # Mandatory HF dependencies
+    # HF dependencies
     "transformers",
     "accelerate",
     "datasets",
     # Hydra
-    "hydra_colorlog",
     "hydra-core",
     "omegaconf",
-    # CPU Memory
+    # CPU
     "psutil",
     # Reporting
     "typing-extensions",
     "flatten_dict",
+    "colorlog",
     "pandas",
 ]
 

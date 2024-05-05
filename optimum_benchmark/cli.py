@@ -11,6 +11,7 @@ from . import (
     BenchmarkConfig,
     BenchmarkReport,
     EnergyStarConfig,
+    ExperimentConfig,
     INCConfig,
     InferenceConfig,
     InlineConfig,
@@ -24,8 +25,8 @@ from . import (
     TorchrunConfig,
     TrainingConfig,
     TRTLLMConfig,
+    launch,
 )
-from .experiment import ExperimentConfig, launch  # deprecated
 from .logging_utils import setup_logging
 
 LOGGER = getLogger("hydra-cli")
@@ -34,7 +35,9 @@ LOGGER = getLogger("hydra-cli")
 class DeprecatedTrainingConfig(TrainingConfig):
     def __post_init__(self):
         if os.environ.get("BENCHMARK_INTERFACE", "API") == "CLI":
-            LOGGER.warning("The `benchmark: training` schema is deprecated. Please use `scenario: training` instead.")
+            LOGGER.warning(
+                "The `benchmark: training` in your defaults list is deprecated. Please use `scenario: training` instead."
+            )
 
         super().__post_init__()
 
@@ -42,7 +45,9 @@ class DeprecatedTrainingConfig(TrainingConfig):
 class DeprecatedInferenceConfig(InferenceConfig):
     def __post_init__(self):
         if os.environ.get("BENCHMARK_INTERFACE", "API") == "CLI":
-            LOGGER.warning("The `benchmark: inference` schema is deprecated. Please use `scenario: inference` instead.")
+            LOGGER.warning(
+                "The `benchmark: inference` in your defaults list is deprecated. Please use `scenario: inference` instead."
+            )
 
         super().__post_init__()
 
@@ -51,7 +56,7 @@ class DeprecatedEnergyStarConfig(EnergyStarConfig):
     def __post_init__(self):
         if os.environ.get("BENCHMARK_INTERFACE", "API") == "CLI":
             LOGGER.warning(
-                "The `benchmark: energy_star` schema is deprecated. Please use `scenario: energy_star` instead."
+                "The `benchmark: energy_star` in your defaults list is deprecated. Please use `scenario: energy_star` instead."
             )
 
         super().__post_init__()
@@ -80,6 +85,7 @@ cs.store(group="launcher", name=ProcessConfig.name, node=ProcessConfig)
 cs.store(group="launcher", name=TorchrunConfig.name, node=TorchrunConfig)
 
 # deprecated
+cs.store(name="experiment", node=ExperimentConfig)
 cs.store(group="benchmark", name=TrainingConfig.name, node=DeprecatedTrainingConfig)
 cs.store(group="benchmark", name=InferenceConfig.name, node=DeprecatedInferenceConfig)
 cs.store(group="benchmark", name=EnergyStarConfig.name, node=DeprecatedEnergyStarConfig)
@@ -95,7 +101,7 @@ def main(config: DictConfig) -> None:
     global LOGGING_SETUP_DONE
 
     if not LOGGING_SETUP_DONE:
-        setup_logging(level="INFO", prefix="MAIN-PROCESS")
+        setup_logging(level="INFO", format_prefix="MAIN-PROCESS", disable_existing_loggers=True)
         LOGGING_SETUP_DONE = True
     else:
         setup_logging(level="INFO")
@@ -110,16 +116,17 @@ def main(config: DictConfig) -> None:
     config = OmegaConf.to_object(config)
 
     if isinstance(config, ExperimentConfig):
+        # old api
         experiment_config = config
         experiment_config.save_json("experiment_config.json")
         benchmark_report: BenchmarkReport = launch(experiment_config=experiment_config)
         benchmark_report.save_json("benchmark_report.json")
 
     elif isinstance(config, BenchmarkConfig):
+        # new api
         benchmark_config = config
         benchmark_config.save_json("benchmark_config.json")
-        benchmark = Benchmark(config=benchmark_config)
-        benchmark_report = benchmark.launch()
+        benchmark_report = Benchmark.launch(benchmark_config)
         benchmark_report.save_json("benchmark_report.json")
-        # this one is new
+        benchmark = Benchmark(config=benchmark_config, report=benchmark_report)
         benchmark.save_json("benchmark.json")
