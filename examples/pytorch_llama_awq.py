@@ -1,9 +1,9 @@
 from optimum_benchmark import Benchmark, BenchmarkConfig, InferenceConfig, ProcessConfig, PyTorchConfig
 from optimum_benchmark.logging_utils import setup_logging
 
-if __name__ == "__main__":
-    setup_logging(level="INFO")
+setup_logging(level="INFO", handlers=["console"])
 
+if __name__ == "__main__":
     BENCHMARK_NAME = "pytorch_llama_awq"
     REPO_ID = f"IlyasMoutawwakil/{BENCHMARK_NAME}"
 

@@ -2,14 +2,13 @@
 <p align="center"><q>All benchmarks are wrong, some will cost you less than others.</q></p>
 <h1 align="center">Optimum-Benchmark 🏋️</h1>
 
-Optimum-Benchmark is a unified [multi-backend & multi-device](#backends--devices-) utility for benchmarking [Transformers](https://github.com/huggingface/transformers), [Diffusers](https://github.com/huggingface/diffusers), [PEFT](https://github.com/huggingface/peft), [TIMM](https://github.com/huggingface/pytorch-image-models) and [Optimum](https://github.com/huggingface/optimum) libraries, along with all their supported [optimizations & quantization schemes](#backend-features-), for [inference & training](#benchmarks-), in [distributed & non-distributed settings](#backend-), in the most correct, efficient and scalable way possible.
+Optimum-Benchmark is a unified [multi-backend & multi-device](#backends--devices-) utility for benchmarking [Transformers](https://github.com/huggingface/transformers), [Diffusers](https://github.com/huggingface/diffusers), [PEFT](https://github.com/huggingface/peft), [TIMM](https://github.com/huggingface/pytorch-image-models) and [Optimum](https://github.com/huggingface/optimum) libraries, along with all their supported [optimizations & quantization schemes](#backends--devices-), for [inference & training](#scenarios-), in [distributed & non-distributed settings](#launchers-), in the most correct, efficient and scalable way possible.
 
 *News* 📰
 
-- PYPI release soon.
-- Added a Python API to run benchmarks with isolation, distribution and tracking features supported by the library.
+- Pypi package will be available soon.
 
-*Motivations* 🤔
+*Motivations* 🎯
 
 - HuggingFace hardware partners wanting to know how their hardware performs compared to another hardware on the same models.
 - HuggingFace ecosystem users wanting to know how their chosen model performs in terms of latency, throughput, memory usage, energy consumption, etc compared to another model.
@@ -80,42 +79,45 @@ Depending on the backends you want to use, you can install `optimum-benchmark` w
 - OnnxRuntime: `pip install optimum-benchmark[onnxruntime]`
 - TensorRT-LLM: `pip install optimum-benchmark[tensorrt-llm]`
 - OnnxRuntime-GPU: `pip install optimum-benchmark[onnxruntime-gpu]`
-- Intel Neural Compressor: `pip install optimum-benchmark[neural-compressor]`
+- Neural Compressor: `pip install optimum-benchmark[neural-compressor]`
 - Py-TXI: `pip install optimum-benchmark[py-txi]`
 
 </details>
 
 ### Running benchmarks using the Python API 🧪
 
-You can run benchmarks from the Python API, using the `launch` entrypoint. It takes an `BenchmarkConfig` object as input and returns a `BenchmarkReport` object containing the benchmark results. The use of configuration files is optional, but recommended for utmost correctness, isolation and reproducibility of benchmarks.
+You can run benchmarks from the Python API, using the `Benchmark` class and its `launch` method. It takes a `BenchmarkConfig` object as input, runs the benchmark in isolated process and returns a `BenchmarkReport` object containing the benchmark results.
 
-Here's an example of how to run a benchmark using the `pytorch` backend, `torchrun` launcher and `inference` scenario with latency and memory tracking enabled.
+Here's an example of how to run an isolated benchmark using the `pytorch` backend, `torchrun` launcher and `inference` scenario with latency and memory tracking enabled.
 
 ```python
-from optimum_benchmark.benchmark import launch, BenchmarkConfig
-from optimum_benchmark.backends.pytorch.config import PyTorchConfig
-from optimum_benchmark.launchers.torchrun.config import TorchrunConfig
-from optimum_benchmark.scenarios.inference.config import InferenceConfig
+from optimum_benchmark import Benchmark, BenchmarkConfig, TorchrunConfig, InferenceConfig, PyTorchConfig
+from optimum_benchmark.logging_utils import setup_logging
+
+setup_logging(level="INFO", handlers=["console"])
 
 if __name__ == "__main__":
     launcher_config = TorchrunConfig(nproc_per_node=2)
     scenario_config = InferenceConfig(latency=True, memory=True)
     backend_config = PyTorchConfig(model="gpt2", device="cuda", device_ids="0,1", no_weights=True)
     benchmark_config = BenchmarkConfig(
-        benchmark_name="api-launch",
+        name="pytorch_gpt2",
         scenario=scenario_config,
         launcher=launcher_config,
         backend=backend_config,
     )
-
-    benchmark_report = launch(benchmark_config)
+    benchmark_report = Benchmark.launch(benchmark_config)
 
     # push artifacts to the hub
-    benchmark_config.push_to_hub("IlyasMoutawwakil/benchmarks")
-    benchmark_report.push_to_hub("IlyasMoutawwakil/benchmarks")
+    benchmark_config.push_to_hub("IlyasMoutawwakil/pytorch_gpt2")
+    benchmark_report.push_to_hub("IlyasMoutawwakil/pytorch_gpt2")
+
+    # or merge them into a single artifact
+    benchmark = Benchmark(config=benchmark_config, report=benchmark_report)
+    benchmark.push_to_hub("IlyasMoutawwakil/pytorch_gpt2")
 ```
 
-If you're on VSCode, you can hover over the configuration classes to see the available parameters and their descriptions. Documentation will be available soon (help is welcome!).
+If you're on VSCode, you can hover over the configuration classes to see the available parameters and their descriptions. You can also see the available parameters in the [Features](#features-) section below.
 
 ### Running benchmarks using the Hydra CLI 🧪
 
@@ -127,7 +129,12 @@ optimum-benchmark --config-dir examples/ --config-name pytorch_bert
 
 This will run the benchmark using the configuration in [`examples/pytorch_bert.yaml`](examples/pytorch_bert.yaml) and store the results in `runs/pytorch_bert`.
 
-The result files are `benchmark_report.json`, the program's logs `cli.log` and the configuration that's been used `benchmark_config.json`, including backend, launcher, scenario and environment information.
+The resulting files are :
+
+- `benchmark_config.json` which contains the configuration used for the benchmark, including the backend, launcher, scenario and the environment in which the benchmark was run.
+- `benchmark_report.json` which contains a full report of the benchmark's results, like latency measurements, memory usage, energy consumption, etc.
+- `benchmark.json` contains both the report and the configuration in a single file.
+- `benchmark.log` contains the logs of the benchmark run.
 
 <details>
 <summary>Advanced CLI options</summary>
@@ -218,7 +225,7 @@ See [TrainingConfig](optimum_benchmark/scenarios/training/config.py) for more in
 - [x] OnnxRuntime backend for ROCMExecutionProvider (`backend=onnxruntime`, `backend.device=cuda`, `backend.provider=ROCMExecutionProvider`)
 - [x] OnnxRuntime backend for TensorrtExecutionProvider (`backend=onnxruntime`, `backend.device=cuda`, `backend.provider=TensorrtExecutionProvider`)
 - [x] Py-TXI backend for CPU and GPU (`backend=py-txi`, `backend.device=cpu` or `backend.device=cuda`)
-- [x] Intel Neural Compressor backend for CPU (`backend=neural-compressor`, `backend.device=cpu`)
+- [x] Neural Compressor backend for CPU (`backend=neural-compressor`, `backend.device=cpu`)
 - [x] TensorRT-LLM backend for CUDA (`backend=tensorrt-llm`, `backend.device=cuda`)
 - [x] Torch-ORT backend for CUDA (`backend=torch-ort`, `backend.device=cuda`)
 - [x] OpenVINO backend for CPU (`backend=openvino`, `backend.device=cpu`)
