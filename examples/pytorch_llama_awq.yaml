@@ -1,12 +1,11 @@
 defaults:
   - benchmark
-  - backend: tensorrt-llm
   - scenario: inference
   - launcher: process
-  - _base_
+  - backend: pytorch
   - _self_
 
-name: trt_llama
+experiment_name: pytorch_llama_awq
 
 launcher:
   device_isolation: true
@@ -15,12 +14,13 @@ launcher:
 backend:
   device: cuda
   device_ids: 0
-  model: NousResearch/Llama-2-7b-hf
+  no_weights: true
+  model: TheBloke/Llama-2-70B-AWQ
 
-scenario:
+benchmark:
   input_shapes:
     batch_size: 1
-    sequence_length: 64
+    sequence_length: 128
   generate_kwargs:
     max_new_tokens: 100
     min_new_tokens: 100
