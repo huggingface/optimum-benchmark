@@ -84,25 +84,24 @@ def target(
     isolated_process_pid = os.getpid()
     os.environ["ISOLATED_PROCESS_PID"] = str(isolated_process_pid)
 
-    setup_logging(level=log_level, prefix="ISOLATED-PROCESS")
+    setup_logging(level=log_level, format_prefix="ISOLATED-PROCESS")
     LOGGER.info(f"Running benchmark in isolated process [{isolated_process_pid}].")
 
     elastic_agent_launcher = elastic_launch(config=launch_config, entrypoint=entrypoint)
     elastic_agent_launcher(worker, log_level, *worker_args)
 
     LOGGER.info("Exiting isolated process.")
+    exit(0)
 
 
 @record
 def entrypoint(worker: Callable[..., BenchmarkReport], log_level: Union[str, int], *worker_args: Any):
     rank = int(os.environ.get("RANK", "0"))
 
-    if rank == 0:
-        setup_logging(level=log_level, prefix=f"RANK-{rank}")
-    elif os.environ.get("LOG_ALL_RANKS", "0") == "1":
-        setup_logging(level=log_level, prefix=f"RANK-{rank}")
+    if (rank == 0) or (os.environ.get("LOG_ALL_RANKS", "0") == "1"):
+        setup_logging(level=log_level, format_prefix=f"RANK-{rank}")
     else:
-        setup_logging(level="ERROR", prefix=f"RANK-{rank}")
+        setup_logging(level="ERROR", format_prefix=f"RANK-{rank}")
 
     if torch.cuda.is_available():
         LOGGER.info(f"\t+ Setting torch.distributed cuda device to {rank}.")
