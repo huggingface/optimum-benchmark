@@ -9,6 +9,15 @@ import psutil
 from .import_utils import is_amdsmi_available, is_pynvml_available, is_pyrsmi_available
 
 
+# Network related stuff
+def get_socket_ifname() -> Optional[str]:
+    for interface in psutil.net_if_addrs():
+        if interface.startswith("e"):
+            return interface
+
+    raise None
+
+
 ## CPU related stuff
 def get_cpu() -> Optional[str]:
     if platform.system() == "Windows":

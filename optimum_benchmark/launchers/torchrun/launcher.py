@@ -59,21 +59,20 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
         ):
             isolated_process.join()
 
-        retrieved_all_reports = all(
-            os.path.isfile(f"rank_{rank}_report.json") for rank in range(self.config.nproc_per_node)
-        )
-
-        if isolated_process.exitcode != 0 and not retrieved_all_reports:
+        if all(os.path.isfile(f"benchmark_report_rank_{rank}.json") for rank in range(self.config.nproc_per_node)):
+            LOGGER.info("\t+ Gatehring reports from all ranks.")
+            reports = [
+                BenchmarkReport.from_json(f"benchmark_report_rank_{rank}.json")
+                for rank in range(self.config.nproc_per_node)
+            ]
+            LOGGER.info("\t+ Aggregating reports from all ranks.")
+            report = BenchmarkReport.aggregate(reports)
+            LOGGER.info("\t+ Logging aggregated report.")
+            report.log()
+        elif isolated_process.exitcode != 0:
             raise RuntimeError(f"Process exited with non-zero code {isolated_process.exitcode}.")
-        elif not retrieved_all_reports:
-            raise RuntimeError("Could not retrieve all reports from ranks.")
-
-        LOGGER.info("\t+ Gatehring reports from all ranks.")
-        reports = [BenchmarkReport.from_json(f"rank_{rank}_report.json") for rank in range(self.config.nproc_per_node)]
-        LOGGER.info("\t+ Aggregating reports from all ranks.")
-        report = BenchmarkReport.aggregate(reports)
-        LOGGER.info("\t+ Logging aggregated report.")
-        report.log()
+        else:
+            raise RuntimeError("Could not retrieve report from isolated process.")
 
         return report
 
@@ -113,7 +112,7 @@ def entrypoint(worker: Callable[..., BenchmarkReport], log_level: Union[str, int
     report = worker(*worker_args)
 
     LOGGER.info(f"Saving report from rank {rank}.")
-    report.save_json(f"rank_{rank}_report.json")
+    report.save_json(f"benchmark_report_rank_{rank}.json")
 
     LOGGER.info("Destroying torch.distributed process group.")
     torch.distributed.destroy_process_group()
