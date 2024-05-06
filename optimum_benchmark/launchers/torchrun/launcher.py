@@ -74,7 +74,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
 
         if not queue.empty() and queue.qsize() == self.config.nproc_per_node:
             LOGGER.info("\t+ Retrieving reports from queue.")
-            reports = [queue.get() for _ in range(queue.qsize())]
+            reports = [BenchmarkReport.from_dict(queue.get()) for _ in range(queue.qsize())]
             LOGGER.info("\t+ Aggregating reports.")
             report = BenchmarkReport.aggregate(reports)
         elif isolated_process.exitcode != 0:
@@ -140,7 +140,7 @@ def entrypoint(
     report = worker(*worker_args)
 
     LOGGER.info("Putting report into queue.")
-    queue.put(report)
+    queue.put(report.to_dict())
 
     LOGGER.info("Waiting for all ranks.")
     torch.distributed.barrier()
