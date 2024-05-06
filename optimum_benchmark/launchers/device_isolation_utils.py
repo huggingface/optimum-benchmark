@@ -129,6 +129,7 @@ def get_children_pids(pid: int) -> Set[int]:
 
 def assert_device_isolation(action: str, pid: int, device_ids: str):
     setup_logging("INFO", format_prefix="DEVICE-ISOLATION-PROCESS")
+    device_isolation_pid = os.getpid()
 
     assert action in ["warn", "error", "kill"], f"Unsupported action `{action}`"
 
@@ -136,7 +137,7 @@ def assert_device_isolation(action: str, pid: int, device_ids: str):
         device_pids = get_pids_running_on_system_devices(device_ids=device_ids)
         device_pids = {p for p in device_pids if psutil.pid_exists(p)}
 
-        permitted_pids = {pid} | get_children_pids(pid)
+        permitted_pids = {pid, device_isolation_pid} | get_children_pids(pid) | get_children_pids(device_isolation_pid)
         permitted_pids = {p for p in permitted_pids if psutil.pid_exists(p)}
 
         foreign_pids = device_pids - permitted_pids
@@ -203,6 +204,7 @@ def device_isolation_context(enable: bool, action: str, pid: int, device_ids: Op
 
     yield
 
+    LOGGER.info("Terminating the device isolation process...")
     device_isolation_process.terminate()
     device_isolation_process.join(timeout=1)
 
