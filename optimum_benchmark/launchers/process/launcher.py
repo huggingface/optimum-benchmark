@@ -26,13 +26,9 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         ctx = mp.get_context(self.config.start_method)
         log_level = ctx.get_logger().getEffectiveLevel()
         queue = ctx.Queue()
-        lock = ctx.Lock()
 
         isolated_process = mp.Process(
-            target=target,
-            args=(worker, *worker_args),
-            kwargs={"log_level": log_level, "queue": queue, "lock": lock},
-            daemon=False,
+            target=target, args=(worker, *worker_args), kwargs={"log_level": log_level, "queue": queue}, daemon=False
         )
         isolated_process.start()
 
@@ -49,12 +45,13 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         else:
             raise RuntimeError("Could not retrieve report from isolated process.")
 
+        LOGGER.info("Logging final report.")
+        report.log()
+
         return report
 
 
-def target(
-    worker: Callable[..., BenchmarkReport], *worker_args, log_level: Union[int, str], queue: mp.Queue, lock: mp.Lock
-) -> None:
+def target(worker: Callable[..., BenchmarkReport], *worker_args, log_level: Union[int, str], queue: mp.Queue) -> None:
     isolated_process_pid = os.getpid()
     os.environ["ISOLATED_PROCESS_PID"] = str(isolated_process_pid)
 
@@ -63,10 +60,8 @@ def target(
 
     report = worker(*worker_args)
 
-    lock.acquire()
     LOGGER.info("Putting report in queue.")
     queue.put(report.to_dict())
-    lock.release()
 
     LOGGER.info("Exiting isolated process.")
     exit(0)

@@ -60,11 +60,12 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
     def launch(self, worker: Callable[..., BenchmarkReport], *worker_args: Any) -> BenchmarkReport:
         ctx = mp.get_context(self.config.start_method)
         log_level = ctx.get_logger().getEffectiveLevel()
+        queue = ctx.Queue()
 
         isolated_process = mp.Process(
             target=target,
-            args=(log_level, worker, *worker_args),
-            kwargs={"launch_config": self.launch_config},
+            args=(worker, *worker_args),
+            kwargs={"log_level": log_level, "queue": queue, "launch_config": self.launch_config},
             daemon=False,
         )
         isolated_process.start()
@@ -74,26 +75,33 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
         ):
             isolated_process.join()
 
-        if all(os.path.isfile(f"benchmark_report_rank_{rank}.json") for rank in range(self.config.nproc_per_node)):
-            LOGGER.info("\t+ Gatehring reports from all ranks.")
-            reports = [
-                BenchmarkReport.from_json(f"benchmark_report_rank_{rank}.json")
-                for rank in range(self.config.nproc_per_node)
-            ]
-            LOGGER.info("\t+ Aggregating reports from all ranks.")
+        if not queue.empty() and queue.qsize() == self.config.nproc_per_node:
+            LOGGER.info("\t+ Retrieving reports from queue.")
+            reports = [queue.get() for _ in range(queue.qsize())]
+            LOGGER.info("\t+ Aggregating reports.")
             report = BenchmarkReport.aggregate(reports)
-            LOGGER.info("\t+ Logging aggregated report.")
-            report.log()
         elif isolated_process.exitcode != 0:
             raise RuntimeError(f"Process exited with non-zero code {isolated_process.exitcode}.")
         else:
-            raise RuntimeError("Could not retrieve report from isolated process.")
+            if queue.empty():
+                raise RuntimeError("Queue is empty.")
+            else:
+                raise RuntimeError(
+                    f"Queue size ({queue.qsize()}) does not match number of ranks ({self.config.nproc_per_node})."
+                )
+
+        LOGGER.info("\t+ Logging final report.")
+        report.log()
 
         return report
 
 
 def target(
-    log_level: Union[str, int], worker: Callable[..., BenchmarkReport], *worker_args, launch_config: LaunchConfig
+    worker: Callable[..., BenchmarkReport],
+    *worker_args,
+    log_level: Union[str, int],
+    queue: mp.Queue,
+    launch_config: LaunchConfig,
 ):
     isolated_process_pid = os.getpid()
     os.environ["ISOLATED_PROCESS_PID"] = str(isolated_process_pid)
@@ -103,7 +111,7 @@ def target(
 
     elastic_agent_launcher = elastic_launch(config=launch_config, entrypoint=entrypoint)
     try:
-        elastic_agent_launcher(log_level, worker, *worker_args)
+        elastic_agent_launcher(worker, *worker_args, log_level, queue)
     except ForcedZeroExit:
         pass
 
@@ -111,7 +119,7 @@ def target(
     exit(0)
 
 
-def entrypoint(log_level: Union[str, int], worker: Callable[..., BenchmarkReport], *worker_args):
+def entrypoint(log_level: Union[str, int], worker: Callable[..., BenchmarkReport], *worker_args, queue: mp.Queue):
     rank = int(os.environ.get("RANK", "0"))
     isolated_process_pid = int(os.environ["ISOLATED_PROCESS_PID"])
 
@@ -129,10 +137,10 @@ def entrypoint(log_level: Union[str, int], worker: Callable[..., BenchmarkReport
 
     report = worker(*worker_args)
 
-    LOGGER.info(f"Saving report from rank {rank}.")
-    report.save_json(f"benchmark_report_rank_{rank}.json")
+    LOGGER.info("Putting report into queue.")
+    queue.put(report)
 
-    LOGGER.info("Waiting for all ranks to finish.")
+    LOGGER.info("Waiting for all ranks.")
     torch.distributed.barrier()
 
     LOGGER.info("Destroying torch.distributed process group.")
