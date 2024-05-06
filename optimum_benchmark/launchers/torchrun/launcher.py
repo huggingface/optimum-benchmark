@@ -63,10 +63,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
         queue = ctx.Queue()
 
         isolated_process = mp.Process(
-            target=target,
-            args=(worker, *worker_args),
-            kwargs={"log_level": log_level, "queue": queue, "launch_config": self.launch_config},
-            daemon=False,
+            target=target, args=(self.launch_config, log_level, queue, worker, *worker_args), daemon=False
         )
         isolated_process.start()
 
@@ -97,11 +94,11 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
 
 
 def target(
-    worker: Callable[..., BenchmarkReport],
-    *worker_args,
+    launch_config: LaunchConfig,
     log_level: Union[str, int],
     queue: mp.Queue,
-    launch_config: LaunchConfig,
+    worker: Callable[..., BenchmarkReport],
+    *worker_args: Any,
 ):
     isolated_process_pid = os.getpid()
     os.environ["ISOLATED_PROCESS_PID"] = str(isolated_process_pid)
@@ -111,7 +108,7 @@ def target(
 
     elastic_agent_launcher = elastic_launch(config=launch_config, entrypoint=entrypoint)
     try:
-        elastic_agent_launcher(worker, *worker_args, log_level, queue)
+        elastic_agent_launcher(log_level, queue, worker, *worker_args)
     except ForcedZeroExit:
         pass
 
@@ -119,7 +116,12 @@ def target(
     exit(0)
 
 
-def entrypoint(log_level: Union[str, int], worker: Callable[..., BenchmarkReport], *worker_args, queue: mp.Queue):
+def entrypoint(
+    log_level: Union[str, int],
+    queue: mp.Queue,
+    worker: Callable[..., BenchmarkReport],
+    *worker_args: Any,
+):
     rank = int(os.environ.get("RANK", "0"))
     isolated_process_pid = int(os.environ["ISOLATED_PROCESS_PID"])
 

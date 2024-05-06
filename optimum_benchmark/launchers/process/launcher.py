@@ -27,9 +27,7 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         log_level = ctx.get_logger().getEffectiveLevel()
         queue = ctx.Queue()
 
-        isolated_process = mp.Process(
-            target=target, args=(worker, *worker_args), kwargs={"log_level": log_level, "queue": queue}, daemon=False
-        )
+        isolated_process = mp.Process(target=target, args=(log_level, queue, worker, *worker_args), daemon=False)
         isolated_process.start()
 
         with device_isolation_context(
@@ -51,7 +49,12 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         return report
 
 
-def target(worker: Callable[..., BenchmarkReport], *worker_args, log_level: Union[int, str], queue: mp.Queue) -> None:
+def target(
+    log_level: Union[int, str],
+    queue: mp.Queue,
+    worker: Callable[..., BenchmarkReport],
+    *worker_args: Any,
+) -> None:
     isolated_process_pid = os.getpid()
     os.environ["ISOLATED_PROCESS_PID"] = str(isolated_process_pid)
 
