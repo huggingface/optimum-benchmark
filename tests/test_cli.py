@@ -36,7 +36,7 @@ def test_cli_configs(config_name):
 
 
 @pytest.mark.parametrize("launcher", ["inline", "process"])
-def test_cli_exit_code(launcher):
+def test_cli_exit_code_0(launcher):
     args_0 = [
         "optimum-benchmark",
         "--config-dir",
@@ -54,6 +54,9 @@ def test_cli_exit_code(launcher):
     popen_0 = run_subprocess_and_log_stream_output(LOGGER, args_0)
     assert popen_0.returncode == 0
 
+
+@pytest.mark.parametrize("launcher", ["inline", "process", "torchrun"])
+def test_cli_exit_code_1(launcher):
     args_1 = [
         "optimum-benchmark",
         "--config-dir",
