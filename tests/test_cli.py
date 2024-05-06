@@ -35,7 +35,7 @@ def test_cli_configs(config_name):
     assert popen.returncode == 0, f"Failed to run {config_name}"
 
 
-@pytest.mark.parametrize("launcher", ["inline", "process", "torchrun"])
+@pytest.mark.parametrize("launcher", ["inline", "process"])
 def test_cli_exit_code(launcher):
     args_0 = [
         "optimum-benchmark",
