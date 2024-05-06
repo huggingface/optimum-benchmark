@@ -110,8 +110,8 @@ class MemoryTracker:
             LOGGER.info(f"\t+ Tracking RAM memory of process with PID [{self.monitored_pid}]")
 
         if self.device == "cuda":
-            self.device_ids = list(map(int, self.device_ids.split(",")))
             LOGGER.info(f"\t+ Tracking VRAM memory of CUDA devices with IDs [{self.device_ids}]")
+            self.device_ids = list(map(int, self.device_ids.split(",")))
 
         if self.uses_cuda_pytorch_allocator:
             self.num_pytorch_devices = torch.cuda.device_count()

@@ -9,4 +9,4 @@ defaults:
   - _self_ # hydra 1.1 compatibility
   - override backend: onnxruntime
 
-experiment_name: cuda_inference_onnxruntime_text_decoders_no_weights
+name: cuda_inference_onnxruntime_text_decoders_no_weights

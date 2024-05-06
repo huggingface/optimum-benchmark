@@ -1,8 +1,10 @@
+import os
 import uuid
 from dataclasses import dataclass, field
 from logging import getLogger
 from typing import Any, Dict, Optional
 
+from ...system_utils import get_socket_ifname
 from ..config import LauncherConfig
 
 LOGGER = getLogger("torchrun")
@@ -41,6 +43,9 @@ class TorchrunConfig(LauncherConfig):
     # address of the local node if any. If not set, a lookup on the local machine's FQDN will be performed.
     local_addr: Optional[str] = None
 
+    # The socket ifname
+    socket_ifname: Optional[str] = None
+
     def __post_init__(self):
         super().__post_init__()
 
@@ -55,3 +60,12 @@ class TorchrunConfig(LauncherConfig):
         if self.min_nodes != 1:
             LOGGER.info("For multi-node benchmarks, run the benchmark on each node separately.")
             LOGGER.info(f"Waiting for the other nodes to be avaialable at {self.rdzv_endpoint}...")
+
+        if self.socket_ifname is None:
+            self.socket_ifname = get_socket_ifname()
+
+            if self.socket_ifname is None:
+                LOGGER.warning("Could not infer the socket interface name, Please set it manually.")
+            else:
+                os.environ["NCCL_SOCKET_IFNAME"] = self.socket_ifname
+                os.environ["GLOO_SOCKET_IFNAME"] = self.socket_ifname

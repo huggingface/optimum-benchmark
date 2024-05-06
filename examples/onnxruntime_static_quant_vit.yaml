@@ -1,13 +1,12 @@
 defaults:
-  - experiment # inheriting experiment schema
-  - benchmark: inference
+  - benchmark
   - backend: onnxruntime
+  - scenario: inference
   - launcher: process
-  - _self_ # for hydra 1.1 compatibility
-  - override hydra/job_logging: colorlog # colorful logging
-  - override hydra/hydra_logging: colorlog # colorful logging
+  - _base_
+  - _self_
 
-experiment_name: onnxruntime_static_quant_vit
+name: onnxruntime_static_quant_vit
 
 backend:
   device: cpu
@@ -18,16 +17,3 @@ backend:
     is_static: true
     per_channel: false
   calibration: true
-
-# hydra/cli specific settings
-hydra:
-  run:
-    # where to store run results
-    dir: runs/${experiment_name}
-  job:
-    # change working directory to the run directory
-    chdir: true
-    env_set:
-      # set environment variable OVERRIDE_BENCHMARKS to 1
-      # to not skip benchmarks that have been run before
-      OVERRIDE_BENCHMARKS: 1

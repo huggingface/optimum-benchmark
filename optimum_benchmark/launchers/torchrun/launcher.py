@@ -1,19 +1,34 @@
 import multiprocessing as mp
 import os
+import signal
 from logging import getLogger
 from typing import Any, Callable, Union
 
 import torch.distributed
-from torch.distributed.elastic.multiprocessing.errors import record
 from torch.distributed.launcher.api import LaunchConfig, elastic_launch
 
-from ...benchmarks.report import BenchmarkReport
 from ...logging_utils import setup_logging
+from ...report import BenchmarkReport
 from ..base import Launcher
 from ..device_isolation_utils import device_isolation_context
 from .config import TorchrunConfig
 
 LOGGER = getLogger("torchrun")
+
+
+class ForcedZeroExit(SystemExit):
+    code: int = 0
+
+
+def forced_zero_exit_signal_handler(signum, frame):
+    for p in mp.active_children():
+        LOGGER.info(f"Sending a forced zero exit signal to process [{p.pid}].")
+        os.kill(p.pid, signal.SIGUSR2)
+
+    raise ForcedZeroExit
+
+
+signal.signal(signal.SIGUSR2, forced_zero_exit_signal_handler)
 
 
 class TorchrunLauncher(Launcher[TorchrunConfig]):
@@ -48,7 +63,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
 
         isolated_process = mp.Process(
             target=target,
-            args=(worker, log_level, *worker_args),
+            args=(log_level, worker, *worker_args),
             kwargs={"launch_config": self.launch_config},
             daemon=False,
         )
@@ -59,51 +74,51 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
         ):
             isolated_process.join()
 
-        if isolated_process.exitcode != 0:
+        if all(os.path.isfile(f"benchmark_report_rank_{rank}.json") for rank in range(self.config.nproc_per_node)):
+            LOGGER.info("\t+ Gatehring reports from all ranks.")
+            reports = [
+                BenchmarkReport.from_json(f"benchmark_report_rank_{rank}.json")
+                for rank in range(self.config.nproc_per_node)
+            ]
+            LOGGER.info("\t+ Aggregating reports from all ranks.")
+            report = BenchmarkReport.aggregate(reports)
+            LOGGER.info("\t+ Logging aggregated report.")
+            report.log()
+        elif isolated_process.exitcode != 0:
             raise RuntimeError(f"Process exited with non-zero code {isolated_process.exitcode}.")
-
-        reports = []
-
-        LOGGER.info("\t+ Gatehring reports from all ranks.")
-        for rank in range(self.config.nproc_per_node):
-            if not os.path.isfile(f"rank_{rank}_report.json"):
-                raise RuntimeError(f"Could not find report from rank {rank}.")
-
-            report = BenchmarkReport.from_json(f"rank_{rank}_report.json")
-            reports.append(report)
-
-        LOGGER.info("\t+ Aggregating reports from all ranks.")
-        report = BenchmarkReport.aggregate(reports)
-        report.log()
+        else:
+            raise RuntimeError("Could not retrieve report from isolated process.")
 
         return report
 
 
 def target(
-    worker: Callable[..., BenchmarkReport], log_level: Union[str, int], *worker_args: Any, launch_config: LaunchConfig
+    log_level: Union[str, int], worker: Callable[..., BenchmarkReport], *worker_args, launch_config: LaunchConfig
 ):
     isolated_process_pid = os.getpid()
     os.environ["ISOLATED_PROCESS_PID"] = str(isolated_process_pid)
 
-    setup_logging(level=log_level, prefix="ISOLATED-PROCESS")
+    setup_logging(level=log_level, format_prefix="ISOLATED-PROCESS")
     LOGGER.info(f"Running benchmark in isolated process [{isolated_process_pid}].")
 
     elastic_agent_launcher = elastic_launch(config=launch_config, entrypoint=entrypoint)
-    elastic_agent_launcher(worker, log_level, *worker_args)
+    try:
+        elastic_agent_launcher(log_level, worker, *worker_args)
+    except ForcedZeroExit:
+        pass
 
     LOGGER.info("Exiting isolated process.")
+    exit(0)
 
 
-@record
-def entrypoint(worker: Callable[..., BenchmarkReport], log_level: Union[str, int], *worker_args: Any):
+def entrypoint(log_level: Union[str, int], worker: Callable[..., BenchmarkReport], *worker_args):
     rank = int(os.environ.get("RANK", "0"))
+    isolated_process_pid = int(os.environ["ISOLATED_PROCESS_PID"])
 
-    if rank == 0:
-        setup_logging(level=log_level, prefix=f"RANK-{rank}")
-    elif os.environ.get("LOG_ALL_RANKS", "0") == "1":
-        setup_logging(level=log_level, prefix=f"RANK-{rank}")
+    if (rank == 0) or (os.environ.get("LOG_ALL_RANKS", "0") == "1"):
+        setup_logging(level=log_level, format_prefix=f"RANK-{rank}")
     else:
-        setup_logging(level="ERROR", prefix=f"RANK-{rank}")
+        setup_logging(level="ERROR", format_prefix=f"RANK-{rank}")
 
     if torch.cuda.is_available():
         LOGGER.info(f"\t+ Setting torch.distributed cuda device to {rank}.")
@@ -115,9 +130,13 @@ def entrypoint(worker: Callable[..., BenchmarkReport], log_level: Union[str, int
     report = worker(*worker_args)
 
     LOGGER.info(f"Saving report from rank {rank}.")
-    report.save_json(f"rank_{rank}_report.json")
+    report.save_json(f"benchmark_report_rank_{rank}.json")
+
+    LOGGER.info("Waiting for all ranks to finish.")
+    torch.distributed.barrier()
 
     LOGGER.info("Destroying torch.distributed process group.")
     torch.distributed.destroy_process_group()
 
-    LOGGER.info("Exiting torchrun rank.")
+    LOGGER.info("Sending a forced zero exit signal to the isolated process.")
+    os.kill(isolated_process_pid, signal.SIGUSR2)

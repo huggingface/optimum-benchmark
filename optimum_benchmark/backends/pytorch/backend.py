@@ -403,16 +403,15 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         torch.manual_seed(self.config.seed)
         torch.cuda.manual_seed_all(self.config.seed)
 
-    def clean(self) -> None:
+    def cleanup(self) -> None:
+        super().cleanup()
+
         if hasattr(self, "tmpdir"):
             LOGGER.info("\t+ Cleaning backend temporary directory")
             self.tmpdir.cleanup()
 
-        if hasattr(self, "pretrained_model"):
-            LOGGER.info("\t+ Deleting pretrained model")
-            del self.pretrained_model
-            gc.collect()
-
         if self.config.device == "cuda":
             LOGGER.info("\t+ Emptying CUDA cache")
             torch.cuda.empty_cache()
+
+        gc.collect()

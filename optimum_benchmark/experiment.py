@@ -1,26 +1,20 @@
 import os
 from dataclasses import dataclass, field
 from logging import getLogger
-from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING, Any, Dict, Type
-
-from .backends.config import BackendConfig
-from .benchmarks.config import BenchmarkConfig
-from .benchmarks.report import BenchmarkReport
-from .hub_utils import PushToHubMixin, classproperty
-from .import_utils import get_hf_libs_info
-from .launchers.config import LauncherConfig
-from .system_utils import get_system_info
-
-if TYPE_CHECKING:
-    # avoid importing any torch to be able to set
-    # the CUDA_VISIBLE_DEVICES environment variable
-    # in BackendConfig __post_init__
-    from .backends.base import Backend
-    from .benchmarks.base import Benchmark
-    from .launchers.base import Launcher
+from typing import Any, Dict, Type
 
 from hydra.utils import get_class
+
+from .backends.base import Backend
+from .backends.config import BackendConfig
+from .hub_utils import PushToHubMixin, classproperty
+from .import_utils import get_hf_libs_info
+from .launchers.base import Launcher
+from .launchers.config import LauncherConfig
+from .report import BenchmarkReport
+from .scenarios.base import Scenario
+from .scenarios.config import ScenarioConfig
+from .system_utils import get_system_info
 
 LOGGER = getLogger("experiment")
 
@@ -40,6 +34,22 @@ class ExperimentConfig(PushToHubMixin):
     # ENVIRONMENT CONFIGURATION
     environment: Dict = field(default_factory=lambda: {**get_system_info(), **get_hf_libs_info()})
 
+    def __post_init__(self):
+        if os.environ.get("BENCHMARK_INTERFACE", "API") == "CLI":
+            LOGGER.warning(
+                "The `experiment` parent schema is deprecated and will be removed soon. "
+                "Please use `benchmark` parent schema instead. "
+                "You'll also need to change the `experiment_name` field to `name` "
+                "and `benchmark` schema to `scenario` schema. "
+                "See the repository README for more information."
+            )
+        else:
+            LOGGER.warning(
+                "The `ExperimentConfig` class and `launch` function are deprecated and will be removed soon. "
+                "Please use `BenchmarkConfig` class with the `Benchmark` class and its `launch` method instead."
+                "See the repository README for more information."
+            )
+
     @classproperty
     def default_filename(cls) -> str:
         return "experiment_config.json"
@@ -50,20 +60,31 @@ def run(experiment_config: ExperimentConfig) -> BenchmarkReport:
     Runs a benchmark using specified backend and benchmark configurations
     """
 
+    if os.environ.get("BENCHMARK_INTERFACE", "API") == "API":
+        LOGGER.warning(
+            "The `run` function is deprecated and will be removed soon. "
+            "Please use the `Benchmark` class and its `run` method instead."
+        )
+
     # Allocate requested backend
     backend_config: BackendConfig = experiment_config.backend
     backend_factory: Type[Backend] = get_class(backend_config._target_)
     backend: Backend = backend_factory(backend_config)
 
     # Allocate requested benchmark
-    benchmark_config: BenchmarkConfig = experiment_config.benchmark
-    benchmark_factory: Type[Benchmark] = get_class(benchmark_config._target_)
-    benchmark: Benchmark = benchmark_factory(benchmark_config)
+    benchmark_config: ScenarioConfig = experiment_config.benchmark
+    benchmark_factory: Type[Scenario] = get_class(benchmark_config._target_)
+    benchmark: Scenario = benchmark_factory(benchmark_config)
 
-    # Benchmark the backend
-    benchmark.run(backend)
-    report = benchmark.get_report()
-    backend.clean()
+    try:
+        # Run the benchmark using the backend
+        report = benchmark.run(backend)
+    except Exception as error:
+        LOGGER.error("Error during benchmark execution", exc_info=True)
+        backend.cleanup()
+        raise error
+    else:
+        backend.cleanup()
 
     return report
 
@@ -74,12 +95,10 @@ def launch(experiment_config: ExperimentConfig) -> BenchmarkReport:
     """
 
     if os.environ.get("BENCHMARK_INTERFACE", "API") == "API":
-        # We launch the experiment in a temporary directory to avoid
-        # polluting the current working directory with temporary files
-        LOGGER.info("Launching experiment in a temporary directory.")
-        original_dir = os.getcwd()
-        tmpdir = TemporaryDirectory()
-        os.chdir(tmpdir.name)
+        LOGGER.warning(
+            "The `launch` function is deprecated and will be removed soon. "
+            "Please use the `Benchmark` class and its `launch` method instead."
+        )
 
     try:
         # Allocate requested launcher
@@ -88,18 +107,8 @@ def launch(experiment_config: ExperimentConfig) -> BenchmarkReport:
         launcher: Launcher = launcher_factory(launcher_config)
         # Launch the experiment
         report = launcher.launch(run, experiment_config)
-    except Exception as error:
+    except Exception as exception:
         LOGGER.error("Error during experiment", exc_info=True)
-        exception = error
-    else:
-        exception = None
-
-    if os.environ.get("BENCHMARK_INTERFACE", "API") == "API":
-        LOGGER.info("Cleaning up experiment temporary directory.")
-        os.chdir(original_dir)
-        tmpdir.cleanup()
-
-    if exception is not None:
         raise exception
 
     return report

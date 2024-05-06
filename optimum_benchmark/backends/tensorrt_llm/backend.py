@@ -1,6 +1,8 @@
+import gc
 import os
 from collections import OrderedDict
 from logging import getLogger
+from tempfile import TemporaryDirectory
 from typing import Any, Dict
 
 import torch
@@ -21,8 +23,13 @@ class TRTLLMBackend(Backend[TRTLLMConfig]):
         super().__init__(config)
         self.validate_model_type()
 
+        LOGGER.info("\t+ Creating backend temporary directory")
+        self.tmpdir = TemporaryDirectory()
+
         LOGGER.info("\t+ Loading pretrained TRTLLMModel")
         self.load_trtmodel_from_pretrained()
+
+        self.tmpdir.cleanup()
 
     def validate_model_type(self) -> None:
         if self.model_type not in MODEL_TYPE_TO_TRTLLMMODEL:
@@ -96,3 +103,12 @@ class TRTLLMBackend(Backend[TRTLLMConfig]):
             top_k=kwargs.get("top_k", 50),
             seed=kwargs.get("seed", 42),
         )
+
+    def cleanup(self):
+        super().cleanup()
+
+        if hasattr(self, "tmpdir"):
+            LOGGER.info("\t+ Cleaning backend temporary directory")
+            self.tmpdir.cleanup()
+
+        gc.collect()

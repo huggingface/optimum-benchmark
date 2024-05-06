@@ -1,3 +1,4 @@
+import gc
 import os
 from logging import getLogger
 from tempfile import TemporaryDirectory
@@ -108,13 +109,15 @@ class TorchORTBackend(Backend[TorchORTConfig]):
         trainer.train()
         LOGGER.info("\t+ Finished training")
 
-    def clean(self) -> None:
-        if self.config.device == "cuda" and torch.cuda.is_available():
-            LOGGER.info("\t+ Emptying CUDA cache")
-            torch.cuda.empty_cache()
+    def cleanup(self) -> None:
+        super().cleanup()
 
         if hasattr(self, "tmpdir"):
             LOGGER.info("\t+ Cleaning backend temporary directory")
             self.tmpdir.cleanup()
 
-        super().clean()
+        if self.config.device == "cuda" and torch.cuda.is_available():
+            LOGGER.info("\t+ Emptying CUDA cache")
+            torch.cuda.empty_cache()
+
+        gc.collect()

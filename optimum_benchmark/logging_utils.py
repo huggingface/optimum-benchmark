@@ -1,44 +1,51 @@
 import logging
 import logging.config
-import os
 from logging import Logger
 from subprocess import PIPE, STDOUT, Popen
-from typing import Optional
+from typing import List, Optional
 
-from omegaconf import OmegaConf
 
-API_JOB_LOGGING = {
-    "version": 1,
-    "formatters": {
+def setup_logging(
+    level: str = "INFO",
+    use_colorlog: bool = True,
+    format_prefix: Optional[str] = None,
+    disable_existing_loggers: bool = False,
+    handlers: List[str] = ["console", "file"],
+):
+    # base logging config
+    logging_config = {
+        "version": 1,
+        "handlers": {
+            "console": {"formatter": "simple", "stream": "ext://sys.stdout", "class": "logging.StreamHandler"},
+            "file": {"formatter": "simple", "filename": "cli.log", "class": "logging.FileHandler"},
+        },
+        "root": {"level": level, "handlers": handlers},
+        "disable_existing_loggers": disable_existing_loggers,
+    }
+
+    # formatters
+    logging_config["formatters"] = {
         "simple": {"format": "[%(asctime)s][%(name)s][%(levelname)s] - %(message)s"},
         "colorlog": {
             "()": "colorlog.ColoredFormatter",
             "format": "[%(cyan)s%(asctime)s%(reset)s][%(blue)s%(name)s%(reset)s][%(log_color)s%(levelname)s%(reset)s] - %(message)s",
             "log_colors": {"DEBUG": "purple", "INFO": "green", "WARNING": "yellow", "CRITICAL": "red", "ERROR": "red"},
         },
-    },
-    "handlers": {"console": {"formatter": "colorlog", "stream": "ext://sys.stdout", "class": "logging.StreamHandler"}},
-    "root": {"level": "INFO", "handlers": ["console"]},
-    "disable_existing_loggers": False,
-}
+    }
 
+    # use colorlog
+    if use_colorlog:
+        for handler in logging_config["handlers"]:
+            logging_config["handlers"][handler]["formatter"] = "colorlog"
 
-def setup_logging(level: str = "INFO", prefix: Optional[str] = None):
-    if os.environ.get("BENCHMARK_INTERFACE", "API") == "CLI":
-        hydra_config = OmegaConf.load(".hydra/hydra.yaml")
-        job_logging = OmegaConf.to_container(hydra_config.hydra.job_logging, resolve=True)
-    else:
-        job_logging = API_JOB_LOGGING.copy()
+    # format prefix
+    if format_prefix is not None:
+        for formatter in logging_config["formatters"]:
+            logging_config["formatters"][formatter]["format"] = (
+                f"[{format_prefix}]" + logging_config["formatters"][formatter]["format"]
+            )
 
-    job_logging["root"]["level"] = level
-
-    if prefix is not None:
-        job_logging["formatters"]["simple"]["format"] = f"[{prefix}]" + job_logging["formatters"]["simple"]["format"]
-        job_logging["formatters"]["colorlog"]["format"] = (
-            f"[{prefix}]" + job_logging["formatters"]["colorlog"]["format"]
-        )
-
-    logging.config.dictConfig(job_logging)
+    logging.config.dictConfig(logging_config)
 
 
 def run_subprocess_and_log_stream_output(logger: Logger, args):

@@ -5,11 +5,11 @@ from transformers import default_data_collator
 
 from ...backends.base import Backend, BackendConfigT
 from ...generators.dataset_generator import DatasetGenerator
+from ...report import BenchmarkReport
 from ...trackers.energy import Efficiency, EnergyTracker
 from ...trackers.latency import StepLatencyTrainerCallback, Throughput
 from ...trackers.memory import MemoryTracker
-from ..base import Benchmark
-from ..report import BenchmarkReport
+from ..base import Scenario
 from .config import TrainingConfig
 
 LOGGER = getLogger("training")
@@ -18,13 +18,13 @@ TRAIN_THROUGHPUT_UNIT = "samples/s"
 TRAIN_EFFICIENCY_UNIT = "samples/kWh"
 
 
-class TrainingBenchmark(Benchmark[TrainingConfig]):
+class TrainingScenario(Scenario[TrainingConfig]):
     NAME = "training"
 
     def __init__(self, config: TrainingConfig) -> None:
         super().__init__(config)
 
-    def run(self, backend: Backend[BackendConfigT]) -> None:
+    def run(self, backend: Backend[BackendConfigT]) -> BenchmarkReport:
         LOGGER.info("\t+ Creating dataset generator")
         dataset_generator = DatasetGenerator(
             task=backend.config.task, model_shapes=backend.model_shapes, dataset_shapes=self.config.dataset_shapes
@@ -92,6 +92,8 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
                 self.report.overall.energy, volume=self.overall_volume, unit=TRAIN_EFFICIENCY_UNIT
             )
 
+        return self.report
+
     @property
     def overall_volume(self) -> int:
         return (
@@ -111,6 +113,3 @@ class TrainingBenchmark(Benchmark[TrainingConfig]):
     @property
     def train_volume(self) -> int:
         return self.overall_volume - self.warmup_volume
-
-    def get_report(self) -> BenchmarkReport:
-        return self.report

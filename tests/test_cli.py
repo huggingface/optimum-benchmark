@@ -35,16 +35,16 @@ def test_cli_configs(config_name):
     assert popen.returncode == 0, f"Failed to run {config_name}"
 
 
-@pytest.mark.parametrize("launcher", ["inline", "process", "torchrun"])
-def test_cli_exit_code(launcher):
+@pytest.mark.parametrize("launcher", ["inline", "process"])
+def test_cli_exit_code_0(launcher):
     args_0 = [
         "optimum-benchmark",
         "--config-dir",
         TEST_CONFIG_DIR,
         "--config-name",
         "_base_",
+        "name=test",
         f"launcher={launcher}",
-        "experiment_name=test",
         # compatible task and model
         "backend.task=text-classification",
         "backend.model=bert-base-uncased",
@@ -54,14 +54,17 @@ def test_cli_exit_code(launcher):
     popen_0 = run_subprocess_and_log_stream_output(LOGGER, args_0)
     assert popen_0.returncode == 0
 
+
+@pytest.mark.parametrize("launcher", ["inline", "process", "torchrun"])
+def test_cli_exit_code_1(launcher):
     args_1 = [
         "optimum-benchmark",
         "--config-dir",
         TEST_CONFIG_DIR,
         "--config-name",
         "_base_",
+        "name=test",
         f"launcher={launcher}",
-        "experiment_name=test",
         # incompatible task and model to trigger error
         "backend.task=image-classification",
         "backend.model=bert-base-uncased",

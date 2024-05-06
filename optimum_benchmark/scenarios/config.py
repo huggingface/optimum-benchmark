@@ -7,7 +7,7 @@ LOGGER = getLogger("benchmark")
 
 
 @dataclass
-class BenchmarkConfig(ABC):
+class ScenarioConfig(ABC):
     name: str
     _target_: str
 
@@ -15,4 +15,4 @@ class BenchmarkConfig(ABC):
         pass
 
 
-BenchmarkConfigT = TypeVar("BenchmarkConfigT", bound=BenchmarkConfig)
+ScenarioConfigT = TypeVar("ScenarioConfigT", bound=ScenarioConfig)

@@ -125,7 +125,7 @@ class PushToHubMixin:
 
     @classproperty
     def default_filename(self) -> str:
-        return "config.json"
+        return "file.json"
 
     @classproperty
     def default_subfolder(self) -> str:

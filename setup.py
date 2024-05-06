@@ -8,19 +8,19 @@ OPTIMUM_BENCHMARK_VERSION = "0.2.0"
 
 MIN_OPTIMUM_VERSION = "1.16.0"
 INSTALL_REQUIRES = [
-    # Mandatory HF dependencies
+    # HF dependencies
     "transformers",
     "accelerate",
     "datasets",
     # Hydra
-    "hydra_colorlog",
     "hydra-core",
     "omegaconf",
-    # CPU Memory
+    # CPU
     "psutil",
     # Reporting
     "typing-extensions",
     "flatten_dict",
+    "colorlog",
     "pandas",
 ]
 
@@ -90,5 +90,5 @@ setup(
     version=OPTIMUM_BENCHMARK_VERSION,
     install_requires=INSTALL_REQUIRES,
     extras_require=EXTRAS_REQUIRE,
-    entry_points={"console_scripts": ["optimum-benchmark=optimum_benchmark.cli:benchmark_cli"]},
+    entry_points={"console_scripts": ["optimum-benchmark=optimum_benchmark.cli:main"]},
 )

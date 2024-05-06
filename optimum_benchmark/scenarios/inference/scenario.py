@@ -6,12 +6,12 @@ from transformers import LogitsProcessorList
 from ...backends.base import Backend, BackendConfigT
 from ...generators.input_generator import InputGenerator
 from ...import_utils import is_torch_distributed_available
+from ...report import BenchmarkReport
 from ...task_utils import IMAGE_DIFFUSION_TASKS, TEXT_GENERATION_TASKS
 from ...trackers.energy import Efficiency, EnergyTracker
 from ...trackers.latency import LatencyTracker, PerTokenLatencyLogitsProcessor, Throughput
 from ...trackers.memory import MemoryTracker
-from ..base import Benchmark
-from ..report import BenchmarkReport
+from ..base import Scenario
 from .config import InferenceConfig
 
 if is_torch_distributed_available():
@@ -57,13 +57,13 @@ IMAGE_DIFFUSION_EFFICIENCY_UNIT = "images/kWh"
 INFERENCE_EFFICIENCY_UNIT = "samples/kWh"
 
 
-class InferenceBenchmark(Benchmark[InferenceConfig]):
+class InferenceScenario(Scenario[InferenceConfig]):
     NAME = "inference"
 
     def __init__(self, config: InferenceConfig) -> None:
         super().__init__(config)
 
-    def run(self, backend: Backend[BackendConfigT]) -> None:
+    def run(self, backend: Backend[BackendConfigT]) -> BenchmarkReport:
         if is_torch_distributed_available() and torch.distributed.is_initialized():
             LOGGER.info("\t+ Distributing batch size across processes")
             if self.config.input_shapes["batch_size"] % torch.distributed.get_world_size() != 0:
@@ -85,6 +85,7 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             LOGGER.info("\t+ Updating Text Generation kwargs with default values")
             self.config.generate_kwargs = {**TEXT_GENERATION_DEFAULT_KWARGS, **self.config.generate_kwargs}
             LOGGER.info("\t+ Initializing Text Generation report")
+
             self.report = BenchmarkReport.from_list(targets=["prefill", "decode", "per_token"])
 
         elif backend.config.task in IMAGE_DIFFUSION_TASKS:
@@ -163,6 +164,8 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
 
             self.report.log_energy()
             self.report.log_efficiency()
+
+        return self.report
 
     ## Memory tracking
     def run_text_generation_memory_tracking(self, backend: Backend[BackendConfigT]):
@@ -425,6 +428,3 @@ class InferenceBenchmark(Benchmark[InferenceConfig]):
             * self.config.generate_kwargs["num_beams"]  # at each beam stage there are num_beams tokens generated
             * (self.config.generate_kwargs["max_new_tokens"] - 1)  # 1 token is generated during prefill
         )
-
-    def get_report(self) -> BenchmarkReport:
-        return self.report

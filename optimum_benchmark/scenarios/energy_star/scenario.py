@@ -8,17 +8,10 @@ from tqdm import tqdm
 
 from ...backends.base import Backend, BackendConfigT
 from ...import_utils import is_torch_distributed_available
+from ...report import BenchmarkMeasurements, BenchmarkReport
 from ...task_utils import IMAGE_DIFFUSION_TASKS, TEXT_GENERATION_TASKS
 from ...trackers.energy import Efficiency, EnergyTracker
-from ..base import Benchmark
-from ..inference.benchmark import (
-    IMAGE_DIFFUSION_EFFICIENCY_UNIT,
-    IMAGE_DIFFUSION_KWARGS,
-    INFERENCE_EFFICIENCY_UNIT,
-    TEXT_GENERATION_EFFICIENCY_UNIT,
-    TEXT_GENERATION_KWARGS,
-)
-from ..report import BenchmarkMeasurements, BenchmarkReport
+from ..base import Scenario
 from .config import EnergyStarConfig
 from .preprocessing_utils import preprocess
 
@@ -27,36 +20,72 @@ if is_torch_distributed_available():
 
 LOGGER = getLogger("energy_star")
 
-PER_TOKEN_BACKENDS = ["pytorch"]
+
+PER_TOKEN_BACKENDS = ["pytorch", "onnxruntime", "openvino", "neural-compressor"]
+
+TEXT_GENERATION_DEFAULT_KWARGS = {
+    "num_return_sequences": 1,
+    "max_new_tokens": 100,
+    "min_new_tokens": 100,
+    "temperature": 1.0,
+    "do_sample": False,
+    "use_cache": True,
+    "pad_token_id": 0,
+    "num_beams": 1,
+}
+TEXT_GENERATION_PREFILL_OVERRIDES = {
+    "max_new_tokens": 1,
+    "min_new_tokens": 1,
+}
+TEXT_GENERATION_WARMUP_OVERRIDES = {
+    "max_new_tokens": 2,
+    "min_new_tokens": 2,
+}
+
+IMAGE_DIFFUSION_DEFAULT_KWARGS = {
+    "num_inference_steps": 30,
+    "num_images_per_prompt": 1,
+}
+IMAGE_DIFFUSION_WARMUP_OVERRIDES = {
+    "num_inference_steps": 2,
+}
+
+TEXT_GENERATION_THROUGHPUT_UNIT = "tokens/s"
+IMAGE_DIFFUSION_THROUGHPUT_UNIT = "images/s"
+INFERENCE_THROUGHPUT_UNIT = "samples/s"
+
+TEXT_GENERATION_EFFICIENCY_UNIT = "tokens/kWh"
+IMAGE_DIFFUSION_EFFICIENCY_UNIT = "images/kWh"
+INFERENCE_EFFICIENCY_UNIT = "samples/kWh"
 
 
 @dataclass
 class TextGenerationReport(BenchmarkReport):
+    preprocess: BenchmarkMeasurements
+    per_token: BenchmarkMeasurements
     prefill: BenchmarkMeasurements
     decode: BenchmarkMeasurements
-    per_token: BenchmarkMeasurements
-    preprocess: BenchmarkMeasurements
 
 
 @dataclass
 class ImageDiffusionReport(BenchmarkReport):
-    call: BenchmarkMeasurements
     preprocess: BenchmarkMeasurements
+    call: BenchmarkMeasurements
 
 
 @dataclass
 class InferenceReport(BenchmarkReport):
-    forward: BenchmarkMeasurements
     preprocess: BenchmarkMeasurements
+    forward: BenchmarkMeasurements
 
 
-class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
+class EnergyStarScenario(Scenario[EnergyStarConfig]):
     NAME = "energy_star"
 
     def __init__(self, config: EnergyStarConfig) -> None:
         super().__init__(config)
 
-    def run(self, backend: Backend[BackendConfigT][BackendConfigT]) -> None:
+    def run(self, backend: Backend[BackendConfigT]) -> BenchmarkReport:
         if is_torch_distributed_available() and torch.distributed.is_initialized():
             LOGGER.info("\t+ Distributing batch size across processes")
             if self.config.input_shapes["batch_size"] % torch.distributed.get_world_size() != 0:
@@ -90,24 +119,23 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
 
         if backend.config.task in TEXT_GENERATION_TASKS:
             LOGGER.info("\t+ Updating Text Generation kwargs with default values")
-            self.config.generate_kwargs = {**TEXT_GENERATION_KWARGS, **self.config.generate_kwargs}
+            self.config.generate_kwargs = {**TEXT_GENERATION_WARMUP_OVERRIDES, **self.config.generate_kwargs}
             LOGGER.info("\t+ Initializing Text Generation report")
             self.report = TextGenerationReport(
-                decode=BenchmarkMeasurements(),
-                prefill=BenchmarkMeasurements(),
-                per_token=BenchmarkMeasurements(),
                 preprocess=BenchmarkMeasurements(),
+                per_token=BenchmarkMeasurements(),
+                prefill=BenchmarkMeasurements(),
+                decode=BenchmarkMeasurements(),
             )
-
         elif backend.config.task in IMAGE_DIFFUSION_TASKS:
             LOGGER.info("\t+ Updating Image Diffusion kwargs with default values")
-            self.config.call_kwargs = {**IMAGE_DIFFUSION_KWARGS, **self.config.call_kwargs}
+            self.config.call_kwargs = {**IMAGE_DIFFUSION_WARMUP_OVERRIDES, **self.config.call_kwargs}
             LOGGER.info("\t+ Initializing Image Diffusion report")
-            self.report = ImageDiffusionReport(call=BenchmarkMeasurements(), preprocess=BenchmarkMeasurements())
+            self.report = ImageDiffusionReport(preprocess=BenchmarkMeasurements(), call=BenchmarkMeasurements())
 
         else:
             LOGGER.info("\t+ Initializing Inference report")
-            self.report = InferenceReport(forward=BenchmarkMeasurements(), preprocess=BenchmarkMeasurements())
+            self.report = InferenceReport(preprocess=BenchmarkMeasurements(), forward=BenchmarkMeasurements())
 
         self.report.preprocess.energy = self.preprocessing_energy
         self.report.preprocess.efficiency = Efficiency.from_energy(
@@ -150,6 +178,8 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
 
             self.report.log_energy()
             self.report.log_efficiency()
+
+        return self.report
 
     ## Energy tracking
     def run_text_generation_energy_tracking(self, backend: Backend[BackendConfigT]):
@@ -227,6 +257,3 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
             * self.config.generate_kwargs["num_return_sequences"]
             * (self.config.generate_kwargs["max_new_tokens"] - 1)  # 1 token is generated during prefill
         )
-
-    def get_report(self) -> InferenceReport:
-        return self.report
