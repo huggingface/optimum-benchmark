@@ -28,7 +28,7 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         queue = ctx.Queue()
         lock = ctx.Lock()
 
-        isolated_process = mp.Process(target=target, args=(worker, log_level, lock, queue, *worker_args), daemon=False)
+        isolated_process = mp.Process(target=target, args=(worker, *worker_args, log_level, lock, queue), daemon=False)
         isolated_process.start()
 
         with device_isolation_context(
