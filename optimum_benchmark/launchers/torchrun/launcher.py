@@ -48,7 +48,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
 
         isolated_process = mp.Process(
             target=target,
-            args=(worker, log_level, *worker_args),
+            args=(log_level, worker, *worker_args),
             kwargs={"launch_config": self.launch_config},
             daemon=False,
         )
@@ -78,7 +78,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
 
 
 def target(
-    worker: Callable[..., BenchmarkReport], log_level: Union[str, int], *worker_args: Any, launch_config: LaunchConfig
+    log_level: Union[str, int], worker: Callable[..., BenchmarkReport], *worker_args, launch_config: LaunchConfig
 ):
     isolated_process_pid = os.getpid()
     os.environ["ISOLATED_PROCESS_PID"] = str(isolated_process_pid)
@@ -87,14 +87,14 @@ def target(
     LOGGER.info(f"Running benchmark in isolated process [{isolated_process_pid}].")
 
     elastic_agent_launcher = elastic_launch(config=launch_config, entrypoint=entrypoint)
-    elastic_agent_launcher(worker, log_level, *worker_args)
+    elastic_agent_launcher(log_level, worker, *worker_args)
 
     LOGGER.info("Exiting isolated process.")
     exit(0)
 
 
 @record
-def entrypoint(worker: Callable[..., BenchmarkReport], log_level: Union[str, int], *worker_args: Any):
+def entrypoint(log_level: Union[str, int], worker: Callable[..., BenchmarkReport], *worker_args):
     rank = int(os.environ.get("RANK", "0"))
 
     if (rank == 0) or (os.environ.get("LOG_ALL_RANKS", "0") == "1"):
