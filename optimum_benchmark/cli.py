@@ -101,7 +101,7 @@ def main(config: DictConfig) -> None:
     global LOGGING_SETUP_DONE
 
     if not LOGGING_SETUP_DONE:
-        setup_logging(level="INFO", format_prefix="MAIN-PROCESS", disable_existing_loggers=True)
+        setup_logging(level="INFO", format_prefix="MAIN-PROCESS")
         LOGGING_SETUP_DONE = True
     else:
         setup_logging(level="INFO")

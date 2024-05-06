@@ -69,3 +69,4 @@ def target(
     lock.release()
 
     LOGGER.info("Exiting isolated process.")
+    exit(0)
