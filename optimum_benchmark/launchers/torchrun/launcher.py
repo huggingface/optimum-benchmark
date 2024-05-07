@@ -1,6 +1,7 @@
 import multiprocessing as mp
 import os
 import signal
+import time
 from logging import getLogger
 from typing import Any, Callable, Union
 
@@ -22,7 +23,7 @@ class ForcedZeroExit(SystemExit):
 
 def forced_zero_exit_signal_handler(signum, frame):
     for p in mp.active_children():
-        LOGGER.info(f"Sending a forced zero exit signal to process [{p.pid}].")
+        LOGGER.info(f"Sending a forced zero exit signal to child process [{p.pid}].")
         os.kill(p.pid, signal.SIGUSR2)
 
     raise ForcedZeroExit
@@ -60,12 +61,10 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
     def launch(self, worker: Callable[..., BenchmarkReport], *worker_args: Any) -> BenchmarkReport:
         ctx = mp.get_context(self.config.start_method)
         log_level = ctx.get_logger().getEffectiveLevel()
+        queue = ctx.Queue()
 
         isolated_process = mp.Process(
-            target=target,
-            args=(log_level, worker, *worker_args),
-            kwargs={"launch_config": self.launch_config},
-            daemon=False,
+            target=target, args=(self.launch_config, log_level, queue, worker, *worker_args), daemon=False
         )
         isolated_process.start()
 
@@ -74,26 +73,33 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
         ):
             isolated_process.join()
 
-        if all(os.path.isfile(f"benchmark_report_rank_{rank}.json") for rank in range(self.config.nproc_per_node)):
-            LOGGER.info("\t+ Gatehring reports from all ranks.")
-            reports = [
-                BenchmarkReport.from_json(f"benchmark_report_rank_{rank}.json")
-                for rank in range(self.config.nproc_per_node)
-            ]
-            LOGGER.info("\t+ Aggregating reports from all ranks.")
+        if not queue.empty() and queue.qsize() == self.config.nproc_per_node:
+            LOGGER.info("\t+ Retrieving reports from queue.")
+            reports = [BenchmarkReport.from_dict(queue.get()) for _ in range(queue.qsize())]
+            LOGGER.info("\t+ Aggregating reports.")
             report = BenchmarkReport.aggregate(reports)
-            LOGGER.info("\t+ Logging aggregated report.")
-            report.log()
         elif isolated_process.exitcode != 0:
             raise RuntimeError(f"Process exited with non-zero code {isolated_process.exitcode}.")
         else:
-            raise RuntimeError("Could not retrieve report from isolated process.")
+            if queue.empty():
+                raise RuntimeError("Queue is empty.")
+            else:
+                raise RuntimeError(
+                    f"Queue size ({queue.qsize()}) does not match number of ranks ({self.config.nproc_per_node})."
+                )
+
+        LOGGER.info("\t+ Logging final report.")
+        report.log()
 
         return report
 
 
 def target(
-    log_level: Union[str, int], worker: Callable[..., BenchmarkReport], *worker_args, launch_config: LaunchConfig
+    launch_config: LaunchConfig,
+    log_level: Union[str, int],
+    queue: mp.Queue,
+    worker: Callable[..., BenchmarkReport],
+    *worker_args: Any,
 ):
     isolated_process_pid = os.getpid()
     os.environ["ISOLATED_PROCESS_PID"] = str(isolated_process_pid)
@@ -103,7 +109,7 @@ def target(
 
     elastic_agent_launcher = elastic_launch(config=launch_config, entrypoint=entrypoint)
     try:
-        elastic_agent_launcher(log_level, worker, *worker_args)
+        elastic_agent_launcher(log_level, queue, worker, *worker_args)
     except ForcedZeroExit:
         pass
 
@@ -111,7 +117,12 @@ def target(
     exit(0)
 
 
-def entrypoint(log_level: Union[str, int], worker: Callable[..., BenchmarkReport], *worker_args):
+def entrypoint(
+    log_level: Union[str, int],
+    queue: mp.Queue,
+    worker: Callable[..., BenchmarkReport],
+    *worker_args: Any,
+):
     rank = int(os.environ.get("RANK", "0"))
     isolated_process_pid = int(os.environ["ISOLATED_PROCESS_PID"])
 
@@ -129,11 +140,16 @@ def entrypoint(log_level: Union[str, int], worker: Callable[..., BenchmarkReport
 
     report = worker(*worker_args)
 
-    LOGGER.info(f"Saving report from rank {rank}.")
-    report.save_json(f"benchmark_report_rank_{rank}.json")
+    LOGGER.info("Putting report into queue.")
+    queue.put(report.to_dict())
 
-    LOGGER.info("Waiting for all ranks to finish.")
-    torch.distributed.barrier()
+    LOGGER.info("Waiting for other ranks to put their reports into queue. ")
+    while queue.qsize() < int(os.environ["WORLD_SIZE"]):
+        LOGGER.info(f"Queue size: {queue.qsize()} / World size: {os.environ['WORLD_SIZE']}.")
+        time.sleep(1)
+
+    LOGGER.info("All ranks have put their reports into queue.")
+    LOGGER.info(f"Queue size: {queue.qsize()} / World size: {os.environ['WORLD_SIZE']}.")
 
     LOGGER.info("Destroying torch.distributed process group.")
     torch.distributed.destroy_process_group()

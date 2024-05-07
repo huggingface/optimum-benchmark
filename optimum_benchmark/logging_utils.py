@@ -17,7 +17,7 @@ def setup_logging(
         "version": 1,
         "handlers": {
             "console": {"formatter": "simple", "stream": "ext://sys.stdout", "class": "logging.StreamHandler"},
-            "file": {"formatter": "simple", "filename": "cli.log", "class": "logging.FileHandler"},
+            "file": {"formatter": "simple", "filename": "benchmark.log", "class": "logging.FileHandler"},
         },
         "root": {"level": level, "handlers": handlers},
         "disable_existing_loggers": disable_existing_loggers,
