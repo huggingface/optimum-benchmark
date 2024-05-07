@@ -138,25 +138,25 @@ CANONICAL_PRETRAINED_OPEN_LLM_LIST = [
 ]
 
 
-def errors_handler(error) -> Tuple[bool, BenchmarkReport]:
+def errors_handler(error: str) -> Tuple[bool, BenchmarkReport]:
     valid_error = True
     benchmark_report = BenchmarkReport.from_list(["error"])
 
-    if "torch.cuda.OutOfMemoryError" in str(error):
+    if "torch.cuda.OutOfMemoryError" in error:
         benchmark_report.error = "CUDA: Out of memory"
-    elif "gptq" in str(error) and "assert outfeatures % 32 == 0" in str(error):
+    elif "gptq" in error and "assert outfeatures % 32 == 0" in error:
         benchmark_report.error = "GPTQ: assert outfeatures % 32 == 0"
-    elif "gptq" in str(error) and "assert infeatures % self.group_size == 0" in str(error):
+    elif "gptq" in error and "assert infeatures % self.group_size == 0" in error:
         benchmark_report.error = "GPTQ: assert infeatures % self.group_size == 0"
-    elif "support Flash Attention 2.0" in str(error):
+    elif "support Flash Attention 2.0" in error:
         benchmark_report.error = "Flash Attention 2.0: not supported yet"
-    elif "support an attention implementation through torch.nn.functional.scaled_dot_product_attention" in str(error):
+    elif "support an attention implementation through torch.nn.functional.scaled_dot_product_attention" in error:
         benchmark_report.error = "SDPA: not supported yet"
-    elif "FlashAttention only support fp16 and bf16 data type" in str(error):
+    elif "FlashAttention only support fp16 and bf16 data type" in error:
         benchmark_report.error = "FlashAttention: only support fp16 and bf16 data type"
     else:
-        valid_error = False
         benchmark_report.error = f"Unknown error: {error}"
+        valid_error = False
 
     return valid_error, benchmark_report
 

@@ -3,7 +3,7 @@ from itertools import product
 from logging import getLogger
 
 from llm_perf.utils import (
-    CANONICAL_PRETRAINED_OPEN_LLM_LIST,
+    # CANONICAL_PRETRAINED_OPEN_LLM_LIST,
     GENERATE_KWARGS,
     INPUT_SHAPES,
     OPEN_LLM_LIST,
@@ -19,6 +19,8 @@ CWD = os.getcwd()
 MACHINE = os.getenv("MACHINE", "1xA100")
 SUBSET = os.getenv("SUBSET", "unquantized")
 PUSH_REPO_ID = f"optimum-benchmark/llm-perf-pytorch-cuda-{SUBSET}-{MACHINE}"
+
+CANONICAL_PRETRAINED_OPEN_LLM_LIST = ["gpt2"]
 
 ATTENTION_COFIGS = ["eager", "sdpa", "flash_attention_2"]
 if SUBSET == "unquantized":
@@ -114,7 +116,7 @@ def benchmark_cuda_pytorch(model, attn_implementation, weights_config):
     backend_config = PyTorchConfig(
         model=model,
         device="cuda",
-        device_ids="4",
+        device_ids="0",
         no_weights=True,
         library="transformers",
         task="text-generation",
@@ -138,12 +140,21 @@ def benchmark_cuda_pytorch(model, attn_implementation, weights_config):
         LOGGER.info(f"Running benchmark {benchmark_name} with model {model}")
         benchmark_report = Benchmark.launch(benchmark_config)
         benchmark_report.push_to_hub(subfolder=subfolder, repo_id=PUSH_REPO_ID, private=True)
+        benchmark = Benchmark(config=benchmark_config, report=benchmark_report)
+        benchmark.push_to_hub(subfolder=subfolder, repo_id=PUSH_REPO_ID, private=True)
+
     except Exception as error:
         LOGGER.error(f"Benchmark {benchmark_name} failed with model {model}")
-        valid_error, benchmark_report = errors_handler(error)
-        LOGGER.error(benchmark_report.error, exc_info=True)
+        valid_error, benchmark_report = errors_handler(str(error))
+
         if valid_error:
+            LOGGER.error("The error is a valid one, reporting it")
+            LOGGER.error(benchmark_report.error, exc_info=True)
             benchmark_report.push_to_hub(subfolder=subfolder, repo_id=PUSH_REPO_ID, private=True)
+        else:
+            LOGGER.error("The error is not valid, need to investigate")
+            LOGGER.error(benchmark_report.error, exc_info=True)
+            return
 
 
 if __name__ == "__main__":
