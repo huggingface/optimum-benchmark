@@ -264,7 +264,7 @@ def text_generation_preprocessing(
             truncation=config.truncation,
             return_token_type_ids=False,
             padding=padding,
-            max_length = getattr(pretrained_config, "max_position_embeddings", 512) - config.max_new_tokens
+            max_length = getattr(pretrained_config, "max_position_embeddings", 512) - config.generate_kwargs['max_new_tokens']
             )
 
     dataset = dataset.map(
