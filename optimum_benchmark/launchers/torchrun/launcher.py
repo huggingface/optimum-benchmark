@@ -23,7 +23,7 @@ class ForcedZeroExit(SystemExit):
 
 def forced_zero_exit_signal_handler(signum, frame):
     for p in mp.active_children():
-        LOGGER.info(f"Sending a forced zero exit signal to process [{p.pid}].")
+        LOGGER.info(f"Sending a forced zero exit signal to child process [{p.pid}].")
         os.kill(p.pid, signal.SIGUSR2)
 
     raise ForcedZeroExit
