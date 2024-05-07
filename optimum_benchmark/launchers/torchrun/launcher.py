@@ -143,12 +143,10 @@ def entrypoint(
     LOGGER.info("Putting report into queue.")
     queue.put(report.to_dict())
 
+    LOGGER.info("Waiting for other ranks to put their reports into queue. ")
     while queue.qsize() < int(os.environ["WORLD_SIZE"]):
-        LOGGER.info(
-            f"Waiting for other ranks to put their reports into queue. "
-            f"[{queue.qsize()}]/[{os.environ['WORLD_SIZE']}]"
-        )
         time.sleep(1)
+        LOGGER.info(f"Queue size: {queue.qsize()} / World size: {os.environ['WORLD_SIZE']}.")
 
     LOGGER.info("Destroying torch.distributed process group.")
     torch.distributed.destroy_process_group()
