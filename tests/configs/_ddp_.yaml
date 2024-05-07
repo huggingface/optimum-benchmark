@@ -3,8 +3,14 @@ defaults:
 
 launcher:
   nproc_per_node: 2
-  socket_ifname: lo
 
 backend:
   device_ids: 0,1
   model: openai-community/gpt2
+
+hydra:
+  launcher:
+    n_jobs: 1
+  job:
+    env_set:
+      LOG_ALL_RANKS: 1

@@ -1,6 +1,7 @@
 import multiprocessing as mp
 import os
 import signal
+import time
 from logging import getLogger
 from typing import Any, Callable, Union
 
@@ -142,8 +143,12 @@ def entrypoint(
     LOGGER.info("Putting report into queue.")
     queue.put(report.to_dict())
 
-    LOGGER.info("Waiting for all ranks.")
-    torch.distributed.barrier()
+    while queue.qsize() < int(os.environ["WORLD_SIZE"]):
+        LOGGER.info(
+            f"Waiting for other ranks to put their reports into queue. "
+            f"[{queue.qsize()}]/[{os.environ['WORLD_SIZE']}]"
+        )
+        time.sleep(1)
 
     LOGGER.info("Destroying torch.distributed process group.")
     torch.distributed.destroy_process_group()
