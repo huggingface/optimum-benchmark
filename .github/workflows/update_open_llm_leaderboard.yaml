@@ -33,4 +33,4 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          python scripts/update_open_llm_leaderboard.py
+          python llm_perf/update_open_llm_leaderboard.py

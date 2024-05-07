@@ -8,7 +8,7 @@ from llm_perf.utils import (
     INPUT_SHAPES,
     OPEN_LLM_LIST,
     PRETRAINED_OPEN_LLM_LIST,
-    errors_reporter,
+    errors_handler,
     is_benchmark_conducted,
     is_benchmark_supported,
 )
@@ -140,7 +140,7 @@ def benchmark_cuda_pytorch(model, attn_implementation, weights_config):
         benchmark_report.push_to_hub(subfolder=subfolder, repo_id=PUSH_REPO_ID, private=True)
     except Exception as error:
         LOGGER.error(f"Benchmark {benchmark_name} failed with model {model}")
-        valid_error, benchmark_report = errors_reporter(error)
+        valid_error, benchmark_report = errors_handler(error)
         LOGGER.error(benchmark_report.error, exc_info=True)
         if valid_error:
             benchmark_report.push_to_hub(subfolder=subfolder, repo_id=PUSH_REPO_ID, private=True)

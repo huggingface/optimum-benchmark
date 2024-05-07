@@ -138,7 +138,7 @@ CANONICAL_PRETRAINED_OPEN_LLM_LIST = [
 ]
 
 
-def errors_reporter(error) -> Tuple[bool, BenchmarkReport]:
+def errors_handler(error) -> Tuple[bool, BenchmarkReport]:
     valid_error = True
     benchmark_report = BenchmarkReport.from_list(["error"])
 
