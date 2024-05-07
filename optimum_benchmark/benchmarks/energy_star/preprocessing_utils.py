@@ -219,6 +219,14 @@ def text2text_generation_preprocessing(
             padding=padding,
             max_length = getattr(pretrained_config, "max_position_embeddings", 512)- len(tokenizer(config.dataset_prefix1))
             )
+    def tokenize_function(examples):
+        return tokenizer(
+            examples[config.text_column_name],
+            truncation=config.truncation,
+            return_token_type_ids=False,
+            padding=padding,
+            max_length = getattr(pretrained_config, "max_position_embeddings", 512) - config.generate_kwargs['max_new_tokens']
+            )
 
     if config.t5_task in ['question_answering']:
         dataset=dataset.map(add_qa_prefix)
@@ -234,6 +242,15 @@ def text2text_generation_preprocessing(
         dataset=dataset.map(add_single_prefix)
         dataset = dataset.map(
             tokenize_function_single,
+            batched=True,
+            writer_batch_size=50,
+            remove_columns=dataset.features,
+            desc="Running tokenizer on dataset",
+        ).with_format("torch")
+
+    elif config.t5_task in ['text_generation']:
+        dataset = dataset.map(
+            tokenize_function,
             batched=True,
             writer_batch_size=50,
             remove_columns=dataset.features,
