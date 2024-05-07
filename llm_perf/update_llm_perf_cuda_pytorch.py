@@ -3,7 +3,7 @@ from itertools import product
 from logging import getLogger
 
 from llm_perf.utils import (
-    # CANONICAL_PRETRAINED_OPEN_LLM_LIST,
+    CANONICAL_PRETRAINED_OPEN_LLM_LIST,
     GENERATE_KWARGS,
     INPUT_SHAPES,
     OPEN_LLM_LIST,
@@ -19,8 +19,6 @@ CWD = os.getcwd()
 MACHINE = os.getenv("MACHINE", "1xA100")
 SUBSET = os.getenv("SUBSET", "unquantized")
 PUSH_REPO_ID = f"optimum-benchmark/llm-perf-pytorch-cuda-{SUBSET}-{MACHINE}"
-
-CANONICAL_PRETRAINED_OPEN_LLM_LIST = ["gpt2"]
 
 ATTENTION_COFIGS = ["eager", "sdpa", "flash_attention_2"]
 if SUBSET == "unquantized":
