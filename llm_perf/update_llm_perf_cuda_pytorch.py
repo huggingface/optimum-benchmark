@@ -2,20 +2,23 @@ import os
 from itertools import product
 from logging import getLogger
 
-from llm_perf.constants import CANONICAL_MODELS_LIST, GENERATE_KWARGS, INPUT_SHAPES, PRETRAINED_MODELS_LIST
-from llm_perf.utils import common_errors_reporter, is_experiment_conducted, is_experiment_not_supported
-from optimum_benchmark.backends.pytorch.config import PyTorchConfig
-from optimum_benchmark.benchmarks.inference.config import InferenceConfig
-from optimum_benchmark.experiment import ExperimentConfig, launch
-from optimum_benchmark.launchers.process.config import ProcessConfig
+from llm_perf.utils import (
+    CANONICAL_PRETRAINED_OPEN_LLM_LIST,
+    GENERATE_KWARGS,
+    INPUT_SHAPES,
+    OPEN_LLM_LIST,
+    PRETRAINED_OPEN_LLM_LIST,
+    errors_reporter,
+    is_benchmark_conducted,
+    is_benchmark_supported,
+)
+from optimum_benchmark import Benchmark, BenchmarkConfig, InferenceConfig, ProcessConfig, PyTorchConfig
 from optimum_benchmark.logging_utils import setup_logging
 
 CWD = os.getcwd()
 MACHINE = os.getenv("MACHINE", "1xA100")
 SUBSET = os.getenv("SUBSET", "unquantized")
-CANONICAL_MODELS_ONLY = os.getenv("CANONICAL_MODELS_ONLY", "1") == "1"
 PUSH_REPO_ID = f"optimum-benchmark/llm-perf-pytorch-cuda-{SUBSET}-{MACHINE}"
-
 
 ATTENTION_COFIGS = ["eager", "sdpa", "flash_attention_2"]
 if SUBSET == "unquantized":
@@ -79,25 +82,26 @@ elif SUBSET == "awq":
     }
 
 
-setup_logging()
 LOGGER = getLogger("llm-perf-backend")
+LOGGER.info(f"len(OPEN_LLM_LIST): {len(OPEN_LLM_LIST)}")
+LOGGER.info(f"len(PRETRAINED_OPEN_LLM_LIST): {len(PRETRAINED_OPEN_LLM_LIST)}")
+LOGGER.info(f"len(CANONICAL_PRETRAINED_OPEN_LLM_LIST): {len(CANONICAL_PRETRAINED_OPEN_LLM_LIST)}")
 
 
 def benchmark_cuda_pytorch(model, attn_implementation, weights_config):
+    benchmark_name = f"{weights_config}-{attn_implementation}"
+    subfolder = f"{benchmark_name}/{model.replace('/', '--')}"
+
     torch_dtype = WEIGHTS_CONFIGS[weights_config]["torch_dtype"]
     quant_scheme = WEIGHTS_CONFIGS[weights_config]["quant_scheme"]
     quant_config = WEIGHTS_CONFIGS[weights_config]["quant_config"]
 
-    if is_experiment_not_supported(torch_dtype, attn_implementation):
-        LOGGER.info(f"Skipping experiment with model {model} since it is not supported")
+    if not is_benchmark_supported(weights_config, attn_implementation):
+        LOGGER.info(f"Skipping benchmark {benchmark_name} with model {model} since it is not supported")
         return
 
-    launcher_config = ProcessConfig(
-        start_method="spawn",
-        device_isolation=True,
-        device_isolation_action="error",
-    )
-    benchmark_config = InferenceConfig(
+    launcher_config = ProcessConfig(device_isolation=True, device_isolation_action="kill")
+    scenario_config = InferenceConfig(
         memory=True,
         energy=True,
         latency=True,
@@ -110,7 +114,7 @@ def benchmark_cuda_pytorch(model, attn_implementation, weights_config):
     backend_config = PyTorchConfig(
         model=model,
         device="cuda",
-        device_ids="0",
+        device_ids="4",
         no_weights=True,
         library="transformers",
         task="text-generation",
@@ -120,38 +124,41 @@ def benchmark_cuda_pytorch(model, attn_implementation, weights_config):
         attn_implementation=attn_implementation,
     )
 
-    experiment_name = f"{weights_config}-{attn_implementation}"
-    subfolder = f"{experiment_name}/{model.replace('/', '--')}"
-
-    experiment_config = ExperimentConfig(
-        experiment_name=experiment_name,
-        benchmark=benchmark_config,
-        launcher=launcher_config,
-        backend=backend_config,
+    benchmark_config = BenchmarkConfig(
+        name=benchmark_name, scenario=scenario_config, launcher=launcher_config, backend=backend_config
     )
 
-    if is_experiment_conducted(experiment_config, PUSH_REPO_ID, subfolder):
-        LOGGER.info(f"Skipping experiment {experiment_name} with model {model} since it was already conducted")
+    if is_benchmark_conducted(benchmark_config, PUSH_REPO_ID, subfolder):
+        LOGGER.info(f"Skipping benchmark {benchmark_name} with model {model} since it was already conducted")
         return
 
-    experiment_config.push_to_hub(subfolder=subfolder, repo_id=PUSH_REPO_ID, private=True)
+    benchmark_config.push_to_hub(subfolder=subfolder, repo_id=PUSH_REPO_ID, private=True)
 
     try:
-        benchmark_report = launch(experiment_config)
+        LOGGER.info(f"Running benchmark {benchmark_name} with model {model}")
+        benchmark_report = Benchmark.launch(benchmark_config)
         benchmark_report.push_to_hub(subfolder=subfolder, repo_id=PUSH_REPO_ID, private=True)
     except Exception as error:
-        os.chdir(CWD)  # TODO: figure our why this is happening
-        LOGGER.error(f"Experiment {experiment_name} failed with model {model}")
-        common_errors_reporter(error, LOGGER, subfolder, PUSH_REPO_ID)
+        LOGGER.error(f"Benchmark {benchmark_name} failed with model {model}")
+        valid_error, benchmark_report = errors_reporter(error)
+        LOGGER.error(benchmark_report.error, exc_info=True)
+        if valid_error:
+            benchmark_report.push_to_hub(subfolder=subfolder, repo_id=PUSH_REPO_ID, private=True)
 
 
 if __name__ == "__main__":
-    if CANONICAL_MODELS_ONLY:
-        models_attentions_weights = list(product(CANONICAL_MODELS_LIST, ATTENTION_COFIGS, WEIGHTS_CONFIGS.keys()))
-        print(f"Total number of canonical models experiments: {len(models_attentions_weights)}")
-    else:
-        models_attentions_weights = list(product(PRETRAINED_MODELS_LIST, ATTENTION_COFIGS, WEIGHTS_CONFIGS.keys()))
-        print(f"Total number of pretrained models experiments: {len(models_attentions_weights)}")
+    setup_logging(level="INFO", format_prefix="MAIN-PROCESS")
+
+    models_attentions_weights = list(
+        product(CANONICAL_PRETRAINED_OPEN_LLM_LIST, ATTENTION_COFIGS, WEIGHTS_CONFIGS.keys())
+    )
+
+    LOGGER.info(
+        f"Running a total of {len(models_attentions_weights)} benchmarks, "
+        f"with {len(CANONICAL_PRETRAINED_OPEN_LLM_LIST)} models, "
+        f"{len(ATTENTION_COFIGS)} attentions implementations"
+        f"and {len(WEIGHTS_CONFIGS)} weights configurations"
+    )
 
     for model, attn_implementation, weights_config in models_attentions_weights:
         benchmark_cuda_pytorch(model, attn_implementation, weights_config)

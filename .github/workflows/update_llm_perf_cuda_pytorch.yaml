@@ -1,9 +1,11 @@
-name: LLM Perf Benchmarks - CUDA PyTorch
+name: Update LLM Perf Benchmarks - CUDA PyTorch
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - update-llm-perf
   schedule:
-    # Every day at 00:00 UTC
     - cron: "0 0 * * *"
 
 concurrency:
@@ -53,7 +55,7 @@ jobs:
             --volume ${{ github.workspace }}:/workspace
             --workdir /workspace
           run: |
-            pip install packaging && pip install flash-attn einops scipy auto-gptq optimum bitsandbytes autoawq
+            pip install packaging && pip install flash-attn einops scipy auto-gptq optimum bitsandbytes autoawq codecarbon
             pip install -U transformers huggingface_hub[hf_transfer]
-            pip install -e .[codecarbon]
+            pip install -e .
             python llm_perf/benchmark_cuda_pytorch.py
