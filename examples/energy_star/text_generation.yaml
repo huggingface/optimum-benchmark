@@ -17,7 +17,8 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model: distilbert/distilgpt2
+  model: apple/OpenELM-270M
+  processor: meta-llama/Llama-2-7b-hf
   task: text-generation
 
 benchmark:
