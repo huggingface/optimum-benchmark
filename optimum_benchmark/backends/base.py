@@ -59,7 +59,7 @@ class Backend(Generic[BackendConfigT], ABC):
 
         else:
             self.pretrained_processor = get_transformers_pretrained_processor(
-                self.config.model, **self.config.hub_kwargs
+                self.config.model, self.config.processor, **self.config.hub_kwargs
             )
             self.generation_config = get_transformers_generation_config(self.config.model, **self.config.hub_kwargs)
             self.pretrained_config = get_transformers_pretrained_config(self.config.model, **self.config.hub_kwargs)

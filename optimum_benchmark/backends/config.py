@@ -28,6 +28,7 @@ class BackendConfig(ABC):
 
     task: Optional[str] = None
     model: Optional[str] = None
+    processor: Optional[str] = None
     library: Optional[str] = None
 
     device: Optional[str] = None
