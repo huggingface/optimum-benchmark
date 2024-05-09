@@ -173,9 +173,9 @@ test_cli_rocm_pytorch_single_gpu:
 # llm-perf
 
 install_llm_perf_cuda_pytorch:
-	pip install packaging && pip install flash-attn einops scipy auto-gptq optimum bitsandbytes autoawq
+	pip install packaging && pip install flash-attn einops scipy auto-gptq optimum bitsandbytes autoawq codecarbon
 	pip install -U transformers huggingface_hub[hf_transfer]
-	pip install -e .[codecarbon]
+	pip install -e .
 
 run_llm_perf_cuda_pytorch_unquantized:
 	SUBSET=unquantized python llm_perf/benchmark_cuda_pytorch.py

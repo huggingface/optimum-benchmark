@@ -7,7 +7,7 @@ from hydra.utils import get_class
 from .backends.base import Backend
 from .backends.config import BackendConfig
 from .config import BenchmarkConfig
-from .hub_utils import PushToHubMixin
+from .hub_utils import PushToHubMixin, classproperty
 from .launchers import LauncherConfig
 from .launchers.base import Launcher
 from .report import BenchmarkReport
@@ -75,3 +75,7 @@ class Benchmark(PushToHubMixin):
             backend.cleanup()
 
         return report
+
+    @classproperty
+    def default_filename(cls) -> str:
+        return "benchmark.json"
