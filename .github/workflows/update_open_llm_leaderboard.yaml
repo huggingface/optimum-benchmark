@@ -2,9 +2,6 @@ name: Update Open LLM Leaderboard
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - update-llm-perf
   schedule:
     - cron: "0 0 * * *"
 

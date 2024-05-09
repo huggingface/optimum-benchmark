@@ -46,9 +46,9 @@ PRETRAINED_OPEN_LLM_LIST = (
     .drop_duplicates(subset=["Model"])["Model"]
     .tolist()
 )
-CANONICAL_PRETRAINED_OPEN_LLM_LIST = sorted(
-    [model for model in PRETRAINED_OPEN_LLM_LIST if model.split("/")[0] in CANONICAL_ORGANIZATIONS]
-)
+# CANONICAL_PRETRAINED_OPEN_LLM_LIST = sorted(
+#     [model for model in PRETRAINED_OPEN_LLM_LIST if model.split("/")[0] in CANONICAL_ORGANIZATIONS]
+# )
 
 CANONICAL_PRETRAINED_OPEN_LLM_LIST = [
     "01-ai/Yi-34B",

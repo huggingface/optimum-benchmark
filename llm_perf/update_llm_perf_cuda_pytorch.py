@@ -15,10 +15,18 @@ from llm_perf.utils import (
 from optimum_benchmark import Benchmark, BenchmarkConfig, InferenceConfig, ProcessConfig, PyTorchConfig
 from optimum_benchmark.logging_utils import setup_logging
 
-CWD = os.getcwd()
-MACHINE = os.getenv("MACHINE", "1xA100")
-SUBSET = os.getenv("SUBSET", "unquantized")
-PUSH_REPO_ID = f"optimum-benchmark/llm-perf-pytorch-cuda-{SUBSET}-{MACHINE}"
+SUBSET = os.getenv("SUBSET", None)
+MACHINE = os.getenv("MACHINE", None)
+
+
+if os.getenv("MACHINE", None) is None and os.getenv("SUBSET", None) is None:
+    PUSH_REPO_ID = "optimum-benchmark/llm-perf-pytorch-cuda-debug"
+    CANONICAL_PRETRAINED_OPEN_LLM_LIST = ["gpt2"]
+    SUBSET = "unquantized"
+elif os.getenv("MACHINE", None) is not None and os.getenv("SUBSET", None) is not None:
+    PUSH_REPO_ID = f"optimum-benchmark/llm-perf-pytorch-cuda-{SUBSET}-{MACHINE}"
+else:
+    raise ValueError("Either both MACHINE and SUBSET should be set for benchmarking or neither for debugging")
 
 ATTENTION_COFIGS = ["eager", "sdpa", "flash_attention_2"]
 if SUBSET == "unquantized":
@@ -122,6 +130,7 @@ def benchmark_cuda_pytorch(model, attn_implementation, weights_config):
         quantization_scheme=quant_scheme,
         quantization_config=quant_config,
         attn_implementation=attn_implementation,
+        hub_kwargs={"trust_remote_code": True},
     )
 
     benchmark_config = BenchmarkConfig(
@@ -147,11 +156,11 @@ def benchmark_cuda_pytorch(model, attn_implementation, weights_config):
 
         if valid_error:
             LOGGER.error("The error is a valid one, reporting it")
-            LOGGER.error(benchmark_report.error, exc_info=True)
+            LOGGER.error(benchmark_report.error)
             benchmark_report.push_to_hub(subfolder=subfolder, repo_id=PUSH_REPO_ID, private=True)
         else:
             LOGGER.error("The error is not valid, need to investigate")
-            LOGGER.error(benchmark_report.error, exc_info=True)
+            LOGGER.error(benchmark_report.error)
             return
 
 

@@ -2,15 +2,12 @@ import os
 import tempfile
 from dataclasses import asdict, dataclass
 from json import dump, load
-from logging import getLogger
 from typing import Any, Dict, Optional
 
 import pandas as pd
 from flatten_dict import flatten, unflatten
 from huggingface_hub import create_repo, hf_hub_download, upload_file
 from typing_extensions import Self
-
-LOGGER = getLogger(__name__)
 
 
 class classproperty:
@@ -97,7 +94,6 @@ class PushToHubMixin:
             path_in_repo = os.path.join(subfolder, filename)
             self.save_json(path_or_fileobj)
 
-            LOGGER.info(f"Pushing {path_or_fileobj} to {repo_id}:{path_in_repo}")
             upload_file(
                 repo_id=repo_id,
                 path_in_repo=path_in_repo,
