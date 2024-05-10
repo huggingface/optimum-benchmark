@@ -23,8 +23,6 @@ class PyTXIBackend(Backend[PyTXIConfig]):
     def __init__(self, config: PyTXIConfig) -> None:
         super().__init__(config)
 
-        self.volume = list(self.config.volumes.keys())[0]
-
         LOGGER.info("\t+ Creating backend temporary directory")
         self.tmpdir = TemporaryDirectory()
 
@@ -43,6 +41,10 @@ class PyTXIBackend(Backend[PyTXIConfig]):
             self.load_model_from_pretrained()
 
         self.tmpdir.cleanup()
+
+    @property
+    def volume(self) -> str:
+        return list(self.config.volumes.keys())[0]
 
     def download_pretrained_model(self) -> None:
         # directly downloads pretrained model in volume (/data) to change generation config before loading model

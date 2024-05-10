@@ -58,11 +58,11 @@ class Backend(Generic[BackendConfigT], ABC):
             self.generation_config = None
 
         else:
+            self.generation_config = get_transformers_generation_config(self.config.model, **self.config.model_kwargs)
+            self.pretrained_config = get_transformers_pretrained_config(self.config.model, **self.config.model_kwargs)
             self.pretrained_processor = get_transformers_pretrained_processor(
-                self.config.model, **self.config.hub_kwargs
+                self.config.processor, **self.config.processor_kwargs
             )
-            self.generation_config = get_transformers_generation_config(self.config.model, **self.config.hub_kwargs)
-            self.pretrained_config = get_transformers_pretrained_config(self.config.model, **self.config.hub_kwargs)
             self.model_shapes = extract_transformers_shapes_from_artifacts(
                 self.pretrained_config, self.pretrained_processor
             )

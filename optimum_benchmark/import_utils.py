@@ -31,6 +31,11 @@ _py_txi_available = importlib.util.find_spec("py_txi") is not None
 _pyrsmi_available = importlib.util.find_spec("pyrsmi") is not None
 _llm_swarm_available = importlib.util.find_spec("llm_swarm") is not None
 _zentorch_available = importlib.util.find_spec("zentorch") is not None
+_vllm_available = importlib.util.find_spec("vllm") is not None
+
+
+def is_vllm_available():
+    return _vllm_available
 
 
 def is_zentorch_available():
@@ -211,6 +216,11 @@ def py_txi_version():
 def llm_swarm_version():
     if _llm_swarm_available:
         return importlib.metadata.version("llm_swarm")
+
+
+def vllm_version():
+    if _vllm_available:
+        return importlib.metadata.version("vllm")
 
 
 def get_git_revision_hash(package_name: str) -> Optional[str]:
