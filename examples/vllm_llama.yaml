@@ -1,12 +1,12 @@
 defaults:
   - benchmark
-  - backend: tensorrt-llm
   - scenario: inference
   - launcher: process
+  - backend: vllm
   - _base_
   - _self_
 
-name: trt_llama
+name: vllm_llama
 
 launcher:
   device_isolation: true
@@ -14,8 +14,8 @@ launcher:
 
 backend:
   device: cuda
-  device_ids: 0
-  no_weights: true
+  device_ids: 4
+  # no_weights: true
   model: TinyLlama/TinyLlama-1.1B-Chat-v1.0
 
 scenario:

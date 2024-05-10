@@ -7,9 +7,13 @@ defaults:
 
 name: tei_bert
 
+launcher:
+  device_isolation: true
+  device_isolation_action: warn
+
 backend:
   device: cpu
-  model: bert-base-uncased
+  model: BAAI/bge-base-en-v1.5
 
 scenario:
   input_shapes:

@@ -1,17 +1,22 @@
 defaults:
   - benchmark
   - scenario: inference
-  - launcher: inline
+  - launcher: process
   - backend: py-txi
   - _base_
   - _self_
 
 name: tgi_llama
 
+launcher:
+  device_isolation: true
+  device_isolation_action: warn
+
 backend:
   device: cuda
-  device_ids: 0,1
-  model: NousResearch/Nous-Hermes-llama-2-7b
+  device_ids: 4
+  # no_weights: true
+  model: TinyLlama/TinyLlama-1.1B-Chat-v1.0
 
 scenario:
   input_shapes:
