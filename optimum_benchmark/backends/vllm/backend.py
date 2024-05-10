@@ -106,7 +106,7 @@ class VLLMBackend(Backend[VLLMConfig]):
             inputs = self.pretrained_processor.batch_decode(inputs["input_ids"])
             return {"prompts": inputs}
         else:
-            raise NotImplementedError(f"VLLM does not support task {self.config.task}")
+            raise NotImplementedError(f"vLLM does not support task {self.config.task}")
 
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> Any:
         return self.pretrained_model.generate(
