@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - build-and-publish-images
     paths:
       - docker/**
       - .github/workflows/build_and_publish_docker_images.yaml
