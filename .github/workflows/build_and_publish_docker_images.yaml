@@ -10,6 +10,9 @@ on:
       - .github/workflows/build_and_publish_docker_images.yaml
 
   pull_request:
+    paths:
+      - docker/**
+      - .github/workflows/build_and_publish_docker_images.yaml
     types: [opened, reopened, synchronize]
 
 concurrency:
