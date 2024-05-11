@@ -46,6 +46,9 @@ jobs:
         id: push
         with:
           context: .
+          build-args: |
+            USER_ID=$(id -u)
+            GROUP_ID=$(id -g)
           file: docker/cpu/Dockerfile
           tags: ${{ steps.meta.outputs.tags }}
           push: true
