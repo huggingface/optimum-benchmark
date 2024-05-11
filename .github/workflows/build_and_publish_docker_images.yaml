@@ -10,12 +10,6 @@ on:
       - docker/**
       - .github/workflows/build_and_publish_docker_images.yaml
 
-  pull_request:
-    paths:
-      - docker/**
-      - .github/workflows/build_and_publish_docker_images.yaml
-    types: [opened, reopened, synchronize]
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -52,5 +46,4 @@ jobs:
         with:
           context: .
           file: docker/cpu/Dockerfile
-          tags: ${{ steps.meta.outputs.tags }}
           push: true
