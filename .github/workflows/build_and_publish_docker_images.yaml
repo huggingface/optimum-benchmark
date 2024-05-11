@@ -38,7 +38,8 @@ jobs:
         uses: docker/metadata-action@v3
         id: meta
         with:
-          images: ghrc.io/huggingface/optimum-benchmark:latest-cpu
+          images: ghrc.io/huggingface/optimum-benchmark
+          tags: latest-cpu
 
       - name: Build and push Docker images
         uses: docker/build-push-action@v3
@@ -46,4 +47,5 @@ jobs:
         with:
           context: .
           file: docker/cpu/Dockerfile
+          tags: ${{ steps.meta.outputs.tags }}
           push: true
