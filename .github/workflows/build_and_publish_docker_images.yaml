@@ -5,9 +5,15 @@ on:
   push:
     branches:
       - main
-      - build-and-publish-images
+    tags:
+      - "v*"
+
+  pull_request:
+    branches:
+      - "main"
     paths:
-      - docker/**
+      - setup.py
+      - docker/cpu/Dockerfile
       - .github/workflows/build_and_publish_docker_images.yaml
 
 concurrency:
@@ -46,9 +52,10 @@ jobs:
         id: push
         with:
           context: .
+          file: docker/cpu/Dockerfile
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          push: true
           build-args: |
             USER_ID=1000
             GROUP_ID=1000
-          file: docker/cpu/Dockerfile
-          tags: ${{ steps.meta.outputs.tags }}
-          push: true
