@@ -24,12 +24,13 @@ def gather_benchmarks(subset: str, machine: str):
     push_repo_id = "optimum-benchmark/llm-perf-leaderboard"
     file_name = f"llm-perf-leaderboard-{subset}-{machine}.csv"
 
-    benchmarks.to_csv(f"{tmp_dir}/{file_name}", index=False)
+    benchmarks.to_csv(f"{tmp_dir.name}/{file_name}", index=False)
 
     create_repo(repo_id=push_repo_id, repo_type="dataset", private=True, exist_ok=True)
     upload_file(
-        path_or_fileobj=f"{tmp_dir}/{file_name}", path_in_repo=file_name, repo_id=push_repo_id, repo_type="dataset"
+        path_or_fileobj=f"{tmp_dir.name}/{file_name}", path_in_repo=file_name, repo_id=push_repo_id, repo_type="dataset"
     )
+    tmp_dir.cleanup()
 
 
 for subset in ["unquantized", "bnb", "awq", "gptq"]:
