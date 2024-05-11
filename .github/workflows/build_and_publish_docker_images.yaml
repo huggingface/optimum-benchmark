@@ -23,7 +23,6 @@ jobs:
       contents: read
       packages: write
       id-token: write
-      attestations: write
 
     steps:
       - name: Checkout
@@ -52,9 +51,6 @@ jobs:
           file: docker/cpu/Dockerfile
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            USER_ID=1000
-            GROUP_ID=1000
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v1

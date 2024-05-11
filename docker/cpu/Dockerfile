@@ -28,8 +28,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pip install --no-cache-dir --upgrade pip setuptools wheel 
 
 # Create a non-root user
-ARG GROUP_ID
-ARG USER_ID
+ARG GROUP_ID=1000
+ARG USER_ID=1000
 
 RUN addgroup --gid $GROUP_ID group
 RUN adduser --disabled-password --gecos '' --uid $USER_ID --gid $GROUP_ID user
@@ -38,7 +38,7 @@ USER user
 WORKDIR /home/user
 
 # Install PyTorch
-ARG TORCH_VERSION="stable"
+ARG TORCH_VERSION=stable
 
 RUN if [ "${TORCH_VERSION}" = "stable" ]; then \
     pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu ; \
