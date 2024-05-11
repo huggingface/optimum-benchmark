@@ -1,0 +1,47 @@
+name: Update LLM Perf Leaderboard
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - gather-llm-perf-benchmarks
+  schedule:
+    - cron: "0 0 * * *"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  update_llm_perf_leaderboard:
+    strategy:
+      fail-fast: false
+      matrix:
+        subset: [unquantized, bnb, awq, gptq]
+        machine: [1xA10]
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.10"
+
+      - name: Install requirements
+        run: |
+          pip install --upgrade pip
+          pip install huggingface_hub[hf_transfer]
+          pip install .
+
+      - name: Update Open LLM Leaderboard
+        env:
+          SUBSET: ${{ matrix.subset }}
+          MACHINE: ${{ matrix.machine }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_HUB_ENABLE_HF_TRANSFER: 1
+        run: |
+          python llm_perf/update_llm_perf_leaderboard.py
