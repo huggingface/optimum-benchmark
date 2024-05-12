@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - main
-      - build-and-publish-images
     paths:
       - .github/workflows/build_and_publish_docker_images.yaml
       - docker/**
@@ -51,21 +50,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GH_TOKEN }}
 
-      # If pull request
+      # If main or schedule
       - name: Extract metadata (tags, labels) for Docker
-        if: ${{ github.event_name == 'pull_request' }}
-        id: meta-pr
-        uses: docker/metadata-action@v4
-        with:
-          images: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=raw,value=pr-${{ github.event.pull_request.number }}-${{ matrix.flavor }}
-            type=raw,value=sha-${{ github.sha }}-${{ matrix.flavor }}
-
-      # If main
-      - name: Extract metadata (tags, labels) for Docker
-        if: ${{ github.event_name == 'push' && github.ref == format('refs/heads/{0}', 'main') }}
+        if: ${{ github.event_name == 'push' || github.event_name == 'schedule' }}
         id: meta
         uses: docker/metadata-action@v4
         with:
@@ -77,13 +64,27 @@ jobs:
             type=raw,value=latest-${{ matrix.flavor }}
             type=raw,value=sha-${{ github.sha }}-${{ matrix.flavor }}
 
+      # If pull request
+      - name: Extract metadata (tags, labels) for Docker
+        if: ${{ github.event_name == 'pull_request' }}
+        id: meta-pr
+        uses: docker/metadata-action@v4
+        with:
+          flavor: |
+            latest=false
+          images: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=pr-${{ github.event.pull_request.number }}-${{ matrix.flavor }}
+            type=raw,value=sha-${{ github.sha }}-${{ matrix.flavor }}
+
       - name: Build and push Docker images
         uses: docker/build-push-action@v5
         id: push
         with:
           context: .
           push: true
+          file: docker/${{ matrix.flavor }}/Dockerfile
           tags: ${{ steps.meta.outputs.tags || steps.meta-pr.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels || steps.meta-pr.outputs.labels }}
-          file: docker/${{ matrix.flavor }}/Dockerfile
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-${{ matrix.flavor }}
