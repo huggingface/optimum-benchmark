@@ -77,4 +77,4 @@ jobs:
             --workdir /workspace
           run: |
             pip install -e .[testing,timm,diffusers,codecarbon]
-            pytest -s -x -k 'api and cuda'
+            pytest -s -x -k "api and cuda"
