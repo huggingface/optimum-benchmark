@@ -5,9 +5,21 @@ on:
   push:
     branches:
       - main
+    paths:
+      - .github/workflows/test_api_cpu.yaml
+      - "optimum_benchmark/**"
+      - "docker/**"
+      - "tests/**"
+      - "setup.py"
   pull_request:
     branches:
       - main
+    paths:
+      - .github/workflows/test_api_cpu.yaml
+      - "optimum_benchmark/**"
+      - "docker/**"
+      - "tests/**"
+      - "setup.py"
 
 concurrency:
   cancel-in-progress: true

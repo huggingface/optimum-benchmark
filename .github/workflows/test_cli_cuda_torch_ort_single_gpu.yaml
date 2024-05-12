@@ -5,9 +5,21 @@ on:
   push:
     branches:
       - main
+    paths:
+      - .github/workflows/test_cli_cuda_torch_ort_single_gpu.yaml
+      - "optimum_benchmark/**"
+      - "docker/**"
+      - "tests/**"
+      - "setup.py"
   pull_request:
     branches:
       - main
+    paths:
+      - .github/workflows/test_cli_cuda_torch_ort_single_gpu.yaml
+      - "optimum_benchmark/**"
+      - "docker/**"
+      - "tests/**"
+      - "setup.py"
 
 concurrency:
   cancel-in-progress: true
