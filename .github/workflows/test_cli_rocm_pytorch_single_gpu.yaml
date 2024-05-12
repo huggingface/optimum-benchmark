@@ -13,6 +13,11 @@ concurrency:
   cancel-in-progress: true
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_FLAVOR: rocm
+  IMAGE_NAME: ${{ github.repository }}
+
 jobs:
   run_cli_rocm_pytorch_single_gpu_tests:
     runs-on: [single-gpu, amd-gpu, mi250, ci]
@@ -21,17 +26,28 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Target devices
+      - name: Set target devices
         run: |
           echo "DEVICE: $DEVICE"
           echo "DEVICE=$DEVICE" >> $GITHUB_ENV
 
+      - name: Set docker image
+        run: |
+          if [ -z "${{ github.event.pull_request.number }}" ]; then
+            IMAGE=$REGISTRY/$IMAGE_NAME:latest-$IMAGE_FLAVOR
+          else
+            IMAGE=$REGISTRY/$IMAGE_NAME:pr-${{ github.event.pull_request.number }}-$IMAGE_FLAVOR
+          fi
+          echo "IMAGE: $IMAGE"
+          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+
       - name: Run tests
         uses: addnab/docker-run-action@v3
         env:
+          IMAGE: ${{ env.IMAGE }}
           DEVICE: ${{ env.DEVICE }}
         with:
-          image: ghcr.io/huggingface/optimum-benchmark:latest-rocm
+          image: ${{ env.IMAGE }}
           options: |
             --rm
             --shm-size 64G

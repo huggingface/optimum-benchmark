@@ -13,6 +13,11 @@ concurrency:
   cancel-in-progress: true
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_FLAVOR: cuda-ort
+  IMAGE_NAME: ${{ github.repository }}
+
 jobs:
   build_image_and_run_cli_cuda_torch_ort_multi_gpu_tests:
     runs-on: [multi-gpu, nvidia-gpu, 4-a10, ci]
@@ -21,10 +26,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Set docker image
+        run: |
+          if [ -z "${{ github.event.pull_request.number }}" ]; then
+            IMAGE=$REGISTRY/$IMAGE_NAME:latest-$IMAGE_FLAVOR
+          else
+            IMAGE=$REGISTRY/$IMAGE_NAME:pr-${{ github.event.pull_request.number }}-$IMAGE_FLAVOR
+          fi
+          echo "IMAGE: $IMAGE"
+          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+
       - name: Run tests
         uses: addnab/docker-run-action@v3
+        env:
+          IMAGE: ${{ env.IMAGE }}
         with:
-          image: ghcr.io/huggingface/optimum-benchmark:latest-cuda-ort
+          image: ${{ env.IMAGE }}
           options: |
             --rm
             --gpus all
