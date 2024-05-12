@@ -20,31 +20,17 @@ FROM rocm/dev-ubuntu-${UBUNTU_VERSION}:${ROCM_VERSION}
 # Install necessary packages
 ENV PATH="/opt/rocm/bin:${PATH}"
 ENV DEBIAN_FRONTEND noninteractive
-ENV PATH="/home/user/.local/bin:${PATH}"
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
-    build-essential git bash-completion \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \ 
+    sudo build-essential git bash-completion \
     python3.10 python3-pip python3.10-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 && \
     pip install --no-cache-dir --upgrade pip setuptools wheel  && \
     cd /opt/rocm/share/amd_smi && pip install .
 
-# Create a non-root user
-ARG GROUP_ID=1000
-ARG USER_ID=1000
-
-RUN addgroup --gid $GROUP_ID group
-RUN adduser --disabled-password --gecos '' --uid $USER_ID --gid $GROUP_ID user
-
-RUN usermod -a -G video user
-RUN usermod -a -G render user
-
-USER user
-WORKDIR /home/user
-
 # Install PyTorch
 ARG TORCH_ROCM=rocm5.7
-ARG TORCH_VERSION=stable
+ARG TORCH_VERSION=2.2.2
 
 RUN if [ "${TORCH_VERSION}" = "stable" ]; then \
     pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_ROCM} ; \

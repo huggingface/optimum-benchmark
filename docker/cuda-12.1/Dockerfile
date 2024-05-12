@@ -13,7 +13,7 @@
 # limitations under the License.
 
 ARG CUDNN_VERSION=8
-ARG CUDA_VERSION=11.8.0
+ARG CUDA_VERSION=12.1.1
 ARG UBUNTU_VERSION=22.04
 
 FROM nvidia/cuda:${CUDA_VERSION}-cudnn${CUDNN_VERSION}-devel-ubuntu${UBUNTU_VERSION}
@@ -22,24 +22,14 @@ FROM nvidia/cuda:${CUDA_VERSION}-cudnn${CUDNN_VERSION}-devel-ubuntu${UBUNTU_VERS
 ENV DEBIAN_FRONTEND noninteractive
 ENV PATH="/home/user/.local/bin:${PATH}"
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential git bash-completion \
+    sudo build-essential git bash-completion \
     python3.10 python3-pip python3.10-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 && \
     pip install --no-cache-dir --upgrade pip setuptools wheel 
 
-# Create a non-root user
-ARG GROUP_ID=1000
-ARG USER_ID=1000
-
-RUN addgroup --gid $GROUP_ID group
-RUN adduser --disabled-password --gecos '' --uid $USER_ID --gid $GROUP_ID user
-
-USER user
-WORKDIR /home/user
-
 # Install PyTorch
-ARG TORCH_CUDA=cu118
+ARG TORCH_CUDA=cu121
 ARG TORCH_VERSION=stable
 
 RUN if [ "${TORCH_VERSION}" = "stable" ]; then \

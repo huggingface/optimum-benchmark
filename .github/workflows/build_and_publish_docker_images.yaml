@@ -6,22 +6,36 @@ on:
     branches:
       - main
       - build-and-publish-images
+    paths:
+      - "docker/**"
+
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "docker/**"
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  build_and_publish_cpu_docker_image:
+  build_and_publish_docker_image:
+    strategy:
+      fail-fast: true
+      matrix:
+        flavor: [cpu, cuda-11.8, cuda-12.1, rocm-5.7]
+
+    concurrency:
+      group: ${{ github.workflow }}-${{ matrix.flavor }}-${{ github.head_ref || github.run_id }}
+      cancel-in-progress: true
+
     runs-on: ubuntu-latest
 
     permissions:
       contents: read
       packages: write
+      id-token: write
 
     steps:
       - name: Checkout
@@ -34,12 +48,32 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GH_TOKEN }}
 
+      # If pull request
       - name: Extract metadata (tags, labels) for Docker
-        uses: docker/metadata-action@v5
-        id: meta
+        if: ${{ github.event_name == 'pull_request' }}
+        id: meta-pr
+        uses: docker/metadata-action@v4
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
-          tags: cpu-latest
+          images: |
+            registry.internal.huggingface.tech/api-inference/community/text-generation-inference
+          tags: |
+            type=raw,value=sha-${{ env.GITHUB_SHA_SHORT }}-${{ matrix.flavor }}
+
+      # If main, release or tag
+      - name: Extract metadata (tags, labels) for Docker
+        if: ${{ github.event_name != 'pull_request' }}
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          flavor: |
+            latest=false
+          images: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}-${{ matrix.flavor }}
+            type=semver,pattern={{major}}.{{minor}}-${{ matrix.flavor }}
+            type=raw,value=latest-${{ matrix.flavor }},enable=${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+            type=raw,value=sha-${{ env.GITHUB_SHA_SHORT }}-${{ matrix.flavor }}
 
       - name: Build and push Docker images
         uses: docker/build-push-action@v5
@@ -47,14 +81,6 @@ jobs:
         with:
           context: .
           push: true
-          file: docker/cpu/Dockerfile
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-
-      - name: Generate artifact attestation
-        uses: actions/attest-build-provenance@v1
-        with:
-          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
-          subject-digest: ${{ steps.push.outputs.digest }}
-          github-token: ${{ secrets.GH_TOKEN }}
-          push-to-registry: true
+          file: docker/${{ matrix.flavor }}/Dockerfile

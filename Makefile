@@ -19,16 +19,20 @@ install:
 ## Build docker
 
 build_cpu_image:
-	docker build --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t opt-bench-cpu:22.04 docker/cpu
+	docker build -t optimum-benchmark:latest-cpu docker/cpu
+	docker build --build-arg IMAGE=optimum-benchmark:latest-cpu --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cpu docker/unroot
 
 build_cuda_118_image:
-	docker build --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) --build-arg TORCH_CUDA=cu118 --build-arg CUDA_VERSION=11.8.0 -t opt-bench-cuda:11.8.0 docker/cuda
+	docker build --build-arg -t optimum-benchmark:latest-cuda-11.8 docker/cuda-11.8
+	docker build --build-arg IMAGE=optimum-benchmark:latest-cuda-11.8 --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cuda-11.8 docker/unroot
 
 build_cuda_121_image:
-	docker build --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) --build-arg TORCH_CUDA=cu121 --build-arg CUDA_VERSION=12.1.1 -t opt-bench-cuda:12.1.1 docker/cuda
+	docker build --build-arg -t optimum-benchmark:latest-cuda-12.1 docker/cuda-12.1
+	docker build --build-arg IMAGE=optimum-benchmark:latest-cuda-12.1 --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cuda-12.1 docker/unroot
 
-build_rocm_image:
-	docker build --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t opt-bench-rocm:5.7.1 docker/rocm
+build_rocm_571_image:
+	docker build --build-arg -t optimum-benchmark:latest-rocm-5.7 docker/rocm-5.7
+	docker build --build-arg IMAGE=optimum-benchmark:latest-rocm-5.7 --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-rocm-5.7 docker/unroot
 
 # Run docker
 
@@ -37,10 +41,9 @@ run_cpu_container:
 	-it \
 	--rm \
 	--pid host \
-	--volume $(PWD):/workspace \
-	--entrypoint /bin/bash \
-	--workdir /workspace \
-	opt-bench-cpu:22.04
+	--volume $(PWD):/optimum-benchmark \
+	--workdir /optimum-benchmark \
+	optimum-benchmark:latest-cpu
 
 run_cuda_118_container:
 	docker run \
@@ -49,10 +52,9 @@ run_cuda_118_container:
 	--pid host \
 	--gpus all \
 	--shm-size 64G \
-	--volume $(PWD):/workspace \
-	--entrypoint /bin/bash \
-	--workdir /workspace \
-	opt-bench-cuda:11.8.0
+	--volume $(PWD):/optimum-benchmark \
+	--workdir /optimum-benchmark \
+	optimum-benchmark:latest-cuda-11.8
 
 run_cuda_121_container:
 	docker run \
@@ -61,10 +63,9 @@ run_cuda_121_container:
 	--pid host \
 	--gpus all \
 	--shm-size 64G \
-	--volume $(PWD):/workspace \
-	--entrypoint /bin/bash \
-	--workdir /workspace \
-	opt-bench-cuda:12.1.1
+	--volume $(PWD):/optimum-benchmark \
+	--workdir /optimum-benchmark \
+	optimum-benchmark:latest-cuda-12.1
 
 run_rocm_container:
 	docker run \
@@ -73,10 +74,9 @@ run_rocm_container:
 	--shm-size 64G \
 	--device /dev/kfd \
 	--device /dev/dri \
-	--volume $(PWD):/workspace \
-	--entrypoint /bin/bash \
-	--workdir /workspace \
-	opt-bench-rocm:5.7.1
+	--volume $(PWD):/optimum-benchmark \
+	--workdir /optimum-benchmark \
+	optimum-benchmark:latest-rocm-5.7
 
 ## Install extras
 
