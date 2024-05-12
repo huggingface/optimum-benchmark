@@ -23,15 +23,15 @@ build_cpu_image:
 	docker build --build-arg IMAGE=optimum-benchmark:latest-cpu --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cpu docker/unroot
 
 build_cuda_image:
-	docker build --build-arg -t optimum-benchmark:latest-cuda-ort docker/cuda-ort
-	docker build --build-arg IMAGE=optimum-benchmark:latest-cuda-ort --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cuda-ort docker/unroot
-
-build_cuda_ort_image:
-	docker build --build-arg -t optimum-benchmark:latest-cuda docker/cuda
+	docker build -t optimum-benchmark:latest-cuda docker/cuda
 	docker build --build-arg IMAGE=optimum-benchmark:latest-cuda --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cuda docker/unroot
 
+build_cuda_ort_image:
+	docker build -t optimum-benchmark:latest-cuda-ort docker/cuda-ort
+	docker build --build-arg IMAGE=optimum-benchmark:latest-cuda-ort --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cuda-ort docker/unroot
+
 build_rocm_image:
-	docker build --build-arg -t optimum-benchmark:latest-rocm docker/rocm
+	docker build -t optimum-benchmark:latest-rocm docker/rocm
 	docker build --build-arg IMAGE=optimum-benchmark:latest-rocm --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-rocm docker/unroot
 
 # Run docker

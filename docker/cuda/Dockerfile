@@ -20,7 +20,6 @@ FROM nvidia/cuda:${CUDA_VERSION}-cudnn${CUDNN_VERSION}-devel-ubuntu${UBUNTU_VERS
 
 # Install necessary packages
 ENV DEBIAN_FRONTEND noninteractive
-ENV PATH="/home/user/.local/bin:${PATH}"
 RUN apt-get update && apt-get install -y --no-install-recommends \
     sudo build-essential git bash-completion \
     python3.10 python3-pip python3.10-dev && \
