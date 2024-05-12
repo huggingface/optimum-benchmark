@@ -19,16 +19,20 @@ install:
 ## Build docker
 
 build_cpu_image:
-	docker build --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t opt-bench-cpu:22.04 docker/cpu
+	docker build -t optimum-benchmark:latest-cpu docker/cpu
+	docker build --build-arg IMAGE=optimum-benchmark:latest-cpu --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cpu docker/unroot
 
-build_cuda_118_image:
-	docker build --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) --build-arg TORCH_CUDA=cu118 --build-arg CUDA_VERSION=11.8.0 -t opt-bench-cuda:11.8.0 docker/cuda
+build_cuda_image:
+	docker build -t optimum-benchmark:latest-cuda docker/cuda
+	docker build --build-arg IMAGE=optimum-benchmark:latest-cuda --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cuda docker/unroot
 
-build_cuda_121_image:
-	docker build --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) --build-arg TORCH_CUDA=cu121 --build-arg CUDA_VERSION=12.1.1 -t opt-bench-cuda:12.1.1 docker/cuda
+build_cuda_ort_image:
+	docker build -t optimum-benchmark:latest-cuda-ort docker/cuda-ort
+	docker build --build-arg IMAGE=optimum-benchmark:latest-cuda-ort --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cuda-ort docker/unroot
 
 build_rocm_image:
-	docker build --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t opt-bench-rocm:5.7.1 docker/rocm
+	docker build -t optimum-benchmark:latest-rocm docker/rocm
+	docker build --build-arg IMAGE=optimum-benchmark:latest-rocm --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-rocm docker/unroot
 
 # Run docker
 
@@ -37,34 +41,31 @@ run_cpu_container:
 	-it \
 	--rm \
 	--pid host \
-	--volume $(PWD):/workspace \
-	--entrypoint /bin/bash \
-	--workdir /workspace \
-	opt-bench-cpu:22.04
+	--volume $(PWD):/optimum-benchmark \
+	--workdir /optimum-benchmark \
+	optimum-benchmark:latest-cpu
 
-run_cuda_118_container:
+run_cuda_container:
 	docker run \
 	-it \
 	--rm \
 	--pid host \
 	--gpus all \
 	--shm-size 64G \
-	--volume $(PWD):/workspace \
-	--entrypoint /bin/bash \
-	--workdir /workspace \
-	opt-bench-cuda:11.8.0
+	--volume $(PWD):/optimum-benchmark \
+	--workdir /optimum-benchmark \
+	optimum-benchmark:latest-cuda
 
-run_cuda_121_container:
+run_cuda_ort_container:
 	docker run \
 	-it \
 	--rm \
 	--pid host \
 	--gpus all \
 	--shm-size 64G \
-	--volume $(PWD):/workspace \
-	--entrypoint /bin/bash \
-	--workdir /workspace \
-	opt-bench-cuda:12.1.1
+	--volume $(PWD):/optimum-benchmark \
+	--workdir /optimum-benchmark \
+	optimum-benchmark:latest-cuda-ort
 
 run_rocm_container:
 	docker run \
@@ -73,10 +74,9 @@ run_rocm_container:
 	--shm-size 64G \
 	--device /dev/kfd \
 	--device /dev/dri \
-	--volume $(PWD):/workspace \
-	--entrypoint /bin/bash \
-	--workdir /workspace \
-	opt-bench-rocm:5.7.1
+	--volume $(PWD):/optimum-benchmark \
+	--workdir /optimum-benchmark \
+	optimum-benchmark:latest-rocm
 
 ## Install extras
 
@@ -115,7 +115,6 @@ install_cli_rocm_pytorch:
 
 install_cli_cuda_torch_ort:
 	pip install -e .[testing,timm,diffusers,peft,torch-ort,deepspeed]
-	python -m torch_ort.configure
 
 install_cli_cuda_onnxruntime:
 	pip install -e .[testing,timm,diffusers,peft,onnxruntime-gpu]
