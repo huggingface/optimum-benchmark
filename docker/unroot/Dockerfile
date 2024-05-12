@@ -5,6 +5,7 @@ FROM $IMAGE
 # Create a non-root user
 ARG USER_ID
 ARG GROUP_ID
+ENV PATH="/home/user/.local/bin:${PATH}"
 
 RUN addgroup --gid $GROUP_ID group
 RUN adduser --disabled-password --gecos '' --uid $USER_ID --gid $GROUP_ID user
@@ -15,4 +16,4 @@ RUN if [ -d /dev/dri ]; then usermod -a -G render user; fi
 
 USER user
 WORKDIR /home/user
-ENV PATH="/home/user/.local/bin:${PATH}"
+

@@ -65,13 +65,13 @@ jobs:
           WORKSPACE: ${{ github.workspace }}
           PUSH_REPO_ID: optimum-benchmark/rocm
         with:
-          image:
+          image: ${{ env.IMAGE }}
           options: |
             --rm
             --shm-size 64G
             --env HF_TOKEN
             --env PUSH_REPO_ID
-            --device /dev/kfd/
+            --device /dev/kfd
             --device /dev/dri/${{ env.DEVICE }}
             --volume ${{ env.WORKSPACE }}:/workspace
             --workdir /workspace
