@@ -57,7 +57,7 @@ jobs:
           images: |
             registry.internal.huggingface.tech/api-inference/community/text-generation-inference
           tags: |
-            type=raw,value=sha-${{ env.GITHUB_SHA_SHORT }}-${{ matrix.flavor }}
+            type=raw,value=sha-${{ github.sha }}-${{ matrix.flavor }}
 
       # If main, release or tag
       - name: Extract metadata (tags, labels) for Docker
@@ -73,7 +73,7 @@ jobs:
             type=semver,pattern={{version}}-${{ matrix.flavor }}
             type=semver,pattern={{major}}.{{minor}}-${{ matrix.flavor }}
             type=raw,value=latest-${{ matrix.flavor }},enable=${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
-            type=raw,value=sha-${{ env.GITHUB_SHA_SHORT }}-${{ matrix.flavor }}
+            type=raw,value=sha-${{ github.sha }}-${{ matrix.flavor }}
 
       - name: Build and push Docker images
         uses: docker/build-push-action@v5
