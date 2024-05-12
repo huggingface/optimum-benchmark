@@ -39,3 +39,5 @@ elif [ "${TORCH_VERSION}" = "nighly" ]; then \
 else \
     pip install --no-cache-dir torch==${TORCH_VERSION} torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
 fi
+
+RUN pip install torch-ort onnxruntime-training onnxruntime-gpu && python -m torch_ort.configure

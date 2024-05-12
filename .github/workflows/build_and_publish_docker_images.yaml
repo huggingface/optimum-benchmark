@@ -9,24 +9,25 @@ on:
     paths:
       - .github/workflows/build_and_publish_docker_images.yaml
       - docker/**
-
   pull_request:
     branches:
       - main
     paths:
       - .github/workflows/build_and_publish_docker_images.yaml
       - docker/**
+  schedule:
+    - cron: "0 0 * * *"
 
 env:
-  REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  REGISTRY: ghcr.io
 
 jobs:
   build_and_publish_docker_image:
     strategy:
       fail-fast: true
       matrix:
-        flavor: [cpu, cuda-11.8, cuda-12.1, rocm-5.7]
+        flavor: [cpu, cuda, cuda-ort, rocm]
 
     concurrency:
       group: ${{ github.workflow }}-${{ matrix.flavor }}-${{ github.head_ref || github.run_id }}
@@ -57,9 +58,11 @@ jobs:
         uses: docker/metadata-action@v4
         with:
           images: |
-            registry.internal.huggingface.tech/api-inference/community/text-generation-inference
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=sha-${{ github.sha }}-${{ matrix.flavor }}
+            type=raw,value=pr-${{ github.event.pull_request.number }}-${{ matrix.flavor }}
+            type=raw,value=sha-${{ github.sha }}-${{ matrix.flavor }}          
+            type=raw,value=latest-${{ matrix.flavor }}
 
       # If main, release or tag
       - name: Extract metadata (tags, labels) for Docker
@@ -72,10 +75,7 @@ jobs:
           images: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=semver,pattern={{version}}-${{ matrix.flavor }}
-            type=semver,pattern={{major}}.{{minor}}-${{ matrix.flavor }}
             type=raw,value=latest-${{ matrix.flavor }},enable=${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
-            type=raw,value=sha-${{ github.sha }}-${{ matrix.flavor }}
 
       - name: Build and push Docker images
         uses: docker/build-push-action@v5
