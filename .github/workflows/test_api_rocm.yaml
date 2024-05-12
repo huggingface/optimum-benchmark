@@ -76,4 +76,5 @@ jobs:
             --volume ${{ env.WORKSPACE }}:/workspace
             --workdir /workspace
           run: |
-            pip install -e .[testing,timm,diffusers,codecarbon] && pytest -s -x -k "api and cuda"
+            pip install -e .[testing,timm,diffusers,codecarbon]
+            pytest -s -x -k 'api and cuda'
