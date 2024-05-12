@@ -9,6 +9,9 @@ concurrency:
   cancel-in-progress: true
   group: ${{ github.workflow }}-${{ github.ref }}
 
+env:
+  IMAGE: ghcr.io/huggingface/optimum-benchmark:latest-cuda
+
 jobs:
   build_image_and_run_benchmarks:
     strategy:
@@ -26,11 +29,12 @@ jobs:
       - name: Run benchmarks
         uses: addnab/docker-run-action@v3
         env:
+          IMAGE: ${{ env.IMAGE }}
           SUBSET: ${{ matrix.subset }}
           MACHINE: ${{ matrix.machine.name }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         with:
-          image: ghcr.io/huggingface/optimum-benchmark:latest-cuda
+          image: ${{ env.IMAGE }}
           options: |
             --rm
             --gpus all
