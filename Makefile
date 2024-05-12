@@ -177,13 +177,13 @@ install_llm_perf_cuda_pytorch:
 	pip install -e .
 
 run_llm_perf_cuda_pytorch_unquantized:
-	SUBSET=unquantized python llm_perf/benchmark_cuda_pytorch.py
+	MACHINE=1xA100 SUBSET=unquantized python llm_perf/update_llm_perf_cuda_pytorch.py
 
 run_llm_perf_cuda_pytorch_bnb:
-	SUBSET=bnb python llm_perf/benchmark_cuda_pytorch.py
+	MACHINE=1xA100 SUBSET=bnb python llm_perf/update_llm_perf_cuda_pytorch.py
 
 run_llm_perf_cuda_pytorch_gptq:
-	SUBSET=gptq python llm_perf/benchmark_cuda_pytorch.py
+	MACHINE=1xA100 SUBSET=gptq python llm_perf/update_llm_perf_cuda_pytorch.py
 
 run_llm_perf_cuda_pytorch_awq:
-	SUBSET=awq python llm_perf/benchmark_cuda_pytorch.py
+	MACHINE=1xA100 SUBSET=awq python llm_perf/update_llm_perf_cuda_pytorch.py
