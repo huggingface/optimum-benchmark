@@ -3,13 +3,15 @@ name: CLI CUDA Pytorch Single-GPU Tests
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    types: [opened, reopened, synchronize]
+    branches:
+      - main
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
 jobs:
   run_cli_cuda_pytorch_single_gpu_tests:
@@ -19,13 +21,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Pull image
-        run: docker pull pytorch/pytorch:2.2.2-cuda12.1-cudnn8-devel
-
       - name: Run tests
         uses: addnab/docker-run-action@v3
         with:
-          image: pytorch/pytorch:2.2.2-cuda12.1-cudnn8-devel
+          image: ghcr.io/huggingface/optimum-benchmark:latest-cuda
           options: |
             --rm
             --gpus all

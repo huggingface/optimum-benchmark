@@ -6,8 +6,8 @@ on:
     - cron: "0 0 * * *"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
   build_image_and_run_benchmarks:
@@ -23,15 +23,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Build image
-        run: docker build
-          --build-arg USER_ID=$(id -u)
-          --build-arg GROUP_ID=$(id -g)
-          --build-arg TORCH_CUDA=cu121
-          --build-arg CUDA_VERSION=12.1.1
-          --tag llm-perf-cuda:12.1.1
-          docker/cuda
-
       - name: Run benchmarks
         uses: addnab/docker-run-action@v3
         env:
@@ -39,7 +30,7 @@ jobs:
           MACHINE: ${{ matrix.machine.name }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         with:
-          image: llm-perf-cuda:12.1.1
+          image: ghcr.io/huggingface/optimum-benchmark:latest-cuda
           options: |
             --rm
             --gpus all

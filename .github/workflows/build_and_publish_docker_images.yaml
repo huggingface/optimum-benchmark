@@ -18,9 +18,13 @@ on:
   schedule:
     - cron: "0 0 * * *"
 
+concurrency:
+  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+
 env:
-  IMAGE_NAME: ${{ github.repository }}
   REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build_and_publish_docker_image:
@@ -28,10 +32,6 @@ jobs:
       fail-fast: true
       matrix:
         flavor: [cpu, cuda, cuda-ort, rocm]
-
-    concurrency:
-      group: ${{ github.workflow }}-${{ matrix.flavor }}-${{ github.head_ref || github.run_id }}
-      cancel-in-progress: true
 
     runs-on: ubuntu-latest
 
@@ -65,7 +65,7 @@ jobs:
 
       # If main
       - name: Extract metadata (tags, labels) for Docker
-        if: ${{ github.event_name == 'push' && github.ref == format('refs/heads/{0}', 'build-and-publish-images') }}
+        if: ${{ github.event_name == 'push' && github.ref == format('refs/heads/{0}', 'main') }}
         id: meta
         uses: docker/metadata-action@v4
         with:
@@ -83,7 +83,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags || steps.meta-pr.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels || steps.meta-pr.outputs.labels }}
           file: docker/${{ matrix.flavor }}/Dockerfile
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-${{ matrix.flavor }}

@@ -3,21 +3,18 @@ name: CLI ROCm Pytorch Single-GPU Tests
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    types: [opened, reopened, synchronize]
+    branches:
+      - main
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
 jobs:
   run_cli_rocm_pytorch_single_gpu_tests:
-    strategy:
-      fail-fast: false
-      matrix:
-        image: [{ rocm_version: 5.7.1, torch_rocm: rocm5.7 }]
-
     runs-on: [single-gpu, amd-gpu, mi250, ci]
 
     steps:
@@ -29,21 +26,12 @@ jobs:
           echo "DEVICE: $DEVICE"
           echo "DEVICE=$DEVICE" >> $GITHUB_ENV
 
-      - name: Build image
-        run: docker build
-          --build-arg USER_ID=$(id -u)
-          --build-arg GROUP_ID=$(id -g)
-          --build-arg TORCH_ROCM=${{ matrix.image.torch_rocm }}
-          --build-arg ROCM_VERSION=${{ matrix.image.rocm_version }}
-          --tag opt-bench-rocm:${{ matrix.image.rocm_version }}
-          docker/rocm
-
       - name: Run tests
         uses: addnab/docker-run-action@v3
         env:
           DEVICE: ${{ env.DEVICE }}
         with:
-          image: opt-bench-rocm:${{ matrix.image.rocm_version }}
+          image: ghcr.io/huggingface/optimum-benchmark:latest-rocm
           options: |
             --rm
             --shm-size 64G

@@ -2,15 +2,12 @@ name: Update LLM Perf Leaderboard
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - gather-llm-perf-benchmarks
   schedule:
     - cron: "0 */6 * * *"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
   update_llm_perf_leaderboard:
@@ -27,7 +24,7 @@ jobs:
       - name: Install requirements
         run: |
           pip install --upgrade pip
-          pip install huggingface_hub[hf_transfer]
+          pip install pandas huggingface_hub[hf_transfer]
           pip install .
 
       - name: Update Open LLM Leaderboard

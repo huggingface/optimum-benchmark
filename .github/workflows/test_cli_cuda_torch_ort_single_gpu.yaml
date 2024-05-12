@@ -3,40 +3,28 @@ name: CLI CUDA Torch-ORT Single-GPU Tests
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    types: [opened, reopened, synchronize]
+    branches:
+      - main
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
 jobs:
   build_image_and_run_cli_cuda_torch_ort_single_gpu_tests:
-    strategy:
-      fail-fast: false
-      matrix:
-        image: [{ cuda_version: 11.8.0, torch_cuda: cu118 }]
-
     runs-on: [single-gpu, nvidia-gpu, a10, ci]
 
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Build image
-        run: docker build
-          --build-arg USER_ID=$(id -u)
-          --build-arg GROUP_ID=$(id -g)
-          --build-arg TORCH_CUDA=${{ matrix.image.torch_cuda }}
-          --build-arg CUDA_VERSION=${{ matrix.image.cuda_version }}
-          --tag opt-bench-cuda:${{ matrix.image.cuda_version }}
-          docker/cuda
-
       - name: Run tests
         uses: addnab/docker-run-action@v3
         with:
-          image: opt-bench-cuda:${{ matrix.image.cuda_version }}
+          image: ghcr.io/huggingface/optimum-benchmark:latest-cuda-ort
           options: |
             --rm
             --gpus all

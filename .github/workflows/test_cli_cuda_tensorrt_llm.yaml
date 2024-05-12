@@ -3,13 +3,15 @@ name: CLI CUDA TensorRT-LLM Tests
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    types: [opened, reopened, synchronize]
+    branches:
+      - main
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
 jobs:
   cli_cuda_tensorrt_llm_tests:
@@ -18,9 +20,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-
-      - name: Pull image
-        run: docker pull huggingface/optimum-nvidia:latest
 
       - name: Run tests
         uses: addnab/docker-run-action@v3
