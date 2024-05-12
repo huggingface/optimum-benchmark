@@ -43,7 +43,7 @@ jobs:
           echo "DEVICE: $DEVICE"
           echo "DEVICE=$DEVICE" >> $GITHUB_ENV
 
-      - name: Set image name
+      - name: Set docker image
         run: |
           echo "IMAGE: $REGISTRY/$IMAGE_NAME:latest-$IMAGE_FLAVOR"
           echo "IMAGE=$REGISTRY/$IMAGE_NAME:latest-$IMAGE_FLAVOR" >> $GITHUB_ENV
