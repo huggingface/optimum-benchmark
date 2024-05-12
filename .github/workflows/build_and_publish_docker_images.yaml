@@ -6,8 +6,8 @@ on:
     branches:
       - main
     paths:
-      - .github/workflows/build_and_publish_docker_images.yaml
       - docker/**
+      - .github/workflows/build_and_publish_docker_images.yaml
   schedule:
     - cron: "0 0 * * *"
 
@@ -62,7 +62,7 @@ jobs:
         with:
           context: .
           push: true
-          file: docker/${{ matrix.image_flavor }}/Dockerfile
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          file: docker/${{ matrix.image_flavor }}/Dockerfile
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-${{ matrix.image_flavor }}
