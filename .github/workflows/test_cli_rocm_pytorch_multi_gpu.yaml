@@ -45,21 +45,15 @@ jobs:
           echo "DEVICE0=$DEVICE0" >> $GITHUB_ENV
           echo "DEVICE1=$DEVICE1" >> $GITHUB_ENV
 
-      - name: Set docker image
+      - name: Set image name
         run: |
-          if [ -z "${{ github.event.pull_request.number }}" ]; then
-            IMAGE=$REGISTRY/$IMAGE_NAME:latest-$IMAGE_FLAVOR
-          else
-            IMAGE=$REGISTRY/$IMAGE_NAME:pr-${{ github.event.pull_request.number }}-$IMAGE_FLAVOR
-          fi
-          echo "IMAGE: $IMAGE"
-          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+          echo "IMAGE: $REGISTRY/$IMAGE_NAME:latest-$IMAGE_FLAVOR"
+          echo "IMAGE=$REGISTRY/$IMAGE_NAME:latest-$IMAGE_FLAVOR" >> $GITHUB_ENV
 
       - name: Unroot docker image
         env:
           IMAGE: ${{ env.IMAGE }}
         run: |
-          docker pull $IMAGE
           docker build --build-arg IMAGE=$IMAGE --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) -t $IMAGE docker/unroot
 
       - name: Run tests
@@ -68,6 +62,7 @@ jobs:
           IMAGE: ${{ env.IMAGE }}
           DEVICE0: ${{ env.DEVICE0 }}
           DEVICE1: ${{ env.DEVICE1 }}
+          WORKSPACE: ${{ github.workspace }}
         with:
           image: ${{ env.IMAGE }}
           options: |
@@ -76,7 +71,7 @@ jobs:
             --device /dev/kfd
             --device /dev/dri/${{ env.DEVICE0 }}
             --device /dev/dri/${{ env.DEVICE1 }}
-            --volume ${{ github.workspace }}:/workspace
+            --volume ${{ env.workspace }}:/workspace
             --workdir /workspace
           run: |
             pip install -e .[testing,diffusers,timm,deepspeed,peft,autoawq-rocm,auto-gptq-rocm]
