@@ -100,6 +100,7 @@ CANONICAL_PRETRAINED_OPEN_LLM_LIST = [
     "internlm/internlm2-20b",
     "meta-llama/Llama-2-7b-hf",
     "meta-llama/Llama-2-13b-hf",
+    "meta-llama/Llama-2-70b-hf",
     "meta-llama/Meta-Llama-3-8B",
     "meta-llama/Meta-Llama-3-70B",
     "microsoft/phi-1_5",
@@ -149,7 +150,11 @@ def errors_handler(error: str) -> Tuple[bool, BenchmarkReport]:
 def is_benchmark_conducted(benchmark_config, push_repo_id, subfolder):
     try:
         loaded_benchmark_config = benchmark_config.from_pretrained(repo_id=push_repo_id, subfolder=subfolder)
-        if loaded_benchmark_config.to_dict() == benchmark_config.to_dict():
+        loaded_benchmark_dict = loaded_benchmark_config.to_dict()
+        benchmark_dict = benchmark_config.to_dict()
+        loaded_benchmark_dict.pop("environment")
+        benchmark_dict.pop("environment")
+        if loaded_benchmark_dict == benchmark_dict:
             BenchmarkReport.from_pretrained(repo_id=push_repo_id, subfolder=subfolder)
             return True
     except Exception:
