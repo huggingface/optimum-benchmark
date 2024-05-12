@@ -40,13 +40,8 @@ jobs:
 
       - name: Set docker image
         run: |
-          if [ -z "${{ github.event.pull_request.number }}" ]; then
-            IMAGE=$REGISTRY/$IMAGE_NAME:latest-$IMAGE_FLAVOR
-          else
-            IMAGE=$REGISTRY/$IMAGE_NAME:pr-${{ github.event.pull_request.number }}-$IMAGE_FLAVOR
-          fi
-          echo "IMAGE: $IMAGE"
-          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+          echo "IMAGE: $REGISTRY/$IMAGE_NAME:latest-$IMAGE_FLAVOR"
+          echo "IMAGE=$REGISTRY/$IMAGE_NAME:latest-$IMAGE_FLAVOR" >> $GITHUB_ENV
 
       - name: Run tests
         uses: addnab/docker-run-action@v3

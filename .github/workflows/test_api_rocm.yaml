@@ -52,7 +52,9 @@ jobs:
         env:
           IMAGE: ${{ env.IMAGE }}
         run: |
-          docker build --build-arg IMAGE=$IMAGE --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) -t $IMAGE docker/unroot
+          docker build --build-arg IMAGE=$IMAGE --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) -t $IMAGE-unroot docker/unroot
+          echo "IMAGE: $IMAGE-unroot"
+          echo "IMAGE=$IMAGE-unroot" >> $GITHUB_ENV
 
       - name: Run tests
         uses: addnab/docker-run-action@v3
