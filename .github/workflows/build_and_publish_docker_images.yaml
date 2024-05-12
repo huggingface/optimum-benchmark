@@ -8,18 +8,12 @@ on:
     paths:
       - .github/workflows/build_and_publish_docker_images.yaml
       - docker/**
-  pull_request:
-    branches:
-      - main
-    paths:
-      - .github/workflows/build_and_publish_docker_images.yaml
-      - docker/**
   schedule:
     - cron: "0 0 * * *"
 
 concurrency:
   cancel-in-progress: true
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
 
 env:
   REGISTRY: ghcr.io
@@ -50,9 +44,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GH_TOKEN }}
 
-      # If push to main or schedule
-      - name: Extract metadata (tags, labels) for Docker
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }} || ${{ github.event_name == 'schedule' }}
+      - name: Extract metadata (tags, labels) for Docker images
         id: meta
         uses: docker/metadata-action@v4
         with:
@@ -64,20 +56,6 @@ jobs:
             type=raw,value=latest-${{ matrix.image_flavor }}
             type=raw,value=sha-${{ github.sha }}-${{ matrix.image_flavor }}
 
-      # If pull request
-      - name: Extract metadata (tags, labels) for Docker
-        if: ${{ github.event_name == 'pull_request' }}
-        id: meta-pr
-        uses: docker/metadata-action@v4
-        with:
-          flavor: |
-            latest=false
-          images: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=raw,value=pr-${{ github.event.pull_request.number }}-${{ matrix.image_flavor }}
-            type=raw,value=sha-${{ github.sha }}-${{ matrix.image_flavor }}
-
       - name: Build and push Docker images
         uses: docker/build-push-action@v5
         id: push
@@ -85,6 +63,6 @@ jobs:
           context: .
           push: true
           file: docker/${{ matrix.image_flavor }}/Dockerfile
-          tags: ${{ steps.meta.outputs.tags || steps.meta-pr.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels || steps.meta-pr.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-${{ matrix.image_flavor }}
