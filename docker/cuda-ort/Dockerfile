@@ -39,4 +39,5 @@ else \
     pip install --no-cache-dir torch==${TORCH_VERSION} torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
 fi
 
+ENV TORCH_CUDA_ARCH_LIST="5.2 6.0 6.1 7.0 7.5 8.0 8.6+PTX"
 RUN pip install --no-cache-dir torch-ort onnxruntime-training && python -m torch_ort.configure
