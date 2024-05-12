@@ -7,13 +7,15 @@ on:
       - main
       - build-and-publish-images
     paths:
-      - "docker/**"
+      - .github/workflows/build_and_publish_docker_images.yaml
+      - docker/**
 
   pull_request:
     branches:
       - main
     paths:
-      - "docker/**"
+      - .github/workflows/build_and_publish_docker_images.yaml
+      - docker/**
 
 env:
   REGISTRY: ghcr.io
