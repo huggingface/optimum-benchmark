@@ -96,6 +96,7 @@ LOGGING_SETUP_DONE = False
 # optimum-benchmark
 @hydra.main(version_base=None)
 def main(config: DictConfig) -> None:
+    os.environ["LOG_TO_FILE"] = "1"
     os.environ["BENCHMARK_INTERFACE"] = "CLI"
 
     global LOGGING_SETUP_DONE

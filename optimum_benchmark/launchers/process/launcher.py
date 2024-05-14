@@ -1,5 +1,7 @@
 import multiprocessing as mp
+import multiprocessing.connection as mp_connection
 import os
+import traceback
 from logging import getLogger
 from typing import Any, Callable, Union
 
@@ -25,9 +27,9 @@ class ProcessLauncher(Launcher[ProcessConfig]):
     def launch(self, worker: Callable[..., BenchmarkReport], *worker_args: Any) -> BenchmarkReport:
         ctx = mp.get_context(self.config.start_method)
         log_level = ctx.get_logger().getEffectiveLevel()
-        queue = ctx.Queue()
+        child_conn, parent_conn = ctx.Pipe()
 
-        isolated_process = mp.Process(target=target, args=(log_level, queue, worker, *worker_args), daemon=False)
+        isolated_process = mp.Process(target=target, args=(log_level, child_conn, worker, *worker_args), daemon=False)
         isolated_process.start()
 
         with device_isolation_context(
@@ -35,23 +37,29 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         ):
             isolated_process.join()
 
-        if not queue.empty():
-            LOGGER.info("Retrieving report from queue.")
-            report = BenchmarkReport.from_dict(queue.get())
-        elif isolated_process.exitcode != 0:
-            raise RuntimeError(f"Process exited with non-zero code {isolated_process.exitcode}")
-        else:
-            raise RuntimeError("Could not retrieve report from isolated process.")
+        if isolated_process.exitcode != 0:
+            raise RuntimeError(f"Isolated process exited with non-zero code {isolated_process.exitcode}")
 
-        LOGGER.info("Logging final report.")
-        report.log()
+        if parent_conn.poll():
+            response = parent_conn.recv()
+        else:
+            raise RuntimeError("Isolated process did not send any response")
+
+        if "exception" in response:
+            LOGGER.error("Received exception from isolated process.")
+            raise ChildProcessError(response["traceback"])
+        elif "report" in response:
+            LOGGER.info("Received benchmark report from isolated process.")
+            report = BenchmarkReport.from_dict(response["report"])
+        else:
+            raise RuntimeError(f"Isolated process sent an unexpected response {str(response)}")
 
         return report
 
 
 def target(
     log_level: Union[int, str],
-    queue: mp.Queue,
+    conn: mp_connection.Connection,
     worker: Callable[..., BenchmarkReport],
     *worker_args: Any,
 ) -> None:
@@ -59,12 +67,16 @@ def target(
     os.environ["ISOLATED_PROCESS_PID"] = str(isolated_process_pid)
 
     setup_logging(level=log_level, format_prefix="ISOLATED-PROCESS")
-    LOGGER.info(f"Running benchmark in isolated process [{isolated_process_pid}].")
+    LOGGER.info(f"Running benchmark in isolated process [{isolated_process_pid}]...")
 
-    report = worker(*worker_args)
-
-    LOGGER.info("Putting report in queue.")
-    queue.put(report.to_dict())
-
-    LOGGER.info("Exiting isolated process.")
-    exit(0)
+    try:
+        report = worker(*worker_args)
+    except Exception as exception:
+        LOGGER.error("Benchmark failed with error. Sending exception and traceback to main process...")
+        conn.send({"exception": exception, "traceback": traceback.format_exc()})
+    else:
+        LOGGER.info("Benchmark completed successfully. Sending report to main process...")
+        conn.send({"report": report.to_dict()})
+    finally:
+        LOGGER.info("Exiting isolated process...")
+        exit(0)

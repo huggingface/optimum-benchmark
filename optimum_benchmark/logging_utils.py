@@ -1,8 +1,8 @@
 import logging
 import logging.config
-from logging import Logger
+import os
 from subprocess import PIPE, STDOUT, Popen
-from typing import List, Optional
+from typing import Optional
 
 
 def setup_logging(
@@ -10,16 +10,15 @@ def setup_logging(
     use_colorlog: bool = True,
     format_prefix: Optional[str] = None,
     disable_existing_loggers: bool = False,
-    handlers: List[str] = ["console", "file"],
 ):
     # base logging config
     logging_config = {
         "version": 1,
         "handlers": {
-            "console": {"formatter": "simple", "stream": "ext://sys.stdout", "class": "logging.StreamHandler"},
             "file": {"formatter": "simple", "filename": "benchmark.log", "class": "logging.FileHandler"},
+            "console": {"formatter": "simple", "stream": "ext://sys.stdout", "class": "logging.StreamHandler"},
         },
-        "root": {"level": level, "handlers": handlers},
+        "root": {"level": level, "handlers": ["console", "file"] if os.environ.get("LOG_TO_FILE") else ["console"]},
         "disable_existing_loggers": disable_existing_loggers,
     }
 
@@ -48,8 +47,9 @@ def setup_logging(
     logging.config.dictConfig(logging_config)
 
 
-def run_subprocess_and_log_stream_output(logger: Logger, args):
+def run_subprocess_and_log_stream_output(logger: logging.Logger, args: list[str]) -> Popen:
     popen = Popen(args, stdout=PIPE, stderr=STDOUT)
+
     for line in iter(popen.stdout.readline, b""):
         if line is not None:
             logger.info(line.decode("utf-8").rstrip())
