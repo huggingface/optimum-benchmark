@@ -238,7 +238,7 @@ def text2text_generation_preprocessing(
             desc="Running tokenizer on dataset",
         ).with_format("torch")
 
-    elif config.t5_task in ['text_classification']:
+    elif config.t5_task in ['text_classification', 'summarization']:
         dataset=dataset.map(add_single_prefix)
         dataset = dataset.map(
             tokenize_function_single,
