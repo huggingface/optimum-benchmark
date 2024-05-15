@@ -57,7 +57,7 @@ class BenchmarkReport(PushToHubMixin):
 
     def __post_init__(self):
         for target in self.to_dict().keys():
-            if not getattr(self, target):
+            if getattr(self, target) is None:
                 setattr(self, target, BenchmarkMeasurements())
             elif isinstance(getattr(self, target), dict):
                 setattr(self, target, BenchmarkMeasurements(**getattr(self, target)))

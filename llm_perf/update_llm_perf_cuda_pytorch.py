@@ -174,8 +174,8 @@ if __name__ == "__main__":
     LOGGER.info(
         f"Running a total of {len(models_attentions_weights)} benchmarks, "
         f"with {len(CANONICAL_PRETRAINED_OPEN_LLM_LIST)} models, "
-        f"{len(ATTENTION_COFIGS)} attentions implementations"
-        f"and {len(WEIGHTS_CONFIGS)} weights configurations"
+        f"{len(ATTENTION_COFIGS)} attentions implementations "
+        f"and {len(WEIGHTS_CONFIGS)} weights configurations."
     )
 
     for model, attn_implementation, weights_config in models_attentions_weights:

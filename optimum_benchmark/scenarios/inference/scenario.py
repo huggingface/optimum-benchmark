@@ -1,5 +1,4 @@
 import time
-from logging import getLogger
 
 from transformers import LogitsProcessorList
 
@@ -16,8 +15,6 @@ from .config import InferenceConfig
 
 if is_torch_distributed_available():
     import torch.distributed
-
-LOGGER = getLogger("inference")
 
 PER_TOKEN_BACKENDS = ["pytorch", "onnxruntime", "openvino", "neural-compressor"]
 
@@ -65,48 +62,48 @@ class InferenceScenario(Scenario[InferenceConfig]):
 
     def run(self, backend: Backend[BackendConfigT]) -> BenchmarkReport:
         if is_torch_distributed_available() and torch.distributed.is_initialized():
-            LOGGER.info("\t+ Distributing batch size across processes")
+            self.logger.info("\t+ Distributing batch size across processes")
             if self.config.input_shapes["batch_size"] % torch.distributed.get_world_size() != 0:
                 raise ValueError(
                     "The batch size must be divisible by the number of processes in a distributed environment"
                 )
             self.config.input_shapes["batch_size"] //= torch.distributed.get_world_size()
 
-        LOGGER.info("\t+ Creating input generator")
+        self.logger.info("\t+ Creating input generator")
         self.input_generator = InputGenerator(
             task=backend.config.task, model_shapes=backend.model_shapes, input_shapes=self.config.input_shapes
         )
 
         if backend.config.task in TEXT_GENERATION_TASKS:
-            LOGGER.info("\t+ Generating Text Generation inputs")
+            self.logger.info("\t+ Generating Text Generation inputs")
             self.inputs = self.input_generator()
-            LOGGER.info("\t+ Preparing Text Generation inputs")
+            self.logger.info("\t+ Preparing Text Generation inputs")
             self.inputs = backend.prepare_inputs(self.inputs)
-            LOGGER.info("\t+ Updating Text Generation kwargs with default values")
+            self.logger.info("\t+ Updating Text Generation kwargs with default values")
             self.config.generate_kwargs = {**TEXT_GENERATION_DEFAULT_KWARGS, **self.config.generate_kwargs}
-            LOGGER.info("\t+ Initializing Text Generation report")
+            self.logger.info("\t+ Initializing Text Generation report")
 
             self.report = BenchmarkReport.from_list(targets=["prefill", "decode", "per_token"])
 
         elif backend.config.task in IMAGE_DIFFUSION_TASKS:
-            LOGGER.info("\t+ Generating Image Diffusion inputs")
+            self.logger.info("\t+ Generating Image Diffusion inputs")
             self.inputs = self.input_generator()
-            LOGGER.info("\t+ Preparing Image Diffusion inputs")
+            self.logger.info("\t+ Preparing Image Diffusion inputs")
             self.inputs = backend.prepare_inputs(self.inputs)
-            LOGGER.info("\t+ Updating Image Diffusion kwargs with default values")
+            self.logger.info("\t+ Updating Image Diffusion kwargs with default values")
             self.config.call_kwargs = {**IMAGE_DIFFUSION_DEFAULT_KWARGS, **self.config.call_kwargs}
-            LOGGER.info("\t+ Initializing Image Diffusion report")
+            self.logger.info("\t+ Initializing Image Diffusion report")
             self.report = BenchmarkReport.from_list(targets=["call"])
 
         else:
-            LOGGER.info("\t+ Generating Inference inputs")
+            self.logger.info("\t+ Generating Inference inputs")
             self.inputs = self.input_generator()
-            LOGGER.info("\t+ Preparing Inference inputs")
+            self.logger.info("\t+ Preparing Inference inputs")
             self.inputs = backend.prepare_inputs(self.inputs)
-            LOGGER.info("\t+ Initializing Inference report")
+            self.logger.info("\t+ Initializing Inference report")
             self.report = BenchmarkReport.from_list(targets=["forward"])
 
-        LOGGER.info("\t+ Preparing backend for Inference")
+        self.logger.info("\t+ Preparing backend for Inference")
         backend.prepare_for_inference(
             **backend.model_shapes,
             **self.config.input_shapes,
@@ -116,17 +113,17 @@ class InferenceScenario(Scenario[InferenceConfig]):
         )
 
         if backend.config.task in TEXT_GENERATION_TASKS:
-            LOGGER.info("\t+ Warming up backend for Text Generation")
+            self.logger.info("\t+ Warming up backend for Text Generation")
             _ = backend.generate(self.inputs, self.config.generate_kwargs)
             for _ in range(self.config.warmup_runs):
                 _ = backend.generate(self.inputs, {**self.config.generate_kwargs, **TEXT_GENERATION_WARMUP_OVERRIDES})
         elif backend.config.task in IMAGE_DIFFUSION_TASKS:
-            LOGGER.info("\t+ Warming up backend for Image Diffusion")
+            self.logger.info("\t+ Warming up backend for Image Diffusion")
             _ = backend.call(self.inputs, self.config.call_kwargs)
             for _ in range(self.config.warmup_runs):
                 _ = backend.call(self.inputs, {**self.config.call_kwargs, **IMAGE_DIFFUSION_WARMUP_OVERRIDES})
         else:
-            LOGGER.info("\t+ Warming up backend for Inference")
+            self.logger.info("\t+ Warming up backend for Inference")
             for _ in range(self.config.warmup_runs):
                 _ = backend.forward(self.inputs, self.config.forward_kwargs)
 
@@ -169,7 +166,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
 
     ## Memory tracking
     def run_text_generation_memory_tracking(self, backend: Backend[BackendConfigT]):
-        LOGGER.info("\t+ Running Text Generation memory tracking")
+        self.logger.info("\t+ Running Text Generation memory tracking")
         self.memory_tracker = MemoryTracker(
             backend=backend.config.name, device=backend.config.device, device_ids=backend.config.device_ids
         )
@@ -186,7 +183,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
         self.report.decode.memory = self.memory_tracker.get_max_memory()
 
     def run_image_diffusion_memory_tracking(self, backend: Backend[BackendConfigT]):
-        LOGGER.info("\t+ Running Image Diffusion memory tracking")
+        self.logger.info("\t+ Running Image Diffusion memory tracking")
         self.memory_tracker = MemoryTracker(
             backend=backend.config.name, device=backend.config.device, device_ids=backend.config.device_ids
         )
@@ -197,7 +194,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
         self.report.call.memory = self.memory_tracker.get_max_memory()
 
     def run_inference_memory_tracking(self, backend: Backend[BackendConfigT]):
-        LOGGER.info("\t+ Running Inference memory tracking")
+        self.logger.info("\t+ Running Inference memory tracking")
         self.memory_tracker = MemoryTracker(
             backend=backend.config.name, device=backend.config.device, device_ids=backend.config.device_ids
         )
@@ -209,7 +206,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
 
     ## Latency tracking
     def run_per_token_text_generation_latency_tracking(self, backend: Backend[BackendConfigT]):
-        LOGGER.info("\t+ Running Per-Token Text Generation latency tracking")
+        self.logger.info("\t+ Running Per-Token Text Generation latency tracking")
         latency_tracker = PerTokenLatencyLogitsProcessor(device=backend.config.device, backend=backend.config.name)
         per_token_kwargs = {**self.config.generate_kwargs, "logits_processor": LogitsProcessorList([latency_tracker])}
 
@@ -239,7 +236,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
         )
 
     def run_text_generation_latency_tracking(self, backend: Backend[BackendConfigT]):
-        LOGGER.info("\t+ Running Text Generation latency tracking")
+        self.logger.info("\t+ Running Text Generation latency tracking")
         latency_tracker = LatencyTracker(backend=backend.config.name, device=backend.config.device)
         prefill_kwargs = {**self.config.generate_kwargs, **TEXT_GENERATION_PREFILL_OVERRIDES}
 
@@ -270,7 +267,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
         )
 
     def run_image_diffusion_latency_tracking(self, backend: Backend[BackendConfigT]):
-        LOGGER.info("\t+ Running Image Diffusion latency tracking")
+        self.logger.info("\t+ Running Image Diffusion latency tracking")
         latency_tracker = LatencyTracker(backend=backend.config.name, device=backend.config.device)
 
         while latency_tracker.elapsed() < self.config.duration or latency_tracker.count() < self.config.iterations:
@@ -286,7 +283,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
         )
 
     def run_latency_inference_tracking(self, backend: Backend[BackendConfigT]):
-        LOGGER.info("\t+ Running latency tracking")
+        self.logger.info("\t+ Running latency tracking")
         latency_tracker = LatencyTracker(backend=backend.config.name, device=backend.config.device)
 
         while latency_tracker.elapsed() < self.config.duration or latency_tracker.count() < self.config.iterations:
@@ -303,7 +300,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
 
     ## Energy tracking
     def run_text_generation_energy_tracking(self, backend: Backend[BackendConfigT]):
-        LOGGER.info("\t+ Running Text Generation energy tracking")
+        self.logger.info("\t+ Running Text Generation energy tracking")
         energy_tracker = EnergyTracker(
             backend=backend.config.name, device=backend.config.device, device_ids=backend.config.device_ids
         )
@@ -347,7 +344,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
         )
 
     def run_image_diffusion_energy_tracking(self, backend: Backend[BackendConfigT]):
-        LOGGER.info("\t+ Running Image Diffusion energy tracking")
+        self.logger.info("\t+ Running Image Diffusion energy tracking")
         energy_tracker = EnergyTracker(
             backend=backend.config.name, device=backend.config.device, device_ids=backend.config.device_ids
         )
@@ -371,7 +368,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
         )
 
     def run_inference_energy_tracking(self, backend: Backend[BackendConfigT]):
-        LOGGER.info("\t+ Running energy tracking")
+        self.logger.info("\t+ Running energy tracking")
         energy_tracker = EnergyTracker(
             backend=backend.config.name, device=backend.config.device, device_ids=backend.config.device_ids
         )

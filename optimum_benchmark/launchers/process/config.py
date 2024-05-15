@@ -1,9 +1,6 @@
 from dataclasses import dataclass
-from logging import getLogger
 
 from ..config import LauncherConfig
-
-LOGGER = getLogger("process")
 
 
 @dataclass

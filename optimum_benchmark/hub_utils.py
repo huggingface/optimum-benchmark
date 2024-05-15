@@ -1,13 +1,18 @@
 import os
 import tempfile
+import time
 from dataclasses import asdict, dataclass
 from json import dump, load
+from logging import getLogger
 from typing import Any, Dict, Optional
 
 import pandas as pd
 from flatten_dict import flatten, unflatten
 from huggingface_hub import create_repo, hf_hub_download, upload_file
+from huggingface_hub.utils._errors import HfHubHTTPError
 from typing_extensions import Self
+
+LOGGER = getLogger("hub_utils")
 
 
 class classproperty:
@@ -94,14 +99,30 @@ class PushToHubMixin:
             path_in_repo = os.path.join(subfolder, filename)
             self.save_json(path_or_fileobj)
 
-            upload_file(
-                repo_id=repo_id,
-                path_in_repo=path_in_repo,
-                path_or_fileobj=path_or_fileobj,
-                repo_type=repo_type,
-                token=token,
-                **kwargs,
-            )
+            try:
+                upload_file(
+                    repo_id=repo_id,
+                    path_in_repo=path_in_repo,
+                    path_or_fileobj=path_or_fileobj,
+                    repo_type=repo_type,
+                    token=token,
+                    **kwargs,
+                )
+            except HfHubHTTPError as e:
+                LOGGER.warn("Error while uploading to Hugging Face Hub")
+                if "Client Error: Too Many Requests for url" in str(e):
+                    LOGGER.warn("Client Error: Too Many Requests for url. Retrying in 15 seconds.")
+                    time.sleep(15)
+                    upload_file(
+                        repo_id=repo_id,
+                        path_in_repo=path_in_repo,
+                        path_or_fileobj=path_or_fileobj,
+                        repo_type=repo_type,
+                        token=token,
+                        **kwargs,
+                    )
+                else:
+                    raise e
 
     @classmethod
     def from_pretrained(
@@ -112,9 +133,20 @@ class PushToHubMixin:
 
         repo_type = kwargs.pop("repo_type", "dataset")
 
-        resolved_file = hf_hub_download(
-            repo_id=repo_id, filename=filename, subfolder=subfolder, repo_type=repo_type, **kwargs
-        )
+        try:
+            resolved_file = hf_hub_download(
+                repo_id=repo_id, filename=filename, subfolder=subfolder, repo_type=repo_type, **kwargs
+            )
+        except HfHubHTTPError as e:
+            LOGGER.warn("Error while downloading from Hugging Face Hub")
+            if "Client Error: Too Many Requests for url" in str(e):
+                LOGGER.warn("Client Error: Too Many Requests for url. Retrying in 15 seconds.")
+                time.sleep(15)
+                resolved_file = hf_hub_download(
+                    repo_id=repo_id, filename=filename, subfolder=subfolder, repo_type=repo_type, **kwargs
+                )
+            else:
+                raise e
         config_dict = cls.from_json(resolved_file)
 
         return config_dict

@@ -3,13 +3,32 @@ name: CLI CUDA Pytorch Multi-GPU Tests
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
+    paths:
+      - .github/workflows/test_cli_cuda_pytorch_multi_gpu.yaml
+      - "optimum_benchmark/**"
+      - "docker/**"
+      - "tests/**"
+      - "setup.py"
   pull_request:
-    types: [opened, reopened, synchronize]
+    branches:
+      - main
+    paths:
+      - .github/workflows/test_cli_cuda_pytorch_multi_gpu.yaml
+      - "optimum_benchmark/**"
+      - "docker/**"
+      - "tests/**"
+      - "setup.py"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_FLAVOR: cuda
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   run_cli_cuda_pytorch_multi_gpu_tests:
@@ -19,13 +38,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Pull image
-        run: docker pull pytorch/pytorch:2.2.2-cuda12.1-cudnn8-devel
+      - name: Set docker image
+        run: |
+          echo "IMAGE: $REGISTRY/$IMAGE_NAME:latest-$IMAGE_FLAVOR"
+          echo "IMAGE=$REGISTRY/$IMAGE_NAME:latest-$IMAGE_FLAVOR" >> $GITHUB_ENV
 
       - name: Run tests
         uses: addnab/docker-run-action@v3
+        env:
+          IMAGE: ${{ env.IMAGE }}
         with:
-          image: pytorch/pytorch:2.2.2-cuda12.1-cudnn8-devel
+          image: ${{ env.IMAGE }}
           options: |
             --rm
             --gpus all
