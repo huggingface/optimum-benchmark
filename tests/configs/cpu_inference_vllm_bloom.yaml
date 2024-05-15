@@ -3,8 +3,8 @@ defaults:
   - _base_ # inherits from base config
   - _cpu_ # inherits from cpu config
   - _inference_ # inherits from inference config
-  - _bert_ # inherits from bert config
+  - _bloom_ # inherits from bloom config
   - _self_ # hydra 1.1 compatibility
-  - override backend: py-txi
+  - override backend: vllm
 
-name: cpu_inference_py_txi_bert
+name: cpu_inference_vllm_bloom
