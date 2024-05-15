@@ -118,7 +118,7 @@ def target(
         outputs = elastic_agent_launcher(worker, worker_args, logger)
     except Exception:
         logger.error("\t+ Sending traceback to main process")
-        connection.send({"traceback": traceback.format_exc()})
+        connection.send([{"traceback": traceback.format_exc()}])
     else:
         logger.info("\t+ Sending reports to main process")
         connection.send(list(outputs.values()))
@@ -143,11 +143,9 @@ def entrypoint(worker: Callable[..., BenchmarkReport], worker_args: List[Any], l
         logger.info(f"\t+ Setting torch.distributed cuda device to {rank}")
         device = torch.device("cuda", rank)
         torch.cuda.set_device(device)
-    else:
-        device = None
 
     logger.info("\t+ Initializing torch.distributed process group")
-    torch.distributed.init_process_group(device_id=device)
+    torch.distributed.init_process_group()
 
     try:
         report = worker(*worker_args)
