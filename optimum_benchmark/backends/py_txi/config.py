@@ -1,14 +1,11 @@
 import os
 from dataclasses import dataclass, field
-from logging import getLogger
 from typing import Any, Dict, List, Optional, Union
 
 from ...import_utils import py_txi_version
 from ...system_utils import is_nvidia_system, is_rocm_system
 from ...task_utils import TEXT_EMBEDDING_TASKS, TEXT_GENERATION_TASKS
 from ..config import BackendConfig
-
-LOGGER = getLogger("py-txi")
 
 
 @dataclass

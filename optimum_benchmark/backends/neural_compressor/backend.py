@@ -1,7 +1,5 @@
-import gc
 import os
 from collections import OrderedDict
-from logging import getLogger
 from tempfile import TemporaryDirectory
 from typing import Any, Dict
 
@@ -16,8 +14,6 @@ from ..transformers_utils import random_init_weights
 from .config import INCConfig
 from .utils import TASKS_TO_INCMODELS
 
-LOGGER = getLogger("neural-compressor")
-
 
 class INCBackend(Backend[INCConfig]):
     NAME: str = "neural-compressor"
@@ -26,31 +22,31 @@ class INCBackend(Backend[INCConfig]):
         super().__init__(config)
         self.validate_task()
 
-        LOGGER.info("\t+ Creating backend temporary directory")
+        self.logger.info("\t+ Creating backend temporary directory")
         self.tmpdir = TemporaryDirectory()
 
         if self.config.ptq_quantization:
             if self.config.no_weights:
-                LOGGER.info("\t+ Loading no weights AutoModel")
+                self.logger.info("\t+ Loading no weights AutoModel")
                 self.load_automodel_with_no_weights()
             else:
-                LOGGER.info("\t+ Loading pretrained AutoModel")
+                self.logger.info("\t+ Loading pretrained AutoModel")
                 self.load_automodel_from_pretrained()
 
-            LOGGER.info("\t+ Applying post-training quantization")
+            self.logger.info("\t+ Applying post-training quantization")
             self.quantize_automodel()
 
-            LOGGER.info("\t+ Loading quantized INCModel")
+            self.logger.info("\t+ Loading quantized INCModel")
             original_model, self.config.model = self.config.model, self.quantized_model
             self.load_incmodel_from_pretrained()
             self.config.model = original_model
 
         elif self.config.no_weights:
-            LOGGER.info("\t+ Loading no weights INCModel")
+            self.logger.info("\t+ Loading no weights INCModel")
             self.load_incmodel_with_no_weights()
 
         else:
-            LOGGER.info("\t+ Loading pretrained INCModel")
+            self.logger.info("\t+ Loading pretrained INCModel")
             self.load_incmodel_from_pretrained()
 
         self.tmpdir.cleanup()
@@ -60,63 +56,63 @@ class INCBackend(Backend[INCConfig]):
             raise NotImplementedError(f"INCBackend does not support task {self.config.task}")
 
         self.incmodel_class = get_class(TASKS_TO_INCMODELS[self.config.task])
-        LOGGER.info(f"Using INCModel class {self.incmodel_class.__name__}")
+        self.logger.info(f"Using INCModel class {self.incmodel_class.__name__}")
 
     def load_automodel_from_pretrained(self) -> None:
         self.pretrained_model = self.automodel_class.from_pretrained(self.config.model, **self.config.hub_kwargs)
 
     def create_no_weights_model(self) -> None:
         self.no_weights_model = os.path.join(self.tmpdir.name, "no_weights_model")
-        LOGGER.info("\t+ Creating no weights model directory")
+        self.logger.info("\t+ Creating no weights model directory")
         os.makedirs(self.no_weights_model, exist_ok=True)
-        LOGGER.info("\t+ Creating no weights model state dict")
+        self.logger.info("\t+ Creating no weights model state dict")
         state_dict = torch.nn.Linear(1, 1).state_dict()
-        LOGGER.info("\t+ Saving no weights model pytorch_model.bin")
+        self.logger.info("\t+ Saving no weights model pytorch_model.bin")
         torch.save(state_dict, os.path.join(self.no_weights_model, "pytorch_model.bin"))
 
         if self.config.library == "transformers":
-            LOGGER.info("\t+ Saving no weights model pretrained config")
+            self.logger.info("\t+ Saving no weights model pretrained config")
             self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
 
     def load_automodel_with_no_weights(self) -> None:
-        LOGGER.info("\t+ Creating no weights model")
+        self.logger.info("\t+ Creating no weights model")
         self.create_no_weights_model()
 
         with random_init_weights():
             original_model, self.config.model = self.config.model, self.no_weights_model
-            LOGGER.info("\t+ Loading no weights AutoModel")
+            self.logger.info("\t+ Loading no weights AutoModel")
             self.load_automodel_from_pretrained()
             self.config.model = original_model
 
-        LOGGER.info("\t+ Tying model weights")
+        self.logger.info("\t+ Tying model weights")
         self.pretrained_model.tie_weights()
 
     def load_incmodel_from_pretrained(self) -> None:
         self.pretrained_model = self.incmodel_class.from_pretrained(self.config.model, **self.config.hub_kwargs)
 
     def load_incmodel_with_no_weights(self) -> None:
-        LOGGER.info("\t+ Creating no weights model")
+        self.logger.info("\t+ Creating no weights model")
         self.create_no_weights_model()
 
         with random_init_weights():
             original_model, self.config.model = self.config.model, self.no_weights_model
-            LOGGER.info("\t+ Loading no weights INCModel")
+            self.logger.info("\t+ Loading no weights INCModel")
             self.load_incmodel_from_pretrained()
             self.config.model = original_model
 
-        LOGGER.info("\t+ Tying model weights")
+        self.logger.info("\t+ Tying model weights")
         self.pretrained_model.model.tie_weights()
 
     def quantize_automodel(self) -> None:
         self.quantized_model = f"{self.tmpdir.name}/quantized_model"
-        LOGGER.info("\t+ Processing quantization config")
+        self.logger.info("\t+ Processing quantization config")
         ptq_quantization_config = self.config.ptq_quantization_config.copy()
         ptq_quantization_config["accuracy_criterion"] = AccuracyCriterion(
             **ptq_quantization_config["accuracy_criterion"]
         )
         ptq_quantization_config["tuning_criterion"] = TuningCriterion(**ptq_quantization_config["tuning_criterion"])
         ptq_quantization_config = PostTrainingQuantConfig(**ptq_quantization_config)
-        LOGGER.info("\t+ Creating quantizer")
+        self.logger.info("\t+ Creating quantizer")
         quantizer = INCQuantizer.from_pretrained(
             model=self.pretrained_model,
             task=self.config.task,
@@ -127,7 +123,7 @@ class INCBackend(Backend[INCConfig]):
         )
 
         if self.config.calibration:
-            LOGGER.info("\t+ Generating calibration dataset")
+            self.logger.info("\t+ Generating calibration dataset")
             dataset_shapes = {"dataset_size": 1, "sequence_length": 1, **self.model_shapes}
             calibration_dataset = DatasetGenerator(
                 task=self.config.task, dataset_shapes=dataset_shapes, model_shapes=self.model_shapes
@@ -137,7 +133,7 @@ class INCBackend(Backend[INCConfig]):
         else:
             calibration_dataset = None
 
-        LOGGER.info("\t+ Quantizing model")
+        self.logger.info("\t+ Quantizing model")
         quantizer.quantize(
             save_directory=self.quantized_model,
             calibration_dataset=calibration_dataset,
@@ -168,12 +164,3 @@ class INCBackend(Backend[INCConfig]):
     @torch.inference_mode()
     def generate(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         return self.pretrained_model.generate(**input, **kwargs)
-
-    def cleanup(self) -> None:
-        super().cleanup()
-
-        if hasattr(self, "tmpdir"):
-            LOGGER.info("\t+ Cleaning backend temporary directory")
-            self.tmpdir.cleanup()
-
-        gc.collect()

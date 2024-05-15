@@ -1,13 +1,10 @@
 import random
 import string
 from abc import ABC
-from logging import getLogger
 from typing import Tuple
 
 # TODO: drop torch dependency and use numpy instead ?
 import torch
-
-LOGGER = getLogger("task-generator")
 
 
 class TaskGenerator(ABC):

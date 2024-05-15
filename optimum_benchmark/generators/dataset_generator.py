@@ -1,11 +1,8 @@
-from logging import getLogger
 from typing import Dict
 
 from datasets import Dataset
 
 from .task_generator import TASKS_TO_GENERATORS, TaskGenerator
-
-LOGGER = getLogger("dataset")
 
 
 class DatasetGenerator:
@@ -15,7 +12,6 @@ class DatasetGenerator:
         dataset_shapes["batch_size"] = dataset_shapes["dataset_size"]
 
         if task in TASKS_TO_GENERATORS:
-            LOGGER.info(f"\t+ Using {task} task generator")
             shapes = {**dataset_shapes, **model_shapes}
             self.task_generator = TASKS_TO_GENERATORS[task](shapes=shapes, with_labels=True)
         else:
