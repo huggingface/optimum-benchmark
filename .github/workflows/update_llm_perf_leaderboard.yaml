@@ -1,4 +1,4 @@
-name: Update Open LLM Leaderboard
+name: Update LLM Perf Leaderboard
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
-  update_open_llm_leaderboard:
+  update_llm_perf_leaderboard:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -25,9 +25,11 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install pandas huggingface_hub[hf_transfer]
+          pip install .
 
       - name: Update Open LLM Leaderboard
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_HUB_ENABLE_HF_TRANSFER: 1
         run: |
-          python llm_perf/update_open_llm_leaderboard.py
+          python llm_perf/update_llm_perf_leaderboard.py

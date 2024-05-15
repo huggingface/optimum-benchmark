@@ -1,6 +1,4 @@
 import asyncio
-import gc
-from logging import getLogger
 from typing import Any, Dict, List
 
 import torch
@@ -12,9 +10,6 @@ from ...task_utils import TEXT_GENERATION_TASKS
 from ..base import Backend
 from .config import LLMSwarmConfig
 
-# bachend logger
-LOGGER = getLogger("llm-swarm")
-
 
 class LLMSwarmBackend(Backend[LLMSwarmConfig]):
     NAME: str = "llm-swarm"
@@ -23,11 +18,11 @@ class LLMSwarmBackend(Backend[LLMSwarmConfig]):
         super().__init__(config)
         self.validate_task()
 
-        LOGGER.info("\t+ Downloading pretrained model")
+        self.logger.info("\t+ Downloading pretrained model")
         self.download_pretrained_model()
-        LOGGER.info("\t+ Preparing generation config")
+        self.logger.info("\t+ Preparing generation config")
         self.prepare_generation_config()
-        LOGGER.info("\t+ Loading pretrained model")
+        self.logger.info("\t+ Loading pretrained model")
         self.load_model_from_pretrained()
 
     def validate_task(self) -> None:
@@ -61,7 +56,7 @@ class LLMSwarmBackend(Backend[LLMSwarmConfig]):
         snapshot_file = f"{model_cache_path}/refs/{self.config.hub_kwargs.get('revision', 'main')}"
         snapshot_ref = open(snapshot_file, "r").read().strip()
         model_snapshot_path = f"{model_cache_path}/snapshots/{snapshot_ref}"
-        LOGGER.info("\t+ Saving new pretrained generation config")
+        self.logger.info("\t+ Saving new pretrained generation config")
         self.generation_config.save_pretrained(save_directory=model_snapshot_path)
 
     def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
@@ -86,12 +81,3 @@ class LLMSwarmBackend(Backend[LLMSwarmConfig]):
 
     def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> List[str]:
         return asyncio.run(self.batch_client_call(inputs, kwargs))
-
-    def cleanup(self) -> None:
-        super().cleanup()
-
-        if hasattr(self, "llm_swarm"):
-            LOGGER.info("Cleaning up LLM Swarm")
-            self.llm_swarm.__exit__(None, None, None)
-
-        gc.collect()

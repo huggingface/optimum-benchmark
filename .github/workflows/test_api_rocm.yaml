@@ -3,57 +3,77 @@ name: API ROCm Tests
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
+    paths:
+      - .github/workflows/test_api_rocm.yaml
+      - "optimum_benchmark/**"
+      - "docker/**"
+      - "tests/**"
+      - "setup.py"
   pull_request:
-    types: [opened, reopened, synchronize]
+    branches:
+      - main
+    paths:
+      - .github/workflows/test_api_rocm.yaml
+      - "optimum_benchmark/**"
+      - "docker/**"
+      - "tests/**"
+      - "setup.py"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_FLAVOR: rocm
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build_image_and_run_api_rocm_tests:
-    strategy:
-      fail-fast: false
-      matrix:
-        image: [{ rocm_version: 5.7.1, torch_rocm: rocm5.7 }]
-
     runs-on: [single-gpu, amd-gpu, mi250, ci]
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Target devices
+      - name: Set target devices
         run: |
           echo "DEVICE: $DEVICE"
           echo "DEVICE=$DEVICE" >> $GITHUB_ENV
 
-      - name: Build image
-        run: docker build
-          --build-arg USER_ID=$(id -u)
-          --build-arg GROUP_ID=$(id -g)
-          --build-arg TORCH_ROCM=${{ matrix.image.torch_rocm }}
-          --build-arg ROCM_VERSION=${{ matrix.image.rocm_version }}
-          --tag opt-bench-rocm:${{ matrix.image.rocm_version }}
-          docker/rocm
+      - name: Set docker image
+        run: |
+          echo "IMAGE: $REGISTRY/$IMAGE_NAME:latest-$IMAGE_FLAVOR"
+          echo "IMAGE=$REGISTRY/$IMAGE_NAME:latest-$IMAGE_FLAVOR" >> $GITHUB_ENV
+
+      - name: Unroot docker image
+        env:
+          IMAGE: ${{ env.IMAGE }}
+        run: |
+          docker build --build-arg IMAGE=$IMAGE --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) -t $IMAGE-unroot docker/unroot
+          echo "IMAGE: $IMAGE-unroot"
+          echo "IMAGE=$IMAGE-unroot" >> $GITHUB_ENV
 
       - name: Run tests
         uses: addnab/docker-run-action@v3
         env:
+          IMAGE: ${{ env.IMAGE }}
           DEVICE: ${{ env.DEVICE }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          WORKSPACE: ${{ github.workspace }}
           PUSH_REPO_ID: optimum-benchmark/rocm
         with:
-          image: opt-bench-rocm:${{ matrix.image.rocm_version }}
+          image: ${{ env.IMAGE }}
           options: |
             --rm
             --shm-size 64G
             --env HF_TOKEN
             --env PUSH_REPO_ID
-            --device /dev/kfd/
+            --device /dev/kfd
             --device /dev/dri/${{ env.DEVICE }}
-            --volume ${{ github.workspace }}:/workspace
+            --volume ${{ env.WORKSPACE }}:/workspace
             --workdir /workspace
           run: |
             pip install -e .[testing,timm,diffusers,codecarbon]

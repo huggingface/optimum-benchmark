@@ -21,12 +21,7 @@ def main():
     open_llm_leaderboard = pd.read_csv("open-llm-leaderboard.csv")
 
     if len(open_llm_leaderboard) > 0:
-        create_repo(
-            repo_id="optimum-benchmark/open-llm-leaderboard",
-            repo_type="dataset",
-            exist_ok=True,
-            private=False,
-        )
+        create_repo(repo_id="optimum-benchmark/open-llm-leaderboard", repo_type="dataset", exist_ok=True, private=False)
         upload_file(
             repo_id="optimum-benchmark/open-llm-leaderboard",
             commit_message="Update open LLM leaderboard",

@@ -1,5 +1,4 @@
 from contextlib import ExitStack
-from logging import getLogger
 
 from transformers import default_data_collator
 
@@ -12,8 +11,6 @@ from ...trackers.memory import MemoryTracker
 from ..base import Scenario
 from .config import TrainingConfig
 
-LOGGER = getLogger("training")
-
 TRAIN_THROUGHPUT_UNIT = "samples/s"
 TRAIN_EFFICIENCY_UNIT = "samples/kWh"
 
@@ -25,33 +22,33 @@ class TrainingScenario(Scenario[TrainingConfig]):
         super().__init__(config)
 
     def run(self, backend: Backend[BackendConfigT]) -> BenchmarkReport:
-        LOGGER.info("\t+ Creating dataset generator")
+        self.logger.info("\t+ Creating dataset generator")
         dataset_generator = DatasetGenerator(
             task=backend.config.task, model_shapes=backend.model_shapes, dataset_shapes=self.config.dataset_shapes
         )
 
-        LOGGER.info("\t+ Generating training dataset")
+        self.logger.info("\t+ Generating training dataset")
         training_dataset = dataset_generator()
 
-        LOGGER.info("\t+ Initializing training report")
+        self.logger.info("\t+ Initializing training report")
         self.report = BenchmarkReport.from_list(targets=["overall", "warmup", "train"])
 
         training_callbackes = []
         if self.config.latency:
-            LOGGER.info("\t+ Adding latency measuring callback")
+            self.logger.info("\t+ Adding latency measuring callback")
             latency_callback = StepLatencyTrainerCallback(device=backend.config.device, backend=backend.config.name)
             training_callbackes.append(latency_callback)
 
         training_trackers = []
         if self.config.memory:
-            LOGGER.info("\t+ Adding memory tracking context manager")
+            self.logger.info("\t+ Adding memory tracking context manager")
             memory_tracker = MemoryTracker(
                 device=backend.config.device, backend=backend.config.name, device_ids=backend.config.device_ids
             )
             training_trackers.append(memory_tracker.track())
 
         if self.config.energy:
-            LOGGER.info("\t+ Adding energy tracking context manager")
+            self.logger.info("\t+ Adding energy tracking context manager")
             energy_tracker = EnergyTracker(device=backend.config.device, device_ids=backend.config.device_ids)
             training_trackers.append(energy_tracker.track())
 

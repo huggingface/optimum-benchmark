@@ -1,9 +1,10 @@
 import multiprocessing as mp
 import os
-import signal
-import time
-from logging import getLogger
-from typing import Any, Callable, Union
+import traceback
+from logging import Logger
+from multiprocessing import Process
+from multiprocessing.connection import Connection
+from typing import Any, Callable, List
 
 import torch.distributed
 from torch.distributed.launcher.api import LaunchConfig, elastic_launch
@@ -11,25 +12,7 @@ from torch.distributed.launcher.api import LaunchConfig, elastic_launch
 from ...logging_utils import setup_logging
 from ...report import BenchmarkReport
 from ..base import Launcher
-from ..device_isolation_utils import device_isolation_context
 from .config import TorchrunConfig
-
-LOGGER = getLogger("torchrun")
-
-
-class ForcedZeroExit(SystemExit):
-    code: int = 0
-
-
-def forced_zero_exit_signal_handler(signum, frame):
-    for p in mp.active_children():
-        LOGGER.info(f"Sending a forced zero exit signal to child process [{p.pid}].")
-        os.kill(p.pid, signal.SIGUSR2)
-
-    raise ForcedZeroExit
-
-
-signal.signal(signal.SIGUSR2, forced_zero_exit_signal_handler)
 
 
 class TorchrunLauncher(Launcher[TorchrunConfig]):
@@ -39,7 +22,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
         super().__init__(config)
 
         if mp.get_start_method(allow_none=True) != self.config.start_method:
-            LOGGER.info(f"\t+ Setting multiprocessing start method to {self.config.start_method}.")
+            self.logger.info(f"\t+ Setting multiprocessing start method to {self.config.start_method}")
             mp.set_start_method(self.config.start_method, force=True)
 
         self.launch_config = LaunchConfig(
@@ -58,101 +41,122 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             local_addr=self.config.local_addr,
         )
 
-    def launch(self, worker: Callable[..., BenchmarkReport], *worker_args: Any) -> BenchmarkReport:
+    def launch(self, worker: Callable[..., BenchmarkReport], worker_args: List[Any]) -> BenchmarkReport:
         ctx = mp.get_context(self.config.start_method)
-        log_level = ctx.get_logger().getEffectiveLevel()
-        queue = ctx.Queue()
+        parent_connection, child_connection = ctx.Pipe()
 
-        isolated_process = mp.Process(
-            target=target, args=(self.launch_config, log_level, queue, worker, *worker_args), daemon=False
+        isolated_process = Process(
+            target=target, args=(worker, worker_args, child_connection, self.launch_config, self.logger), daemon=False
         )
         isolated_process.start()
+        self.logger.info(f"\t+ Started benchmark in isolated process [{isolated_process.pid}]")
 
-        with device_isolation_context(
-            enable=self.config.device_isolation, action=self.config.device_isolation_action, pid=isolated_process.pid
-        ):
-            isolated_process.join()
+        if self.config.device_isolation:
+            self.start_device_isolation_process(pid=isolated_process.pid)
 
-        if not queue.empty() and queue.qsize() == self.config.nproc_per_node:
-            LOGGER.info("\t+ Retrieving reports from queue.")
-            reports = [BenchmarkReport.from_dict(queue.get()) for _ in range(queue.qsize())]
-            LOGGER.info("\t+ Aggregating reports.")
-            report = BenchmarkReport.aggregate(reports)
-        elif isolated_process.exitcode != 0:
-            raise RuntimeError(f"Process exited with non-zero code {isolated_process.exitcode}.")
+        parent_connection.send("START")
+        isolated_process.join()
+
+        if self.config.device_isolation:
+            self.stop_device_isolation_process()
+
+        if isolated_process.exitcode != 0:
+            raise RuntimeError(f"Isolated process exited with non-zero code {isolated_process.exitcode}")
+
+        if parent_connection.poll():
+            response = parent_connection.recv()
         else:
-            if queue.empty():
-                raise RuntimeError("Queue is empty.")
-            else:
-                raise RuntimeError(
-                    f"Queue size ({queue.qsize()}) does not match number of ranks ({self.config.nproc_per_node})."
-                )
+            raise RuntimeError("Isolated process did not send any response")
 
-        LOGGER.info("\t+ Logging final report.")
+        reports = []
+
+        for output in response:
+            if "traceback" in output:
+                if "rank" in output:
+                    self.logger.error(f"\t+ Received traceback from rank process [{output['rank']}]")
+                    raise ChildProcessError(output["traceback"])
+                else:
+                    self.logger.error("\t+ Received traceback from isolated process")
+                    raise ChildProcessError(output["traceback"])
+
+            elif "report" in output:
+                self.logger.info(f"\t+ Received report from rank process [{output['rank']}]")
+                reports.append(BenchmarkReport.from_dict(output["report"]))
+
+            else:
+                raise RuntimeError(f"Received an unexpected response from isolated process: {output}")
+
+        self.logger.info("\t+ Aggregating reports from all rank processes")
+        report = BenchmarkReport.aggregate(reports)
         report.log()
 
         return report
 
 
 def target(
-    launch_config: LaunchConfig,
-    log_level: Union[str, int],
-    queue: mp.Queue,
     worker: Callable[..., BenchmarkReport],
-    *worker_args: Any,
+    worker_args: List[Any],
+    connection: Connection,
+    config: LaunchConfig,
+    logger: Logger,
 ):
+    while True:
+        if connection.poll():
+            response = connection.recv()
+            if response == "START":
+                break
+
     isolated_process_pid = os.getpid()
+    log_level = os.environ.get("LOG_LEVEL", "INFO")
+    log_to_file = os.environ.get("LOG_TO_FILE", "1") == "1"
     os.environ["ISOLATED_PROCESS_PID"] = str(isolated_process_pid)
+    setup_logging(level=log_level, to_file=log_to_file, prefix="ISOLATED-PROCESS")
 
-    setup_logging(level=log_level, format_prefix="ISOLATED-PROCESS")
-    LOGGER.info(f"Running benchmark in isolated process [{isolated_process_pid}].")
+    elastic_agent_launcher = elastic_launch(config=config, entrypoint=entrypoint)
 
-    elastic_agent_launcher = elastic_launch(config=launch_config, entrypoint=entrypoint)
     try:
-        elastic_agent_launcher(log_level, queue, worker, *worker_args)
-    except ForcedZeroExit:
-        pass
-
-    LOGGER.info("Exiting isolated process.")
-    exit(0)
-
-
-def entrypoint(
-    log_level: Union[str, int],
-    queue: mp.Queue,
-    worker: Callable[..., BenchmarkReport],
-    *worker_args: Any,
-):
-    rank = int(os.environ.get("RANK", "0"))
-    isolated_process_pid = int(os.environ["ISOLATED_PROCESS_PID"])
-
-    if (rank == 0) or (os.environ.get("LOG_ALL_RANKS", "0") == "1"):
-        setup_logging(level=log_level, format_prefix=f"RANK-{rank}")
+        outputs = elastic_agent_launcher(worker, worker_args, logger)
+    except Exception:
+        logger.error("\t+ Sending traceback to main process")
+        connection.send([{"traceback": traceback.format_exc()}])
     else:
-        setup_logging(level="ERROR", format_prefix=f"RANK-{rank}")
+        logger.info("\t+ Sending outputs to main process")
+        connection.send(list(outputs.values()))
+    finally:
+        logger.info("\t+ Exiting isolated process")
+        connection.close()
+        exit(0)
+
+
+def entrypoint(worker: Callable[..., BenchmarkReport], worker_args: List[Any], logger: Logger):
+    rank = int(os.environ.get("RANK", "0"))
+    log_level = os.environ.get("LOG_LEVEL", "INFO")
+    log_to_file = os.environ.get("LOG_TO_FILE", "1") == "1"
+    log_all_ranks = os.environ.get("LOG_ALL_RANKS", "0") == "1"
+
+    if log_all_ranks or rank == 0:
+        setup_logging(level=log_level, to_file=log_to_file, prefix=f"RANK-PROCESS-{rank}")
+    else:
+        setup_logging(level="ERROR", to_file=log_to_file, prefix=f"RANK-PROCESS-{rank}")
 
     if torch.cuda.is_available():
-        LOGGER.info(f"\t+ Setting torch.distributed cuda device to {rank}.")
-        torch.cuda.set_device(rank)
+        logger.info(f"\t+ Setting torch.distributed cuda device to {rank}")
+        device = torch.device("cuda", rank)
+        torch.cuda.set_device(device)
 
-    LOGGER.info("Initializing torch.distributed process group.")
+    logger.info("\t+ Initializing torch.distributed process group")
     torch.distributed.init_process_group()
 
-    report = worker(*worker_args)
-
-    LOGGER.info("Putting report into queue.")
-    queue.put(report.to_dict())
-
-    LOGGER.info("Waiting for other ranks to put their reports into queue. ")
-    while queue.qsize() < int(os.environ["WORLD_SIZE"]):
-        LOGGER.info(f"Queue size: {queue.qsize()} / World size: {os.environ['WORLD_SIZE']}.")
-        time.sleep(1)
-
-    LOGGER.info("All ranks have put their reports into queue.")
-    LOGGER.info(f"Queue size: {queue.qsize()} / World size: {os.environ['WORLD_SIZE']}.")
-
-    LOGGER.info("Destroying torch.distributed process group.")
-    torch.distributed.destroy_process_group()
-
-    LOGGER.info("Sending a forced zero exit signal to the isolated process.")
-    os.kill(isolated_process_pid, signal.SIGUSR2)
+    try:
+        report = worker(*worker_args)
+    except Exception:
+        logger.error("\t+ Benchmark failed with an exception")
+        output = {"rank": rank, "traceback": traceback.format_exc()}
+    else:
+        logger.info("\t+ Benchmark completed successfully")
+        output = {"rank": rank, "report": report.to_dict()}
+    finally:
+        logger.info("\t+ Destroying torch.distributed process group")
+        torch.distributed.destroy_process_group()
+        logger.info("\t+ Exiting rank process")
+        return output

@@ -1,7 +1,5 @@
-import gc
 import os
 from collections import OrderedDict
-from logging import getLogger
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, List
 
@@ -26,10 +24,6 @@ from ..transformers_utils import random_init_weights
 from .config import ORTConfig
 from .utils import TASKS_TO_ORTMODELS, TASKS_TO_ORTSD, format_calibration_config, format_quantization_config
 
-LOGGER = getLogger("onnxruntime")
-
-PROBLEMATIC_INPUTS = ["token_type_ids", "position_ids"]
-
 
 class ORTBackend(Backend[ORTConfig]):
     NAME: str = "onnxruntime"
@@ -40,36 +34,36 @@ class ORTBackend(Backend[ORTConfig]):
 
         self.session_options = SessionOptions()
         if self.config.session_options:
-            LOGGER.info("\t+ Processing session options")
+            self.logger.info("\t+ Processing session options")
             for key, value in self.config.session_options.items():
                 setattr(self.session_options, key, value)
 
-        LOGGER.info("\t+ Creating backend temporary directory")
+        self.logger.info("\t+ Creating backend temporary directory")
         self.tmpdir = TemporaryDirectory()
 
         if self.config.no_weights:
-            LOGGER.info("\t+ Loading no weights ORTModel")
+            self.logger.info("\t+ Loading no weights ORTModel")
             self.load_ortmodel_with_no_weights()
         else:
-            LOGGER.info("\t+ Loading pretrained ORTModel")
+            self.logger.info("\t+ Loading pretrained ORTModel")
             self.load_ortmodel_from_pretrained()
 
         if self.is_optimized or self.is_quantized:
             original_model, self.config.model = self.config.model, self.pretrained_model.model_save_dir
 
         if self.is_optimized:
-            LOGGER.info("\t+ Applying ORT optimization")
+            self.logger.info("\t+ Applying ORT optimization")
             self.optimize_onnx_files()
             self.config.model = self.optimized_model
 
         if self.is_quantized:
-            LOGGER.info("\t+ Applying ORT quantization")
+            self.logger.info("\t+ Applying ORT quantization")
             self.quantize_onnx_files()
             self.config.model = self.quantized_model
 
         if self.is_optimized or self.is_quantized:
             original_export, self.config.export = self.config.export, False
-            LOGGER.info("\t+ Loading optimized/quantized ORTModel")
+            self.logger.info("\t+ Loading optimized/quantized ORTModel")
             self.load_ortmodel_from_pretrained()
             self.config.model, self.config.export = original_model, original_export
 
@@ -79,10 +73,10 @@ class ORTBackend(Backend[ORTConfig]):
     def validate_task(self) -> None:
         if self.config.task in TASKS_TO_ORTSD:
             self.ortmodel_class = get_class(TASKS_TO_ORTSD[self.config.task])
-            LOGGER.info(f"Using ORTStableDiffusion class {self.ortmodel_class.__name__}")
+            self.logger.info(f"Using ORTStableDiffusion class {self.ortmodel_class.__name__}")
         elif self.config.task in TASKS_TO_ORTMODELS:
             self.ortmodel_class = get_class(TASKS_TO_ORTMODELS[self.config.task])
-            LOGGER.info(f"Using ORTModel class {self.ortmodel_class.__name__}")
+            self.logger.info(f"Using ORTModel class {self.ortmodel_class.__name__}")
         else:
             raise NotImplementedError(f"ORTBackend does not support task {self.config.task}")
 
@@ -94,25 +88,25 @@ class ORTBackend(Backend[ORTConfig]):
 
     def create_no_weights_model(self) -> None:
         self.no_weights_model = os.path.join(self.tmpdir.name, "no_weights_model")
-        LOGGER.info("\t+ Creating no weights model directory")
+        self.logger.info("\t+ Creating no weights model directory")
         os.makedirs(self.no_weights_model, exist_ok=True)
-        LOGGER.info("\t+ Creating no weights model state dict")
+        self.logger.info("\t+ Creating no weights model state dict")
         state_dict = torch.nn.Linear(1, 1).state_dict()
-        LOGGER.info("\t+ Saving no weights model safetensors")
+        self.logger.info("\t+ Saving no weights model safetensors")
         safetensors = os.path.join(self.no_weights_model, "model.safetensors")
         save_file(tensors=state_dict, filename=safetensors, metadata={"format": "pt"})
 
         if self.config.library == "transformers":
-            LOGGER.info("\t+ Saving no weights model pretrained config")
+            self.logger.info("\t+ Saving no weights model pretrained config")
             self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
 
     def load_ortmodel_with_no_weights(self) -> None:
-        LOGGER.info("\t+ Creating no weights model")
+        self.logger.info("\t+ Creating no weights model")
         self.create_no_weights_model()
 
         with random_init_weights():
             original_model, self.config.model = self.config.model, self.no_weights_model
-            LOGGER.info("\t+ Loading no weights ORTModel")
+            self.logger.info("\t+ Loading no weights ORTModel")
             self.load_ortmodel_from_pretrained()
             self.config.model = original_model
 
@@ -172,9 +166,9 @@ class ORTBackend(Backend[ORTConfig]):
             return []
 
     def optimize_onnx_files(self) -> None:
-        LOGGER.info("\t+ Attempting optimization")
+        self.logger.info("\t+ Attempting optimization")
         self.optimized_model = os.path.join(self.tmpdir.name, "optimized")
-        LOGGER.info("\t+ Processing optimization config")
+        self.logger.info("\t+ Processing optimization config")
         if self.config.auto_optimization is not None:
             optimization_config = AutoOptimizationConfig.with_optimization_level(
                 optimization_level=self.config.auto_optimization,
@@ -185,9 +179,9 @@ class ORTBackend(Backend[ORTConfig]):
             optimization_config = OptimizationConfig(
                 optimize_for_gpu=(self.config.device == "cuda"), **self.config.optimization_config
             )
-        LOGGER.info("\t+ Creating optimizer")
+        self.logger.info("\t+ Creating optimizer")
         optimizer = ORTOptimizer.from_pretrained(self.config.model, file_names=self.onnx_files_names)
-        LOGGER.info("\t+ Optimizing ORTModel")
+        self.logger.info("\t+ Optimizing ORTModel")
         optimizer.optimize(
             optimization_config,
             save_dir=self.optimized_model,
@@ -202,7 +196,7 @@ class ORTBackend(Backend[ORTConfig]):
             self.pretrained_config.save_pretrained(self.optimized_model)
 
     def quantize_onnx_files(self) -> None:
-        LOGGER.info("\t+ Attempting quantization")
+        self.logger.info("\t+ Attempting quantization")
         self.quantized_model = f"{self.tmpdir.name}/quantized_model"
 
         if self.is_calibrated and len(self.onnx_files_names) > 1:
@@ -211,7 +205,7 @@ class ORTBackend(Backend[ORTConfig]):
                 f"Found {len(self.onnx_files_names)} components."
             )
 
-        LOGGER.info("\t+ Processing quantization config")
+        self.logger.info("\t+ Processing quantization config")
         if self.config.auto_quantization is not None:
             auto_quantization_config = format_quantization_config(self.config.auto_quantization_config)
             auto_quantization_class = getattr(AutoQuantizationConfig, self.config.auto_quantization)
@@ -221,7 +215,7 @@ class ORTBackend(Backend[ORTConfig]):
             quantization_config = QuantizationConfig(**quantization_config)
 
         if self.is_calibrated:
-            LOGGER.info("\t+ Generating calibration dataset")
+            self.logger.info("\t+ Generating calibration dataset")
             dataset_shapes = {"dataset_size": 1, "sequence_length": 1, **self.model_shapes}
             calibration_dataset = DatasetGenerator(
                 task=self.config.task, dataset_shapes=dataset_shapes, model_shapes=self.model_shapes
@@ -229,13 +223,13 @@ class ORTBackend(Backend[ORTConfig]):
             columns_to_be_removed = list(set(calibration_dataset.column_names) - set(self.inputs_names))
             calibration_dataset = calibration_dataset.remove_columns(columns_to_be_removed)
 
-            LOGGER.info("\t+ Processing calibration config")
+            self.logger.info("\t+ Processing calibration config")
             if self.config.auto_calibration is not None:
-                LOGGER.info("\t+ Processing calibration config")
+                self.logger.info("\t+ Processing calibration config")
                 auto_calibration_method = getattr(AutoCalibrationConfig, self.config.auto_calibration)
                 calibration_config = auto_calibration_method(calibration_dataset, **self.config.auto_calibration_config)
             elif self.config.calibration:
-                LOGGER.info("\t+ Processing calibration config")
+                self.logger.info("\t+ Processing calibration config")
                 calibration_config = format_calibration_config(self.config.calibration_config)
                 calibration_config = CalibrationConfig(
                     dataset_name="calibration_dataset",
@@ -246,11 +240,11 @@ class ORTBackend(Backend[ORTConfig]):
                 )
 
         for onnx_file_name in self.onnx_files_names:
-            LOGGER.info(f"\t+ Creating quantizer for {onnx_file_name}")
+            self.logger.info(f"\t+ Creating quantizer for {onnx_file_name}")
             quantizer = ORTQuantizer.from_pretrained(self.config.model, file_name=onnx_file_name)
 
             if self.is_calibrated:
-                LOGGER.info("\t+ Fitting calibration tensors range")
+                self.logger.info("\t+ Fitting calibration tensors range")
                 calibration_tensors_range = quantizer.fit(
                     dataset=calibration_dataset,
                     use_gpu=(self.config.device == "cuda"),
@@ -264,7 +258,7 @@ class ORTBackend(Backend[ORTConfig]):
             else:
                 calibration_tensors_range = None
 
-            LOGGER.info("\t+ Quantizing model")
+            self.logger.info("\t+ Quantizing model")
             quantizer.quantize(
                 save_dir=self.quantized_model,
                 quantization_config=quantization_config,
@@ -284,12 +278,18 @@ class ORTBackend(Backend[ORTConfig]):
 
         if self.config.library == "diffusers":
             inputs = {"prompt": inputs["prompt"]}
+        elif self.config.library == "transformers":
+            for key, value in list(inputs.items()):
+                if key in ["position_ids", "token_type_ids"]:
+                    if key in self.inputs_names:
+                        inputs[key] = value.to(self.config.device)
+                    else:
+                        inputs.pop(key)
+                else:
+                    inputs[key] = value.to(self.config.device)
         else:
             for key, value in list(inputs.items()):
-                if key not in PROBLEMATIC_INPUTS:
-                    inputs[key] = value.to(self.config.device)
-                elif key not in self.inputs_names:
-                    inputs.pop(key)
+                inputs[key] = value.to(self.config.device)
 
         return inputs
 
@@ -308,12 +308,3 @@ class ORTBackend(Backend[ORTConfig]):
     @torch.inference_mode()
     def call(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         return self.pretrained_model(**inputs, **kwargs)
-
-    def cleanup(self) -> None:
-        super().cleanup()
-
-        if hasattr(self, "tmpdir"):
-            LOGGER.info("\t+ Cleaning backend temporary directory")
-            self.tmpdir.cleanup()
-
-        gc.collect()

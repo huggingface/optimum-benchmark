@@ -21,24 +21,14 @@ ENV DEBIAN_FRONTEND noninteractive
 ENV PATH="/home/user/.local/bin:${PATH}"
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1-mesa-dev libglib2.0-0 \
-    build-essential git bash-completion \
+    sudo build-essential git bash-completion \
     python3.10 python3-pip python3.10-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 && \
     pip install --no-cache-dir --upgrade pip setuptools wheel 
 
-# Create a non-root user
-ARG GROUP_ID
-ARG USER_ID
-
-RUN addgroup --gid $GROUP_ID group
-RUN adduser --disabled-password --gecos '' --uid $USER_ID --gid $GROUP_ID user
-
-USER user
-WORKDIR /home/user
-
 # Install PyTorch
-ARG TORCH_VERSION="stable"
+ARG TORCH_VERSION=stable
 
 RUN if [ "${TORCH_VERSION}" = "stable" ]; then \
     pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu ; \

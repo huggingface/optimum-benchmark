@@ -39,12 +39,8 @@ class Benchmark(PushToHubMixin):
         launcher_factory: Type[Launcher] = get_class(launcher_config._target_)
         launcher: Launcher = launcher_factory(launcher_config)
 
-        try:
-            # Launch the benchmark using the launcher
-            report = launcher.launch(cls.run, config)
-        except Exception as exception:
-            LOGGER.error("Error during benchmark launch", exc_info=True)
-            raise exception
+        # Launch the benchmark using the launcher
+        report = launcher.launch(worker=cls.run, worker_args=[config])
 
         return report
 
@@ -64,15 +60,8 @@ class Benchmark(PushToHubMixin):
         scenario_factory: Type[Scenario] = get_class(scenario_config._target_)
         scenario: Scenario = scenario_factory(scenario_config)
 
-        try:
-            # Run the scenario using the backend
-            report = scenario.run(backend)
-        except Exception as error:
-            LOGGER.error("Error during scenario execution", exc_info=True)
-            backend.cleanup()
-            raise error
-        else:
-            backend.cleanup()
+        # Run the scenario using the backend
+        report = scenario.run(backend)
 
         return report
 
