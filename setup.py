@@ -78,6 +78,7 @@ EXTRAS_REQUIRE = {
     "sentence-transformers": ["sentence-transformers"],
     "bitsandbytes": ["bitsandbytes"],
     "codecarbon": ["codecarbon"],
+    "flash-attn": ["flash-attn"],
     "deepspeed": ["deepspeed"],
     "diffusers": ["diffusers"],
     "timm": ["timm"],

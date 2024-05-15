@@ -1,0 +1,52 @@
+name: CLI CUDA vLLM Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/test_cli_cuda_vllm.yaml
+      - "optimum_benchmark/**"
+      - "docker/**"
+      - "tests/**"
+      - "setup.py"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/test_cli_cuda_vllm.yaml
+      - "optimum_benchmark/**"
+      - "docker/**"
+      - "tests/**"
+      - "setup.py"
+
+concurrency:
+  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+
+env:
+  IMAGE: ghcr.io/optimum-benchmark:latest-cuda
+
+jobs:
+  run_cli_cuda_pytorch_tests:
+    runs-on: [single-gpu, nvidia-gpu, a10, ci]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Run tests
+        uses: addnab/docker-run-action@v3
+        with:
+          image: ${{ env.IMAGE }}
+          options: |
+            --rm
+            --gpus all
+            --shm-size 64G
+            --env MKL_THREADING_LAYER=GNU
+            --volume ${{ github.workspace }}:/workspace
+            --workdir /workspace
+          run: |
+            pip install -e .[testing,vllm,flash-attn]
+            pytest -x -s -k "cli and cuda and vllm"
