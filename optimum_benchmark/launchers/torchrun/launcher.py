@@ -84,7 +84,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             raise RuntimeError(f"Isolated process exited with non-zero code [{isolated_process.exitcode}]")
 
         if not queue.empty() and queue.qsize() == self.config.nproc_per_node:
-            outputs = [queue.get() for _ in range(queue.qsize())]
+            outputs = [queue.get(block=False) for _ in range(queue.qsize())]
         elif queue.empty():
             raise RuntimeError("Queue is empty, something went wrong in the isolated process")
         else:
@@ -163,7 +163,7 @@ def entrypoint(
     if log_all_ranks or rank == 0:
         setup_logging(level=log_level, to_file=log_to_file, prefix=f"RANK-{rank}")
     else:
-        setup_logging(level="ERROR", to_file=False)
+        setup_logging(level="ERROR", to_file=log_to_file, prefix=f"RANK-{rank}")
 
     if torch.cuda.is_available():
         logger.info(f"\t+ Setting torch.distributed cuda device to {rank}")
@@ -175,26 +175,26 @@ def entrypoint(
     try:
         report = worker(*worker_args)
     except Exception:
-        logger.error(f"\t+ An exception occurred in rank [{rank}]")
+        logger.error("\t+ Putting traceback into the the Queue")
         queue.put({"traceback": traceback.format_exc(), "rank": rank})
     else:
-        logger.info("\t+ Putting benchmark report into queue")
+        logger.info("\t+ Putting benchmark report into the Queue")
         queue.put({"report": report.to_dict(), "rank": rank})
+
     finally:
-        while queue.qsize() <= world_size:
-            logger.info(
-                "\t+ Waiting for other ranks to put their output into queue"
-                f"Queue size: {queue.qsize()} / World size: {world_size}"
-            )
-            if queue.qsize() == world_size:
-                logger.info(
-                    "\t+ All ranks have put their output into queue"
-                    f"Queue size: {queue.qsize()} / World size: {world_size}"
-                )
-                break
-            time.sleep(1)
+        if rank == 0:
+            queue_size = queue.qsize()
+            while queue_size < world_size:
+                logger.info("\t+ Waiting for other ranks to put their output into the Queue.")
+                logger.info(f"\t+ Queue size: {queue_size} / World size: {world_size}")
+                queue_size = queue.qsize()
+                time.sleep(1)
+
+            logger.info("\t+ All ranks have put their output into the Queue.")
+            logger.info(f"\t+ Queue size: {queue_size} / World size: {world_size}")
+
+            logger.info("\t+ Sending a forced zero exit signal to the isolated process")
+            os.kill(isolated_process_pid, signal.SIGUSR2)
 
         logger.info("\t+ Destroying torch.distributed process group")
         torch.distributed.destroy_process_group()
-        logger.info("\t+ Sending a forced zero exit signal to the isolated process")
-        os.kill(isolated_process_pid, signal.SIGUSR2)

@@ -125,7 +125,7 @@ def get_children_pids(pid: int) -> Set[int]:
     return children_pids
 
 
-def assert_device_isolation(pid: set, device_ids: str, action: str):
+def assert_device_isolation(pid: int, device_ids: str, action: str):
     log_level = os.environ.get("LOG_LEVEL", "INFO")
     log_to_file = os.environ.get("LOG_TO_FILE", "1") == "1"
     setup_logging(log_level, to_file=log_to_file, prefix="DEVICE-ISOLATION-PROCESS")
@@ -149,7 +149,8 @@ def assert_device_isolation(pid: set, device_ids: str, action: str):
         if len(non_permitted_pids) > 0:
             LOGGER.warn(
                 f"Found process(es) [{non_permitted_pids}] running on device(s) [{device_ids}], "
-                f"other than the permitted process(es) [{permitted_pids}] and their children [{permitted_children_pids}]."
+                f"other than the isolated process [{pid}], the device isolation process [{device_isolation_pid}] "
+                f"and their children [{permitted_children_pids}]."
             )
 
             if action == "warn":
