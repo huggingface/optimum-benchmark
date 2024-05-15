@@ -120,7 +120,7 @@ def target(
         logger.error("\t+ Sending traceback to main process")
         connection.send([{"traceback": traceback.format_exc()}])
     else:
-        logger.info("\t+ Sending reports to main process")
+        logger.info("\t+ Sending outputs to main process")
         connection.send(list(outputs.values()))
     finally:
         logger.info("\t+ Exiting isolated process")
@@ -149,10 +149,14 @@ def entrypoint(worker: Callable[..., BenchmarkReport], worker_args: List[Any], l
 
     try:
         report = worker(*worker_args)
-        output = {"rank": rank, "report": report.to_dict()}
     except Exception:
+        logger.error("\t+ Benchmark failed with an exception")
         output = {"rank": rank, "traceback": traceback.format_exc()}
+    else:
+        logger.info("\t+ Benchmark completed successfully")
+        output = {"rank": rank, "report": report.to_dict()}
     finally:
         logger.info("\t+ Destroying torch.distributed process group")
         torch.distributed.destroy_process_group()
+        logger.info("\t+ Exiting rank process")
         return output
