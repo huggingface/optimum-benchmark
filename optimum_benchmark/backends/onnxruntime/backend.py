@@ -6,7 +6,6 @@ from typing import Any, Dict, List
 import torch
 from hydra.utils import get_class
 from onnxruntime import SessionOptions
-from optimum.exporters.onnx import MODEL_TYPES_REQUIRING_POSITION_IDS
 from optimum.onnxruntime import ONNX_DECODER_NAME, ONNX_DECODER_WITH_PAST_NAME, ORTOptimizer, ORTQuantizer
 from optimum.onnxruntime.configuration import (
     AutoCalibrationConfig,
