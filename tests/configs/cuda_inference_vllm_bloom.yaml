@@ -5,6 +5,6 @@ defaults:
   - _inference_ # inherits from inference config
   - _bloom_ # inherits from bloom config
   - _self_ # hydra 1.1 compatibility
-  - override backend: py-txi
+  - override backend: vllm
 
 name: cuda_inference_vllm_bloom
