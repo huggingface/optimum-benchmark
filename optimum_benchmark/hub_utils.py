@@ -133,9 +133,20 @@ class PushToHubMixin:
 
         repo_type = kwargs.pop("repo_type", "dataset")
 
-        resolved_file = hf_hub_download(
-            repo_id=repo_id, filename=filename, subfolder=subfolder, repo_type=repo_type, **kwargs
-        )
+        try:
+            resolved_file = hf_hub_download(
+                repo_id=repo_id, filename=filename, subfolder=subfolder, repo_type=repo_type, **kwargs
+            )
+        except HfHubHTTPError as e:
+            LOGGER.warn("Error while downloading from Hugging Face Hub")
+            if "Client Error: Too Many Requests for url" in str(e):
+                LOGGER.warn("Client Error: Too Many Requests for url. Retrying in 15 seconds.")
+                time.sleep(15)
+                resolved_file = hf_hub_download(
+                    repo_id=repo_id, filename=filename, subfolder=subfolder, repo_type=repo_type, **kwargs
+                )
+            else:
+                raise e
         config_dict = cls.from_json(resolved_file)
 
         return config_dict

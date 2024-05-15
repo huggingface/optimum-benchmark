@@ -286,6 +286,8 @@ class ORTBackend(Backend[ORTConfig]):
                         inputs[key] = value.to(self.config.device)
                     else:
                         inputs.pop(key)
+                elif key == "token_type_ids":
+                    inputs.pop(key)
                 else:
                     inputs[key] = value.to(self.config.device)
         else:
