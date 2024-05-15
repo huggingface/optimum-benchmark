@@ -281,13 +281,11 @@ class ORTBackend(Backend[ORTConfig]):
             inputs = {"prompt": inputs["prompt"]}
         elif self.config.library == "transformers":
             for key, value in list(inputs.items()):
-                if key == "position_ids":
-                    if self.model_type in MODEL_TYPES_REQUIRING_POSITION_IDS:
+                if key in ["position_ids", "token_type_ids"]:
+                    if key in self.inputs_names:
                         inputs[key] = value.to(self.config.device)
                     else:
                         inputs.pop(key)
-                elif key == "token_type_ids":
-                    inputs.pop(key)
                 else:
                     inputs[key] = value.to(self.config.device)
         else:
