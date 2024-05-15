@@ -35,7 +35,7 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         if self.config.device_isolation:
             self.start_device_isolation_process(pid=isolated_process.pid)
 
-        parent_connection.send("start")
+        parent_connection.send("START")
         isolated_process.join()
 
         if self.config.device_isolation:
@@ -74,11 +74,8 @@ def target(
     while True:
         if connection.poll():
             response = connection.recv()
-            if response == "start":
+            if response == "START":
                 break
-            else:
-                exception = RuntimeError(f"Isolated process received an unexpected response: {response}")
-                connection.send({"exception": str(exception)})
 
     isolated_process_pid = os.getpid()
     log_level = os.environ.get("LOG_LEVEL", "INFO")
