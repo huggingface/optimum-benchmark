@@ -40,7 +40,7 @@ class Benchmark(PushToHubMixin):
         launcher: Launcher = launcher_factory(launcher_config)
 
         # Launch the benchmark using the launcher
-        report = launcher.launch(cls.run, config)
+        report = launcher.launch(worker=cls.run, worker_args=[config])
 
         return report
 

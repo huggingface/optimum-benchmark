@@ -1,14 +1,14 @@
 import logging
 import logging.config
-import os
 from subprocess import PIPE, STDOUT, Popen
 from typing import Optional
 
 
 def setup_logging(
     level: str = "INFO",
+    to_file: bool = False,
     use_colorlog: bool = True,
-    format_prefix: Optional[str] = None,
+    prefix: Optional[str] = None,
     disable_existing_loggers: bool = False,
 ):
     # base logging config
@@ -18,7 +18,7 @@ def setup_logging(
             "file": {"formatter": "simple", "filename": "benchmark.log", "class": "logging.FileHandler"},
             "console": {"formatter": "simple", "stream": "ext://sys.stdout", "class": "logging.StreamHandler"},
         },
-        "root": {"level": level, "handlers": ["console", "file"] if os.environ.get("LOG_TO_FILE") else ["console"]},
+        "root": {"level": level, "handlers": ["console", "file"] if to_file else ["console"]},
         "disable_existing_loggers": disable_existing_loggers,
     }
 
@@ -38,10 +38,10 @@ def setup_logging(
             logging_config["handlers"][handler]["formatter"] = "colorlog"
 
     # format prefix
-    if format_prefix is not None:
+    if prefix is not None:
         for formatter in logging_config["formatters"]:
             logging_config["formatters"][formatter]["format"] = (
-                f"[{format_prefix}]" + logging_config["formatters"][formatter]["format"]
+                f"[{prefix}]" + logging_config["formatters"][formatter]["format"]
             )
 
     logging.config.dictConfig(logging_config)

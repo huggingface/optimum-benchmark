@@ -1,17 +1,15 @@
 import multiprocessing as mp
-import multiprocessing.connection as mp_connection
 import os
 import traceback
-from logging import getLogger
-from typing import Any, Callable, Union
+from logging import Logger
+from multiprocessing import Process
+from multiprocessing.connection import Connection
+from typing import Any, Callable, List
 
 from ...logging_utils import setup_logging
 from ...report import BenchmarkReport
 from ..base import Launcher
-from ..device_isolation_utils import device_isolation_context
 from .config import ProcessConfig
-
-LOGGER = getLogger("process")
 
 
 class ProcessLauncher(Launcher[ProcessConfig]):
@@ -21,62 +19,81 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         super().__init__(config)
 
         if mp.get_start_method(allow_none=True) != self.config.start_method:
-            LOGGER.info(f"\t+ Setting multiprocessing start method to {self.config.start_method}.")
+            self.logger.info(f"\t+ Setting multiprocessing start method to {self.config.start_method}.")
             mp.set_start_method(self.config.start_method, force=True)
 
-    def launch(self, worker: Callable[..., BenchmarkReport], *worker_args: Any) -> BenchmarkReport:
+    def launch(self, worker: Callable[..., BenchmarkReport], worker_args: List[Any]) -> BenchmarkReport:
         ctx = mp.get_context(self.config.start_method)
-        log_level = ctx.get_logger().getEffectiveLevel()
-        child_conn, parent_conn = ctx.Pipe()
+        child_connection, parent_connection = ctx.Pipe()
 
-        isolated_process = mp.Process(target=target, args=(log_level, child_conn, worker, *worker_args), daemon=False)
+        isolated_process = Process(
+            target=target, args=(worker, worker_args, child_connection, self.logger), daemon=False
+        )
         isolated_process.start()
 
-        with device_isolation_context(
-            enable=self.config.device_isolation, action=self.config.device_isolation_action, pid=isolated_process.pid
-        ):
-            isolated_process.join()
+        if self.config.device_isolation:
+            self.start_device_isolation_process(pid=isolated_process.pid)
+
+        parent_connection.send("start")
+        isolated_process.join()
+
+        if self.config.device_isolation:
+            self.stop_device_isolation_process()
 
         if isolated_process.exitcode != 0:
             raise RuntimeError(f"Isolated process exited with non-zero code {isolated_process.exitcode}")
 
-        if parent_conn.poll():
-            response = parent_conn.recv()
+        if parent_connection.poll():
+            response = parent_connection.recv()
         else:
             raise RuntimeError("Isolated process did not send any response")
 
-        if "exception" in response:
-            LOGGER.error("Received exception from isolated process.")
+        if "traceback" in response:
+            self.logger.error("\t+ Received traceback from isolated process.")
             raise ChildProcessError(response["traceback"])
+        elif "exception" in response:
+            self.logger.error("\t+ Received exception from isolated process.")
+            raise ChildProcessError(response["exception"])
         elif "report" in response:
-            LOGGER.info("Received benchmark report from isolated process.")
+            self.logger.info("\t+ Received report from isolated process.")
             report = BenchmarkReport.from_dict(response["report"])
         else:
-            raise RuntimeError(f"Isolated process sent an unexpected response {str(response)}")
+            raise RuntimeError(f"Received an unexpected response from isolated process: {response}")
 
         return report
 
 
 def target(
-    log_level: Union[int, str],
-    conn: mp_connection.Connection,
     worker: Callable[..., BenchmarkReport],
-    *worker_args: Any,
+    worker_args: List[Any],
+    connection: Connection,
+    logger: Logger,
 ) -> None:
-    isolated_process_pid = os.getpid()
-    os.environ["ISOLATED_PROCESS_PID"] = str(isolated_process_pid)
+    while True:
+        if connection.poll():
+            response = connection.recv()
+            if response == "start":
+                break
+            else:
+                exception = RuntimeError(f"Isolated process received an unexpected response: {response}")
+                connection.send({"exception": str(exception)})
 
-    setup_logging(level=log_level, format_prefix="ISOLATED-PROCESS")
-    LOGGER.info(f"Running benchmark in isolated process [{isolated_process_pid}]...")
+    isolated_process_pid = os.getpid()
+    log_level = os.environ.get("LOG_LEVEL", "INFO")
+    log_to_file = os.environ.get("LOG_TO_FILE", "1") == "1"
+    os.environ["ISOLATED_PROCESS_PID"] = str(isolated_process_pid)
+    setup_logging(level=log_level, to_file=log_to_file, prefix="ISOLATED-PROCESS")
+    logger.info(f"\t+ Running benchmark in isolated process [{isolated_process_pid}].")
 
     try:
         report = worker(*worker_args)
-    except Exception as exception:
-        LOGGER.error("Benchmark failed with error. Sending exception and traceback to main process...")
-        conn.send({"exception": exception, "traceback": traceback.format_exc()})
+    except Exception:
+        logger.error("\t+ Exception occurred in isolated process. Sending traceback to main process.")
+        connection.send({"traceback": traceback.format_exc()})
     else:
-        LOGGER.info("Benchmark completed successfully. Sending report to main process...")
-        conn.send({"report": report.to_dict()})
+        logger.info("\t+ Benchmark completed in isolated process. Sending report to main process.")
+        connection.send({"report": report.to_dict()})
     finally:
-        LOGGER.info("Exiting isolated process...")
+        logger.info("\t+ Exiting isolated process.")
+        connection.close()
         exit(0)

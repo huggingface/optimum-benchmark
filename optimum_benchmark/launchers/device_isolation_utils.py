@@ -1,10 +1,8 @@
-import multiprocessing as mp
 import os
 import signal
 import time
-from contextlib import contextmanager
 from logging import getLogger
-from typing import Optional, Set
+from typing import Set
 
 from ..import_utils import is_amdsmi_available, is_psutil_available, is_pynvml_available
 from ..logging_utils import setup_logging
@@ -127,90 +125,43 @@ def get_children_pids(pid: int) -> Set[int]:
     return children_pids
 
 
-def assert_device_isolation(action: str, pid: int, device_ids: str):
-    setup_logging("INFO", format_prefix="DEVICE-ISOLATION-PROCESS")
+def assert_device_isolation(pid: set, device_ids: str, action: str):
+    log_level = os.environ.get("LOG_LEVEL", "INFO")
+    log_to_file = os.environ.get("LOG_TO_FILE", "1") == "1"
+    setup_logging(log_level, to_file=log_to_file, prefix="DEVICE-ISOLATION-PROCESS")
+
     device_isolation_pid = os.getpid()
+    permitted_parent_pids = {pid, device_isolation_pid}
 
-    assert action in ["warn", "error", "kill"], f"Unsupported action `{action}`"
-
-    while psutil.pid_exists(pid):
+    while any(psutil.pid_exists(p) for p in permitted_parent_pids):
         device_pids = get_pids_running_on_system_devices(device_ids=device_ids)
         device_pids = {p for p in device_pids if psutil.pid_exists(p)}
 
-        permitted_pids = {pid, device_isolation_pid} | get_children_pids(pid) | get_children_pids(device_isolation_pid)
+        permitted_children_pids = set()
+        for pid in permitted_parent_pids:
+            permitted_children_pids |= get_children_pids(pid)
+
+        permitted_pids = permitted_parent_pids | permitted_children_pids
         permitted_pids = {p for p in permitted_pids if psutil.pid_exists(p)}
 
-        foreign_pids = device_pids - permitted_pids
+        non_permitted_pids = device_pids - permitted_pids
 
-        if len(foreign_pids) > 0:
+        if len(non_permitted_pids) > 0:
             LOGGER.warn(
-                f"Found foreign process(es) [{foreign_pids}] running on the isolated device(s) [{device_ids}], "
-                f"other than the isolated process [{pid}] (and its children)."
+                f"Found process(es) [{non_permitted_pids}] running on device(s) [{device_ids}], "
+                f"other than the permitted process(es) [{permitted_pids}] and their children [{permitted_children_pids}]."
             )
 
             if action == "warn":
-                LOGGER.warn("Make sure no other process is running on the isolated device(s) while benchmarking.")
+                LOGGER.warn("Make sure no other process is running on the device(s) while benchmarking.")
             elif action == "error":
-                LOGGER.error("Signaling the isolated process to error out...")
+                LOGGER.error("Signaling the isolated process to error out.")
                 os.kill(pid, signal.SIGUSR1)
             elif action == "kill":
-                LOGGER.error("Killing the isolated process...")
+                LOGGER.error("Killing the isolated process.")
                 os.kill(pid, signal.SIGKILL)
 
-            LOGGER.warn("Exiting the isolation process...")
+            LOGGER.warn("Exiting device isolation process.")
             exit(0)
 
         time.sleep(1)
-
-
-@contextmanager
-def device_isolation_context(enable: bool, action: str, pid: int, device_ids: Optional[str] = None):
-    if not enable:
-        yield
-        return
-
-    if action is None:
-        raise ValueError("Device isolation requires the action to be specified")
-    elif action not in ["warn", "error", "kill"]:
-        raise ValueError(f"Unsupported action `{action}`")
-
-    if pid is None:
-        raise ValueError("Device isolation requires the pid of the isolated process")
-
-    if device_ids is None:
-        if is_nvidia_system():
-            device_ids = os.environ.get("CUDA_VISIBLE_DEVICES", None)
-        elif is_rocm_system():
-            device_ids = os.environ.get("ROCR_VISIBLE_DEVICES", None)
-
-        if device_ids is None:
-            raise ValueError(
-                "Device isolation requires the device_ids of the isolated device(s) to be specified. "
-                "Or for the environment variable `CUDA_VISIBLE_DEVICES` or `ROCR_VISIBLE_DEVICES` to be set."
-            )
-
-    if not (is_nvidia_system() or is_rocm_system()):
-        raise ValueError("Device isolation is only supported on NVIDIA and AMD GPUs")
-
-    device_isolation_process = mp.Process(
-        target=assert_device_isolation, kwargs={"action": action, "pid": pid, "device_ids": device_ids}, daemon=True
-    )
-    device_isolation_process.start()
-
-    LOGGER.info(
-        f"Started device(s) isolation process [{device_isolation_process.pid}], monitoring "
-        f"the isolated process [{pid}], running on device(s) [{device_ids}], with action [{action}]."
-    )
-
-    yield
-
-    LOGGER.info("Terminating the device isolation process...")
-    device_isolation_process.terminate()
-    device_isolation_process.join(timeout=1)
-
-    if device_isolation_process.is_alive():
-        LOGGER.warn("The isolation process did not terminate gracefully. Killing it forcefully...")
-        device_isolation_process.kill()
-        device_isolation_process.join(timeout=1)
-
-    device_isolation_process.close()

@@ -93,23 +93,31 @@ cs.store(group="benchmark", name=EnergyStarConfig.name, node=DeprecatedEnergySta
 LOGGING_SETUP_DONE = False
 
 
+def setup_logging_once(*args, **kwargs):
+    global LOGGING_SETUP_DONE
+    if not LOGGING_SETUP_DONE:
+        LOGGING_SETUP_DONE = True
+        setup_logging(*args, **kwargs)
+
+
 # optimum-benchmark
 @hydra.main(version_base=None)
 def main(config: DictConfig) -> None:
-    os.environ["LOG_TO_FILE"] = "1"
-    os.environ["BENCHMARK_INTERFACE"] = "CLI"
-
     global LOGGING_SETUP_DONE
 
-    if not LOGGING_SETUP_DONE:
-        setup_logging(level="INFO", format_prefix="MAIN-PROCESS")
-        LOGGING_SETUP_DONE = True
-    else:
-        setup_logging(level="INFO")
+    # TODO: remove when experiment schema is removed
+    os.environ["BENCHMARK_INTERFACE"] = "CLI"
 
-    if glob.glob("benchmark_report.json") and os.environ.get("OVERRIDE_BENCHMARKS", "0") != "1":
+    log_level = os.environ.get("LOG_LEVEL", "INFO")
+    log_to_file = os.environ.get("LOG_TO_FILE", "1") == "1"
+    override_benchmarks = os.environ.get("OVERRIDE_BENCHMARKS", "0") == "1"
+
+    setup_logging_once(level=log_level, to_file=log_to_file, prefix="MAIN-PROCESS")
+
+    if glob.glob("benchmark_report.json") and not override_benchmarks:
         LOGGER.warning(
-            "Benchmark report already exists. If you want to override it, set the environment variable OVERRIDE_BENCHMARKS=1"
+            "Benchmark was already conducted in the current directory. "
+            "If you want to override it, set the environment variable OVERRIDE_BENCHMARKS=1 (in hydra.job.env_set)"
         )
         return
 
