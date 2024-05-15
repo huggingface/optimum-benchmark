@@ -38,7 +38,7 @@ class LLMSwarmBackend(Backend[LLMSwarmConfig]):
             slurm_template_path=self.config.slurm_template_path,
             load_balancer_template_path=self.config.load_balancer_template_path,
             per_instance_max_parallel_requests=self.config.per_instance_max_parallel_requests,
-            revision=self.config.hub_kwargs.get("revision", "main"),
+            revision=self.config.model_kwargs.get("revision", "main"),
             debug_endpoint=self.config.debug_endpoint,
         )
         self.llm_swarm = LLMSwarm(self.llm_swarm_config).__enter__()
@@ -46,14 +46,15 @@ class LLMSwarmBackend(Backend[LLMSwarmConfig]):
 
     def download_pretrained_model(self) -> None:
         with torch.device("meta"):
-            self.automodel_class.from_pretrained(self.config.model, **self.config.hub_kwargs)
+            self.automodel_class.from_pretrained(self.config.model, **self.config.model_kwargs)
 
     def prepare_generation_config(self) -> None:
         self.generation_config.eos_token_id = -100
         self.generation_config.pad_token_id = -100
+
         model_cache_folder = f"models/{self.config.model}".replace("/", "--")
         model_cache_path = f"{self.config.volume}/{model_cache_folder}"
-        snapshot_file = f"{model_cache_path}/refs/{self.config.hub_kwargs.get('revision', 'main')}"
+        snapshot_file = f"{model_cache_path}/refs/{self.config.model_kwargs.get('revision', 'main')}"
         snapshot_ref = open(snapshot_file, "r").read().strip()
         model_snapshot_path = f"{model_cache_path}/snapshots/{snapshot_ref}"
         self.logger.info("\t+ Saving new pretrained generation config")

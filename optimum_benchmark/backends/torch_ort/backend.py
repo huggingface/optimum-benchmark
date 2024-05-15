@@ -72,7 +72,7 @@ class TorchORTBackend(Backend[TorchORTConfig]):
 
     def load_automodel_from_pretrained(self) -> None:
         self.pretrained_model = self.automodel_class.from_pretrained(
-            self.config.model, **self.automodel_kwargs, **self.config.hub_kwargs
+            self.config.model, **self.automodel_kwargs, **self.config.model_kwargs
         ).to(self.config.device)
 
     @property

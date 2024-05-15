@@ -1,4 +1,3 @@
-import os
 from contextlib import contextmanager
 from typing import Any, Dict, Optional, Union
 
@@ -16,10 +15,6 @@ from transformers import (
 )
 
 PretrainedProcessor = Union[FeatureExtractionMixin, ImageProcessingMixin, PreTrainedTokenizer, ProcessorMixin]
-
-
-def get_transformers_cache_dir() -> str:
-    return os.path.expanduser("~/.cache/huggingface/hub")
 
 
 def get_transformers_pretrained_config(model: str, **kwargs) -> "PretrainedConfig":

@@ -82,4 +82,4 @@ class PyTXIConfig(BackendConfig):
         # TGI specific
         if self.task in TEXT_GENERATION_TASKS:
             if self.trust_remote_code is None:
-                self.trust_remote_code = self.hub_kwargs.get("trust_remote_code", False)
+                self.trust_remote_code = self.model_kwargs.get("trust_remote_code", False)
