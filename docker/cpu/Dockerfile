@@ -31,7 +31,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ARG TORCH_VERSION=stable
 
 RUN if [ "${TORCH_VERSION}" = "stable" ]; then \
-    pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu ; \
+    pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu ; \
 elif [ "${TORCH_VERSION}" = "nighly" ]; then \
     pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cpu ; \
 else \
