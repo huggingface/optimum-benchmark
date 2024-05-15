@@ -48,5 +48,5 @@ jobs:
             --volume ${{ github.workspace }}:/workspace
             --workdir /workspace
           run: |
-            pip install packagin && gpip install -e .[testing,vllm,flash-attn]
+            pip install packaging && gpip install -e .[testing,vllm,flash-attn]
             pytest -x -s -k "cli and cuda and vllm"
