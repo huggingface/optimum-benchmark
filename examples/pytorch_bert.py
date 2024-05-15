@@ -1,7 +1,7 @@
 from optimum_benchmark import Benchmark, BenchmarkConfig, InferenceConfig, ProcessConfig, PyTorchConfig
 from optimum_benchmark.logging_utils import setup_logging
 
-setup_logging(level="INFO", format_prefix="MAIN-PROCESS")
+setup_logging(level="INFO", prefix="MAIN-PROCESS")
 
 if __name__ == "__main__":
     BENCHMARK_NAME = "pytorch_bert"

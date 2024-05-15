@@ -43,8 +43,7 @@ class Launcher(Generic[LauncherConfigT], ABC):
             daemon=True,
         )
         self.device_isolation_process.start()
-        self.logger.info(f"\t+ Monitoring device(s) [{device_ids}]")
-        self.logger.info(f"\t+ Allowing process(s) [{pid}] and its children")
+        self.logger.info(f"\t+ Isolating device(s) [{device_ids}] for process [{pid}] and its children")
         self.logger.info(f"\t+ Executing action [{self.config.device_isolation_action}] in case of violation")
 
     def stop_device_isolation_process(self):

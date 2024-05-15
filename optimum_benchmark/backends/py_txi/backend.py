@@ -1,6 +1,4 @@
-import gc
 import os
-from logging import getLogger
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, List
 
@@ -13,9 +11,6 @@ from ..base import Backend
 from ..transformers_utils import random_init_weights
 from .config import PyTXIConfig
 
-# bachend logger
-LOGGER = getLogger("py-txi")
-
 
 class PyTXIBackend(Backend[PyTXIConfig]):
     NAME: str = "py-txi"
@@ -25,21 +20,21 @@ class PyTXIBackend(Backend[PyTXIConfig]):
 
         self.volume = list(self.config.volumes.keys())[0]
 
-        LOGGER.info("\t+ Creating backend temporary directory")
+        self.logger.info("\t+ Creating backend temporary directory")
         self.tmpdir = TemporaryDirectory()
 
         if self.config.no_weights:
-            LOGGER.info("\t+ Loading no weights model")
+            self.logger.info("\t+ Loading no weights model")
             self.load_model_with_no_weights()
         else:
-            LOGGER.info("\t+ Downloading pretrained model")
+            self.logger.info("\t+ Downloading pretrained model")
             self.download_pretrained_model()
 
             if self.config.task in TEXT_GENERATION_TASKS:
-                LOGGER.info("\t+ Preparing generation config")
+                self.logger.info("\t+ Preparing generation config")
                 self.prepare_generation_config()
 
-            LOGGER.info("\t+ Loading pretrained model")
+            self.logger.info("\t+ Loading pretrained model")
             self.load_model_from_pretrained()
 
         self.tmpdir.cleanup()
@@ -61,51 +56,51 @@ class PyTXIBackend(Backend[PyTXIConfig]):
         snapshot_file = f"{model_cache_path}/refs/{self.config.hub_kwargs.get('revision', 'main')}"
         snapshot_ref = open(snapshot_file, "r").read().strip()
         model_snapshot_path = f"{model_cache_path}/snapshots/{snapshot_ref}"
-        LOGGER.info("\t+ Saving new pretrained generation config")
+        self.logger.info("\t+ Saving new pretrained generation config")
         self.generation_config.save_pretrained(save_directory=model_snapshot_path)
 
     def create_no_weights_model(self) -> None:
         self.no_weights_model = os.path.join(self.tmpdir.name, "no_weights_model")
-        LOGGER.info("\t+ Creating no weights model directory")
+        self.logger.info("\t+ Creating no weights model directory")
         os.makedirs(self.no_weights_model, exist_ok=True)
-        LOGGER.info("\t+ Creating no weights model state dict")
+        self.logger.info("\t+ Creating no weights model state dict")
         state_dict = torch.nn.Linear(1, 1).state_dict()
-        LOGGER.info("\t+ Saving no weights model safetensors")
+        self.logger.info("\t+ Saving no weights model safetensors")
         safetensor = os.path.join(self.no_weights_model, "model.safetensors")
         save_file(tensors=state_dict, filename=safetensor, metadata={"format": "pt"})
-        LOGGER.info("\t+ Saving no weights model pretrained config")
+        self.logger.info("\t+ Saving no weights model pretrained config")
         self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
-        LOGGER.info("\t+ Saving no weights model pretrained processor")
+        self.logger.info("\t+ Saving no weights model pretrained processor")
         self.pretrained_processor.save_pretrained(save_directory=self.no_weights_model)
         # unlike Transformers, TXI won't accept any missing tensors so we need to materialize the model
-        LOGGER.info(f"\t+ Loading no weights model from {self.no_weights_model}")
+        self.logger.info(f"\t+ Loading no weights model from {self.no_weights_model}")
         with random_init_weights():
             self.pretrained_model = self.automodel_class.from_pretrained(
                 self.no_weights_model, **self.config.hub_kwargs, device_map="auto", _fast_init=False
             )
-        LOGGER.info("\t+ Saving no weights model")
+        self.logger.info("\t+ Saving no weights model")
         self.pretrained_model.save_pretrained(save_directory=self.no_weights_model)
         del self.pretrained_model
         torch.cuda.empty_cache()
 
         if self.config.task in TEXT_GENERATION_TASKS:
-            LOGGER.info("\t+ Modifying generation config for fixed length generation")
+            self.logger.info("\t+ Modifying generation config for fixed length generation")
             self.generation_config.eos_token_id = -100
             self.generation_config.pad_token_id = -100
             self.generation_config.temperature = 1.0
             self.generation_config.top_p = 1.0
             self.generation_config.top_k = 50
 
-            LOGGER.info("\t+ Saving new pretrained generation config")
+            self.logger.info("\t+ Saving new pretrained generation config")
             self.generation_config.save_pretrained(save_directory=self.no_weights_model)
 
     def load_model_with_no_weights(self) -> None:
-        LOGGER.info("\t+ Creating no weights model")
+        self.logger.info("\t+ Creating no weights model")
         self.create_no_weights_model()
 
         original_volumes, self.config.volumes = self.config.volumes, {self.tmpdir.name: {"bind": "/data", "mode": "rw"}}
         original_model, self.config.model = self.config.model, "/data/no_weights_model"
-        LOGGER.info("\t+ Loading no weights model")
+        self.logger.info("\t+ Loading no weights model")
         self.load_model_from_pretrained()
         self.config.model, self.config.volumes = original_model, original_volumes
 
@@ -174,12 +169,3 @@ class PyTXIBackend(Backend[PyTXIConfig]):
             do_sample=kwargs.get("do_sample", False),
             max_new_tokens=kwargs.get("max_new_tokens"),
         )
-
-    def cleanup(self) -> None:
-        super().cleanup()
-
-        if hasattr(self, "tmpdir"):
-            LOGGER.info("\t+ Cleaning temporary directory")
-            self.tmpdir.cleanup()
-
-        gc.collect()

@@ -19,7 +19,7 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         super().__init__(config)
 
         if mp.get_start_method(allow_none=True) != self.config.start_method:
-            self.logger.info(f"\t+ Setting multiprocessing start method to {self.config.start_method}.")
+            self.logger.info(f"\t+ Setting multiprocessing start method to {self.config.start_method}")
             mp.set_start_method(self.config.start_method, force=True)
 
     def launch(self, worker: Callable[..., BenchmarkReport], worker_args: List[Any]) -> BenchmarkReport:
@@ -30,6 +30,7 @@ class ProcessLauncher(Launcher[ProcessConfig]):
             target=target, args=(worker, worker_args, child_connection, self.logger), daemon=False
         )
         isolated_process.start()
+        self.logger.info(f"\t+ Started benchmark in isolated process [{isolated_process.pid}]")
 
         if self.config.device_isolation:
             self.start_device_isolation_process(pid=isolated_process.pid)
@@ -49,14 +50,15 @@ class ProcessLauncher(Launcher[ProcessConfig]):
             raise RuntimeError("Isolated process did not send any response")
 
         if "traceback" in response:
-            self.logger.error("\t+ Received traceback from isolated process.")
+            self.logger.error("\t+ Received traceback from isolated process")
             raise ChildProcessError(response["traceback"])
         elif "exception" in response:
-            self.logger.error("\t+ Received exception from isolated process.")
+            self.logger.error("\t+ Received exception from isolated process")
             raise ChildProcessError(response["exception"])
         elif "report" in response:
-            self.logger.info("\t+ Received report from isolated process.")
+            self.logger.info("\t+ Received report from isolated process")
             report = BenchmarkReport.from_dict(response["report"])
+            report.log()
         else:
             raise RuntimeError(f"Received an unexpected response from isolated process: {response}")
 
@@ -83,17 +85,16 @@ def target(
     log_to_file = os.environ.get("LOG_TO_FILE", "1") == "1"
     os.environ["ISOLATED_PROCESS_PID"] = str(isolated_process_pid)
     setup_logging(level=log_level, to_file=log_to_file, prefix="ISOLATED-PROCESS")
-    logger.info(f"\t+ Running benchmark in isolated process [{isolated_process_pid}].")
 
     try:
         report = worker(*worker_args)
     except Exception:
-        logger.error("\t+ Exception occurred in isolated process. Sending traceback to main process.")
+        logger.error("\t+ Sending traceback to main process")
         connection.send({"traceback": traceback.format_exc()})
     else:
-        logger.info("\t+ Benchmark completed in isolated process. Sending report to main process.")
+        logger.info("\t+ Sending report to main process")
         connection.send({"report": report.to_dict()})
     finally:
-        logger.info("\t+ Exiting isolated process.")
+        logger.info("\t+ Exiting isolated process")
         connection.close()
         exit(0)

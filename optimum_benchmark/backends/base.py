@@ -1,4 +1,3 @@
-import gc
 import random
 from abc import ABC
 from collections import OrderedDict
@@ -24,8 +23,6 @@ from .transformers_utils import (
 datasets_logging.set_verbosity_error()
 transformers_logging.set_verbosity_error()
 
-LOGGER = getLogger("backend")
-
 
 class Backend(Generic[BackendConfigT], ABC):
     NAME: ClassVar[str]
@@ -39,11 +36,12 @@ class Backend(Generic[BackendConfigT], ABC):
     pretrained_processor: Optional[PretrainedProcessor]
 
     def __init__(self, config: BackendConfigT):
-        LOGGER.info(f"Allocating {self.NAME} backend")
         self.config = config
-        self.seed()
+        self.logger = getLogger(self.NAME)
+        self.logger.info(f"Allocating {self.NAME} backend")
 
         if self.config.library == "diffusers":
+            self.logger.info("\t+ Benchmarking a Diffusers model")
             self.pretrained_config = get_diffusers_pretrained_config(self.config.model, **self.config.hub_kwargs)
             self.model_shapes = extract_diffusers_shapes_from_model(self.config.model, **self.config.hub_kwargs)
             self.model_type = self.config.task
@@ -51,6 +49,7 @@ class Backend(Generic[BackendConfigT], ABC):
             self.generation_config = None
 
         elif self.config.library == "timm":
+            self.logger.info("\t+ Benchmarking a Timm model")
             self.pretrained_config = get_timm_pretrained_config(self.config.model)
             self.model_shapes = extract_timm_shapes_from_config(self.pretrained_config)
             self.model_type = self.pretrained_config.architecture
@@ -58,6 +57,7 @@ class Backend(Generic[BackendConfigT], ABC):
             self.generation_config = None
 
         else:
+            self.logger.info("\t+ Benchmarking a Transformers model")
             self.pretrained_processor = get_transformers_pretrained_processor(
                 self.config.model, **self.config.hub_kwargs
             )
@@ -71,9 +71,11 @@ class Backend(Generic[BackendConfigT], ABC):
         self.automodel_class = get_automodel_class_for_task(
             model_type=self.model_type, library=self.config.library, task=self.config.task, framework="pt"
         )
+        self.logger.info(f"\t+ Using automodel class {self.automodel_class.__name__}")
+        self.seed()
 
     def seed(self) -> None:
-        LOGGER.info(f"\t+ Setting random seed to {self.config.seed}")
+        self.logger.info(f"\t+ Seeding {self.NAME} backend with seed {self.config.seed}")
         random.seed(self.config.seed)
 
     def prepare_for_inference(self, **kwargs) -> None:
@@ -119,10 +121,3 @@ class Backend(Generic[BackendConfigT], ABC):
         This method is used to train the model.
         """
         raise NotImplementedError("Backend must implement train method")
-
-    def cleanup(self) -> None:
-        if hasattr(self, "pretrained_model"):
-            LOGGER.info("\t+ Deleting pretrained model")
-            del self.pretrained_model
-
-        gc.collect()
