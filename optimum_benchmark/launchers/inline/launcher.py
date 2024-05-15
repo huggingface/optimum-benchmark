@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Any, Callable, List
 
 from ...report import BenchmarkReport
 from ..base import Launcher
@@ -11,7 +11,7 @@ class InlineLauncher(Launcher[InlineConfig]):
     def __init__(self, config: InlineConfig):
         super().__init__(config)
 
-    def launch(self, worker: Callable, *worker_args) -> BenchmarkReport:
+    def launch(self, worker: Callable[..., BenchmarkReport], worker_args: List[Any]) -> BenchmarkReport:
         self.logger.warn("The inline launcher is only recommended for debugging purposes and not for benchmarking.")
         report = worker(*worker_args)
         return report
