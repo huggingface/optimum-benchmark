@@ -1,7 +1,7 @@
 defaults:
   - benchmark
   - scenario: inference
-  - launcher: torchrun
+  - launcher: process
   - backend: pytorch
   - _base_
   - _self_
@@ -13,14 +13,14 @@ launcher:
   device_isolation_action: warn
 
 scenario:
-  latency: false
+  latency: true
   memory: true
   input_shapes:
-    batch_size: 2
-    sequence_length: 1280
+    batch_size: 1
+    sequence_length: 128
 
 backend:
   device: cuda
-  device_ids: 0,1
+  device_ids: 0
   no_weights: true
   model: bert-base-uncased
