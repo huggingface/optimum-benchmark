@@ -1,10 +1,17 @@
 import importlib.util
 import os
+import re
 import subprocess
 
 from setuptools import find_packages, setup
 
-OPTIMUM_BENCHMARK_VERSION = "0.2.0"
+# Ensure we match the version set in src/optimum-benchmark/version.py
+try:
+    filepath = "optimum_benchmark/version.py"
+    with open(filepath) as version_file:
+        (__version__,) = re.findall('__version__ = "(.*)"', version_file.read())
+except Exception as error:
+    assert False, "Error: Could not open '%s' due %s\n" % (filepath, error)
 
 MIN_OPTIMUM_VERSION = "1.16.0"
 INSTALL_REQUIRES = [
@@ -88,9 +95,33 @@ EXTRAS_REQUIRE = {
 
 setup(
     packages=find_packages(),
-    name="optimum-benchmark",
-    version=OPTIMUM_BENCHMARK_VERSION,
     install_requires=INSTALL_REQUIRES,
     extras_require=EXTRAS_REQUIRE,
     entry_points={"console_scripts": ["optimum-benchmark=optimum_benchmark.cli:main"]},
+    description="Optimum-Benchmark is a unified multi-backend utility for benchmarking "
+    "Transformers, Timm, Diffusers and Sentence-Transformers with full support of Optimum's "
+    "hardware optimizations & quantization schemes.",
+    long_description=open("README.md", "r", encoding="utf-8").read(),
+    long_description_content_type="text/markdown",
+    classifiers=[
+        "License :: OSI Approved :: Apache Software License",
+        "Intended Audience :: Developers",
+        "Intended Audience :: Education",
+        "Intended Audience :: Science/Research",
+        "Operating System :: OS Independent",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    ],
+    keywords="benchmaek, transformers, quantization, pruning, optimization, training, inference, onnx, onnx runtime, intel, "
+    "habana, graphcore, neural compressor, ipex, ipu, hpu, llm-swarm, py-txi, vllm, auto-gptq, autoawq, "
+    "sentence-transformers, bitsandbytes, codecarbon, flash-attn, deepspeed, diffusers, timm, peft",
+    url="https://github.com/huggingface/optimum-benchmark",
+    author="HuggingFace Inc. Special Ops Team",
+    include_package_data=True,
+    name="optimum-benchmark",
+    version=__version__,
+    license="Apache",
 )
