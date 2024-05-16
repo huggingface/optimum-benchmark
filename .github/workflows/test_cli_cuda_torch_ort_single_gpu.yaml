@@ -36,11 +36,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Set docker image
-        run: |
-          echo "IMAGE: $REGISTRY/$IMAGE_NAME:latest-$IMAGE_FLAVOR"
-          echo "IMAGE=$REGISTRY/$IMAGE_NAME:latest-$IMAGE_FLAVOR" >> $GITHUB_ENV
-
       - name: Run tests
         uses: addnab/docker-run-action@v3
         with:

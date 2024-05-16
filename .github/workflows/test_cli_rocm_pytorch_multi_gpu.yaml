@@ -38,14 +38,12 @@ jobs:
 
       - name: Set target devices
         run: |
-          echo "DEVICE0: $DEVICE0"
-          echo "DEVICE1: $DEVICE1"
+          echo "DEVICE0:$DEVICE0"
+          echo "DEVICE1:$DEVICE1"
           echo "DEVICE0=$DEVICE0" >> $GITHUB_ENV
           echo "DEVICE1=$DEVICE1" >> $GITHUB_ENV
 
       - name: Unroot docker image
-        env:
-          IMAGE:
         run: |
           docker build --build-arg IMAGE=${{ env.IMAGE }} --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) -t ${{ env.IMAGE }}-unroot docker/unroot
 
@@ -54,7 +52,6 @@ jobs:
         env:
           DEVICE0: ${{ env.DEVICE0 }}
           DEVICE1: ${{ env.DEVICE1 }}
-          WORKSPACE: ${{ github.workspace }}
         with:
           image: ${{ env.IMAGE }}-unroot
           options: |
@@ -63,7 +60,7 @@ jobs:
             --device /dev/kfd
             --device /dev/dri/${{ env.DEVICE0 }}
             --device /dev/dri/${{ env.DEVICE1 }}
-            --volume ${{ env.WORKSPACE }}:/workspace
+            --volume ${{ github.workspace }}:/workspace
             --workdir /workspace
           run: |
             pip install -e .[testing,diffusers,timm,deepspeed,peft,autoawq-rocm,auto-gptq-rocm]
