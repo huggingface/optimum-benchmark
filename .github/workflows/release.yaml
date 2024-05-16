@@ -1,0 +1,69 @@
+name: PYPI Release
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Assert vX.X.X tag
+        run: |
+          if [[ ! $GITHUB_REF =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Tag name must be vX.X.X"
+            exit 1
+          fi
+
+      - name: Assert version in tag matches version in optimum_benchmark/version.py (__version__ = "X.X.X")
+        run: |
+          VERSION=$(echo $GITHUB_REF | sed -E 's/^refs\/tags\/v([0-9]+\.[0-9]+\.[0-9]+)$/\1/')
+          if [[ $(grep -E '__version__ = "[0-9]+\.[0-9]+\.[0-9]+"' optimum_benchmark/version.py) != "__version__ = \"$VERSION\"" ]]; then
+            echo "Version in tag does not match version in optimum_benchmark/version.py"
+            exit 1
+          fi
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.10"
+
+      - name: Install requirements
+        run: |
+          pip install --upgrade pip
+          pip install setuptools wheel twine
+
+      - name: Build
+        run: |
+          python setup.py sdist bdist_wheel
+
+      - name: Check
+        run: |
+          twine check dist/*
+
+      - name: Assert one wheel
+        run: |
+          WHEELS=$(ls dist/*.whl)
+          if [ $(echo "$WHEELS" | wc -l) -ne 1 ]; then
+            echo "Expected one wheel, got:"
+            echo "$WHEELS"
+            exit 1
+          fi
+
+      - name: Install the wheel
+        run: |
+          pip install dist/*.whl
+
+      - name: Test
+        run: |
+          optimum-benchmark --config-dir examples --config-name pytorch_bert
+
+      - name: Publish
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          twine upload --repository pypi dist/*
