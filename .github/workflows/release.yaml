@@ -39,11 +39,11 @@ jobs:
 
       - name: Install the wheel
         run: |
-          pip install dist/*.whl
+          pip install dist/*.whl --index-url https://download.pytorch.org/whl/cpu
 
       - name: Test
         run: |
-          optimum-benchmark --config-dir examples --config-name pytorch_bert backend.device=cpu
+          optimum-benchmark --config-dir examples --config-name pytorch_bert backend.device=cpu launcher.device_isolation=false
 
       - name: Publish
         env:
