@@ -1,7 +1,7 @@
 import logging
 import logging.config
 from subprocess import PIPE, STDOUT, Popen
-from typing import Optional
+from typing import List, Optional
 
 
 def setup_logging(
@@ -47,7 +47,7 @@ def setup_logging(
     logging.config.dictConfig(logging_config)
 
 
-def run_subprocess_and_log_stream_output(logger: logging.Logger, args: list[str]) -> Popen:
+def run_subprocess_and_log_stream_output(logger: logging.Logger, args: List[str]) -> Popen:
     popen = Popen(args, stdout=PIPE, stderr=STDOUT)
 
     for line in iter(popen.stdout.readline, b""):
