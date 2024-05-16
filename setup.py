@@ -58,11 +58,12 @@ if USE_ROCM:
             "Please install amdsmi from https://github.com/ROCm/amdsmi to enable this feature."
         )
 
-AUTOGPTQ_CUDA = "auto-gptq==0.7.1"
-AUTOGPTQ_ROCM = "auto-gptq@https://huggingface.github.io/autogptq-index/whl/rocm573/auto-gptq/auto_gptq-0.7.1%2Brocm5.7.3-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
-
-AUTOAWQ_CUDA = "autoawq==0.2.1"
-AUTOAWQ_ROCM = "autoawq@https://github.com/casper-hansen/AutoAWQ/releases/download/v0.2.1/autoawq-0.2.1+rocm571-cp310-cp310-linux_x86_64.whl"
+if USE_ROCM:
+    AUTOAWQ = "autoawq@https://github.com/casper-hansen/AutoAWQ/releases/download/v0.2.1/autoawq-0.2.1+rocm571-cp310-cp310-linux_x86_64.whl"
+    AUTOGPTQ = "auto-gptq@https://huggingface.github.io/autogptq-index/whl/rocm573/auto-gptq/auto_gptq-0.7.1%2Brocm5.7.3-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
+else:
+    AUTOAWQ = "autoawq==0.2.1"
+    AUTOGPTQ = "auto-gptq==0.7.1"
 
 EXTRAS_REQUIRE = {
     "quality": ["ruff"],
@@ -74,14 +75,12 @@ EXTRAS_REQUIRE = {
     "neural-compressor": [f"optimum[neural-compressor]>={MIN_OPTIMUM_VERSION}"],
     "torch-ort": ["torch-ort", "onnxruntime-training", f"optimum>={MIN_OPTIMUM_VERSION}"],
     # other backends
-    "llm-swarm": ["llm-swarm@git+https://github.com/huggingface/llm-swarm.git"],
-    "py-txi": ["py-txi@git+https://github.com/IlyasMoutawwakil/py-txi.git"],
+    "llm-swarm": ["llm-swarm"],
+    "py-txi": ["py-txi"],
     "vllm": ["vllm"],
     # optional dependencies
-    "autoawq": [AUTOAWQ_CUDA],
-    "autoawq-rocm": [AUTOAWQ_ROCM],
-    "auto-gptq": ["optimum", AUTOGPTQ_CUDA],
-    "auto-gptq-rocm": ["optimum", AUTOGPTQ_ROCM],
+    "autoawq": [AUTOAWQ],
+    "auto-gptq": ["optimum", AUTOGPTQ],
     "sentence-transformers": ["sentence-transformers"],
     "bitsandbytes": ["bitsandbytes"],
     "codecarbon": ["codecarbon"],
