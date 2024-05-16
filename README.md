@@ -99,8 +99,6 @@ We also support the following extra extra dependencies:
 
 - autoawq
 - auto-gptq
-- autoawq-rocm
-- auto-gptq-rocm
 - sentence-transformers
 - bitsandbytes
 - codecarbon
