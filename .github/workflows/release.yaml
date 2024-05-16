@@ -1,6 +1,7 @@
 name: PYPI Release
 
 on:
+  workflow_dispatch:
   release:
     types: [created]
 
@@ -18,7 +19,7 @@ jobs:
             exit 1
           fi
 
-      - name: Assert version in tag matches version in optimum_benchmark/version.py (__version__ = "X.X.X")
+      - name: Assert matching versions
         run: |
           VERSION=$(echo $GITHUB_REF | sed -E 's/^refs\/tags\/v([0-9]+\.[0-9]+\.[0-9]+)$/\1/')
           if [[ $(grep -E '__version__ = "[0-9]+\.[0-9]+\.[0-9]+"' optimum_benchmark/version.py) != "__version__ = \"$VERSION\"" ]]; then
@@ -59,7 +60,7 @@ jobs:
 
       - name: Test
         run: |
-          optimum-benchmark --config-dir examples --config-name pytorch_bert
+          optimum-benchmark --config-dir examples --config-name pytorch_bert backend.device=cpu
 
       - name: Publish
         env:
