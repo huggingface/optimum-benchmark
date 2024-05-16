@@ -7,6 +7,7 @@ from optimum_benchmark.logging_utils import run_subprocess_and_log_stream_output
 
 LOGGER = getLogger("test")
 
+
 TEST_CONFIG_DIR = "/".join(__file__.split("/")[:-1] + ["configs"])
 TEST_CONFIG_NAMES = [
     config.split(".")[0]

@@ -41,6 +41,7 @@ Optimum-Benchmark is continuously and intensively tested on a variety of devices
 [![CLI_CPU_PYTORCH](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_pytorch.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_pytorch.yaml)
 [![CLI_CPU_PY_TXI](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_py_txi.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_py_txi.yaml)
 [![CLI_CUDA_ONNXRUNTIME](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_onnxruntime.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_onnxruntime.yaml)
+[![CLI_CUDA_VLLM](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_vllm.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_vllm.yaml)
 [![CLI_CUDA_PYTORCH_MULTI_GPU](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_pytorch_multi_gpu.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_pytorch_multi_gpu.yaml)
 [![CLI_CUDA_PYTORCH_SINGLE_GPU](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_pytorch_single_gpu.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_pytorch_single_gpu.yaml)
 [![CLI_CUDA_TENSORRT_LLM](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_tensorrt_llm.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_tensorrt_llm.yaml)
@@ -81,12 +82,28 @@ Depending on the backends you want to use, you can install `optimum-benchmark` w
 - OnnxRuntime-GPU: `pip install optimum-benchmark[onnxruntime-gpu]`
 - Neural Compressor: `pip install optimum-benchmark[neural-compressor]`
 - Py-TXI: `pip install optimum-benchmark[py-txi]`
+- vLLM: `pip install optimum-benchmark[vllm]`
+
+We also support the following extra extra dependencies:
+
+- autoawq
+- auto-gptq
+- autoawq-rocm
+- auto-gptq-rocm
+- sentence-transformers
+- bitsandbytes
+- codecarbon
+- flash-attn
+- deepspeed
+- diffusers
+- timm
+- peft
 
 </details>
 
 ### Running benchmarks using the Python API 🧪
 
-You can run benchmarks from the Python API, using the `Benchmark` class and its `launch` method. It takes a `BenchmarkConfig` object as input, runs the benchmark in isolated process and returns a `BenchmarkReport` object containing the benchmark results.
+You can run benchmarks from the Python API, using the `Benchmark` class and its `launch` method. It takes a `BenchmarkConfig` object as input, runs the benchmark in an isolated process and returns a `BenchmarkReport` object containing the benchmark results.
 
 Here's an example of how to run an isolated benchmark using the `pytorch` backend, `torchrun` launcher and `inference` scenario with latency and memory tracking enabled.
 
@@ -108,13 +125,28 @@ if __name__ == "__main__":
     )
     benchmark_report = Benchmark.launch(benchmark_config)
 
+    # log the benchmark in terminal
+    benchmark_report.log() # or print(benchmark_report)
+
+    # convert artifacts to a dictionary or dataframe
+    benchmark_config.to_dict() # or benchmark_config.to_dataframe()
+
+    # save artifacts to disk as json or csv files
+    benchmark_report.save_csv("benchmark_report.csv") # or benchmark_report.save_json("benchmark_report.json")
+
     # push artifacts to the hub
-    benchmark_config.push_to_hub("IlyasMoutawwakil/pytorch_gpt2")
-    benchmark_report.push_to_hub("IlyasMoutawwakil/pytorch_gpt2")
+    benchmark_config.push_to_hub("IlyasMoutawwakil/pytorch_gpt2") # or benchmark_config.push_to_hub("IlyasMoutawwakil/pytorch_gpt2")
 
     # or merge them into a single artifact
     benchmark = Benchmark(config=benchmark_config, report=benchmark_report)
+    benchmark.save_json("benchmark.json") # or benchmark.save_csv("benchmark.csv")
     benchmark.push_to_hub("IlyasMoutawwakil/pytorch_gpt2")
+
+    # load artifacts from the hub
+    benchmark = Benchmark.from_hub("IlyasMoutawwakil/pytorch_gpt2") # or Benchmark.from_hub("IlyasMoutawwakil/pytorch_gpt2")
+
+    # or load them from disk
+    benchmark = Benchmark.load_json("benchmark.json") # or Benchmark.load_csv("benchmark_report.csv")
 ```
 
 If you're on VSCode, you can hover over the configuration classes to see the available parameters and their descriptions. You can also see the available parameters in the [Features](#features-) section below.
@@ -230,6 +262,9 @@ See [TrainingConfig](optimum_benchmark/scenarios/training/config.py) for more in
 - [x] Torch-ORT backend for CUDA (`backend=torch-ort`, `backend.device=cuda`)
 - [x] OpenVINO backend for CPU (`backend=openvino`, `backend.device=cpu`)
 - [x] OpenVINO backend for GPU (`backend=openvino`, `backend.device=gpu`)
+- [x] vLLM backend for CUDA (`backend=vllm`, `backend.device=cuda`)
+- [x] vLLM backend for ROCM (`backend=vllm`, `backend.device=rocm`)
+- [x] vLLM backend for CPU (`backend=vllm`, `backend.device=cpu`)
 
 <details>
 <summary>General backend features 🧰</summary>
@@ -246,6 +281,7 @@ See [TrainingConfig](optimum_benchmark/scenarios/training/config.py) for more in
 
 For more information on the features of each backend, you can check their respective configuration files:
 
+- [VLLMConfig](optimum_benchmark/backends/vllm/config.py)
 - [OVConfig](optimum_benchmark/backends/openvino/config.py)
 - [PyTXIConfig](optimum_benchmark/backends/py_txi/config.py)
 - [PyTorchConfig](optimum_benchmark/backends/pytorch/config.py)
