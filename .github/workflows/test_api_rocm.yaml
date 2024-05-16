@@ -52,7 +52,7 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PUSH_REPO_ID: optimum-benchmark/rocm
         with:
-          image: ${{ env.IMAGE }}
+          image: ${{ env.IMAGE }}-unroot
           options: |
             --rm
             --shm-size 64G
