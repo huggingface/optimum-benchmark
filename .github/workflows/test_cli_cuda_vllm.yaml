@@ -1,4 +1,4 @@
-name: CLI CUDA Torch-ORT Single-GPU Tests
+name: CLI CUDA vLLM Tests
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - .github/workflows/test_cli_cuda_torch_ort_single_gpu.yaml
+      - .github/workflows/test_cli_cuda_vllm.yaml
       - "optimum_benchmark/**"
       - "docker/**"
       - "tests/**"
@@ -15,7 +15,7 @@ on:
     branches:
       - main
     paths:
-      - .github/workflows/test_cli_cuda_torch_ort_single_gpu.yaml
+      - .github/workflows/test_cli_cuda_vllm.yaml
       - "optimum_benchmark/**"
       - "docker/**"
       - "tests/**"
@@ -26,10 +26,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
 env:
-  IMAGE: ghcr.io/huggingface/optimum-benchmark:latest-cuda-ort
+  IMAGE: ghcr.io/huggingface/optimum-benchmark:latest-cuda
 
 jobs:
-  build_image_and_run_cli_cuda_torch_ort_single_gpu_tests:
+  run_cli_cuda_pytorch_tests:
     runs-on: [single-gpu, nvidia-gpu, a10, ci]
 
     steps:
@@ -48,5 +48,6 @@ jobs:
             --volume ${{ github.workspace }}:/workspace
             --workdir /workspace
           run: |
-            pip install -e .[testing,torch-ort,peft]
-            pytest -x -s -k "cli and cuda and torch_ort and not (dp or ddp or device_map) and not (peft)"
+            pip install packaging
+            pip install -e .[testing,vllm,flash-attn]
+            pytest -x -s -k "cli and cuda and vllm"

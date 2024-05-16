@@ -59,7 +59,7 @@ class INCBackend(Backend[INCConfig]):
         self.logger.info(f"Using INCModel class {self.incmodel_class.__name__}")
 
     def load_automodel_from_pretrained(self) -> None:
-        self.pretrained_model = self.automodel_class.from_pretrained(self.config.model, **self.config.hub_kwargs)
+        self.pretrained_model = self.automodel_class.from_pretrained(self.config.model, **self.config.model_kwargs)
 
     def create_no_weights_model(self) -> None:
         self.no_weights_model = os.path.join(self.tmpdir.name, "no_weights_model")
@@ -88,7 +88,7 @@ class INCBackend(Backend[INCConfig]):
         self.pretrained_model.tie_weights()
 
     def load_incmodel_from_pretrained(self) -> None:
-        self.pretrained_model = self.incmodel_class.from_pretrained(self.config.model, **self.config.hub_kwargs)
+        self.pretrained_model = self.incmodel_class.from_pretrained(self.config.model, **self.config.model_kwargs)
 
     def load_incmodel_with_no_weights(self) -> None:
         self.logger.info("\t+ Creating no weights model")

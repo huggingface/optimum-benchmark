@@ -118,7 +118,7 @@ class ORTBackend(Backend[ORTConfig]):
             provider_options=self.config.provider_options,
             use_io_binding=self.config.use_io_binding,
             provider=self.config.provider,
-            **self.config.hub_kwargs,
+            **self.config.model_kwargs,
             **self.ortmodel_kwargs,
         )
 

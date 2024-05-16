@@ -69,6 +69,7 @@ EXTRAS_REQUIRE = {
     # other backends
     "llm-swarm": ["llm-swarm@git+https://github.com/huggingface/llm-swarm.git"],
     "py-txi": ["py-txi@git+https://github.com/IlyasMoutawwakil/py-txi.git"],
+    "vllm": ["vllm"],
     # optional dependencies
     "autoawq": [AUTOAWQ_CUDA],
     "autoawq-rocm": [AUTOAWQ_ROCM],
@@ -77,6 +78,7 @@ EXTRAS_REQUIRE = {
     "sentence-transformers": ["sentence-transformers"],
     "bitsandbytes": ["bitsandbytes"],
     "codecarbon": ["codecarbon"],
+    "flash-attn": ["flash-attn"],
     "deepspeed": ["deepspeed"],
     "diffusers": ["diffusers"],
     "timm": ["timm"],

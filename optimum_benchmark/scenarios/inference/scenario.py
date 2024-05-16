@@ -404,7 +404,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
 
     @property
     def atomic_prefill_volume(self) -> int:  # in tokens
-        if "input_ids" in self.inputs:
+        if {"input_ids", "prompt", "prompts"} & set(self.inputs.keys()):
             # text conditioned generation (1 bos token or sequence_length tokens)
             return self.config.input_shapes["batch_size"] * max(self.config.input_shapes["sequence_length"], 1)
         else:

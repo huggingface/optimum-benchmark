@@ -18,8 +18,6 @@ class PyTXIBackend(Backend[PyTXIConfig]):
     def __init__(self, config: PyTXIConfig) -> None:
         super().__init__(config)
 
-        self.volume = list(self.config.volumes.keys())[0]
-
         self.logger.info("\t+ Creating backend temporary directory")
         self.tmpdir = TemporaryDirectory()
 
@@ -39,21 +37,22 @@ class PyTXIBackend(Backend[PyTXIConfig]):
 
         self.tmpdir.cleanup()
 
+    @property
+    def volume(self) -> str:
+        return list(self.config.volumes.keys())[0]
+
     def download_pretrained_model(self) -> None:
         # directly downloads pretrained model in volume (/data) to change generation config before loading model
         with torch.device("meta"):
-            self.automodel_class.from_pretrained(self.config.model, **self.config.hub_kwargs, cache_dir=self.volume)
+            self.automodel_class.from_pretrained(self.config.model, **self.config.model_kwargs, cache_dir=self.volume)
 
     def prepare_generation_config(self) -> None:
         self.generation_config.eos_token_id = -100
         self.generation_config.pad_token_id = -100
-        self.generation_config.temperature = 1.0
-        self.generation_config.top_p = 1.0
-        self.generation_config.top_k = 50
 
         model_cache_folder = f"models/{self.config.model}".replace("/", "--")
         model_cache_path = f"{self.volume}/{model_cache_folder}"
-        snapshot_file = f"{model_cache_path}/refs/{self.config.hub_kwargs.get('revision', 'main')}"
+        snapshot_file = f"{model_cache_path}/refs/{self.config.model_kwargs.get('revision', 'main')}"
         snapshot_ref = open(snapshot_file, "r").read().strip()
         model_snapshot_path = f"{model_cache_path}/snapshots/{snapshot_ref}"
         self.logger.info("\t+ Saving new pretrained generation config")
@@ -76,7 +75,7 @@ class PyTXIBackend(Backend[PyTXIConfig]):
         self.logger.info(f"\t+ Loading no weights model from {self.no_weights_model}")
         with random_init_weights():
             self.pretrained_model = self.automodel_class.from_pretrained(
-                self.no_weights_model, **self.config.hub_kwargs, device_map="auto", _fast_init=False
+                self.no_weights_model, **self.config.model_kwargs, device_map="auto", _fast_init=False
             )
         self.logger.info("\t+ Saving no weights model")
         self.pretrained_model.save_pretrained(save_directory=self.no_weights_model)
@@ -87,9 +86,6 @@ class PyTXIBackend(Backend[PyTXIConfig]):
             self.logger.info("\t+ Modifying generation config for fixed length generation")
             self.generation_config.eos_token_id = -100
             self.generation_config.pad_token_id = -100
-            self.generation_config.temperature = 1.0
-            self.generation_config.top_p = 1.0
-            self.generation_config.top_k = 50
 
             self.logger.info("\t+ Saving new pretrained generation config")
             self.generation_config.save_pretrained(save_directory=self.no_weights_model)

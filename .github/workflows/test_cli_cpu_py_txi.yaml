@@ -44,8 +44,5 @@ jobs:
           pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
           pip install -e .[testing,py-txi]
 
-      - name: Pull TEI docker image
-        run: docker pull ghcr.io/huggingface/text-embeddings-inference:cpu-latest
-
       - name: Run tests
         run: pytest -s -k "cli and cpu and py_txi"

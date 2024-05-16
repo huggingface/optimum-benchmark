@@ -8,6 +8,7 @@ from .backends import (
     PyTXIConfig,
     TorchORTConfig,
     TRTLLMConfig,
+    VLLMConfig,
 )
 from .base import Benchmark
 from .config import BenchmarkConfig
@@ -36,6 +37,7 @@ __all__ = [
     "TrainingConfig",
     "TorchORTConfig",
     "TRTLLMConfig",
+    "VLLMConfig",
     "TorchrunConfig",
     "ExperimentConfig",
     "launch",

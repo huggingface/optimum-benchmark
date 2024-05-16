@@ -42,8 +42,8 @@ class Backend(Generic[BackendConfigT], ABC):
 
         if self.config.library == "diffusers":
             self.logger.info("\t+ Benchmarking a Diffusers model")
-            self.pretrained_config = get_diffusers_pretrained_config(self.config.model, **self.config.hub_kwargs)
-            self.model_shapes = extract_diffusers_shapes_from_model(self.config.model, **self.config.hub_kwargs)
+            self.pretrained_config = get_diffusers_pretrained_config(self.config.model, **self.config.model_kwargs)
+            self.model_shapes = extract_diffusers_shapes_from_model(self.config.model, **self.config.model_kwargs)
             self.model_type = self.config.task
             self.pretrained_processor = None
             self.generation_config = None
@@ -58,11 +58,11 @@ class Backend(Generic[BackendConfigT], ABC):
 
         else:
             self.logger.info("\t+ Benchmarking a Transformers model")
+            self.generation_config = get_transformers_generation_config(self.config.model, **self.config.model_kwargs)
+            self.pretrained_config = get_transformers_pretrained_config(self.config.model, **self.config.model_kwargs)
             self.pretrained_processor = get_transformers_pretrained_processor(
-                self.config.model, **self.config.hub_kwargs
+                self.config.processor, **self.config.processor_kwargs
             )
-            self.generation_config = get_transformers_generation_config(self.config.model, **self.config.hub_kwargs)
-            self.pretrained_config = get_transformers_pretrained_config(self.config.model, **self.config.hub_kwargs)
             self.model_shapes = extract_transformers_shapes_from_artifacts(
                 self.pretrained_config, self.pretrained_processor
             )

@@ -2,6 +2,8 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Union
 
+from huggingface_hub.constants import HUGGINGFACE_HUB_CACHE
+
 from ...import_utils import py_txi_version
 from ...system_utils import is_nvidia_system, is_rocm_system
 from ...task_utils import TEXT_EMBEDDING_TASKS, TEXT_GENERATION_TASKS
@@ -31,7 +33,7 @@ class PyTXIConfig(BackendConfig):
         metadata={"help": "Dictionary of ports to expose from the container."},
     )
     volumes: Dict[str, Any] = field(
-        default_factory=lambda: {os.path.expanduser("~/.cache/huggingface/hub"): {"bind": "/data", "mode": "rw"}},
+        default_factory=lambda: {HUGGINGFACE_HUB_CACHE: {"bind": "/data", "mode": "rw"}},
         metadata={"help": "Dictionary of volumes to mount inside the container."},
     )
     environment: List[str] = field(
@@ -80,4 +82,4 @@ class PyTXIConfig(BackendConfig):
         # TGI specific
         if self.task in TEXT_GENERATION_TASKS:
             if self.trust_remote_code is None:
-                self.trust_remote_code = self.hub_kwargs.get("trust_remote_code", False)
+                self.trust_remote_code = self.model_kwargs.get("trust_remote_code", False)

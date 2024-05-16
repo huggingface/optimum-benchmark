@@ -25,6 +25,7 @@ from . import (
     TorchrunConfig,
     TrainingConfig,
     TRTLLMConfig,
+    VLLMConfig,
     launch,
 )
 from .logging_utils import setup_logging
@@ -75,6 +76,7 @@ cs.store(group="backend", name=TRTLLMConfig.name, node=TRTLLMConfig)
 cs.store(group="backend", name=INCConfig.name, node=INCConfig)
 cs.store(group="backend", name=PyTXIConfig.name, node=PyTXIConfig)
 cs.store(group="backend", name=LLMSwarmConfig.name, node=LLMSwarmConfig)
+cs.store(group="backend", name=VLLMConfig.name, node=VLLMConfig)
 # scenarios configurations
 cs.store(group="scenario", name=TrainingConfig.name, node=TrainingConfig)
 cs.store(group="scenario", name=InferenceConfig.name, node=InferenceConfig)
@@ -83,7 +85,6 @@ cs.store(group="scenario", name=EnergyStarConfig.name, node=EnergyStarConfig)
 cs.store(group="launcher", name=InlineConfig.name, node=InlineConfig)
 cs.store(group="launcher", name=ProcessConfig.name, node=ProcessConfig)
 cs.store(group="launcher", name=TorchrunConfig.name, node=TorchrunConfig)
-
 # deprecated
 cs.store(name="experiment", node=ExperimentConfig)
 cs.store(group="benchmark", name=TrainingConfig.name, node=DeprecatedTrainingConfig)

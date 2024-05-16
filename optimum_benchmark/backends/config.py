@@ -11,14 +11,6 @@ from ..task_utils import infer_library_from_model_name_or_path, infer_task_from_
 
 LOGGER = getLogger("backend")
 
-# backends share the same hub kwargs
-HUB_KWARGS = {
-    "revision": "main",
-    "force_download": False,
-    "local_files_only": False,
-    "trust_remote_code": False,
-}
-
 
 @dataclass
 class BackendConfig(ABC):
@@ -27,8 +19,10 @@ class BackendConfig(ABC):
     _target_: str
 
     task: Optional[str] = None
-    model: Optional[str] = None
     library: Optional[str] = None
+
+    model: Optional[str] = None
+    processor: Optional[str] = None
 
     device: Optional[str] = None
     device_ids: Optional[str] = None
@@ -40,11 +34,28 @@ class BackendConfig(ABC):
     inter_op_num_threads: Optional[int] = None
     intra_op_num_threads: Optional[int] = None
 
+    # model kwargs that are added to its init method/constructor
+    model_kwargs: Dict[str, Any] = field(default_factory=dict)
+    # processor kwargs that are added to its init method/constructor
+    processor_kwargs: Dict[str, Any] = field(default_factory=dict)
+
+    # deprecated
     hub_kwargs: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         if self.model is None:
             raise ValueError("`model` must be specified.")
+
+        if self.processor is None:
+            self.processor = self.model
+
+        if self.hub_kwargs:
+            LOGGER.warning(
+                "`hub_kwargs` is deprecated and will be removed in future versions."
+                "Please use `model_kwargs` and `processor_kwargs` seperately."
+            )
+            self.model_kwargs = {**self.model_kwargs, **self.hub_kwargs}
+            self.processor_kwargs = {**self.processor_kwargs, **self.hub_kwargs}
 
         if self.task is None:
             self.task = infer_task_from_model_name_or_path(self.model, self.hub_kwargs.get("revision", None))
@@ -89,8 +100,6 @@ class BackendConfig(ABC):
         if self.intra_op_num_threads is not None:
             if self.intra_op_num_threads == -1:
                 self.intra_op_num_threads = cpu_count()
-
-        self.hub_kwargs = {**HUB_KWARGS, **self.hub_kwargs}
 
 
 BackendConfigT = TypeVar("BackendConfigT", bound=BackendConfig)

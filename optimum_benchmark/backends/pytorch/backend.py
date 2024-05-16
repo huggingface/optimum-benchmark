@@ -156,7 +156,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 pretrained_model_name_or_path=self.config.model,
                 pretrained_model_or_path=self.config.model,
                 device_map=self.config.device_map,
-                **self.config.hub_kwargs,
+                **self.config.model_kwargs,
                 **self.automodel_kwargs,
             )
             if self.config.device_map is None and self.config.device != "cpu":
@@ -171,7 +171,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 # quantized models are more compatible with device_map dispatcher than (to(device))
                 # using to(device) on quantized models sometimes leaves some layers on cpu or raises
                 # an error because the layers are already on the device
-                **self.config.hub_kwargs,
+                **self.config.model_kwargs,
                 **self.automodel_kwargs,
             )
 
@@ -180,14 +180,14 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.pretrained_model = self.automodel_class.from_pretrained(
                 pretrained_model_name_or_path=self.config.model,
                 device_map=self.config.device_map,
-                **self.config.hub_kwargs,
+                **self.config.model_kwargs,
                 **self.automodel_kwargs,
             )
 
         else:
             self.logger.info("\t+ Loading Transformers model")
             self.pretrained_model = self.automodel_class.from_pretrained(
-                pretrained_model_name_or_path=self.config.model, **self.config.hub_kwargs, **self.automodel_kwargs
+                pretrained_model_name_or_path=self.config.model, **self.config.model_kwargs, **self.automodel_kwargs
             )
             if self.config.device != "cpu":
                 self.logger.info(f"\t+ Moving Transformers model to device: {self.config.device}")
@@ -234,7 +234,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 self.logger.info("\t+ Loading Transformers model on meta device for fast initialization")
                 self.pretrained_model = self.automodel_class.from_pretrained(
                     pretrained_model_name_or_path=self.config.model,
-                    **self.config.hub_kwargs,
+                    **self.config.model_kwargs,
                     **self.automodel_kwargs,
                 )
             self.logger.info("\t+ Materializing meta model on CPU to avoid OOM")
@@ -245,7 +245,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 self.logger.info("\t+ Loading Transformers model using device context manager for fast initialization")
                 self.pretrained_model = self.automodel_class.from_pretrained(
                     pretrained_model_name_or_path=self.no_weights_model,
-                    **self.config.hub_kwargs,
+                    **self.config.model_kwargs,
                     **self.automodel_kwargs,
                 )
 

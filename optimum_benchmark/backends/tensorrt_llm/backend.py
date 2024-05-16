@@ -61,7 +61,7 @@ class TRTLLMBackend(Backend[TRTLLMConfig]):
             max_batch_size=self.config.max_batch_size,
             max_new_tokens=self.config.max_new_tokens,
             max_beam_width=self.config.max_beam_width,
-            **self.config.hub_kwargs,
+            **self.config.model_kwargs,
         )
 
     def prefill(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:

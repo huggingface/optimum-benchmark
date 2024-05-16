@@ -94,7 +94,7 @@ class OVBackend(Backend[OVConfig]):
         self.pretrained_model.tie_weights()
 
     def load_automodel_from_pretrained(self) -> None:
-        self.pretrained_model = self.automodel_class.from_pretrained(self.config.model, **self.config.hub_kwargs)
+        self.pretrained_model = self.automodel_class.from_pretrained(self.config.model, **self.config.model_kwargs)
 
     def load_ovmodel_with_no_weights(self) -> None:
         self.logger.info("\t+ Creating no weights model")
@@ -114,7 +114,7 @@ class OVBackend(Backend[OVConfig]):
             export=self.config.export,
             ov_config=self.config.openvino_config,
             device=self.config.device,
-            **self.config.hub_kwargs,
+            **self.config.model_kwargs,
             **self.ovmodel_kwargs,
         )
 
