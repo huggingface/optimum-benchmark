@@ -59,5 +59,5 @@ jobs:
             --volume ${{ github.workspace }}:/workspace
             --workdir /workspace
           run: |
-            pip install -e .[testing,diffusers,timm,peft,autoawq-rocm,auto-gptq-rocm]
+            pip install -e .[testing,diffusers,timm,peft,autoawq,auto-gptq]
             pytest -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not (bnb or awq)"
