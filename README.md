@@ -6,14 +6,19 @@ Optimum-Benchmark is a unified [multi-backend & multi-device](#backends--devices
 
 *News* 📰
 
-- Pypi package will be available soon.
+- PyPI package is now available for installation: `pip install optimum-benchmark` 🎉 check it out !
+- Hosted 4 minimal docker images (`cpu`, `cuda`, `rocm`, `cuda-ort`) in [packages](https://github.com/huggingface/optimum-benchmark/pkgs/container/optimum-benchmark) for testing, benchmarking and reproducibility 🐳
+- Added vLLM backend for benchmarking [vLLM](https://github.com/vllm-project/vllm)'s inference engine 🚀
+- Hosted the codebase of the LLM-Perf Leaderboard [LLM-Perf](https://huggingface.co/spaces/optimum/llm-perf-leaderboard) 🥇
+- Added Py-TXI backend for benchmarking [Py-TXI](https://github.com/IlyasMoutawwakil/py-txi/tree/main) 🚀
+- Introduced a Python API for running isolated benchmarks from the comfort of your Python scripts 🐍
+- Simplified the CLI interface for running benchmarks using the Hydra CLI 🧪
 
 *Motivations* 🎯
 
 - HuggingFace hardware partners wanting to know how their hardware performs compared to another hardware on the same models.
 - HuggingFace ecosystem users wanting to know how their chosen model performs in terms of latency, throughput, memory usage, energy consumption, etc compared to another model.
 - Benchmarking hardware & backend specific optimizations & quantization schemes that can be applied to models and improve their computational/memory/energy efficiency.
-- [...]
 
 &#160;
 
@@ -55,10 +60,16 @@ Optimum-Benchmark is continuously and intensively tested on a variety of devices
 
 ### Installation 📥
 
-You can install `optimum-benchmark` using `pip`:
+You can install the latest released version of `optimum-benchmark` on PyPI:
 
 ```bash
-pip install optimum-benchmark@git+https://github.com/huggingface/optimum-benchmark.git
+pip install optimum-benchmark
+```
+
+or you can install the latest version from the main branch on GitHub:
+
+```bash
+pip install git+https://github.com/huggingface/optimum-benchmark.git
 ```
 
 or if you want to tinker with the code, you can clone the repository and install it in editable mode:
