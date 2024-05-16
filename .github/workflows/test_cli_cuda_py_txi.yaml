@@ -43,11 +43,5 @@ jobs:
           pip install --upgrade pip
           pip install -e .[testing,py-txi]
 
-      - name: Pull TGI docker image
-        run: docker pull ghcr.io/huggingface/text-generation-inference:latest
-
-      - name: Pull TEI docker image
-        run: docker pull ghcr.io/huggingface/text-embeddings-inference:latest
-
       - name: Run tests
         run: pytest -s -k "cli and cuda and py_txi"

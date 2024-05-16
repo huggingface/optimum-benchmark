@@ -26,9 +26,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
 env:
-  REGISTRY: ghcr.io
-  IMAGE_FLAVOR: rocm
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE: ghcr.io/huggingface/optimum-benchmark:latest-rocm
 
 jobs:
   run_cli_rocm_pytorch_multi_gpu_tests:
@@ -45,28 +43,20 @@ jobs:
           echo "DEVICE0=$DEVICE0" >> $GITHUB_ENV
           echo "DEVICE1=$DEVICE1" >> $GITHUB_ENV
 
-      - name: Set docker image
-        run: |
-          echo "IMAGE: $REGISTRY/$IMAGE_NAME:latest-$IMAGE_FLAVOR"
-          echo "IMAGE=$REGISTRY/$IMAGE_NAME:latest-$IMAGE_FLAVOR" >> $GITHUB_ENV
-
       - name: Unroot docker image
         env:
-          IMAGE: ${{ env.IMAGE }}
+          IMAGE:
         run: |
-          docker build --build-arg IMAGE=$IMAGE --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) -t $IMAGE-unroot docker/unroot
-          echo "IMAGE: $IMAGE-unroot"
-          echo "IMAGE=$IMAGE-unroot" >> $GITHUB_ENV
+          docker build --build-arg IMAGE=${{ env.IMAGE }} --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) -t ${{ env.IMAGE }}-unroot docker/unroot
 
       - name: Run tests
         uses: addnab/docker-run-action@v3
         env:
-          IMAGE: ${{ env.IMAGE }}
           DEVICE0: ${{ env.DEVICE0 }}
           DEVICE1: ${{ env.DEVICE1 }}
           WORKSPACE: ${{ github.workspace }}
         with:
-          image: ${{ env.IMAGE }}
+          image: ${{ env.IMAGE }}-unroot
           options: |
             --rm
             --shm-size 64G

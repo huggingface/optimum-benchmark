@@ -25,6 +25,9 @@ concurrency:
   cancel-in-progress: true
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
+env:
+  IMAGE: huggingface/optimum-nvidia:latest
+
 jobs:
   cli_cuda_tensorrt_llm_tests:
     runs-on: [single-gpu, nvidia-gpu, a10, ci]
@@ -36,7 +39,7 @@ jobs:
       - name: Run tests
         uses: addnab/docker-run-action@v3
         with:
-          image: huggingface/optimum-nvidia:latest
+          image: ${{ env.IMAGE }}
           options: |
             --rm 
             --gpus all 
