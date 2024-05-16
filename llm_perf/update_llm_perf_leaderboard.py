@@ -60,7 +60,7 @@ def update_llm_df():
         repo_id=REPO_ID,
         repo_type=REPO_TYPE,
         path_in_repo="llm-df.csv",
-        path_or_fileobj="llm-df.csv",
+        path_or_fileobj="open-llm-leaderboard.csv",
     )
 
 

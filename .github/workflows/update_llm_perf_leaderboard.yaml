@@ -24,6 +24,7 @@ jobs:
       - name: Install requirements
         run: |
           pip install --upgrade pip
+          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
           pip install pandas huggingface_hub[hf_transfer]
           pip install .
 
