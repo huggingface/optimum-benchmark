@@ -2,8 +2,6 @@ name: PYPI Release
 
 on:
   workflow_dispatch:
-  release:
-    types: [created]
 
 jobs:
   release:
@@ -11,21 +9,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
-      - name: Assert vX.X.X tag
-        run: |
-          if [[ ! $GITHUB_REF =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Tag name must be vX.X.X"
-            exit 1
-          fi
-
-      - name: Assert matching versions
-        run: |
-          VERSION=$(echo $GITHUB_REF | sed -E 's/^refs\/tags\/v([0-9]+\.[0-9]+\.[0-9]+)$/\1/')
-          if [[ $(grep -E '__version__ = "[0-9]+\.[0-9]+\.[0-9]+"' optimum_benchmark/version.py) != "__version__ = \"$VERSION\"" ]]; then
-            echo "Version in tag does not match version in optimum_benchmark/version.py"
-            exit 1
-          fi
 
       - name: Set up Python 3.10
         uses: actions/setup-python@v3
