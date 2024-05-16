@@ -1,3 +1,4 @@
+import subprocess
 from glob import glob
 from tempfile import TemporaryDirectory
 
@@ -29,9 +30,35 @@ def gather_benchmarks(subset: str, machine: str):
     tmp_dir.cleanup()
 
 
-for subset in ["unquantized", "bnb", "awq", "gptq"]:
-    for machine in ["1xA10", "1xA100"]:
-        try:
-            gather_benchmarks(subset, machine)
-        except Exception:
-            print(f"Subset {subset} for machine {machine} not found")
+def update_perf_dfs():
+    for subset in ["unquantized", "bnb", "awq", "gptq"]:
+        for machine in ["1xA10", "1xA100"]:
+            try:
+                gather_benchmarks(subset, machine)
+            except Exception:
+                print(f"Subset {subset} for machine {machine} not found")
+
+
+scrapping_script = """
+git clone https://github.com/Weyaxi/scrape-open-llm-leaderboard.git
+pip install -r scrape-open-llm-leaderboard/requirements.txt
+python scrape-open-llm-leaderboard/main.py
+rm -rf scrape-open-llm-leaderboard
+"""
+
+
+def update_llm_df():
+    subprocess.run(scrapping_script, shell=True)
+    create_repo(repo_id="optimum-benchmark/open-llm-leaderboard", repo_type="dataset", exist_ok=True, private=False)
+    upload_file(
+        repo_id="optimum-benchmark/open-llm-leaderboard",
+        commit_message="Update open LLM leaderboard",
+        path_or_fileobj="open-llm-leaderboard.csv",
+        path_in_repo="open-llm-leaderboard.csv",
+        repo_type="dataset",
+    )
+
+
+if __name__ == "__main__":
+    update_llm_df()
+    update_perf_dfs()

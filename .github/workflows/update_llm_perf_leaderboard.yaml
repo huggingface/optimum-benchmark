@@ -27,7 +27,7 @@ jobs:
           pip install pandas huggingface_hub[hf_transfer]
           pip install .
 
-      - name: Update Open LLM Leaderboard
+      - name: Update Open LLM Data
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_HUB_ENABLE_HF_TRANSFER: 1

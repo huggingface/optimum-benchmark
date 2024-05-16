@@ -165,7 +165,7 @@ def benchmark_cuda_pytorch(model, attn_implementation, weights_config):
 
 
 if __name__ == "__main__":
-    setup_logging(level="INFO", format_prefix="MAIN-PROCESS")
+    setup_logging(level="INFO", prefix="MAIN-PROCESS")
 
     models_attentions_weights = list(
         product(CANONICAL_PRETRAINED_OPEN_LLM_LIST, ATTENTION_COFIGS, WEIGHTS_CONFIGS.keys())
