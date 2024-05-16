@@ -30,5 +30,8 @@ def gather_benchmarks(subset: str, machine: str):
 
 
 for subset in ["unquantized", "bnb", "awq", "gptq"]:
-    for machine in ["1xA10"]:
-        gather_benchmarks(subset, machine)
+    for machine in ["1xA10", "1xA100"]:
+        try:
+            gather_benchmarks(subset, machine)
+        except Exception:
+            print(f"Subset {subset} for machine {machine} not found")
