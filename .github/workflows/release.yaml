@@ -39,7 +39,8 @@ jobs:
 
       - name: Install the wheel
         run: |
-          pip install dist/*.whl --index-url https://download.pytorch.org/whl/cpu
+          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+          pip install dist/*.whl
 
       - name: Test
         run: |
