@@ -41,8 +41,8 @@ _DIFFUSERS_TASKS_TO_MODEL_LOADERS = {
     "inpainting": "AutoPipelineForInpainting",
     "text-to-image": "AutoPipelineForText2Image",
     "image-to-image": "AutoPipelineForImage2Image",
-    "stable-diffusion": "StableDiffusionPipeline",  # legacy
-    "stable-diffusion-xl": "StableDiffusionXLImg2ImgPipeline",  # legacy
+    "stable-diffusion": "StableDiffusionPipeline",  # should be deprecated
+    "stable-diffusion-xl": "StableDiffusionXLImg2ImgPipeline",  # should be deprecated
 }
 _TIMM_TASKS_TO_MODEL_LOADERS = {
     "image-classification": "create_model",
@@ -146,6 +146,8 @@ def infer_task_from_model_name_or_path(model_name_or_path: str, revision: Option
             inferred_task_name = "text-to-image"
         elif "image-to-image" in model_info.tags:
             inferred_task_name = "image-to-image"
+        elif "inpainting" in model_info.tags:
+            inferred_task_name = "inpainting"
         else:
             class_name = model_info.config["diffusers"]["class_name"]
             inferred_task_name = "stable-diffusion-xl" if "XL" in class_name else "stable-diffusion"
@@ -165,7 +167,6 @@ def infer_task_from_model_name_or_path(model_name_or_path: str, revision: Option
                     if class_name_for_task == auto_model_class_name:
                         inferred_task_name = task_name
                         break
-
                     inferred_task_name = None
 
     else:
