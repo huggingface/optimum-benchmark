@@ -154,7 +154,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.logger.info("\t+ Loading Diffusion Pipeline")
             self.pretrained_model = self.automodel_class.from_pretrained(
                 # pretrained_model_name_or_path=self.config.model,
-                pretrained_model_or_path=self.config.model,
+                # pretrained_model_or_path=self.config.model,
+                self.config.model,
                 device_map=self.config.device_map,
                 **self.config.model_kwargs,
                 **self.automodel_kwargs,

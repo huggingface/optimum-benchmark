@@ -38,6 +38,8 @@ _TRANSFORMERS_TASKS_TO_MODEL_LOADERS = {
 }
 
 _DIFFUSERS_TASKS_TO_MODEL_LOADERS = {
+    "stable-diffusion": "StableDiffusion", # should be deprecated
+    "stable-diffusion-xl": "StableDiffusionXL", # should be deprecated
     "inpainting": "AutoPipelineForInpainting",
     "text-to-image": "AutoPipelineForText2Image",
     "image-to-image": "AutoPipelineForImage2Image",
@@ -147,7 +149,7 @@ def infer_task_from_model_name_or_path(model_name_or_path: str, revision: Option
         elif "inpainting" in model_info.tags:
             inferred_task_name = "inpainting"
         else:
-            inferred_task_name = None
+            inferred_task_name = "StableDiffusionXL" if "stable-diffusion-xl" in model_info.tags else "StableDiffusion"
 
     elif library_name == "transformers":
         if model_info.pipeline_tag is not None:
