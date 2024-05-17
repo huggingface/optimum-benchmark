@@ -149,7 +149,8 @@ def infer_task_from_model_name_or_path(model_name_or_path: str, revision: Option
         elif "inpainting" in model_info.tags:
             inferred_task_name = "inpainting"
         else:
-            inferred_task_name = "StableDiffusionXL" if "stable-diffusion-xl" in model_info.tags else "StableDiffusion"
+            class_name = model_info.config["diffusers"]["class_name"]
+            inferred_task_name = "stable-diffusion-xl" if "XL" in class_name else "stable-diffusion"
 
     elif library_name == "transformers":
         if model_info.pipeline_tag is not None:
