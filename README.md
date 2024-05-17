@@ -6,7 +6,6 @@
 [![PyPI - Format](https://img.shields.io/pypi/format/optimum-benchmark)](https://pypi.org/project/optimum-benchmark/)
 [![PyPI - License](https://img.shields.io/pypi/l/optimum-benchmark)](https://pypi.org/project/optimum-benchmark/)
 [![PyPI version](https://badge.fury.io/py/optimum-benchmark.svg)](https://badge.fury.io/py/optimum-benchmark)
-[![Downloads](https://pepy.tech/badge/optimum-benchmark)](https://pepy.tech/project/optimum-benchmark)
 
 Optimum-Benchmark is a unified [multi-backend & multi-device](#backends--devices-) utility for benchmarking [Transformers](https://github.com/huggingface/transformers), [Diffusers](https://github.com/huggingface/diffusers), [PEFT](https://github.com/huggingface/peft), [TIMM](https://github.com/huggingface/pytorch-image-models) and [Optimum](https://github.com/huggingface/optimum) libraries, along with all their supported [optimizations & quantization schemes](#backends--devices-), for [inference & training](#scenarios-), in [distributed & non-distributed settings](#launchers-), in the most correct, efficient and scalable way possible.
 
@@ -15,7 +14,7 @@ Optimum-Benchmark is a unified [multi-backend & multi-device](#backends--devices
 - PyPI package is now available for installation: `pip install optimum-benchmark` 🎉 [check it out](https://pypi.org/project/optimum-benchmark/) !
 - Hosted 4 minimal docker images (`cpu`, `cuda`, `rocm`, `cuda-ort`) in [packages](https://github.com/huggingface/optimum-benchmark/pkgs/container/optimum-benchmark) for testing, benchmarking and reproducibility 🐳
 - Added vLLM backend for benchmarking [vLLM](https://github.com/vllm-project/vllm)'s inference engine 🚀
-- Hosted the codebase of the LLM-Perf Leaderboard [LLM-Perf](https://huggingface.co/spaces/optimum/llm-perf-leaderboard) 🥇
+- Hosted the codebase of the [LLM-Perf Leaderboard](https://huggingface.co/spaces/optimum/llm-perf-leaderboard) 🥇
 - Added Py-TXI backend for benchmarking [Py-TXI](https://github.com/IlyasMoutawwakil/py-txi/tree/main) 🚀
 - Introduced a Python API for running isolated benchmarks from the comfort of your Python scripts 🐍
 - Simplified the CLI interface for running benchmarks using the Hydra CLI 🧪

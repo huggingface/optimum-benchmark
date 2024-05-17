@@ -8,7 +8,6 @@ on:
     paths:
       - .github/workflows/test_cli_misc.yaml
       - "optimum_benchmark/**"
-      - "docker/**"
       - "tests/**"
       - "setup.py"
   pull_request:
@@ -17,7 +16,6 @@ on:
     paths:
       - .github/workflows/test_cli_misc.yaml
       - "optimum_benchmark/**"
-      - "docker/**"
       - "tests/**"
       - "setup.py"
 
@@ -31,7 +29,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python: ["3.8", "3.10"]
+        python: ["3.7", "3.8", "3.9", "3.10"]
 
     runs-on: ${{ matrix.os }}
 
