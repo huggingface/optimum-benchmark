@@ -98,25 +98,25 @@ setup(
     extras_require=EXTRAS_REQUIRE,
     entry_points={"console_scripts": ["optimum-benchmark=optimum_benchmark.cli:main"]},
     description="Optimum-Benchmark is a unified multi-backend utility for benchmarking "
-    "Transformers, Timm, Diffusers and Sentence-Transformers with full support of Optimum's "
-    "hardware optimizations & quantization schemes.",
-    long_description=open("README.md", "r", encoding="utf-8").read(),
-    long_description_content_type="text/markdown",
+    "Transformers, Timm, Diffusers and Sentence-Transformers with full support of "
+    "Optimum's hardware optimizations & quantization schemes.",
+    url="https://github.com/huggingface/optimum-benchmark",
     classifiers=[
-        "License :: OSI Approved :: Apache Software License",
-        "Intended Audience :: Developers",
         "Intended Audience :: Education",
-        "Operating System :: OS Independent",
+        "Intended Audience :: Developers",
+        "Operating System :: POSIX :: Linux",
         "Intended Audience :: Science/Research",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "License :: OSI Approved :: Apache Software License",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
     ],
     keywords="benchmaek, transformers, quantization, pruning, optimization, training, inference, onnx, onnx runtime, intel, "
     "habana, graphcore, neural compressor, ipex, ipu, hpu, llm-swarm, py-txi, vllm, auto-gptq, autoawq, "
     "sentence-transformers, bitsandbytes, codecarbon, flash-attn, deepspeed, diffusers, timm, peft",
-    url="https://github.com/huggingface/optimum-benchmark",
+    long_description=open("README.md", "r", encoding="utf-8").read(),
+    long_description_content_type="text/markdown",
     author="HuggingFace Inc. Special Ops Team",
     include_package_data=True,
     name="optimum-benchmark",
