@@ -15,33 +15,33 @@ PRETRAINED_OPEN_LLM_LIST = (
     .drop_duplicates(subset=["Model"])["Model"]
     .tolist()
 )
-CANONICAL_ORGANIZATIONS = [
-    # big companies
-    *["google", "facebook", "meta", "meta-llama", "microsoft", "Intel", "TencentARC", "Salesforce"],
-    # collectives
-    *["EleutherAI", "tiiuae", "NousResearch", "Open-Orca"],
-    # HF related
-    ["bigcode", "HuggingFaceH4", "huggyllama"],
-    # community members
-    ["teknium"],
-    # startups
-    *[
-        "mistral-community",
-        "openai-community",
-        "togethercomputer",
-        "stabilityai",
-        "CohereForAI",
-        "databricks",
-        "mistralai",
-        "internlm",
-        "Upstage",
-        "xai-org",
-        "Phind",
-        "01-ai",
-        "Deci",
-        "Qwen",
-    ],
-]
+# CANONICAL_ORGANIZATIONS = [
+#     # big companies
+#     *["google", "facebook", "meta", "meta-llama", "microsoft", "Intel", "TencentARC", "Salesforce"],
+#     # collectives
+#     *["EleutherAI", "tiiuae", "NousResearch", "Open-Orca"],
+#     # HF related
+#     ["bigcode", "HuggingFaceH4", "huggyllama"],
+#     # community members
+#     ["teknium"],
+#     # startups
+#     *[
+#         "mistral-community",
+#         "openai-community",
+#         "togethercomputer",
+#         "stabilityai",
+#         "CohereForAI",
+#         "databricks",
+#         "mistralai",
+#         "internlm",
+#         "Upstage",
+#         "xai-org",
+#         "Phind",
+#         "01-ai",
+#         "Deci",
+#         "Qwen",
+#     ],
+# ]
 # CANONICAL_PRETRAINED_OPEN_LLM_LIST = [
 #     model for model in PRETRAINED_OPEN_LLM_LIST if model.split("/")[0] in CANONICAL_ORGANIZATIONS
 # ]

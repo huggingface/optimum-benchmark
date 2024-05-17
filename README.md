@@ -3,9 +3,11 @@
 <h1 align="center">Optimum-Benchmark 🏋️</h1>
 
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/optimum-benchmark)](https://pypi.org/project/optimum-benchmark/)
+[![PyPI - Version](https://img.shields.io/pypi/v/optimum-benchmark)](https://pypi.org/project/optimum-benchmark/)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/optimum-benchmark)](https://pypi.org/project/optimum-benchmark/)
+[![PyPI - Implementation](https://img.shields.io/pypi/implementation/optimum-benchmark)](https://pypi.org/project/optimum-benchmark/)
 [![PyPI - Format](https://img.shields.io/pypi/format/optimum-benchmark)](https://pypi.org/project/optimum-benchmark/)
 [![PyPI - License](https://img.shields.io/pypi/l/optimum-benchmark)](https://pypi.org/project/optimum-benchmark/)
-[![PyPI version](https://badge.fury.io/py/optimum-benchmark.svg)](https://badge.fury.io/py/optimum-benchmark)
 
 Optimum-Benchmark is a unified [multi-backend & multi-device](#backends--devices-) utility for benchmarking [Transformers](https://github.com/huggingface/transformers), [Diffusers](https://github.com/huggingface/diffusers), [PEFT](https://github.com/huggingface/peft), [TIMM](https://github.com/huggingface/pytorch-image-models) and [Optimum](https://github.com/huggingface/optimum) libraries, along with all their supported [optimizations & quantization schemes](#backends--devices-), for [inference & training](#scenarios-), in [distributed & non-distributed settings](#launchers-), in the most correct, efficient and scalable way possible.
 
