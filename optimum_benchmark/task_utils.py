@@ -38,8 +38,8 @@ _TRANSFORMERS_TASKS_TO_MODEL_LOADERS = {
 }
 
 _DIFFUSERS_TASKS_TO_MODEL_LOADERS = {
-    "stable-diffusion": "StableDiffusion", # should be deprecated
-    "stable-diffusion-xl": "StableDiffusionXL", # should be deprecated
+    "stable-diffusion": "StableDiffusion",  # should be deprecated
+    "stable-diffusion-xl": "StableDiffusionXL",  # should be deprecated
     "inpainting": "AutoPipelineForInpainting",
     "text-to-image": "AutoPipelineForText2Image",
     "image-to-image": "AutoPipelineForImage2Image",
