@@ -1,6 +1,6 @@
 from typing import Any, Callable, List
 
-from ...report import BenchmarkReport
+from ...benchmark.report import BenchmarkReport
 from ..base import Launcher
 from .config import InlineConfig
 

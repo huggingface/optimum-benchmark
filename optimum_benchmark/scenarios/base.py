@@ -3,7 +3,7 @@ from logging import getLogger
 from typing import ClassVar, Generic
 
 from ..backends.base import Backend
-from ..report import BenchmarkReport
+from ..benchmark.report import BenchmarkReport
 from .config import ScenarioConfigT
 
 

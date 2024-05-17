@@ -159,6 +159,11 @@ def benchmark_cuda_pytorch(model, attn_implementation, weights_config):
 
 
 if __name__ == "__main__":
+    # for isolated process
+    os.environ["LOG_TO_FILE"] = "0"
+    os.environ["LOG_LEVEL"] = "INFO"
+
+    # for main process
     setup_logging(level="INFO", prefix="MAIN-PROCESS")
 
     models_attentions_weights = list(

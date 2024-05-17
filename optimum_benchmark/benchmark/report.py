@@ -2,10 +2,10 @@ from dataclasses import dataclass, make_dataclass
 from logging import getLogger
 from typing import Any, Dict, List, Optional
 
-from .hub_utils import PushToHubMixin, classproperty
-from .trackers.energy import Efficiency, Energy
-from .trackers.latency import Latency, Throughput
-from .trackers.memory import Memory
+from ..hub_utils import PushToHubMixin, classproperty
+from ..trackers.energy import Efficiency, Energy
+from ..trackers.latency import Latency, Throughput
+from ..trackers.memory import Memory
 
 LOGGER = getLogger("report")
 

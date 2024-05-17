@@ -15,25 +15,33 @@ def setup_logging(
     logging_config = {
         "version": 1,
         "handlers": {
-            "file": {"formatter": "simple", "filename": "benchmark.log", "class": "logging.FileHandler"},
             "console": {"formatter": "simple", "stream": "ext://sys.stdout", "class": "logging.StreamHandler"},
         },
-        "root": {"level": level, "handlers": ["console", "file"] if to_file else ["console"]},
+        "root": {"level": level, "handlers": ["console"]},
         "disable_existing_loggers": disable_existing_loggers,
     }
 
     # formatters
     logging_config["formatters"] = {
         "simple": {"format": "[%(asctime)s][%(name)s][%(levelname)s] - %(message)s"},
-        "colorlog": {
-            "()": "colorlog.ColoredFormatter",
-            "format": "[%(cyan)s%(asctime)s%(reset)s][%(blue)s%(name)s%(reset)s][%(log_color)s%(levelname)s%(reset)s] - %(message)s",
-            "log_colors": {"DEBUG": "purple", "INFO": "green", "WARNING": "yellow", "CRITICAL": "red", "ERROR": "red"},
-        },
     }
+
+    # add file handler
+    if to_file:
+        logging_config["handlers"]["file"] = {
+            "formatter": "simple",
+            "filename": "benchmark.log",
+            "class": "logging.FileHandler",
+        }
+        logging_config["root"]["handlers"].append("file")
 
     # use colorlog
     if use_colorlog:
+        logging_config["formatters"]["colorlog"] = {
+            "()": "colorlog.ColoredFormatter",
+            "format": "[%(cyan)s%(asctime)s%(reset)s][%(blue)s%(name)s%(reset)s][%(log_color)s%(levelname)s%(reset)s] - %(message)s",
+            "log_colors": {"DEBUG": "purple", "INFO": "green", "WARNING": "yellow", "CRITICAL": "red", "ERROR": "red"},
+        }
         for handler in logging_config["handlers"]:
             logging_config["handlers"][handler]["formatter"] = "colorlog"
 
