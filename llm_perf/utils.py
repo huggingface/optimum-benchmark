@@ -4,47 +4,47 @@ import pandas as pd
 
 from optimum_benchmark.report import BenchmarkReport
 
-OPEN_LLM_LEADERBOARD = pd.read_csv("hf://datasets/optimum-benchmark/open-llm-leaderboard/open-llm-leaderboard.csv")
-
-
 INPUT_SHAPES = {"batch_size": 1, "sequence_length": 256}
 GENERATE_KWARGS = {"max_new_tokens": 64, "min_new_tokens": 64}
 
 
+OPEN_LLM_LEADERBOARD = pd.read_csv("hf://datasets/optimum-benchmark/llm-perf-leaderboard/llm-df.csv")
 OPEN_LLM_LIST = OPEN_LLM_LEADERBOARD.drop_duplicates(subset=["Model"])["Model"].tolist()
 PRETRAINED_OPEN_LLM_LIST = (
     OPEN_LLM_LEADERBOARD[OPEN_LLM_LEADERBOARD["Type"] == "pretrained"]
     .drop_duplicates(subset=["Model"])["Model"]
     .tolist()
 )
-# CANONICAL_ORGANIZATIONS = [
-#     # big companies
-#     *["google", "facebook", "meta", "meta-llama", "microsoft", "Intel", "TencentARC", "Salesforce"],
-#     # collectives
-#     *["EleutherAI", "tiiuae", "NousResearch", "Open-Orca"],
-#     # HF related
-#     ["bigcode", "HuggingFaceH4", "huggyllama"],
-#     # community members
-#     ["teknium"],
-#     # startups
-#     *[
-#         "mistral-community",
-#         "openai-community",
-#         "togethercomputer",
-#         "stabilityai",
-#         "CohereForAI",
-#         "databricks",
-#         "mistralai",
-#         "internlm",
-#         "Upstage",
-#         "xai-org",
-#         "Phind",
-#         "01-ai",
-#         "Deci",
-#         "Qwen",
-#     ],
+CANONICAL_ORGANIZATIONS = [
+    # big companies
+    *["google", "facebook", "meta", "meta-llama", "microsoft", "Intel", "TencentARC", "Salesforce"],
+    # collectives
+    *["EleutherAI", "tiiuae", "NousResearch", "Open-Orca"],
+    # HF related
+    ["bigcode", "HuggingFaceH4", "huggyllama"],
+    # community members
+    ["teknium"],
+    # startups
+    *[
+        "mistral-community",
+        "openai-community",
+        "togethercomputer",
+        "stabilityai",
+        "CohereForAI",
+        "databricks",
+        "mistralai",
+        "internlm",
+        "Upstage",
+        "xai-org",
+        "Phind",
+        "01-ai",
+        "Deci",
+        "Qwen",
+    ],
+]
+# CANONICAL_PRETRAINED_OPEN_LLM_LIST = [
+#     model for model in PRETRAINED_OPEN_LLM_LIST if model.split("/")[0] in CANONICAL_ORGANIZATIONS
 # ]
-# CANONICAL_PRETRAINED_OPEN_LLM_LIST = [model for model in PRETRAINED_OPEN_LLM_LIST if model.split("/")[0] in CANONICAL_ORGANIZATIONS]
 CANONICAL_PRETRAINED_OPEN_LLM_LIST = [
     "01-ai/Yi-34B",
     "01-ai/Yi-6B",

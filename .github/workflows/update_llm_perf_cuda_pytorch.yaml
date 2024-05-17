@@ -29,7 +29,6 @@ jobs:
       - name: Run benchmarks
         uses: addnab/docker-run-action@v3
         env:
-          IMAGE: ${{ env.IMAGE }}
           SUBSET: ${{ matrix.subset }}
           MACHINE: ${{ matrix.machine.name }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -49,5 +48,5 @@ jobs:
           run: |
             pip install packaging && pip install flash-attn einops scipy auto-gptq optimum bitsandbytes autoawq codecarbon
             pip install -U transformers huggingface_hub[hf_transfer]
-            pip install -e .
+            pip install optimum-benchmark
             python llm_perf/update_llm_perf_cuda_pytorch.py

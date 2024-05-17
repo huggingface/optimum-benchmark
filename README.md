@@ -1,12 +1,18 @@
-<p align="center"><img src="logo.png" alt="Optimum-Benchmark Logo" width="350" style="max-width: 100%;" /></p>
+<p align="center"><img src="https://raw.githubusercontent.com/huggingface/optimum-benchmark/main/logo.png" alt="Optimum-Benchmark Logo" width="350" style="max-width: 100%;" /></p>
 <p align="center"><q>All benchmarks are wrong, some will cost you less than others.</q></p>
 <h1 align="center">Optimum-Benchmark 🏋️</h1>
+
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/optimum-benchmark)](https://pypi.org/project/optimum-benchmark/)
+[![PyPI - Format](https://img.shields.io/pypi/format/optimum-benchmark)](https://pypi.org/project/optimum-benchmark/)
+[![PyPI - License](https://img.shields.io/pypi/l/optimum-benchmark)](https://pypi.org/project/optimum-benchmark/)
+[![PyPI version](https://badge.fury.io/py/optimum-benchmark.svg)](https://badge.fury.io/py/optimum-benchmark)
+[![Downloads](https://pepy.tech/badge/optimum-benchmark)](https://pepy.tech/project/optimum-benchmark)
 
 Optimum-Benchmark is a unified [multi-backend & multi-device](#backends--devices-) utility for benchmarking [Transformers](https://github.com/huggingface/transformers), [Diffusers](https://github.com/huggingface/diffusers), [PEFT](https://github.com/huggingface/peft), [TIMM](https://github.com/huggingface/pytorch-image-models) and [Optimum](https://github.com/huggingface/optimum) libraries, along with all their supported [optimizations & quantization schemes](#backends--devices-), for [inference & training](#scenarios-), in [distributed & non-distributed settings](#launchers-), in the most correct, efficient and scalable way possible.
 
 *News* 📰
 
-- PyPI package is now available for installation: `pip install optimum-benchmark` 🎉 check it out !
+- PyPI package is now available for installation: `pip install optimum-benchmark` 🎉 [check it out](https://pypi.org/project/optimum-benchmark/) !
 - Hosted 4 minimal docker images (`cpu`, `cuda`, `rocm`, `cuda-ort`) in [packages](https://github.com/huggingface/optimum-benchmark/pkgs/container/optimum-benchmark) for testing, benchmarking and reproducibility 🐳
 - Added vLLM backend for benchmarking [vLLM](https://github.com/vllm-project/vllm)'s inference engine 🚀
 - Hosted the codebase of the LLM-Perf Leaderboard [LLM-Perf](https://huggingface.co/spaces/optimum/llm-perf-leaderboard) 🥇
