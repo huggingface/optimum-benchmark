@@ -7,8 +7,8 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from ...backends.base import Backend, BackendConfigT
+from ...benchmark.report import BenchmarkMeasurements, BenchmarkReport
 from ...import_utils import is_torch_distributed_available
-from ...report import BenchmarkMeasurements, BenchmarkReport
 from ...task_utils import IMAGE_DIFFUSION_TASKS, TEXT_GENERATION_TASKS
 from ...trackers.energy import Efficiency, EnergyTracker
 from ..base import Scenario

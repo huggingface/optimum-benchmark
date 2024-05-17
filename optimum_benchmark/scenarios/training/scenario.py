@@ -3,8 +3,8 @@ from contextlib import ExitStack
 from transformers import default_data_collator
 
 from ...backends.base import Backend, BackendConfigT
+from ...benchmark.report import BenchmarkReport
 from ...generators.dataset_generator import DatasetGenerator
-from ...report import BenchmarkReport
 from ...trackers.energy import Efficiency, EnergyTracker
 from ...trackers.latency import StepLatencyTrainerCallback, Throughput
 from ...trackers.memory import MemoryTracker

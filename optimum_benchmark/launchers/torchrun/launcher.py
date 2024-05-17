@@ -9,8 +9,8 @@ from typing import Any, Callable, List
 import torch.distributed
 from torch.distributed.launcher.api import LaunchConfig, elastic_launch
 
+from ...benchmark.report import BenchmarkReport
 from ...logging_utils import setup_logging
-from ...report import BenchmarkReport
 from ..base import Launcher
 from .config import TorchrunConfig
 

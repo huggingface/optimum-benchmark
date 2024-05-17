@@ -3,9 +3,9 @@ import time
 from transformers import LogitsProcessorList
 
 from ...backends.base import Backend, BackendConfigT
+from ...benchmark.report import BenchmarkReport
 from ...generators.input_generator import InputGenerator
 from ...import_utils import is_torch_distributed_available
-from ...report import BenchmarkReport
 from ...task_utils import IMAGE_DIFFUSION_TASKS, TEXT_GENERATION_TASKS
 from ...trackers.energy import Efficiency, EnergyTracker
 from ...trackers.latency import LatencyTracker, PerTokenLatencyLogitsProcessor, Throughput

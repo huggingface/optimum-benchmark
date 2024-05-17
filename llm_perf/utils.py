@@ -1,6 +1,6 @@
 import pandas as pd
 
-from optimum_benchmark.report import BenchmarkReport
+from optimum_benchmark.benchmark.report import BenchmarkReport
 
 INPUT_SHAPES = {"batch_size": 1, "sequence_length": 256}
 GENERATE_KWARGS = {"max_new_tokens": 64, "min_new_tokens": 64}
@@ -44,8 +44,8 @@ PRETRAINED_OPEN_LLM_LIST = (
 #     model for model in PRETRAINED_OPEN_LLM_LIST if model.split("/")[0] in CANONICAL_ORGANIZATIONS
 # ]
 CANONICAL_PRETRAINED_OPEN_LLM_LIST = [
-    "01-ai/Yi-34B",
     "01-ai/Yi-6B",
+    "01-ai/Yi-34B",
     "Deci/DeciLM-7B",
     "Deci/DeciCoder-1b",
     "EleutherAI/gpt-j-6b",
@@ -96,6 +96,10 @@ CANONICAL_PRETRAINED_OPEN_LLM_LIST = [
     "google/recurrentgemma-7b",
     "internlm/internlm-20b",
     "internlm/internlm2-20b",
+    "huggyllama/llama-7b",
+    "huggyllama/llama-13b",
+    "huggyllama/llama-30b",
+    "huggyllama/llama-65b",
     "meta-llama/Llama-2-7b-hf",
     "meta-llama/Llama-2-13b-hf",
     "meta-llama/Llama-2-70b-hf",
@@ -104,13 +108,13 @@ CANONICAL_PRETRAINED_OPEN_LLM_LIST = [
     "microsoft/phi-1_5",
     "microsoft/rho-math-1b-v0.1",
     "mistralai/Mistral-7B-v0.1",
-    "mistralai/Mixtral-8x22B-v0.1",
     "mistralai/Mixtral-8x7B-v0.1",
+    *"mistralai/Mixtral-8x22B-v0.1",
     "openai-community/gpt2",
     "openai-community/gpt2-large",
-    "stabilityai/stablelm-2-12b",
-    "stabilityai/stablelm-2-1_6b",
     "stabilityai/stablelm-3b-4e1t",
+    "stabilityai/stablelm-2-1_6b",
+    "stabilityai/stablelm-2-12b",
     "stabilityai/stablelm-base-alpha-3b",
     "stabilityai/stablelm-base-alpha-7b",
     "tiiuae/falcon-rw-1b",

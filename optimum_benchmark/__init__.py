@@ -10,22 +10,21 @@ from .backends import (
     TRTLLMConfig,
     VLLMConfig,
 )
-from .base import Benchmark
-from .config import BenchmarkConfig
-from .experiment import ExperimentConfig, launch, run
+from .benchmark.base import Benchmark
+from .benchmark.config import BenchmarkConfig
+from .benchmark.report import BenchmarkReport
 from .launchers import InlineConfig, LauncherConfig, ProcessConfig, TorchrunConfig
-from .report import BenchmarkReport
 from .scenarios import EnergyStarConfig, InferenceConfig, ScenarioConfig, TrainingConfig
 
 __all__ = [
+    "BackendConfig",
     "Benchmark",
     "BenchmarkConfig",
     "BenchmarkReport",
-    "BackendConfig",
     "EnergyStarConfig",
+    "InferenceConfig",
     "INCConfig",
     "InlineConfig",
-    "InferenceConfig",
     "LauncherConfig",
     "LLMSwarmConfig",
     "ORTConfig",
@@ -34,12 +33,9 @@ __all__ = [
     "PyTorchConfig",
     "PyTXIConfig",
     "ScenarioConfig",
-    "TrainingConfig",
     "TorchORTConfig",
+    "TorchrunConfig",
+    "TrainingConfig",
     "TRTLLMConfig",
     "VLLMConfig",
-    "TorchrunConfig",
-    "ExperimentConfig",
-    "launch",
-    "run",
 ]

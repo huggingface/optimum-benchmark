@@ -6,8 +6,8 @@ from multiprocessing import Process
 from multiprocessing.connection import Connection
 from typing import Any, Callable, List
 
+from ...benchmark.report import BenchmarkReport
 from ...logging_utils import setup_logging
-from ...report import BenchmarkReport
 from ..base import Launcher
 from .config import ProcessConfig
 

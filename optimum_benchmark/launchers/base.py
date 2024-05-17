@@ -4,7 +4,7 @@ from logging import getLogger
 from multiprocessing import Process
 from typing import Any, Callable, ClassVar, Generic, List, Optional
 
-from ..report import BenchmarkReport
+from ..benchmark.report import BenchmarkReport
 from ..system_utils import is_nvidia_system, is_rocm_system
 from .config import LauncherConfigT
 from .device_isolation_utils import assert_device_isolation

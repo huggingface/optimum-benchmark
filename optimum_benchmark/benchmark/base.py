@@ -4,15 +4,15 @@ from typing import Type
 
 from hydra.utils import get_class
 
-from .backends.base import Backend
-from .backends.config import BackendConfig
+from ..backends.base import Backend
+from ..backends.config import BackendConfig
+from ..hub_utils import PushToHubMixin, classproperty
+from ..launchers import LauncherConfig
+from ..launchers.base import Launcher
+from ..scenarios import ScenarioConfig
+from ..scenarios.base import Scenario
 from .config import BenchmarkConfig
-from .hub_utils import PushToHubMixin, classproperty
-from .launchers import LauncherConfig
-from .launchers.base import Launcher
 from .report import BenchmarkReport
-from .scenarios import ScenarioConfig
-from .scenarios.base import Scenario
 
 LOGGER = getLogger("benchmark")
 
