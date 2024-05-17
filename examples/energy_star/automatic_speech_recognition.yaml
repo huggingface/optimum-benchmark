@@ -7,13 +7,14 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: automatic_speech_recognition_whisper_large
+experiment_name: automatic_speech_recognition
 
 backend:
   device: cuda
   device_ids: 0
   no_weights: true
   model: openai/whisper-large-v3
+  processor: openai/whisper-large-v3
   task: automatic-speech-recognition
 
 launcher:
@@ -31,10 +32,10 @@ benchmark:
 hydra:
   run:
     # where to store run results
-    dir: runs/${experiment_name}/${now:%Y-%m-%d-%H-%M-%S}
+    dir: runs/${experiment_name}/${backend.model}/${now:%Y-%m-%d-%H-%M-%S}
   sweep:
     # where to store sweep results
-    dir: runs/${experiment_name}/${now:%Y-%m-%d-%H-%M-%S}
+    dir: runs/${experiment_name}/${backend.model}/${now:%Y-%m-%d-%H-%M-%S}
   job:
     # change working directory to the run directory
     chdir: true
