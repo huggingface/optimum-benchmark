@@ -125,7 +125,7 @@ CANONICAL_PRETRAINED_OPEN_LLM_LIST = [
 def is_benchmark_conducted(push_repo_id, subfolder):
     try:
         report = BenchmarkReport.from_pretrained(repo_id=push_repo_id, subfolder=subfolder)
-        if hasattr("traceback", report):
+        if "traceback" in report.to_dict():
             return False
         else:
             return True
