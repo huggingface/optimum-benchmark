@@ -1,4 +1,5 @@
 import os
+import traceback
 from itertools import product
 from logging import getLogger
 
@@ -8,11 +9,10 @@ from llm_perf.utils import (
     INPUT_SHAPES,
     OPEN_LLM_LIST,
     PRETRAINED_OPEN_LLM_LIST,
-    errors_handler,
     is_benchmark_conducted,
     is_benchmark_supported,
 )
-from optimum_benchmark import Benchmark, BenchmarkConfig, InferenceConfig, ProcessConfig, PyTorchConfig
+from optimum_benchmark import Benchmark, BenchmarkConfig, BenchmarkReport, InferenceConfig, ProcessConfig, PyTorchConfig
 from optimum_benchmark.logging_utils import setup_logging
 
 SUBSET = os.getenv("SUBSET", None)
@@ -108,6 +108,10 @@ def benchmark_cuda_pytorch(model, attn_implementation, weights_config):
         LOGGER.info(f"Skipping benchmark {benchmark_name} with model {model} since it is not supported")
         return
 
+    if is_benchmark_conducted(PUSH_REPO_ID, subfolder):
+        LOGGER.info(f"Skipping benchmark {benchmark_name} with model {model} since it was already conducted")
+        return
+
     launcher_config = ProcessConfig(device_isolation=True, device_isolation_action="kill")
     scenario_config = InferenceConfig(
         memory=True,
@@ -137,31 +141,21 @@ def benchmark_cuda_pytorch(model, attn_implementation, weights_config):
         name=benchmark_name, scenario=scenario_config, launcher=launcher_config, backend=backend_config
     )
 
-    if is_benchmark_conducted(benchmark_config, PUSH_REPO_ID, subfolder):
-        LOGGER.info(f"Skipping benchmark {benchmark_name} with model {model} since it was already conducted")
-        return
-
-    benchmark_config.push_to_hub(subfolder=subfolder, repo_id=PUSH_REPO_ID, private=True)
+    benchmark_config.push_to_hub(repo_id=PUSH_REPO_ID, subfolder=subfolder, private=True)
 
     try:
         LOGGER.info(f"Running benchmark {benchmark_name} with model {model}")
         benchmark_report = Benchmark.launch(benchmark_config)
-        benchmark_report.push_to_hub(subfolder=subfolder, repo_id=PUSH_REPO_ID, private=True)
+        benchmark_report.push_to_hub(repo_id=PUSH_REPO_ID, subfolder=subfolder, private=True)
         benchmark = Benchmark(config=benchmark_config, report=benchmark_report)
-        benchmark.push_to_hub(subfolder=subfolder, repo_id=PUSH_REPO_ID, private=True)
+        benchmark.push_to_hub(repo_id=PUSH_REPO_ID, subfolder=subfolder, private=True)
 
-    except Exception as error:
+    except Exception:
         LOGGER.error(f"Benchmark {benchmark_name} failed with model {model}")
-        valid_error, benchmark_report = errors_handler(str(error))
-
-        if valid_error:
-            LOGGER.error("The error is a valid one, reporting it")
-            LOGGER.error(benchmark_report.error)
-            benchmark_report.push_to_hub(subfolder=subfolder, repo_id=PUSH_REPO_ID, private=True)
-        else:
-            LOGGER.error("The error is not valid, need to investigate")
-            LOGGER.error(benchmark_report.error)
-            return
+        benchmark_report = BenchmarkReport.from_dict({"traceback": traceback.format_exc()})
+        benchmark_report.push_to_hub(repo_id=PUSH_REPO_ID, subfolder=subfolder, private=True)
+        benchmark = Benchmark(config=benchmark_config, report=benchmark_report)
+        benchmark.push_to_hub(repo_id=PUSH_REPO_ID, subfolder=subfolder, private=True)
 
 
 if __name__ == "__main__":

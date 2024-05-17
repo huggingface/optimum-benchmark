@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import pandas as pd
 
 from optimum_benchmark.report import BenchmarkReport
@@ -124,43 +122,15 @@ CANONICAL_PRETRAINED_OPEN_LLM_LIST = [
 ]
 
 
-def errors_handler(error: str) -> Tuple[bool, BenchmarkReport]:
-    valid_error = True
-    benchmark_report = BenchmarkReport.from_list(["error"])
-
-    if "torch.cuda.OutOfMemoryError" in error:
-        benchmark_report.error = "CUDA: Out of memory"
-    elif "gptq" in error and "assert outfeatures % 32 == 0" in error:
-        benchmark_report.error = "GPTQ: assert outfeatures % 32 == 0"
-    elif "gptq" in error and "assert infeatures % self.group_size == 0" in error:
-        benchmark_report.error = "GPTQ: assert infeatures % self.group_size == 0"
-    elif "support Flash Attention 2.0" in error:
-        benchmark_report.error = "Flash Attention 2.0: not supported yet"
-    elif "support an attention implementation through torch.nn.functional.scaled_dot_product_attention" in error:
-        benchmark_report.error = "SDPA: not supported yet"
-    elif "FlashAttention only support fp16 and bf16 data type" in error:
-        benchmark_report.error = "FlashAttention: only support fp16 and bf16 data type"
-    else:
-        benchmark_report.error = f"Unknown error: {error}"
-        valid_error = False
-
-    return valid_error, benchmark_report
-
-
-def is_benchmark_conducted(benchmark_config, push_repo_id, subfolder):
+def is_benchmark_conducted(push_repo_id, subfolder):
     try:
-        loaded_benchmark_config = benchmark_config.from_pretrained(repo_id=push_repo_id, subfolder=subfolder)
-        loaded_benchmark_dict = loaded_benchmark_config.to_dict()
-        benchmark_dict = benchmark_config.to_dict()
-        loaded_benchmark_dict.pop("environment")
-        benchmark_dict.pop("environment")
-        if loaded_benchmark_dict == benchmark_dict:
-            BenchmarkReport.from_pretrained(repo_id=push_repo_id, subfolder=subfolder)
+        report = BenchmarkReport.from_pretrained(repo_id=push_repo_id, subfolder=subfolder)
+        if hasattr("traceback", report):
+            return False
+        else:
             return True
     except Exception:
-        pass
-
-    return False
+        return False
 
 
 def is_benchmark_supported(weights_config, attn_implementation):

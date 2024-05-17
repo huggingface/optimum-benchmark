@@ -48,5 +48,5 @@ jobs:
           run: |
             pip install packaging && pip install flash-attn einops scipy auto-gptq optimum bitsandbytes autoawq codecarbon
             pip install -U transformers huggingface_hub[hf_transfer]
-            pip install optimum-benchmark
+            pip install -e .
             python llm_perf/update_llm_perf_cuda_pytorch.py

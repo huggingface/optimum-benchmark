@@ -8,8 +8,7 @@ from tqdm import tqdm
 from optimum_benchmark import Benchmark
 
 REPO_TYPE = "dataset"
-REPO_ID = "optimum-benchmark/llm-perf-leaderboard"
-
+MAIN_REPO_ID = "optimum-benchmark/llm-perf-leaderboard"
 PERF_REPO_ID = "optimum-benchmark/llm-perf-pytorch-cuda-{subset}-{machine}"
 
 PERF_DF = "perf-df-{subset}-{machine}.csv"
@@ -27,13 +26,8 @@ def gather_benchmarks(subset: str, machine: str):
 
     perf_df = PERF_DF.format(subset=subset, machine=machine)
     benchmarks.to_csv(perf_df, index=False)
-    create_repo(repo_id=REPO_ID, repo_type=REPO_TYPE, private=False, exist_ok=True)
-    upload_file(
-        repo_id=REPO_ID,
-        repo_type=REPO_TYPE,
-        path_in_repo=perf_df,
-        path_or_fileobj=perf_df,
-    )
+    create_repo(repo_id=MAIN_REPO_ID, repo_type=REPO_TYPE, private=False, exist_ok=True)
+    upload_file(repo_id=MAIN_REPO_ID, repo_type=REPO_TYPE, path_in_repo=perf_df, path_or_fileobj=perf_df)
 
 
 def update_perf_dfs():
@@ -55,12 +49,9 @@ rm -rf scrape-open-llm-leaderboard
 
 def update_llm_df():
     subprocess.run(scrapping_script, shell=True)
-    create_repo(repo_id=REPO_ID, repo_type=REPO_TYPE, exist_ok=True, private=False)
+    create_repo(repo_id=MAIN_REPO_ID, repo_type=REPO_TYPE, exist_ok=True, private=False)
     upload_file(
-        repo_id=REPO_ID,
-        repo_type=REPO_TYPE,
-        path_in_repo="llm-df.csv",
-        path_or_fileobj="open-llm-leaderboard.csv",
+        repo_id=MAIN_REPO_ID, repo_type=REPO_TYPE, path_in_repo=LLM_DF, path_or_fileobj="open-llm-leaderboard.csv"
     )
 
 
