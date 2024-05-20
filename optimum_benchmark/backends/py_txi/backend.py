@@ -47,8 +47,8 @@ class PyTXIBackend(Backend[PyTXIConfig]):
             self.automodel_class.from_pretrained(self.config.model, **self.config.model_kwargs, cache_dir=self.volume)
 
     def prepare_generation_config(self) -> None:
-        self.generation_config.eos_token_id = -100
-        self.generation_config.pad_token_id = -100
+        self.generation_config.eos_token_id = None
+        self.generation_config.pad_token_id = None
 
         model_cache_folder = f"models/{self.config.model}".replace("/", "--")
         model_cache_path = f"{self.volume}/{model_cache_folder}"
@@ -84,8 +84,8 @@ class PyTXIBackend(Backend[PyTXIConfig]):
 
         if self.config.task in TEXT_GENERATION_TASKS:
             self.logger.info("\t+ Modifying generation config for fixed length generation")
-            self.generation_config.eos_token_id = -100
-            self.generation_config.pad_token_id = -100
+            self.generation_config.eos_token_id = None
+            self.generation_config.pad_token_id = None
 
             self.logger.info("\t+ Saving new pretrained generation config")
             self.generation_config.save_pretrained(save_directory=self.no_weights_model)
