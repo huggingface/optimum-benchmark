@@ -83,10 +83,8 @@ def target(
     connection: Connection,
     logger: Logger,
 ) -> None:
-    isolated_process_pid = os.getpid()
     log_level = os.environ.get("LOG_LEVEL", "INFO")
     log_to_file = os.environ.get("LOG_TO_FILE", "1") == "1"
-    os.environ["ISOLATED_PROCESS_PID"] = str(isolated_process_pid)
     setup_logging(level=log_level, to_file=log_to_file, prefix="ISOLATED-PROCESS")
 
     connection.send("READY")

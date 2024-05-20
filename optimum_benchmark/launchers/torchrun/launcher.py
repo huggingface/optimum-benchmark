@@ -114,10 +114,8 @@ def target(
     config: LaunchConfig,
     logger: Logger,
 ):
-    isolated_process_pid = os.getpid()
     log_level = os.environ.get("LOG_LEVEL", "INFO")
     log_to_file = os.environ.get("LOG_TO_FILE", "1") == "1"
-    os.environ["ISOLATED_PROCESS_PID"] = str(isolated_process_pid)
     setup_logging(level=log_level, to_file=log_to_file, prefix="ISOLATED-PROCESS")
 
     connection.send("READY")
@@ -131,9 +129,8 @@ def target(
             else:
                 raise RuntimeError(f"Unexpected message from main process: {message}")
 
-    elastic_agent_launcher = elastic_launch(config=config, entrypoint=entrypoint)
-
     try:
+        elastic_agent_launcher = elastic_launch(config=config, entrypoint=entrypoint)
         outputs = elastic_agent_launcher(worker, worker_args, logger)
     except Exception:
         logger.error("\t+ Sending traceback to main process")
