@@ -72,3 +72,22 @@ def test_cli_exit_code_1(launcher):
 
     popen_1 = run_subprocess_and_log_stream_output(LOGGER, args_1)
     assert popen_1.returncode == 1
+
+
+def test_cli_numactl():
+    args = [
+        "optimum-benchmark",
+        "--config-dir",
+        TEST_CONFIG_DIR,
+        "--config-name",
+        "_base_",
+        "name=test",
+        "launcher=process",
+        "launcher.numactl=True",
+        "backend.task=text-classification",
+        "backend.model=bert-base-uncased",
+        "backend.device=cpu",
+    ]
+
+    popen = run_subprocess_and_log_stream_output(LOGGER, args)
+    assert popen.returncode == 0
