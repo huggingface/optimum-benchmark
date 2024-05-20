@@ -23,12 +23,12 @@ class Benchmark(PushToHubMixin):
 
     def __post_init__(self):
         if isinstance(self.config, dict):
-            self.config = BenchmarkConfig(**self.config)
+            self.config = BenchmarkConfig.from_dict(self.config)
         elif not isinstance(self.config, BenchmarkConfig):
             raise ValueError("config must be either a dict or a BenchmarkConfig instance")
 
         if isinstance(self.report, dict):
-            self.report = BenchmarkReport(**self.report)
+            self.report = BenchmarkReport.from_dict(self.report)
         elif not isinstance(self.report, BenchmarkReport):
             raise ValueError("report must be either a dict or a BenchmarkReport instance")
 
