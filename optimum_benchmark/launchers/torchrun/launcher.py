@@ -49,7 +49,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
     def launch(self, worker: Callable[..., BenchmarkReport], worker_args: List[Any]) -> BenchmarkReport:
         parent_connection, child_connection = Pipe()
         isolated_process = Process(
-            target=target, args=(worker, worker_args, child_connection, self.logger), daemon=False
+            target=target, args=(worker, worker_args, child_connection, self.launch_config, self.logger), daemon=False
         )
 
         with ExitStack() as stack:
