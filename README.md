@@ -13,13 +13,14 @@ Optimum-Benchmark is a unified [multi-backend & multi-device](#backends--devices
 
 *News* 📰
 
-- PyPI package is now available for installation: `pip install optimum-benchmark` 🎉 [check it out](https://pypi.org/project/optimum-benchmark/) !
-- Hosted 4 minimal docker images (`cpu`, `cuda`, `rocm`, `cuda-ort`) in [packages](https://github.com/huggingface/optimum-benchmark/pkgs/container/optimum-benchmark) for testing, benchmarking and reproducibility 🐳
-- Added vLLM backend for benchmarking [vLLM](https://github.com/vllm-project/vllm)'s inference engine 🚀
-- Hosted the codebase of the [LLM-Perf Leaderboard](https://huggingface.co/spaces/optimum/llm-perf-leaderboard) 🥇
-- Added Py-TXI backend for benchmarking [Py-TXI](https://github.com/IlyasMoutawwakil/py-txi/tree/main) 🚀
-- Introduced a Python API for running isolated benchmarks from the comfort of your Python scripts 🐍
-- Simplified the CLI interface for running benchmarks using the Hydra CLI 🧪
+- 🥳 PyPI package is now available for installation: `pip install optimum-benchmark` 🎉 [check it out](https://pypi.org/project/optimum-benchmark/) !
+- numactl support for Process and Torchrun launchers to control the NUMA nodes on which the benchmark runs 🧠
+- 4 minimal docker images (`cpu`, `cuda`, `rocm`, `cuda-ort`) in [packages](https://github.com/huggingface/optimum-benchmark/pkgs/container/optimum-benchmark) for testing, benchmarking and reproducibility 🐳
+- vLLM backend for benchmarking [vLLM](https://github.com/vllm-project/vllm)'s inference engine 🚀
+- Hosting the codebase of the [LLM-Perf Leaderboard](https://huggingface.co/spaces/optimum/llm-perf-leaderboard) 🥇
+- Py-TXI backend for benchmarking [Py-TXI](https://github.com/IlyasMoutawwakil/py-txi/tree/main) 🚀
+- Python API for running isolated and distributed benchmarks with Python scripts 🐍
+- Simpler CLI interface for running benchmarks (runs and sweeps) using the Hydra 🧪
 
 *Motivations* 🎯
 
@@ -28,10 +29,8 @@ Optimum-Benchmark is a unified [multi-backend & multi-device](#backends--devices
 - Benchmarking hardware & backend specific optimizations & quantization schemes that can be applied to models and improve their computational/memory/energy efficiency.
 
 &#160;
-
 > \[!Note\]
-> Optimum-Benchmark is a work in progress and is not yet ready for production use, but we're working hard to make it so. Please keep an eye on the project and help us improve it and make it more useful for the community.
-
+> Optimum-Benchmark is a work in progress and is not yet ready for production use, but we're working hard to make it so. Please keep an eye on the project and help us improve it and make it more useful for the community. We're looking forward to your feedback and contributions. 🚀
 &#160;
 
 ## CI Status 🚦
