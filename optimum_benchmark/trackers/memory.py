@@ -59,16 +59,17 @@ class Memory:
 
         max_ram = sum(memory.max_ram for memory in memories)
 
-        max_global_vram = (
-            max(memory.max_global_vram for memory in memories) if memories[0].max_global_vram is not None else None
-        )
         max_process_vram = (
-            max(memory.max_process_vram for memory in memories) if memories[0].max_process_vram is not None else None
+            sum(memory.max_process_vram for memory in memories) if memories[0].max_process_vram is not None else None
         )
 
         max_reserved = sum(memory.max_reserved for memory in memories) if memories[0].max_reserved is not None else None
         max_allocated = (
             sum(memory.max_allocated for memory in memories) if memories[0].max_allocated is not None else None
+        )
+
+        max_global_vram = (
+            max(memory.max_global_vram for memory in memories) if memories[0].max_global_vram is not None else None
         )
 
         return Memory(
@@ -95,22 +96,21 @@ class Memory:
 
 
 class MemoryTracker:
-    def __init__(
-        self, device: str, backend: str, device_ids: Optional[str] = None, monitored_pid: Optional[int] = None
-    ):
+    def __init__(self, device: str, backend: str, device_ids: Optional[str] = None):
         self.device = device
         self.backend = backend
         self.device_ids = device_ids
-        self.monitored_pid = monitored_pid
+        self.monitored_pid = os.getpid()
         self.uses_cuda_pytorch_allocator = self.device == "cuda" and self.backend == "pytorch"
         self.is_distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
-        if self.monitored_pid is None:
-            self.monitored_pid = int(os.environ.get("ISOLATED_PROCESS_PID", os.getpid()))
-            LOGGER.info(f"\t+ Tracking RAM memory of process with PID [{self.monitored_pid}]")
+        LOGGER.info(f"\t+ Tracking RAM memory of process [{self.monitored_pid}]")
 
         if self.device == "cuda":
-            LOGGER.info(f"\t+ Tracking VRAM memory of CUDA devices with IDs [{self.device_ids}]")
+            if self.device_ids is None:
+                raise ValueError("The CUDA device IDs must be provided when tracking VRAM memory.")
+
+            LOGGER.info(f"\t+ Tracking VRAM memory of CUDA devices [{self.device_ids}]")
             self.device_ids = list(map(int, self.device_ids.split(",")))
 
         if self.uses_cuda_pytorch_allocator:

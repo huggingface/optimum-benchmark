@@ -1,13 +1,10 @@
 from dataclasses import dataclass, make_dataclass
-from logging import getLogger
 from typing import Any, Dict, List, Optional
 
 from ..hub_utils import PushToHubMixin, classproperty
 from ..trackers.energy import Efficiency, Energy
 from ..trackers.latency import Latency, Throughput
 from ..trackers.memory import Memory
-
-LOGGER = getLogger("report")
 
 
 @dataclass
@@ -19,15 +16,15 @@ class BenchmarkMeasurements:
     efficiency: Optional[Efficiency] = None
 
     def __post_init__(self):
-        if self.memory and isinstance(self.memory, dict):
+        if self.memory is not None and isinstance(self.memory, dict):
             self.memory = Memory(**self.memory)
-        if self.latency and isinstance(self.latency, dict):
+        if self.latency is not None and isinstance(self.latency, dict):
             self.latency = Latency(**self.latency)
-        if self.throughput and isinstance(self.throughput, dict):
+        if self.throughput is not None and isinstance(self.throughput, dict):
             self.throughput = Throughput(**self.throughput)
-        if self.energy and isinstance(self.energy, dict):
+        if self.energy is not None and isinstance(self.energy, dict):
             self.energy = Energy(**self.energy)
-        if self.efficiency and isinstance(self.efficiency, dict):
+        if self.efficiency is not None and isinstance(self.efficiency, dict):
             self.efficiency = Efficiency(**self.efficiency)
 
     @staticmethod

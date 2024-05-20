@@ -1,20 +1,19 @@
 from dataclasses import dataclass
-from logging import getLogger
-from typing import Type
+from typing import TYPE_CHECKING, Type
 
 from hydra.utils import get_class
 
-from ..backends.base import Backend
 from ..backends.config import BackendConfig
 from ..hub_utils import PushToHubMixin, classproperty
 from ..launchers import LauncherConfig
-from ..launchers.base import Launcher
 from ..scenarios import ScenarioConfig
-from ..scenarios.base import Scenario
 from .config import BenchmarkConfig
 from .report import BenchmarkReport
 
-LOGGER = getLogger("benchmark")
+if TYPE_CHECKING:
+    from ..backends.base import Backend
+    from ..launchers.base import Launcher
+    from ..scenarios.base import Scenario
 
 
 @dataclass
@@ -24,9 +23,14 @@ class Benchmark(PushToHubMixin):
 
     def __post_init__(self):
         if isinstance(self.config, dict):
-            self.config = BenchmarkConfig(**self.config)
+            self.config = BenchmarkConfig.from_dict(self.config)
         elif not isinstance(self.config, BenchmarkConfig):
             raise ValueError("config must be either a dict or a BenchmarkConfig instance")
+
+        if isinstance(self.report, dict):
+            self.report = BenchmarkReport.from_dict(self.report)
+        elif not isinstance(self.report, BenchmarkReport):
+            raise ValueError("report must be either a dict or a BenchmarkReport instance")
 
     @classmethod
     def launch(cls, config: BenchmarkConfig):

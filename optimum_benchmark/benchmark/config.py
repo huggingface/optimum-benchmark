@@ -1,12 +1,9 @@
 from dataclasses import dataclass, field
-from logging import getLogger
 from typing import Any, Dict
 
 from ..hub_utils import PushToHubMixin, classproperty
 from ..import_utils import get_hf_libs_info
 from ..system_utils import get_system_info
-
-LOGGER = getLogger("benchmark")
 
 
 @dataclass
