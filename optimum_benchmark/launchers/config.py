@@ -1,7 +1,7 @@
 from abc import ABC
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from logging import getLogger
-from typing import Optional, TypeVar
+from typing import Any, Dict, Optional, TypeVar
 
 from ..system_utils import is_nvidia_system, is_rocm_system
 
@@ -15,6 +15,9 @@ class LauncherConfig(ABC):
 
     device_isolation: bool = False
     device_isolation_action: Optional[str] = None
+
+    numactl: bool = False
+    numactl_kwargs: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         if self.device_isolation and not is_nvidia_system() and not is_rocm_system():
