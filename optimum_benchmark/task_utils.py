@@ -47,17 +47,12 @@ _DIFFUSERS_TASKS_TO_MODEL_LOADERS = {
 _TIMM_TASKS_TO_MODEL_LOADERS = {
     "image-classification": "create_model",
 }
-_SENTENCE_TRANSFORMERS_TASKS_TO_MODEL_LOADERS = {
-    "feature-extraction": "SentenceTransformer",
-    "sentence-similarity": "SentenceTransformer",
-}
 
 
 _LIBRARY_TO_TASKS_TO_MODEL_LOADER_MAP = {
     "timm": _TIMM_TASKS_TO_MODEL_LOADERS,
     "diffusers": _DIFFUSERS_TASKS_TO_MODEL_LOADERS,
     "transformers": _TRANSFORMERS_TASKS_TO_MODEL_LOADERS,
-    "sentence-transformers": _SENTENCE_TRANSFORMERS_TASKS_TO_MODEL_LOADERS,
 }
 
 _SYNONYM_TASK_MAP = {
@@ -121,6 +116,9 @@ def infer_library_from_model_name_or_path(model_name_or_path: str, revision: Opt
 
     if inferred_library_name is None:
         raise KeyError(f"Could not find the proper library name for {model_name_or_path}.")
+
+    if inferred_library_name == "sentence-transformers":
+        inferred_library_name = "transformers"
 
     return inferred_library_name
 

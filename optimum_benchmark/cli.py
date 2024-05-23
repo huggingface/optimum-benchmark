@@ -53,15 +53,6 @@ cs.store(group="launcher", name=InlineConfig.name, node=InlineConfig)
 cs.store(group="launcher", name=ProcessConfig.name, node=ProcessConfig)
 cs.store(group="launcher", name=TorchrunConfig.name, node=TorchrunConfig)
 
-LOGGING_SETUP_DONE = False
-
-
-def setup_logging_once(*args, **kwargs):
-    global LOGGING_SETUP_DONE
-    if not LOGGING_SETUP_DONE:
-        LOGGING_SETUP_DONE = True
-        setup_logging(*args, **kwargs)
-
 
 # optimum-benchmark
 @hydra.main(version_base=None)
@@ -69,7 +60,7 @@ def main(config: DictConfig) -> None:
     log_level = os.environ.get("LOG_LEVEL", "INFO")
     log_to_file = os.environ.get("LOG_TO_FILE", "1") == "1"
     override_benchmarks = os.environ.get("OVERRIDE_BENCHMARKS", "0") == "1"
-    setup_logging_once(level=log_level, to_file=log_to_file, prefix="MAIN-PROCESS")
+    setup_logging(level=log_level, to_file=log_to_file, prefix="MAIN-PROCESS")
 
     if glob.glob("benchmark_report.json") and not override_benchmarks:
         LOGGER.warning(
