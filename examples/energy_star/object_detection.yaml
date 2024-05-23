@@ -7,7 +7,7 @@ defaults:
   - override hydra/job_logging: colorlog # colorful logging
   - override hydra/hydra_logging: colorlog # colorful logging
 
-experiment_name: object_detection_detr_resnet_50
+experiment_name: object_detection
 
 launcher:
   device_isolation: true
@@ -18,6 +18,7 @@ backend:
   device_ids: 0
   no_weights: true
   model: facebook/detr-resnet-50
+  processor: facebook/detr-resnet-50
   task: object-detection
 
 benchmark:
@@ -31,10 +32,10 @@ benchmark:
 hydra:
   run:
     # where to store run results
-    dir: runs/${experiment_name}/${now:%Y-%m-%d-%H-%M-%S}
+    dir: runs/${experiment_name}/${backend.model}/${now:%Y-%m-%d-%H-%M-%S}
   sweep:
     # where to store sweep results
-    dir: sweeps/${experiment_name}/${now:%Y-%m-%d-%H-%M-%S}
+    dir: sweeps/${experiment_name}/${backend.model}/${now:%Y-%m-%d-%H-%M-%S}
   job:
     # change working directory to the run directory
     chdir: true
