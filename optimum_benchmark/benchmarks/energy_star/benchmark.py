@@ -92,7 +92,7 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
             split=self.config.dataset_split,
         )
 
-        if backend.config.task in TEXT_GENERATION_TASKS:
+        if backend.config.task in TEXT_GENERATION_TASKS and backend.pretrained_model.can_generate():
             LOGGER.info("\t+ Updating Text Generation kwargs with default values")
             self.config.generate_kwargs = {**TEXT_GENERATION_KWARGS, **self.config.generate_kwargs}
             LOGGER.info("\t+ Initializing Text Generation report")
@@ -150,7 +150,7 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
         self.sample_inputs = backend.prepare_inputs(next(iter(self.dataloader)))
 
         for _ in range(self.config.warmup_runs):
-            if backend.config.task in TEXT_GENERATION_TASKS:
+            if backend.config.task in TEXT_GENERATION_TASKS and backend.pretrained_model.can_generate():
                 warmup_kwargs = self.config.generate_kwargs.copy()
                 warmup_kwargs.update({"max_new_tokens": 2, "min_new_tokens": 2})
                 _ = backend.generate(self.sample_inputs, warmup_kwargs)
@@ -162,7 +162,7 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
                 warmup_kwargs = self.config.forward_kwargs.copy()
                 _ = backend.forward(self.sample_inputs, warmup_kwargs)
 
-        if backend.config.task in TEXT_GENERATION_TASKS:
+        if backend.config.task in TEXT_GENERATION_TASKS and backend.pretrained_model.can_generate():
             LOGGER.info("\t+ Additional warmup for Text Generation")
             _ = backend.generate(self.sample_inputs, self.config.generate_kwargs)
         elif backend.config.task in IMAGE_DIFFUSION_TASKS:
@@ -170,7 +170,7 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
             _ = backend.call(self.sample_inputs, self.config.call_kwargs)
 
         if self.config.energy:
-            if backend.config.task in TEXT_GENERATION_TASKS:
+            if backend.config.task in TEXT_GENERATION_TASKS and backend.pretrained_model.can_generate():
                 self.run_text_generation_energy_tracking(backend)
             elif backend.config.task in IMAGE_DIFFUSION_TASKS:
                 self.run_image_diffusion_energy_tracking(backend)
