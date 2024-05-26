@@ -360,7 +360,10 @@ def automatic_speech_recognition_preprocessing(
 
     def preprocess_function(examples):
         audio = examples[config.audio_column_name]
-        outputs = processor(audio["array"], sampling_rate=audio["sampling_rate"])
+        if "seamless_m4t" in pretrained_config.model_type:
+            outputs = processor(audios=audio["array"], sampling_rate=audio["sampling_rate"])
+        else:
+            outputs = processor(audio["array"], sampling_rate=audio["sampling_rate"])
 
         # The processor may add an extra dimension so we squeeze it
         for key, value in outputs.items():
