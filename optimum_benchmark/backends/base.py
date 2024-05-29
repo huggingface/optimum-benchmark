@@ -68,8 +68,17 @@ class Backend(Generic[BackendConfigT], ABC):
             )
             self.model_type = self.pretrained_config.model_type
 
+        # Hack for Stable Cascade to make sure we use the combined pipeline
+        auto_model_class_name = None
+        if "stable-cascade" in self.config.model:
+            auto_model_class_name = "StableCascadeCombinedPipeline"
+
         self.automodel_class = get_automodel_class_for_task(
-            model_type=self.model_type, library=self.config.library, task=self.config.task, framework="pt"
+            model_type=self.model_type,
+            library=self.config.library,
+            task=self.config.task,
+            framework="pt",
+            auto_model_class_name=auto_model_class_name,
         )
 
     def seed(self) -> None:

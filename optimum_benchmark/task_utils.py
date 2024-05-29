@@ -185,6 +185,11 @@ def get_automodel_class_for_task(
     library: str = "transformers",
     framework: str = "pt",
 ):
+    if auto_model_class_name == "StableCascadeCombinedPipeline":
+        from diffusers import StableCascadeCombinedPipeline
+
+        return StableCascadeCombinedPipeline
+
     task = map_from_synonym(task)
 
     if framework == "pt":
