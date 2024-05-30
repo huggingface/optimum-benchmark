@@ -333,7 +333,7 @@ def image_to_text_preprocessing(dataset: Dataset, config: EnergyStarConfig, proc
         processor.tokenizer.pad_token = processor.tokenizer.eos_token
 
     def preprocess_function(examples):
-        return processor(examples[config.image_column_name])
+        return processor(images=examples[config.image_column_name])
 
     dataset = dataset.map(
         preprocess_function,
