@@ -149,7 +149,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 **self.config.hub_kwargs,
                 **self.automodel_kwargs,
             )
-            self.pretrained_model.unet.config.addition_embed_type = None
+            if "xl" in self.config.model:
+                self.pretrained_model.unet.config.addition_embed_type = None
             if self.config.device_map is None and self.config.device != "cpu":
                 LOGGER.info(f"\t+ Moving pipeline to device: {self.config.device}")
                 self.pretrained_model.to(self.config.device)

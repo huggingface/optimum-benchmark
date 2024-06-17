@@ -189,6 +189,10 @@ def get_automodel_class_for_task(
         from diffusers import StableCascadeCombinedPipeline
 
         return StableCascadeCombinedPipeline
+    elif auto_model_class_name == "StableDiffusionXLPipeline":
+        from diffusers import StableDiffusionXLPipeline
+
+        return StableDiffusionXLPipeline
 
     task = map_from_synonym(task)
 
