@@ -74,6 +74,8 @@ class Backend(Generic[BackendConfigT], ABC):
             auto_model_class_name = "StableCascadeCombinedPipeline"
         elif "stable-diffusion-xl" in self.config.model:
             auto_model_class_name = "StableDiffusionXLPipeline"
+        elif "sdxl" in self.config.model:
+            auto_model_class_name = "StableDiffusionXLPipeline"
 
         self.automodel_class = get_automodel_class_for_task(
             model_type=self.model_type,
