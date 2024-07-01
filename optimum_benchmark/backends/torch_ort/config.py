@@ -8,12 +8,14 @@ from ..config import BackendConfig
 @dataclass
 class TorchORTConfig(BackendConfig):
     name: str = "torch-ort"
-    version: Optional[str] = torch_ort_version
+    version: Optional[str] = torch_ort_version()
     _target_: str = "optimum_benchmark.backends.torch_ort.backend.TorchORTBackend"
 
     # load options
     no_weights: bool = False
     torch_dtype: Optional[str] = None
+    # sdpa, which has became default of many architectures, fails with torch ort
+    attn_implementation: Optional[str] = "eager"
 
     # peft options
     peft_type: Optional[str] = None
