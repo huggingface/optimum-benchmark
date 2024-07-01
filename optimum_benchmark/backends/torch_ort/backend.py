@@ -82,6 +82,9 @@ class TorchORTBackend(Backend[TorchORTConfig]):
         if self.config.torch_dtype is not None:
             kwargs["torch_dtype"] = getattr(torch, self.config.torch_dtype)
 
+        if self.config.attn_implementation is not None:
+            kwargs["attn_implementation"] = self.config.attn_implementation
+
         return kwargs
 
     def train(
