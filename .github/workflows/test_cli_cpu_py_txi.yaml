@@ -44,9 +44,5 @@ jobs:
           pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
           pip install -e .[testing,py-txi]
 
-      - name: Start docker
-        run: |
-          sudo systemctl start docker
-
       - name: Run tests
         run: pytest -s -k "cli and cpu and py_txi"

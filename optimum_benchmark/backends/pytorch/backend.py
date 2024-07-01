@@ -1,9 +1,10 @@
 import os
 from collections import OrderedDict
 from tempfile import TemporaryDirectory
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Tuple
 
 import torch
+from accelerate import Accelerator
 from datasets import Dataset
 from safetensors.torch import save_file
 from transformers import (
@@ -16,7 +17,7 @@ from transformers import (
     TrainingArguments,
 )
 
-from ...import_utils import is_deepspeed_available, is_zentorch_available
+from ...import_utils import is_deepspeed_available, is_torch_distributed_available, is_zentorch_available
 from ..base import Backend
 from ..peft_utils import apply_peft
 from ..transformers_utils import random_init_weights
@@ -25,6 +26,8 @@ from .config import PyTorchConfig
 if is_deepspeed_available():
     import deepspeed
 
+if is_torch_distributed_available():
+    import torch.distributed
 
 if is_zentorch_available():
     import zentorch  # type: ignore # noqa: F401
@@ -103,6 +106,13 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.logger.info("\t+ Applying PEFT")
             self.pretrained_model = apply_peft(self.pretrained_model, self.config.peft_type, self.config.peft_config)
 
+        # DeepSpeed
+        if self.config.deepspeed_inference:
+            self.logger.info("\t+ Initializing DeepSpeed Inference Engine")
+            self.pretrained_model = deepspeed.init_inference(
+                model=self.pretrained_model, config=self.config.deepspeed_inference_config
+            )
+
         # Torch compile
         if self.config.torch_compile:
             if self.config.library == "diffusers":
@@ -124,13 +134,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                     self.pretrained_model = torch.compile(self.pretrained_model, **self.config.torch_compile_config)
                 else:
                     raise ValueError(f"Target {self.config.torch_compile_target} not supported")
-
-        # DeepSpeed
-        if self.config.deepspeed_inference:
-            self.logger.info("\t+ Initializing DeepSpeed Inference Engine")
-            self.pretrained_model = deepspeed.init_inference(
-                model=self.pretrained_model, config=self.config.deepspeed_inference_config
-            )
 
     def validate_library(self) -> None:
         if self.config.library == "timm":
@@ -276,6 +279,18 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             raise ValueError(f"Quantization scheme {self.config.quantization_scheme} not recognized")
 
     @property
+    def is_distributed(self) -> bool:
+        return is_torch_distributed_available() and torch.distributed.is_initialized()
+
+    @property
+    def is_tp_distributed(self) -> bool:
+        return self.is_distributed and self.config.deepspeed_inference
+
+    @property
+    def is_dp_distributed(self) -> bool:
+        return self.is_distributed and not self.config.deepspeed_inference
+
+    @property
     def is_quantized(self) -> bool:
         return self.config.quantization_scheme is not None or (
             hasattr(self.pretrained_config, "quantization_config")
@@ -343,18 +358,34 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         return kwargs
 
-    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        inputs = super().prepare_inputs(inputs)
+    def prepare_inputs(
+        self, inputs: Dict[str, Any], input_shapes: Dict[str, Any]
+    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        inputs, input_shapes = super().prepare_inputs(inputs, input_shapes)
 
-        if self.config.library == "diffusers":
-            inputs = {"prompt": inputs["prompt"]}
-        elif self.config.library == "timm":
-            inputs = {"x": inputs["pixel_values"].to(self.config.device)}
-        else:
-            for key, value in inputs.items():
+        if self.is_dp_distributed:
+            if input_shapes["batch_size"] % torch.distributed.get_world_size() != 0:
+                raise ValueError(
+                    f"Batch size {input_shapes['batch_size']} must be divisible by data parallel "
+                    f"world size {torch.distributed.get_world_size()}"
+                )
+            with Accelerator().split_between_processes(inputs=inputs, apply_padding=False) as split_inputs:
+                input_shapes["batch_size"] = input_shapes["batch_size"] // torch.distributed.get_world_size()
+                inputs = split_inputs
+
+        if self.is_tp_distributed:
+            if torch.distributed.get_rank() != 0:
+                # this is to force throughput of non main shards to 0
+                input_shapes["batch_size"] = 0
+
+        if self.config.library == "timm":
+            inputs = {"x": inputs["pixel_values"]}
+
+        for key, value in inputs.items():
+            if isinstance(value, torch.Tensor):
                 inputs[key] = value.to(self.config.device)
 
-        return inputs
+        return inputs, input_shapes
 
     @torch.inference_mode()
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
@@ -392,9 +423,3 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         self.logger.info("\t+ Starting training")
         trainer.train()
         self.logger.info("\t+ Finished training")
-
-    def seed(self):
-        super().seed()
-        torch.manual_seed(self.config.seed)
-        torch.cuda.manual_seed(self.config.seed)
-        torch.cuda.manual_seed_all(self.config.seed)

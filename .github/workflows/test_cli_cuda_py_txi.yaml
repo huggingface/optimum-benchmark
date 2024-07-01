@@ -43,9 +43,5 @@ jobs:
           pip install --upgrade pip
           pip install -e .[testing,py-txi]
 
-      - name: Start docker
-        run: |
-          sudo systemctl start docker
-
       - name: Run tests
         run: pytest -s -k "cli and cuda and py_txi"

@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import torch
 from huggingface_hub import AsyncInferenceClient
@@ -60,13 +60,19 @@ class LLMSwarmBackend(Backend[LLMSwarmConfig]):
         self.logger.info("\t+ Saving new pretrained generation config")
         self.generation_config.save_pretrained(save_directory=model_snapshot_path)
 
-    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+    def prepare_inputs(
+        self, inputs: Dict[str, Any], input_shapes: Dict[str, Any]
+    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        inputs, input_shapes = super().prepare_inputs(inputs, input_shapes)
+
         if "inputs" in inputs:
-            return {"prompt": self.pretrained_processor.batch_decode(inputs["inputs"].tolist())}
+            inputs = {"prompt": self.pretrained_processor.batch_decode(inputs["inputs"].tolist())}
         elif "input_ids" in inputs:
-            return {"prompt": self.pretrained_processor.batch_decode(inputs["input_ids"].tolist())}
+            inputs = {"prompt": self.pretrained_processor.batch_decode(inputs["input_ids"].tolist())}
         else:
             raise ValueError("inputs must contain either input_ids or inputs")
+
+        return inputs, input_shapes
 
     async def single_client_call(self, prompt: str, kwargs: Dict[str, Any]) -> str:
         return await self.client.text_generation(prompt, max_new_tokens=kwargs.get("max_new_tokens", 1))

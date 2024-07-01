@@ -1,6 +1,6 @@
 import os
 from tempfile import TemporaryDirectory
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import torch
 from py_txi import TEI, TGI, TEIConfig, TGIConfig
@@ -139,15 +139,19 @@ class PyTXIBackend(Backend[PyTXIConfig]):
         else:
             raise NotImplementedError(f"TXI does not support task {self.config.task}")
 
-    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+    def prepare_inputs(
+        self, inputs: Dict[str, Any], input_shapes: Dict[str, Any]
+    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        inputs, input_shapes = super().prepare_inputs(inputs, input_shapes)
+
         if self.config.task in TEXT_GENERATION_TASKS:
-            inputs = self.pretrained_processor.batch_decode(inputs["input_ids"].tolist())
-            return {"prompt": inputs}
+            inputs = {"prompt": self.pretrained_processor.batch_decode(inputs["input_ids"].tolist())}
         elif self.config.task in TEXT_EMBEDDING_TASKS:
-            inputs = self.pretrained_processor.batch_decode(inputs["input_ids"].tolist())
-            return {"text": inputs}
+            inputs = {"text": self.pretrained_processor.batch_decode(inputs["input_ids"].tolist())}
         else:
             raise NotImplementedError(f"TXI does not support task {self.config.task}")
+
+        return inputs, input_shapes
 
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> List[str]:
         return self.pretrained_model.encode(**inputs, **kwargs)

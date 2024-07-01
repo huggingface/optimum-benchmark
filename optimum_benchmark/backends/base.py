@@ -1,12 +1,11 @@
-import random
 from abc import ABC
 from collections import OrderedDict
 from logging import getLogger
-from typing import Any, ClassVar, Dict, Generic, Optional
+from typing import Any, ClassVar, Dict, Generic, Optional, Tuple
 
 import datasets.utils.logging as datasets_logging
 import transformers.utils.logging as transformers_logging
-from transformers import GenerationConfig, PretrainedConfig, PreTrainedModel, TrainerState
+from transformers import GenerationConfig, PretrainedConfig, PreTrainedModel, TrainerState, set_seed
 
 from ..task_utils import get_automodel_class_for_task
 from .config import BackendConfigT
@@ -37,11 +36,15 @@ class Backend(Generic[BackendConfigT], ABC):
 
     def __init__(self, config: BackendConfigT):
         self.config = config
+
         self.logger = getLogger(self.NAME)
         self.logger.info(f"Allocating {self.NAME} backend")
 
+        self.logger.info(f"\t+ Seeding backend with {self.config.seed}")
+        self.seed()
+
         if self.config.library == "diffusers":
-            self.logger.info("\t+ Benchmarking a Diffusers model")
+            self.logger.info("\t+ Benchmarking a Diffusers pipeline")
             self.pretrained_config = get_diffusers_pretrained_config(self.config.model, **self.config.model_kwargs)
             self.model_shapes = extract_diffusers_shapes_from_model(self.config.model, **self.config.model_kwargs)
             self.model_type = self.config.task
@@ -72,11 +75,9 @@ class Backend(Generic[BackendConfigT], ABC):
             model_type=self.model_type, library=self.config.library, task=self.config.task, framework="pt"
         )
         self.logger.info(f"\t+ Using automodel class {self.automodel_class.__name__}")
-        self.seed()
 
     def seed(self) -> None:
-        self.logger.info(f"\t+ Seeding {self.NAME} backend with seed {self.config.seed}")
-        random.seed(self.config.seed)
+        set_seed(self.config.seed)
 
     def prepare_for_inference(self, **kwargs) -> None:
         """
@@ -85,12 +86,14 @@ class Backend(Generic[BackendConfigT], ABC):
         """
         pass
 
-    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+    def prepare_inputs(
+        self, inputs: Dict[str, Any], input_shapes: Dict[str, Any]
+    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
         This method is used to prepare the inputs before passing them to the model.
         It can be used to move the inputs to the correct device, for example.
         """
-        return inputs
+        return inputs, input_shapes
 
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         """

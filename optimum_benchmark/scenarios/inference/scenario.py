@@ -5,16 +5,12 @@ from transformers import LogitsProcessorList
 from ...backends.base import Backend, BackendConfigT
 from ...benchmark.report import BenchmarkReport
 from ...generators.input_generator import InputGenerator
-from ...import_utils import is_torch_distributed_available
 from ...task_utils import IMAGE_DIFFUSION_TASKS, TEXT_GENERATION_TASKS
 from ...trackers.energy import Efficiency, EnergyTracker
 from ...trackers.latency import LatencyTracker, PerTokenLatencyLogitsProcessor, Throughput
 from ...trackers.memory import MemoryTracker
 from ..base import Scenario
 from .config import InferenceConfig
-
-if is_torch_distributed_available():
-    import torch.distributed
 
 PER_TOKEN_BACKENDS = ["pytorch", "onnxruntime", "openvino", "neural-compressor"]
 
@@ -61,14 +57,6 @@ class InferenceScenario(Scenario[InferenceConfig]):
         super().__init__(config)
 
     def run(self, backend: Backend[BackendConfigT]) -> BenchmarkReport:
-        if is_torch_distributed_available() and torch.distributed.is_initialized():
-            self.logger.info("\t+ Distributing batch size across processes")
-            if self.config.input_shapes["batch_size"] % torch.distributed.get_world_size() != 0:
-                raise ValueError(
-                    "The batch size must be divisible by the number of processes in a distributed environment"
-                )
-            self.config.input_shapes["batch_size"] //= torch.distributed.get_world_size()
-
         self.logger.info("\t+ Creating input generator")
         self.input_generator = InputGenerator(
             task=backend.config.task, model_shapes=backend.model_shapes, input_shapes=self.config.input_shapes
@@ -77,8 +65,6 @@ class InferenceScenario(Scenario[InferenceConfig]):
         if backend.config.task in TEXT_GENERATION_TASKS:
             self.logger.info("\t+ Generating Text Generation inputs")
             self.inputs = self.input_generator()
-            self.logger.info("\t+ Preparing Text Generation inputs")
-            self.inputs = backend.prepare_inputs(self.inputs)
             self.logger.info("\t+ Updating Text Generation kwargs with default values")
             self.config.generate_kwargs = {**TEXT_GENERATION_DEFAULT_KWARGS, **self.config.generate_kwargs}
             self.logger.info("\t+ Initializing Text Generation report")
@@ -88,8 +74,6 @@ class InferenceScenario(Scenario[InferenceConfig]):
         elif backend.config.task in IMAGE_DIFFUSION_TASKS:
             self.logger.info("\t+ Generating Image Diffusion inputs")
             self.inputs = self.input_generator()
-            self.logger.info("\t+ Preparing Image Diffusion inputs")
-            self.inputs = backend.prepare_inputs(self.inputs)
             self.logger.info("\t+ Updating Image Diffusion kwargs with default values")
             self.config.call_kwargs = {**IMAGE_DIFFUSION_DEFAULT_KWARGS, **self.config.call_kwargs}
             self.logger.info("\t+ Initializing Image Diffusion report")
@@ -98,18 +82,22 @@ class InferenceScenario(Scenario[InferenceConfig]):
         else:
             self.logger.info("\t+ Generating Inference inputs")
             self.inputs = self.input_generator()
-            self.logger.info("\t+ Preparing Inference inputs")
-            self.inputs = backend.prepare_inputs(self.inputs)
             self.logger.info("\t+ Initializing Inference report")
             self.report = BenchmarkReport.from_list(targets=["forward"])
 
+        self.logger.info("\t+ Preparing inputs for Inference")
+        self.inputs, self.config.input_shapes = backend.prepare_inputs(
+            inputs=self.inputs, input_shapes=self.config.input_shapes
+        )
+
         self.logger.info("\t+ Preparing backend for Inference")
         backend.prepare_for_inference(
-            **backend.model_shapes,
-            **self.config.input_shapes,
-            **self.config.generate_kwargs,
-            **self.config.forward_kwargs,
-            **self.config.call_kwargs,
+            input_shapes=self.config.input_shapes,
+            inference_kwargs={
+                **self.config.generate_kwargs,
+                **self.config.forward_kwargs,
+                **self.config.call_kwargs,
+            },
         )
 
         if backend.config.task in TEXT_GENERATION_TASKS:
@@ -217,6 +205,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
         per_token_latency = latency_tracker.get_per_token_latency()
         prefill_latency = latency_tracker.get_prefill_latency()
         decode_latency = latency_tracker.get_decode_latency()
+
         per_token_volume = self.atomic_per_token_volume
         prefill_volume = self.atomic_prefill_volume
         decode_volume = self.atomic_decode_volume

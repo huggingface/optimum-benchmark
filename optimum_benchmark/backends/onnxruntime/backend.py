@@ -1,7 +1,7 @@
 import os
 from collections import OrderedDict
 from tempfile import TemporaryDirectory
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import torch
 from hydra.utils import get_class
@@ -18,11 +18,18 @@ from optimum.onnxruntime.configuration import (
 from safetensors.torch import save_file
 
 from ...generators.dataset_generator import DatasetGenerator
+from ...import_utils import is_accelerate_available, is_torch_distributed_available
 from ...task_utils import TEXT_GENERATION_TASKS
 from ..base import Backend
 from ..transformers_utils import random_init_weights
 from .config import ORTConfig
 from .utils import TASKS_TO_ORTMODELS, TASKS_TO_ORTSD, format_calibration_config, format_quantization_config
+
+if is_accelerate_available():
+    from accelerate import Accelerator
+
+if is_torch_distributed_available():
+    import torch.distributed
 
 
 class ORTBackend(Backend[ORTConfig]):
@@ -133,6 +140,10 @@ class ORTBackend(Backend[ORTConfig]):
     @property
     def is_calibrated(self) -> bool:
         return (self.config.auto_calibration is not None) or self.config.calibration
+
+    @property
+    def is_dp_distributed(self) -> bool:
+        return is_torch_distributed_available() and torch.distributed.is_initialized()
 
     @property
     def ortmodel_kwargs(self) -> Dict[str, Any]:
@@ -273,25 +284,32 @@ class ORTBackend(Backend[ORTConfig]):
         if self.pretrained_config is not None:
             self.pretrained_config.save_pretrained(self.quantized_model)
 
-    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        inputs = super().prepare_inputs(inputs)
+    def prepare_inputs(
+        self, inputs: Dict[str, Any], input_shapes: Dict[str, Any]
+    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        inputs, input_shapes = super().prepare_inputs(inputs, input_shapes)
 
-        if self.config.library == "diffusers":
-            inputs = {"prompt": inputs["prompt"]}
-        elif self.config.library == "transformers":
+        if self.is_dp_distributed:
+            if input_shapes["batch_size"] % torch.distributed.get_world_size() != 0:
+                raise ValueError(
+                    f"Batch size {input_shapes['batch_size']} must be divisible by data parallel "
+                    f"world size {torch.distributed.get_world_size()}"
+                )
+            with Accelerator().split_between_processes(inputs=inputs, apply_padding=False) as split_inputs:
+                input_shapes["batch_size"] = input_shapes["batch_size"] // torch.distributed.get_world_size()
+                inputs = split_inputs
+
+        if self.config.library == "transformers":
             for key, value in list(inputs.items()):
                 if key in ["position_ids", "token_type_ids"]:
-                    if key in self.inputs_names:
-                        inputs[key] = value.to(self.config.device)
-                    else:
+                    if key not in self.inputs_names:
                         inputs.pop(key)
-                else:
-                    inputs[key] = value.to(self.config.device)
-        else:
-            for key, value in list(inputs.items()):
+
+        for key, value in inputs.items():
+            if isinstance(value, torch.Tensor):
                 inputs[key] = value.to(self.config.device)
 
-        return inputs
+        return inputs, input_shapes
 
     @torch.inference_mode()
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
