@@ -387,19 +387,19 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         return inputs, input_shapes
 
-    @torch.no_grad()
+    @torch.inference_mode()
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         return self.pretrained_model.forward(**inputs, **kwargs)
 
-    @torch.no_grad()
+    @torch.inference_mode()
     def prefill(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         return self.pretrained_model.generate(**inputs, **kwargs)
 
-    @torch.no_grad()
+    @torch.inference_mode()
     def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         return self.pretrained_model.generate(**inputs, **kwargs)
 
-    @torch.no_grad()
+    @torch.inference_mode()
     def call(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         return self.pretrained_model(**inputs, **kwargs)
 
@@ -423,9 +423,3 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         self.logger.info("\t+ Starting training")
         trainer.train()
         self.logger.info("\t+ Finished training")
-
-    def seed(self):
-        super().seed()
-        torch.manual_seed(self.config.seed)
-        torch.cuda.manual_seed(self.config.seed)
-        torch.cuda.manual_seed_all(self.config.seed)
