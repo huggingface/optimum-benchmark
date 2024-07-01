@@ -143,7 +143,7 @@ class ORTBackend(Backend[ORTConfig]):
 
     @property
     def is_dp_distributed(self) -> bool:
-        return is_torch_distributed_available() and torch.distirbuted.is_initialized()
+        return is_torch_distributed_available() and torch.distributed.is_initialized()
 
     @property
     def ortmodel_kwargs(self) -> Dict[str, Any]:
