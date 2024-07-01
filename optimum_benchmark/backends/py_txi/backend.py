@@ -145,7 +145,7 @@ class PyTXIBackend(Backend[PyTXIConfig]):
         inputs, input_shapes = super().prepare_inputs(inputs, input_shapes)
 
         if self.config.task in TEXT_GENERATION_TASKS:
-            inputs = {"prompts": self.pretrained_processor.batch_decode(inputs["input_ids"].tolist())}
+            inputs = {"prompt": self.pretrained_processor.batch_decode(inputs["input_ids"].tolist())}
         elif self.config.task in TEXT_EMBEDDING_TASKS:
             inputs = {"text": self.pretrained_processor.batch_decode(inputs["input_ids"].tolist())}
         else:
