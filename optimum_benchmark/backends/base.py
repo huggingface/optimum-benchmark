@@ -86,7 +86,9 @@ class Backend(Generic[BackendConfigT], ABC):
         """
         pass
 
-    def prepare_inputs(self, inputs: Dict[str, Any], input_shapes: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    def prepare_inputs(
+        self, inputs: Dict[str, Any], input_shapes: Dict[str, Any]
+    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
         This method is used to prepare the inputs before passing them to the model.
         It can be used to move the inputs to the correct device, for example.
