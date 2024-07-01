@@ -361,27 +361,28 @@ class PyTorchBackend(Backend[PyTorchConfig]):
     def prepare_inputs(
         self, inputs: Dict[str, Any], input_shapes: Dict[str, Any]
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        inputs, input_shapes = super().prepare_inputs(inputs, input_shapes)
+
         if self.is_dp_distributed:
             if input_shapes["batch_size"] % torch.distributed.get_world_size() != 0:
-                self.logger.warning(
-                    f"Batch size ({input_shapes['batch_size']}) is not divisible by world size ({torch.distributed.get_world_size()}). "
-                    "Some processes will have a different batch size."
+                raise ValueError(
+                    f"Batch size {input_shapes['batch_size']} must be divisible by data parallel "
+                    f"world size {torch.distributed.get_world_size()}"
                 )
+            with Accelerator().split_between_processes(inputs=inputs, apply_padding=False) as split_inputs:
+                input_shapes["batch_size"] = input_shapes["batch_size"] // torch.distributed.get_world_size()
+                inputs = split_inputs
 
-            with Accelerator().split_between_processes(inputs=inputs) as split_inputs:
-                input_shapes["batch_size"] = split_inputs["input_ids"].shape[0]
-
-        elif self.is_tp_distributed:
+        if self.is_tp_distributed:
             if torch.distributed.get_rank() != 0:
                 # this is to force throughput of non main shards to 0
                 input_shapes["batch_size"] = 0
 
-        if self.config.library == "diffusers":
-            inputs = {"prompt": inputs["prompt"]}
-        elif self.config.library == "timm":
-            inputs = {"x": inputs["pixel_values"].to(self.config.device)}
-        else:
-            for key, value in inputs.items():
+        if self.config.library == "timm":
+            inputs = {"x": inputs["pixel_values"]}
+
+        for key, value in inputs.items():
+            if isinstance(value, torch.Tensor):
                 inputs[key] = value.to(self.config.device)
 
         return inputs, input_shapes

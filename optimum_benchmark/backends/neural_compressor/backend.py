@@ -145,14 +145,6 @@ class INCBackend(Backend[INCConfig]):
             batch_size=1,
         )
 
-    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        inputs = super().prepare_inputs(inputs)
-
-        if self.config.library == "diffusers":
-            return {"prompt": inputs["prompt"]}
-
-        return inputs
-
     @torch.inference_mode()
     def forward(self, input: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         return self.pretrained_model(**input, **kwargs)

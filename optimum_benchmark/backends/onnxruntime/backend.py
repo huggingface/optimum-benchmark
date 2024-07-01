@@ -1,7 +1,7 @@
 import os
 from collections import OrderedDict
 from tempfile import TemporaryDirectory
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import torch
 from hydra.utils import get_class
@@ -273,25 +273,22 @@ class ORTBackend(Backend[ORTConfig]):
         if self.pretrained_config is not None:
             self.pretrained_config.save_pretrained(self.quantized_model)
 
-    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        inputs = super().prepare_inputs(inputs)
+    def prepare_inputs(
+        self, inputs: Dict[str, Any], input_shapes: Dict[str, Any]
+    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        inputs, input_shapes = super().prepare_inputs(inputs, input_shapes)
 
-        if self.config.library == "diffusers":
-            inputs = {"prompt": inputs["prompt"]}
-        elif self.config.library == "transformers":
+        if self.config.library == "transformers":
             for key, value in list(inputs.items()):
                 if key in ["position_ids", "token_type_ids"]:
-                    if key in self.inputs_names:
-                        inputs[key] = value.to(self.config.device)
-                    else:
+                    if key not in self.inputs_names:
                         inputs.pop(key)
-                else:
-                    inputs[key] = value.to(self.config.device)
-        else:
-            for key, value in list(inputs.items()):
+
+        for key, value in inputs.items():
+            if isinstance(value, torch.Tensor):
                 inputs[key] = value.to(self.config.device)
 
-        return inputs
+        return inputs, input_shapes
 
     @torch.inference_mode()
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:

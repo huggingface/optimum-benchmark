@@ -1,6 +1,6 @@
 import os
 from tempfile import TemporaryDirectory
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
 import torch
 from huggingface_hub.constants import HUGGINGFACE_HUB_CACHE
@@ -129,12 +129,17 @@ class VLLMBackend(Backend[VLLMConfig]):
         if self.config.task not in ["text-generation"]:
             raise ValueError(f"Task {self.config.task} not supported by {self.NAME}")
 
-    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+    def prepare_inputs(
+        self, inputs: Dict[str, Any], input_shapes: Dict[str, Any]
+    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        inputs, input_shapes = super().prepare_inputs(inputs, input_shapes)
+
         if self.config.task in TEXT_GENERATION_TASKS:
-            inputs = self.pretrained_processor.batch_decode(inputs["input_ids"])
-            return {"prompts": inputs}
+            inputs = {"prompts": self.pretrained_processor.batch_decode(inputs["input_ids"])}
         else:
             raise NotImplementedError(f"vLLM does not support task {self.config.task}")
+
+        return inputs, input_shapes
 
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> Any:
         return self.pretrained_model.generate(

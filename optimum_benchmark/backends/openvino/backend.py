@@ -2,7 +2,7 @@ import inspect
 import os
 from collections import OrderedDict
 from tempfile import TemporaryDirectory
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 
 import torch
 from hydra.utils import get_class
@@ -180,14 +180,6 @@ class OVBackend(Backend[OVConfig]):
         if self.config.reshape or self.config.half:
             self.logger.info("\t+ Compiling model")
             self.pretrained_model.compile()
-
-    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        inputs = super().prepare_inputs(inputs)
-
-        if self.config.library == "diffusers":
-            return {"prompt": inputs["prompt"]}
-
-        return inputs
 
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         return self.pretrained_model.forward(**inputs, **kwargs)
