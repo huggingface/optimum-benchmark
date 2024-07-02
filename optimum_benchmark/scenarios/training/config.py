@@ -10,6 +10,7 @@ TRAINING_ARGUMENT = {
     "per_device_train_batch_size": 2,
     "gradient_accumulation_steps": 1,
     "output_dir": "./trainer_output",
+    "evaluation_strategy": "no",
     "eval_strategy": "no",
     "save_strategy": "no",
     "do_train": True,
