@@ -11,6 +11,8 @@ TRAINING_ARGUMENT = {
     "gradient_accumulation_steps": 1,
     "output_dir": "./trainer_output",
     "evaluation_strategy": "no",
+    "eval_strategy": "no",
+    "save_strategy": "no",
     "do_train": True,
     "use_cpu": False,
     "max_steps": -1,
