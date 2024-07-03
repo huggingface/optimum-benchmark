@@ -264,7 +264,7 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         self.start_time: Optional[float] = None
         self.prefilled: Optional[bool] = None
 
-        self.per_token_events: List[Union[float, torch.cuda.Event]] = []
+        self.per_token_events: List[List[Union[float, torch.cuda.Event]]] = []
         self.prefill_start_events: List[Union[float, torch.cuda.Event]] = []
         self.prefill_end_events: List[Union[float, torch.cuda.Event]] = []
         self.decode_start_events: List[Union[float, torch.cuda.Event]] = []
@@ -282,6 +282,9 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
 
     @contextmanager
     def track(self):
+        self.prefilled = False
+        self.per_token_events.append([])
+
         if self.is_distributed:
             torch.distributed.barrier()
 
@@ -291,13 +294,9 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         else:
             self.prefill_start_events.append(time.perf_counter())
 
-        self.prefilled = False
-
         # this is where generate is called,
         # and for each decoded token, we record an event
         yield
-
-        self.prefilled = None
 
         if self.is_asynchronous:
             self.decode_end_events.append(torch.cuda.Event(enable_timing=True))
@@ -307,6 +306,8 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
 
         if self.is_distributed:
             torch.distributed.barrier()
+
+        self.prefilled = False
 
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor):
         assert (
@@ -319,12 +320,12 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         else:
             event = time.perf_counter()
 
-        self.per_token_events.append(event)
-
         if not self.prefilled:
             self.prefill_end_events.append(event)
             self.decode_start_events.append(event)
             self.prefilled = True
+
+        self.per_token_events[-1].append(event)
 
         return scores
 
@@ -368,13 +369,15 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
             torch.cuda.synchronize()
 
             latencies_list = [
-                self.per_token_events[i].elapsed_time(self.per_token_events[i + 1]) / 1e3
-                for i in range(0, len(self.per_token_events) - 1)
+                self.per_token_events[i][j].elapsed_time(self.per_token_events[i][j + 1]) / 1e3
+                for i in range(len(self.per_token_events))
+                for j in range(0, len(self.per_token_events[i]) - 1)
             ]
         else:
             latencies_list = [
-                (self.per_token_events[i + 1] - self.per_token_events[i])
-                for i in range(0, len(self.per_token_events) - 1)
+                (self.per_token_events[i][j + 1] - self.per_token_events[i][j])
+                for i in range(len(self.per_token_events))
+                for j in range(0, len(self.per_token_events[i]) - 1)
             ]
 
         assert not any(latency < 0 for latency in latencies_list), "Negative latency detected"
