@@ -10,15 +10,15 @@ defaults:
 experiment_name: text_generation
 
 launcher:
-  device_isolation: true
+  device_isolation: False
   device_isolation_action: warn
 
 backend:
-  device: cuda
+  device: cpu
   device_ids: 0
   no_weights: true
-  model: apple/OpenELM-270M
-  processor: meta-llama/Llama-2-7b-hf
+  model: facebook/opt-125m
+  processor: facebook/opt-125m
   task: text-generation
 
 benchmark:
