@@ -262,7 +262,7 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
             LOGGER.info("\t+ Tracking latency using CPU performance counter")
 
         self.start_time: Optional[float] = None
-        self.next_is_prefill_end_decode_start: Optional[bool] = None
+        self.prefilled: Optional[bool] = None
 
         self.per_token_events: List[Union[float, torch.cuda.Event]] = []
         self.prefill_start_events: List[Union[float, torch.cuda.Event]] = []
@@ -272,7 +272,7 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
 
     def reset(self):
         self.start_time = None
-        self.next_is_prefill_end_decode_start = None
+        self.prefilled = None
 
         self.per_token_events = []
         self.prefill_start_events = []
@@ -291,11 +291,13 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         else:
             self.prefill_start_events.append(time.perf_counter())
 
-        self.next_is_prefill_end_decode_start = True  # this is used to record the end of prefill and start of decode
+        self.prefilled = False
 
-        yield  # this is where generate is called, and for each decoded token, we record an event
+        # this is where generate is called,
+        # and for each decoded token, we record an event
+        yield
 
-        self.next_is_prefill_end_decode_start = None
+        self.prefilled = None
 
         if self.is_asynchronous:
             self.decode_end_events.append(torch.cuda.Event(enable_timing=True))
@@ -308,7 +310,7 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
 
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor):
         assert (
-            self.next_is_prefill_end_decode_start is not None
+            self.prefilled is not None
         ), "PerTokenLatencyLogitsProcessor should only be called inside of track() context"
 
         if self.is_asynchronous:
@@ -317,12 +319,12 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         else:
             event = time.perf_counter()
 
-        if self.next_is_prefill_end_decode_start:
+        self.per_token_events.append(event)
+
+        if not self.prefilled:
             self.prefill_end_events.append(event)
             self.decode_start_events.append(event)
-            self.next_is_prefill_end_decode_start = False
-        else:
-            self.per_token_events.append(event)
+            self.prefilled = True
 
         return scores
 
