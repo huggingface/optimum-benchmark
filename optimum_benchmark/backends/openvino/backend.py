@@ -177,18 +177,18 @@ class OVBackend(Backend[OVConfig]):
 
         return inputs, input_shapes
 
-    def prepare_for_inference(self, **kwargs) -> None:
+    def prepare_for_inference(self, input_shapes: Dict[str, Any], inference_kwargs: Dict[str, Any]) -> None:
         if self.config.reshape:
+            all_shapes = {**input_shapes, **inference_kwargs, **self.model_shapes}
+
             static_shapes = {
                 key: value
-                for key, value in kwargs.items()
+                for key, value in all_shapes.items()
                 if key in inspect.getfullargspec(self.pretrained_model.reshape).args
             }
             if (static_shapes.get("height", None) is not None) and ("sequence_length" in static_shapes):
-                static_shapes["sequence_length"] = kwargs.get("num_channels", 3)
+                static_shapes["sequence_length"] = all_shapes.get("num_channels", 3)
 
-            print("kwargs", kwargs)
-            print("static_shapes", static_shapes)
             self.logger.info(f"\t+ Reshaping model with static shapes: {static_shapes}")
             self.pretrained_model.reshape(**static_shapes)
 
