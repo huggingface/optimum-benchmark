@@ -16,7 +16,9 @@ class LLMSwarmBackend(Backend[LLMSwarmConfig]):
 
     def __init__(self, config: LLMSwarmConfig) -> None:
         super().__init__(config)
-        self.validate_task()
+
+        if self.config.task not in TEXT_GENERATION_TASKS:
+            raise NotImplementedError(f"LLM Swarm does not support task {self.config.task}")
 
         self.logger.info("\t+ Downloading pretrained model")
         self.download_pretrained_model()
@@ -24,10 +26,6 @@ class LLMSwarmBackend(Backend[LLMSwarmConfig]):
         self.prepare_generation_config()
         self.logger.info("\t+ Loading pretrained model")
         self.load_model_from_pretrained()
-
-    def validate_task(self) -> None:
-        if self.config.task not in TEXT_GENERATION_TASKS:
-            raise NotImplementedError(f"LLM Swarm does not support task {self.config.task}")
 
     def load_model_from_pretrained(self) -> None:
         self.llm_swarm_config = LLMSwarmCfg(
@@ -46,7 +44,7 @@ class LLMSwarmBackend(Backend[LLMSwarmConfig]):
 
     def download_pretrained_model(self) -> None:
         with torch.device("meta"):
-            self.automodel_class.from_pretrained(self.config.model, **self.config.model_kwargs)
+            self.auto_model_loader.from_pretrained(self.config.model, **self.config.model_kwargs)
 
     def prepare_generation_config(self) -> None:
         self.generation_config.eos_token_id = -100

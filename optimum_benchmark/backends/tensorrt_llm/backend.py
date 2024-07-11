@@ -1,11 +1,8 @@
-import os
 from collections import OrderedDict
 from tempfile import TemporaryDirectory
 from typing import Any, Dict
 
-import torch
 from hydra.utils import get_class
-from safetensors.torch import save_file
 
 from ..base import Backend
 from .config import TRTLLMConfig
@@ -17,7 +14,12 @@ class TRTLLMBackend(Backend[TRTLLMConfig]):
 
     def __init__(self, config: TRTLLMConfig):
         super().__init__(config)
-        self.validate_model_type()
+
+        if self.model_type in MODEL_TYPE_TO_TRTLLMMODEL:
+            self.trtllm_loader = get_class(MODEL_TYPE_TO_TRTLLMMODEL[self.model_type])
+            self.logger.info(f"\t+ Using TRTLLMModel class {self.trtllm_loader.__name__}")
+        else:
+            raise NotImplementedError(f"TRTLLMBackend does not support model_type {self.model_type}")
 
         self.logger.info("\t+ Creating backend temporary directory")
         self.tmpdir = TemporaryDirectory()
@@ -27,27 +29,8 @@ class TRTLLMBackend(Backend[TRTLLMConfig]):
 
         self.tmpdir.cleanup()
 
-    def validate_model_type(self) -> None:
-        if self.model_type not in MODEL_TYPE_TO_TRTLLMMODEL:
-            raise NotImplementedError(f"TRTLLMBackend does not support model_type {self.model_type}")
-
-        self.trtmodel_class = get_class(MODEL_TYPE_TO_TRTLLMMODEL[self.model_type])
-        self.logger.info(f"\t+ Using TRTLLMModel class {self.trtmodel_class.__name__}")
-
-    def create_no_weights_model(self) -> None:
-        self.no_weights_model = os.path.join(self.tmpdir.name, "no_weights_model")
-        self.logger.info("\t+ Creating no weights model state dict")
-        state_dict = torch.nn.Linear(1, 1).state_dict()
-        self.logger.info("\t+ Saving no weights model safetensors")
-        safetensors = os.path.join(self.no_weights_model, "model.safetensors")
-        save_file(tensors=state_dict, filename=safetensors, metadata={"format": "pt"})
-
-        if self.config.library == "transformers":
-            self.logger.info("\t+ Saving no weights model pretrained config")
-            self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
-
     def load_trtmodel_from_pretrained(self) -> None:
-        self.pretrained_model = self.trtmodel_class.from_pretrained(
+        self.pretrained_model = self.trtllm_loader.from_pretrained(
             self.config.model,
             tp=self.config.tp,
             pp=self.config.pp,

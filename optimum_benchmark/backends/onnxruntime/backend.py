@@ -1,7 +1,7 @@
 import os
 from collections import OrderedDict
 from tempfile import TemporaryDirectory
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, Tuple
 
 import torch
 from hydra.utils import get_class
@@ -15,15 +15,14 @@ from optimum.onnxruntime.configuration import (
     OptimizationConfig,
     QuantizationConfig,
 )
-from safetensors.torch import save_file
 
 from ...generators.dataset_generator import DatasetGenerator
 from ...import_utils import is_accelerate_available, is_torch_distributed_available
 from ...task_utils import TEXT_GENERATION_TASKS
 from ..base import Backend
-from ..transformers_utils import random_init_weights
+from ..transformers_utils import fast_weights_init
 from .config import ORTConfig
-from .utils import TASKS_TO_ORTMODELS, TASKS_TO_ORTSD, format_calibration_config, format_quantization_config
+from .utils import TASKS_TO_ORTMODELS, TASKS_TO_ORTPIPELINES, format_calibration_config, format_quantization_config
 
 if is_accelerate_available():
     from accelerate import Accelerator
@@ -37,7 +36,20 @@ class ORTBackend(Backend[ORTConfig]):
 
     def __init__(self, config: ORTConfig) -> None:
         super().__init__(config)
-        self.validate_task()
+
+        if self.config.task in TASKS_TO_ORTMODELS:
+            self.ort_model_loader = get_class(TASKS_TO_ORTMODELS[self.config.task])
+            self.logger.info(f"Using ORT Model class {self.ort_model_loader.__name__}")
+        elif self.config.task in TASKS_TO_ORTPIPELINES:
+            if self.model_type in TASKS_TO_ORTPIPELINES[self.config.task]:
+                self.ort_model_loader = get_class(TASKS_TO_ORTPIPELINES[self.config.task][self.model_type])
+                self.logger.info(f"Using ORT Pipeline class {self.ort_model_loader.__name__}")
+            else:
+                raise NotImplementedError(
+                    f"ORTBackend does not support model {self.model_type} for task {self.config.task}"
+                )
+        else:
+            raise NotImplementedError(f"ORTBackend does not support task {self.config.task}")
 
         self.session_options = SessionOptions()
         if self.config.session_options:
@@ -49,6 +61,8 @@ class ORTBackend(Backend[ORTConfig]):
         self.tmpdir = TemporaryDirectory()
 
         if self.config.no_weights:
+            self.logger.info("\t+ Creating no weights ORTModel")
+            self.create_no_weights_model()
             self.logger.info("\t+ Loading no weights ORTModel")
             self.load_ortmodel_with_no_weights()
         else:
@@ -70,55 +84,15 @@ class ORTBackend(Backend[ORTConfig]):
 
         if self.is_optimized or self.is_quantized:
             original_export, self.config.export = self.config.export, False
-            self.logger.info("\t+ Loading optimized/quantized ORTModel")
+            self.logger.info("\t+ Loading optimized/quantized model")
             self.load_ortmodel_from_pretrained()
             self.config.model, self.config.export = original_model, original_export
 
         self.validate_provider()
         self.tmpdir.cleanup()
 
-    def validate_task(self) -> None:
-        if self.config.task in TASKS_TO_ORTSD:
-            self.ortmodel_class = get_class(TASKS_TO_ORTSD[self.config.task])
-            self.logger.info(f"Using ORTStableDiffusion class {self.ortmodel_class.__name__}")
-        elif self.config.task in TASKS_TO_ORTMODELS:
-            self.ortmodel_class = get_class(TASKS_TO_ORTMODELS[self.config.task])
-            self.logger.info(f"Using ORTModel class {self.ortmodel_class.__name__}")
-        else:
-            raise NotImplementedError(f"ORTBackend does not support task {self.config.task}")
-
-    def validate_provider(self) -> None:
-        if not self.pretrained_model.providers[0] == self.config.provider:
-            raise ValueError(
-                f"{self.config.provider} is not first in providers list: {self.pretrained_model.providers}"
-            )
-
-    def create_no_weights_model(self) -> None:
-        self.no_weights_model = os.path.join(self.tmpdir.name, "no_weights_model")
-        self.logger.info("\t+ Creating no weights model directory")
-        os.makedirs(self.no_weights_model, exist_ok=True)
-        self.logger.info("\t+ Creating no weights model state dict")
-        state_dict = torch.nn.Linear(1, 1).state_dict()
-        self.logger.info("\t+ Saving no weights model safetensors")
-        safetensors = os.path.join(self.no_weights_model, "model.safetensors")
-        save_file(tensors=state_dict, filename=safetensors, metadata={"format": "pt"})
-
-        if self.config.library == "transformers":
-            self.logger.info("\t+ Saving no weights model pretrained config")
-            self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
-
-    def load_ortmodel_with_no_weights(self) -> None:
-        self.logger.info("\t+ Creating no weights model")
-        self.create_no_weights_model()
-
-        with random_init_weights():
-            original_model, self.config.model = self.config.model, self.no_weights_model
-            self.logger.info("\t+ Loading no weights ORTModel")
-            self.load_ortmodel_from_pretrained()
-            self.config.model = original_model
-
     def load_ortmodel_from_pretrained(self) -> None:
-        self.pretrained_model = self.ortmodel_class.from_pretrained(
+        self.pretrained_model = self.ort_model_loader.from_pretrained(
             self.config.model,
             export=self.config.export,
             session_options=self.session_options,
@@ -128,6 +102,20 @@ class ORTBackend(Backend[ORTConfig]):
             **self.config.model_kwargs,
             **self.ortmodel_kwargs,
         )
+
+    def load_ortmodel_with_no_weights(self) -> None:
+        original_model, self.config.model = self.config.model, self.no_weights_model
+
+        with fast_weights_init():
+            self.load_ortmodel_from_pretrained()
+
+        self.config.model = original_model
+
+    def validate_provider(self) -> None:
+        if not self.pretrained_model.providers[0] == self.config.provider:
+            raise ValueError(
+                f"{self.config.provider} is not first in providers list: {self.pretrained_model.providers}"
+            )
 
     @property
     def is_optimized(self) -> bool:
@@ -166,15 +154,6 @@ class ORTBackend(Backend[ORTConfig]):
             ]
         else:
             return [file for file in os.listdir(self.config.model) if file.endswith(".onnx")]
-
-    @property
-    def inputs_names(self) -> List[str]:
-        if hasattr(self.pretrained_model, "inputs_names"):
-            return self.pretrained_model.inputs_names
-        elif hasattr(self.pretrained_model, "input_names"):
-            return self.pretrained_model.input_names
-        else:
-            return []
 
     def optimize_onnx_files(self) -> None:
         self.logger.info("\t+ Attempting optimization")
@@ -231,7 +210,9 @@ class ORTBackend(Backend[ORTConfig]):
             calibration_dataset = DatasetGenerator(
                 task=self.config.task, dataset_shapes=dataset_shapes, model_shapes=self.model_shapes
             )()
-            columns_to_be_removed = list(set(calibration_dataset.column_names) - set(self.inputs_names))
+            columns_to_be_removed = list(
+                set(calibration_dataset.column_names) - set(self.pretrained_model.inputs_names)
+            )
             calibration_dataset = calibration_dataset.remove_columns(columns_to_be_removed)
 
             self.logger.info("\t+ Processing calibration config")
@@ -302,7 +283,7 @@ class ORTBackend(Backend[ORTConfig]):
         if self.config.library == "transformers":
             for key, value in list(inputs.items()):
                 if key in ["position_ids", "token_type_ids"]:
-                    if key not in self.inputs_names:
+                    if key not in self.pretrained_model.inputs_names:
                         inputs.pop(key)
 
         for key, value in inputs.items():

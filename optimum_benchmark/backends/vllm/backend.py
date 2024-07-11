@@ -9,7 +9,7 @@ from vllm import LLM, SamplingParams
 
 from ...task_utils import TEXT_GENERATION_TASKS
 from ..base import Backend
-from ..transformers_utils import random_init_weights
+from ..transformers_utils import fast_weights_init
 from .config import VLLMConfig
 
 
@@ -18,20 +18,25 @@ class VLLMBackend(Backend[VLLMConfig]):
 
     def __init__(self, config: VLLMConfig) -> None:
         super().__init__(config)
-        self.validate_task()
+
+        if self.config.task not in TEXT_GENERATION_TASKS:
+            raise NotImplementedError(f"vLLM does not support task {self.config.task}")
 
         self.logger.info("\t+ Creating backend temporary directory")
         self.tmpdir = TemporaryDirectory()
 
         if self.config.no_weights:
+            self.logger.info("\t+ Creating no weights model")
+            self.create_no_weights_model()
             self.logger.info("\t+ Loading no weights model")
             self.load_model_with_no_weights()
         else:
             self.logger.info("\t+ Downloading pretrained model")
             self.download_pretrained_model()
 
-            self.logger.info("\t+ Preparing generation config")
-            self.prepare_generation_config()
+            if self.config.task in TEXT_GENERATION_TASKS:
+                self.logger.info("\t+ Preparing generation config")
+                self.prepare_generation_config()
 
             self.logger.info("\t+ Loading pretrained model")
             self.load_model_from_pretrained()
@@ -40,7 +45,7 @@ class VLLMBackend(Backend[VLLMConfig]):
 
     def download_pretrained_model(self) -> None:
         with torch.device("meta"):
-            self.automodel_class.from_pretrained(self.config.model, **self.config.model_kwargs)
+            self.automodel_loader.from_pretrained(self.config.model, **self.config.model_kwargs)
 
     def prepare_generation_config(self) -> None:
         self.generation_config.eos_token_id = None
@@ -69,8 +74,8 @@ class VLLMBackend(Backend[VLLMConfig]):
         self.pretrained_processor.save_pretrained(save_directory=self.no_weights_model)
         # unlike Transformers, vLLM won't accept any missing tensors so we need to materialize the model
         self.logger.info(f"\t+ Loading no weights model from {self.no_weights_model}")
-        with random_init_weights():
-            self.pretrained_model = self.automodel_class.from_pretrained(
+        with fast_weights_init():
+            self.pretrained_model = self.automodel_loader.from_pretrained(
                 self.no_weights_model, **self.config.model_kwargs, device_map="auto", _fast_init=False
             )
         self.logger.info("\t+ Saving no weights model")
@@ -82,14 +87,10 @@ class VLLMBackend(Backend[VLLMConfig]):
             self.logger.info("\t+ Modifying generation config for fixed length generation")
             self.generation_config.eos_token_id = None
             self.generation_config.pad_token_id = None
-
             self.logger.info("\t+ Saving new pretrained generation config")
             self.generation_config.save_pretrained(save_directory=self.no_weights_model)
 
     def load_model_with_no_weights(self) -> None:
-        self.logger.info("\t+ Creating no weights model")
-        self.create_no_weights_model()
-
         original_model, self.config.model = self.config.model, self.no_weights_model
         self.logger.info("\t+ Loading no weights model")
         self.load_model_from_pretrained()
@@ -125,10 +126,6 @@ class VLLMBackend(Backend[VLLMConfig]):
             seed=self.config.seed,
         )
 
-    def validate_task(self) -> None:
-        if self.config.task not in ["text-generation"]:
-            raise ValueError(f"Task {self.config.task} not supported by {self.NAME}")
-
     def prepare_inputs(
         self, inputs: Dict[str, Any], input_shapes: Dict[str, Any]
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
@@ -163,6 +160,7 @@ class VLLMBackend(Backend[VLLMConfig]):
             use_tqdm=False,
             sampling_params=SamplingParams(
                 ignore_eos=True,
+                detokenize=True,
                 seed=self.config.seed,
                 n=kwargs.get("num_return_sequences"),
                 max_tokens=kwargs.get("max_new_tokens"),
@@ -178,6 +176,7 @@ class VLLMBackend(Backend[VLLMConfig]):
             use_tqdm=False,
             sampling_params=SamplingParams(
                 ignore_eos=True,
+                detokenize=True,
                 n=kwargs.get("num_return_sequences"),
                 max_tokens=kwargs.get("max_new_tokens"),
                 min_tokens=kwargs.get("min_new_tokens"),

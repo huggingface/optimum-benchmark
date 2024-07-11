@@ -1,5 +1,4 @@
 import inspect
-import os
 from collections import OrderedDict
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, Tuple
@@ -9,15 +8,14 @@ from hydra.utils import get_class
 from openvino.runtime import properties
 from optimum.intel.openvino import OVConfig as OVQuantizationConfig  # naming conflict
 from optimum.intel.openvino import OVQuantizer
-from safetensors.torch import save_file
 
 from ...generators.dataset_generator import DatasetGenerator
 from ...import_utils import is_accelerate_available, is_torch_distributed_available
 from ...task_utils import TEXT_GENERATION_TASKS
 from ..base import Backend
-from ..transformers_utils import random_init_weights
+from ..transformers_utils import fast_weights_init
 from .config import OVConfig
-from .utils import TASKS_TO_OVMODEL
+from .utils import TASKS_TO_OVMODEL, TASKS_TO_OVPIPELINE
 
 if is_accelerate_available():
     from accelerate import Accelerator
@@ -31,7 +29,20 @@ class OVBackend(Backend[OVConfig]):
 
     def __init__(self, config: OVConfig) -> None:
         super().__init__(config)
-        self.validate_task()
+
+        if self.config.task in TASKS_TO_OVMODEL:
+            self.ovmodel_class = get_class(TASKS_TO_OVMODEL[self.config.task])
+            self.logger.info(f"\t+ Using OVModel class {self.ovmodel_class.__name__}")
+        elif self.config.task in TASKS_TO_OVPIPELINE:
+            if self.model_type in TASKS_TO_OVPIPELINE[self.config.task]:
+                self.ovmodel_class = get_class(TASKS_TO_OVPIPELINE[self.config.task][self.model_type])
+                self.logger.info(f"\t+ Using OVPipeline class {self.ovmodel_class.__name__}")
+            else:
+                raise NotImplementedError(
+                    f"OVBackend does not support model {self.model_type} for task {self.config.task}"
+                )
+        else:
+            raise NotImplementedError(f"OVBackend does not support task {self.config.task}")
 
         if self.config.inter_op_num_threads is not None:
             self.logger.info(f"\t+ Setting inter_op_num_threads to {self.config.inter_op_num_threads}")
@@ -42,11 +53,13 @@ class OVBackend(Backend[OVConfig]):
 
         if self.config.quantization:
             if self.config.no_weights:
+                self.logger.info("\t+ Creating no weights AutoModel")
+                self.create_no_weights_model()
                 self.logger.info("\t+ Loading no weights AutoModel")
-                self.load_automodel_with_no_weights()
+                self._load_automodel_with_no_weights()
             else:
                 self.logger.info("\t+ Loading pretrained AutoModel")
-                self.load_automodel_from_pretrained()
+                self._load_automodel_from_pretrained()
 
             self.logger.info("\t+ Applying post-training quantization")
             self.quantize_automodel()
@@ -54,68 +67,35 @@ class OVBackend(Backend[OVConfig]):
             original_model, self.config.model = self.config.model, self.quantized_model
             original_export, self.config.export = self.config.export, False
             self.logger.info("\t+ Loading quantized OVModel")
-            self.load_ovmodel_from_pretrained()
+            self._load_ovmodel_from_pretrained()
             self.config.model, self.config.export = original_model, original_export
 
         elif self.config.no_weights:
+            self.logger.info("\t+ Creating no weights OVModel")
+            self.create_no_weights_model()
             self.logger.info("\t+ Loading no weights OVModel")
-            self.load_ovmodel_with_no_weights()
+            self._load_ovmodel_with_no_weights()
         else:
             self.logger.info("\t+ Loading pretrained OVModel")
-            self.load_ovmodel_from_pretrained()
+            self._load_ovmodel_from_pretrained()
 
         self.tmpdir.cleanup()
 
-    def validate_task(self) -> None:
-        if self.config.task not in TASKS_TO_OVMODEL:
-            raise NotImplementedError(f"OVBackend does not support task {self.config.task}")
+    def _load_automodel_from_pretrained(self) -> None:
+        self.pretrained_model = self.automodel_loader.from_pretrained(self.config.model, **self.config.model_kwargs)
 
-        self.ovmodel_class = get_class(TASKS_TO_OVMODEL[self.config.task])
-        self.logger.info(f"\t+ Using OVModel class {self.ovmodel_class.__name__}")
+    def _load_automodel_with_no_weights(self) -> None:
+        original_model, self.config.model = self.config.model, self.no_weights_model
 
-    def create_no_weights_model(self) -> None:
-        self.no_weights_model = os.path.join(self.tmpdir.name, "no_weights_model")
-        self.logger.info("\t+ Creating no weights model directory")
-        os.makedirs(self.no_weights_model, exist_ok=True)
-        self.logger.info("\t+ Creating no weights model state dict")
-        state_dict = torch.nn.Linear(1, 1).state_dict()
-        self.logger.info("\t+ Saving no weights model safetensors")
-        safetensors = os.path.join(self.no_weights_model, "model.safetensors")
-        save_file(tensors=state_dict, filename=safetensors, metadata={"format": "pt"})
-
-        if self.config.library == "transformers":
-            self.logger.info("\t+ Saving no weights model pretrained config")
-            self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
-
-    def load_automodel_with_no_weights(self) -> None:
-        self.logger.info("\t+ Creating no weights model")
-        self.create_no_weights_model()
-
-        with random_init_weights():
-            original_model, self.config.model = self.config.model, self.no_weights_model
-            self.logger.info("\t+ Loading no weights AutoModel")
-            self.load_automodel_from_pretrained()
-            self.config.model = original_model
+        with fast_weights_init():
+            self._load_automodel_from_pretrained()
 
         self.logger.info("\t+ Tying model weights")
         self.pretrained_model.tie_weights()
 
-    def load_automodel_from_pretrained(self) -> None:
-        self.pretrained_model = self.automodel_class.from_pretrained(self.config.model, **self.config.model_kwargs)
+        self.config.model = original_model
 
-    def load_ovmodel_with_no_weights(self) -> None:
-        self.logger.info("\t+ Creating no weights model")
-        self.create_no_weights_model()
-
-        with random_init_weights():
-            original_model, self.config.model = self.config.model, self.no_weights_model
-            original_export, self.config.export = self.config.export, True
-            self.logger.info("\t+ Loading no weights OVModel")
-            self.load_ovmodel_from_pretrained()
-            self.config.model = original_model
-            self.config.export = original_export
-
-    def load_ovmodel_from_pretrained(self) -> None:
+    def _load_ovmodel_from_pretrained(self) -> None:
         self.pretrained_model = self.ovmodel_class.from_pretrained(
             self.config.model,
             export=self.config.export,
@@ -124,6 +104,15 @@ class OVBackend(Backend[OVConfig]):
             **self.config.model_kwargs,
             **self.ovmodel_kwargs,
         )
+
+    def _load_ovmodel_with_no_weights(self) -> None:
+        with fast_weights_init():
+            original_model, self.config.model = self.config.model, self.no_weights_model
+            original_export, self.config.export = self.config.export, True
+            self.logger.info("\t+ Loading no weights OVModel")
+            self._load_ovmodel_from_pretrained()
+            self.config.export = original_export
+            self.config.model = original_model
 
     @property
     def is_dp_distributed(self) -> bool:
@@ -198,6 +187,8 @@ class OVBackend(Backend[OVConfig]):
             if (static_shapes.get("height", None) is not None) and ("sequence_length" in static_shapes):
                 static_shapes["sequence_length"] = kwargs.get("num_channels", 3)
 
+            print("kwargs", kwargs)
+            print("static_shapes", static_shapes)
             self.logger.info(f"\t+ Reshaping model with static shapes: {static_shapes}")
             self.pretrained_model.reshape(**static_shapes)
 

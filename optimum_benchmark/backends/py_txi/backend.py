@@ -8,7 +8,7 @@ from safetensors.torch import save_file
 
 from ...task_utils import TEXT_EMBEDDING_TASKS, TEXT_GENERATION_TASKS
 from ..base import Backend
-from ..transformers_utils import random_init_weights
+from ..transformers_utils import fast_weights_init
 from .config import PyTXIConfig
 
 
@@ -22,6 +22,8 @@ class PyTXIBackend(Backend[PyTXIConfig]):
         self.tmpdir = TemporaryDirectory()
 
         if self.config.no_weights:
+            self.logger.info("\t+ Creating no weights model")
+            self.create_no_weights_model()
             self.logger.info("\t+ Loading no weights model")
             self.load_model_with_no_weights()
         else:
@@ -44,7 +46,7 @@ class PyTXIBackend(Backend[PyTXIConfig]):
     def download_pretrained_model(self) -> None:
         # directly downloads pretrained model in volume (/data) to change generation config before loading model
         with torch.device("meta"):
-            self.automodel_class.from_pretrained(self.config.model, **self.config.model_kwargs, cache_dir=self.volume)
+            self.automodel_loader.from_pretrained(self.config.model, **self.config.model_kwargs, cache_dir=self.volume)
 
     def prepare_generation_config(self) -> None:
         self.generation_config.eos_token_id = None
@@ -73,8 +75,8 @@ class PyTXIBackend(Backend[PyTXIConfig]):
         self.pretrained_processor.save_pretrained(save_directory=self.no_weights_model)
         # unlike Transformers, TXI won't accept any missing tensors so we need to materialize the model
         self.logger.info(f"\t+ Loading no weights model from {self.no_weights_model}")
-        with random_init_weights():
-            self.pretrained_model = self.automodel_class.from_pretrained(
+        with fast_weights_init():
+            self.pretrained_model = self.automodel_loader.from_pretrained(
                 self.no_weights_model, **self.config.model_kwargs, device_map="auto", _fast_init=False
             )
         self.logger.info("\t+ Saving no weights model")
@@ -86,14 +88,10 @@ class PyTXIBackend(Backend[PyTXIConfig]):
             self.logger.info("\t+ Modifying generation config for fixed length generation")
             self.generation_config.eos_token_id = None
             self.generation_config.pad_token_id = None
-
             self.logger.info("\t+ Saving new pretrained generation config")
             self.generation_config.save_pretrained(save_directory=self.no_weights_model)
 
     def load_model_with_no_weights(self) -> None:
-        self.logger.info("\t+ Creating no weights model")
-        self.create_no_weights_model()
-
         original_volumes, self.config.volumes = self.config.volumes, {self.tmpdir.name: {"bind": "/data", "mode": "rw"}}
         original_model, self.config.model = self.config.model, "/data/no_weights_model"
         self.logger.info("\t+ Loading no weights model")

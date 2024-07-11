@@ -4,7 +4,7 @@ from tempfile import TemporaryDirectory
 from typing import Any, Callable, Dict, List, Tuple
 
 import torch
-from accelerate import Accelerator
+from accelerate import Accelerator, init_empty_weights, init_on_device
 from datasets import Dataset
 from safetensors.torch import save_file
 from transformers import (
@@ -20,7 +20,7 @@ from transformers import (
 from ...import_utils import is_deepspeed_available, is_torch_distributed_available, is_zentorch_available
 from ..base import Backend
 from ..peft_utils import apply_peft
-from ..transformers_utils import random_init_weights
+from ..transformers_utils import fast_weights_init
 from .config import PyTorchConfig
 
 if is_deepspeed_available():
@@ -38,20 +38,12 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
     def __init__(self, config: PyTorchConfig):
         super().__init__(config)
-        self.validate_library()
-
-        if self.config.deepspeed_inference and self.is_quantized:
-            raise ValueError("Deepspeed-Inference is not compatible with Transformers quantization")
-
-        # Quantization
-        if self.is_quantized:
-            self.logger.info("\t+ Processing quantization config")
-            self.process_quantization_config()
 
         # Threads
         if self.config.inter_op_num_threads is not None:
             self.logger.info(f"\t+ Setting pytorch inter_op_num_threads({self.config.inter_op_num_threads}))")
             torch.set_num_threads(self.config.inter_op_num_threads)
+
         if self.config.intra_op_num_threads is not None:
             self.logger.info(f"\t+ Setting pytorch intra_op_num_threads({self.config.intra_op_num_threads}))")
             torch.set_num_interop_threads(self.config.intra_op_num_threads)
@@ -74,32 +66,106 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         self.logger.info("\t+ Creating backend temporary directory")
         self.tmpdir = TemporaryDirectory()
 
-        # Model
-        if self.config.no_weights and (self.config.library == "diffusers" or self.config.library == "timm"):
-            raise ValueError("Diffusion pipelines and Timm models don't support no weights")
-        elif self.config.no_weights:
+        if self.config.library == "transformers":
+            self.load_transformers_model()
+        elif self.config.library == "diffusers":
+            self.load_diffusers_model()
+        elif self.config.library == "timm":
+            self.load_timm_model()
+        else:
+            raise ValueError(f"Library {self.config.library} not supported for PyTorch backend")
+
+        self.logger.info("\t+ Cleaning up backend temporary directory")
+        self.tmpdir.cleanup()
+
+    def _load_transformers_model_from_pretrained(self) -> None:
+        if self.is_quantized:
+            self.logger.info(f"\t+ Loading {self.quantization_config.quant_method}-quantized model")
+            self.pretrained_model = self.automodel_loader.from_pretrained(
+                pretrained_model_name_or_path=self.config.model,
+                device_map=self.config.device_map or torch.device(self.config.device),
+                # quantized models are more compatible with device_map dispatcher than (to(device))
+                # using to(device) on quantized models sometimes leaves some layers on cpu or raises
+                # an error because the layers are already on the device
+                **self.config.model_kwargs,
+                **self.automodel_kwargs,
+            )
+        elif self.config.device_map is not None:
+            self.logger.info(f"\t+ Loading Transformers model with device map: {self.config.device_map}")
+            self.pretrained_model = self.automodel_loader.from_pretrained(
+                pretrained_model_name_or_path=self.config.model,
+                device_map=self.config.device_map,
+                **self.config.model_kwargs,
+                **self.automodel_kwargs,
+            )
+        else:
+            self.logger.info("\t+ Loading Transformers model")
+            self.pretrained_model = self.automodel_loader.from_pretrained(
+                pretrained_model_name_or_path=self.config.model, **self.config.model_kwargs, **self.automodel_kwargs
+            )
+            if self.config.device != "cpu":
+                self.logger.info(f"\t+ Moving Transformers model to device: {self.config.device}")
+                self.pretrained_model = self.pretrained_model.to(self.config.device)
+
+    def _load_transformers_model_with_no_weights(self) -> None:
+        original_model, self.config.model = self.config.model, self.no_weights_model
+
+        if self.config.deepspeed_inference:
+            with init_empty_weights(include_buffers=False):
+                self.logger.info("\t+ Loading Transformers model on meta device for fast initialization")
+                self.pretrained_model = self.automodel_loader.from_pretrained(
+                    pretrained_model_name_or_path=self.config.model,
+                    **self.config.model_kwargs,
+                    **self.automodel_kwargs,
+                )
+            self.pretrained_model.to_empty(device="cpu")
+        elif self.config.device_map is None and not self.is_quantized:
+            with init_on_device(device=self.config.device):
+                self.logger.info("\t+ Loading Transformers model using device context manager for fast initialization")
+                self.pretrained_model = self.automodel_loader.from_pretrained(
+                    pretrained_model_name_or_path=self.no_weights_model,
+                    **self.config.model_kwargs,
+                    **self.automodel_kwargs,
+                )
+        else:
+            with fast_weights_init():
+                self._load_transformers_model_from_pretrained()
+
+        self.config.model = original_model
+
+    def load_transformers_model(self):
+        if self.config.deepspeed_inference and self.is_quantized:
+            raise ValueError("Deepspeed-Inference is not compatible with Transformers quantization")
+
+        # Quantization
+        if self.is_quantized:
+            self.logger.info("\t+ Processing quantization config")
+            self.process_quantization_config()
+
+        # Model loading
+        if self.config.no_weights:
+            self.logger.info("\t+ Creating no weights model")
+            self.create_no_weights_model()
             self.logger.info("\t+ Loading model with random weights")
-            self.load_model_with_no_weights()
+            self._load_transformers_model_with_no_weights()
         else:
             self.logger.info("\t+ Loading model with pretrained weights")
-            self.load_model_from_pretrained()
-
-        self.tmpdir.cleanup()
+            self._load_transformers_model_from_pretrained()
 
         # KV-Cache
         if self.config.cache_implementation is not None:
             self.logger.info(f"\t+ Setting cache implementation to {self.config.cache_implementation}")
             self.pretrained_model.generation_config.cache_implementation = self.config.cache_implementation
 
-        # Eval mode
-        if self.config.eval_mode and self.config.library != "diffusers":
-            self.logger.info("\t+ Turning on model's eval mode")
-            self.pretrained_model.eval()
-
         # BetterTransformer
         if self.config.to_bettertransformer:
-            self.logger.info("\t+ Enabling BetterTransformer")
+            self.logger.info("\t+ To BetterTransformer")
             self.pretrained_model.to_bettertransformer()
+
+        # Eval mode
+        if self.config.eval_mode:
+            self.logger.info("\t+ Enabling eval mode")
+            self.pretrained_model.eval()
 
         # PEFT
         if self.config.peft_type is not None:
@@ -115,87 +181,76 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         # Torch compile
         if self.config.torch_compile:
-            if self.config.library == "diffusers":
-                self.logger.info("\t+ Using torch.compile on unet and vae")
-                self.pretrained_model.unet = torch.compile(
-                    self.pretrained_model.unet, **self.config.torch_compile_config
+            if self.config.torch_compile_target == "forward":
+                self.logger.info("\t+ Using torch.compile on forward")
+                self.pretrained_model.forward = torch.compile(
+                    self.pretrained_model.forward, **self.config.torch_compile_config
                 )
-                self.pretrained_model.vae.decode = torch.compile(
-                    self.pretrained_model.vae.decode, **self.config.torch_compile_config
-                )
+            elif self.config.torch_compile_target == "model":
+                self.logger.info("\t+ Using torch.compile on model")
+                self.pretrained_model = torch.compile(self.pretrained_model, **self.config.torch_compile_config)
             else:
-                if self.config.torch_compile_target == "forward":
-                    self.logger.info("\t+ Using torch.compile on forward")
-                    self.pretrained_model.forward = torch.compile(
-                        self.pretrained_model.forward, **self.config.torch_compile_config
-                    )
-                elif self.config.torch_compile_target == "model":
-                    self.logger.info("\t+ Using torch.compile on model")
-                    self.pretrained_model = torch.compile(self.pretrained_model, **self.config.torch_compile_config)
-                else:
-                    raise ValueError(f"Target {self.config.torch_compile_target} not supported")
+                raise ValueError(f"Target {self.config.torch_compile_target} not supported")
 
-    def validate_library(self) -> None:
-        if self.config.library == "timm":
-            self.logger.info(f"\t+ Using Timm's {self.automodel_class.__name__}")
-        elif self.config.library == "diffusers":
-            self.logger.info(f"\t+ Using Diffusers Pipeline {self.automodel_class.__name__}")
-        elif self.config.library == "transformers":
-            self.logger.info(f"\t+ Using AutoModel {self.automodel_class.__name__}")
+    def load_diffusers_model(self):
+        self.logger.info("\t+ Loading Diffusion Pipeline")
+        self.logger.info(f"\t+ Using Diffusers Pipeline {self.automodel_loader.__name__}")
+
+        # Model loading
+        if self.config.no_weights:
+            raise ValueError("No weights model not supported for Diffusers")
         else:
-            raise ValueError(f"Library {self.config.library} not supported")
+            self._load_diffusers_pipeline_from_pretrained()
 
-    def load_model_from_pretrained(self) -> None:
-        if self.config.library == "timm":
-            self.logger.info("\t+ Loading Timm model")
-            self.pretrained_model = self.automodel_class(model_name=self.config.model)
-            if self.config.device != "cpu":
-                self.logger.info(f"\t+ Moving Timm model to device: {self.config.device}")
-                self.pretrained_model = self.pretrained_model.to(self.config.device)
-
-        elif self.config.library == "diffusers":
-            self.logger.info("\t+ Loading Diffusion Pipeline")
-            self.pretrained_model = self.automodel_class.from_pretrained(
-                # pretrained_model_name_or_path=self.config.model,
-                # pretrained_model_or_path=self.config.model,
-                self.config.model,
-                device_map=self.config.device_map,
-                **self.config.model_kwargs,
-                **self.automodel_kwargs,
-            )
-            if self.config.device_map is None and self.config.device != "cpu":
-                self.logger.info(f"\t+ Moving Diffusion Pipeline to device: {self.config.device}")
-                self.pretrained_model = self.pretrained_model.to(self.config.device)
-
-        elif self.is_quantized:
-            self.logger.info(f"\t+ Loading {self.quantization_config.quant_method}-quantized model")
-            self.pretrained_model = self.automodel_class.from_pretrained(
-                pretrained_model_name_or_path=self.config.model,
-                device_map=self.config.device_map or torch.device(self.config.device),
-                # quantized models are more compatible with device_map dispatcher than (to(device))
-                # using to(device) on quantized models sometimes leaves some layers on cpu or raises
-                # an error because the layers are already on the device
-                **self.config.model_kwargs,
-                **self.automodel_kwargs,
+        # Torch compile
+        if self.config.torch_compile:
+            self.logger.info("\t+ Using torch.compile on unet and vae")
+            self.pretrained_model.unet = torch.compile(self.pretrained_model.unet, **self.config.torch_compile_config)
+            self.pretrained_model.vae.decode = torch.compile(
+                self.pretrained_model.vae.decode, **self.config.torch_compile_config
             )
 
-        elif self.config.device_map is not None:
-            self.logger.info(f"\t+ Loading Transformers model with device map: {self.config.device_map}")
-            self.pretrained_model = self.automodel_class.from_pretrained(
-                pretrained_model_name_or_path=self.config.model,
-                device_map=self.config.device_map,
-                **self.config.model_kwargs,
-                **self.automodel_kwargs,
-            )
+    def _load_diffusers_pipeline_from_pretrained(self) -> None:
+        self.pretrained_model = self.automodel_loader.from_pretrained(
+            self.config.model,
+            # pretrained_model_name_or_path=self.config.model,
+            # pretrained_model_or_path=self.config.model,
+            device_map=self.config.device_map,
+            **self.config.loader_kwargs,
+            **self.loader_kwargs,
+        )
+        if self.config.device_map is None and self.config.device != "cpu":
+            self.logger.info(f"\t+ Moving Diffusion Pipeline to device: {self.config.device}")
+            self.pretrained_model = self.pretrained_model.to(self.config.device)
 
+    def load_timm_model(self):
+        self.logger.info("\t+ Loading Timm model")
+        self.logger.info(f"\t+ Using Timm's {self.automodel_loader.__name__}")
+
+        # Model loading
+        if self.config.no_weights:
+            raise ValueError("No weights model not supported for Timm")
         else:
-            self.logger.info("\t+ Loading Transformers model")
-            self.pretrained_model = self.automodel_class.from_pretrained(
-                pretrained_model_name_or_path=self.config.model, **self.config.model_kwargs, **self.automodel_kwargs
-            )
-            if self.config.device != "cpu":
-                self.logger.info(f"\t+ Moving Transformers model to device: {self.config.device}")
-                self.pretrained_model = self.pretrained_model.to(self.config.device)
+            self._load_timm_model_form_pretrained()
+
+        # Torch compile
+        if self.config.torch_compile:
+            if self.config.torch_compile_target == "forward":
+                self.logger.info("\t+ Using torch.compile on forward")
+                self.pretrained_model.forward = torch.compile(
+                    self.pretrained_model.forward, **self.config.torch_compile_config
+                )
+            elif self.config.torch_compile_target == "model":
+                self.logger.info("\t+ Using torch.compile on model")
+                self.pretrained_model = torch.compile(self.pretrained_model, **self.config.torch_compile_config)
+            else:
+                raise ValueError(f"Target {self.config.torch_compile_target} not supported")
+
+    def _load_timm_model_form_pretrained(self) -> None:
+        self.pretrained_model = self.automodel_loader(model_name=self.config.model)
+        if self.config.device != "cpu":
+            self.logger.info(f"\t+ Moving Timm model to device: {self.config.device}")
+            self.pretrained_model = self.pretrained_model.to(self.config.device)
 
     def create_no_weights_model(self) -> None:
         if self.pretrained_config is None:
@@ -209,8 +264,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         if self.is_exllamav2:
             self.logger.info("\t+ Adding g_idx to no weights model state dict")
-            with torch.device("meta"):
-                meta_model = self.automodel_class.from_config(self.pretrained_config)
+            with init_empty_weights(include_buffers=False):
+                meta_model = self.automodel_loader.from_config(self.pretrained_config)
             for name, module in meta_model.named_modules():
                 if hasattr(module, "in_features"):
                     state_dict[name + ".g_idx"] = torch.ones((module.in_features,), dtype=torch.int32)
@@ -226,38 +281,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         self.logger.info("\t+ Saving no weights model pretrained config")
         self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
-
-    def load_model_with_no_weights(self) -> None:
-        self.create_no_weights_model()
-        original_model, self.config.model = self.config.model, self.no_weights_model
-
-        if self.config.deepspeed_inference:
-            with torch.device("meta"):
-                # with big models, loading no_weights_model is very slow (randomizing every weight)
-                # so we load the model on meta device to speed up the process and then move it to cpu
-                self.logger.info("\t+ Loading Transformers model on meta device for fast initialization")
-                self.pretrained_model = self.automodel_class.from_pretrained(
-                    pretrained_model_name_or_path=self.config.model,
-                    **self.config.model_kwargs,
-                    **self.automodel_kwargs,
-                )
-            self.logger.info("\t+ Materializing meta model on CPU to avoid OOM")
-            self.pretrained_model.to_empty(device="cpu")
-
-        elif not self.is_quantized and self.config.device_map is None:
-            with torch.device(self.config.device):
-                self.logger.info("\t+ Loading Transformers model using device context manager for fast initialization")
-                self.pretrained_model = self.automodel_class.from_pretrained(
-                    pretrained_model_name_or_path=self.no_weights_model,
-                    **self.config.model_kwargs,
-                    **self.automodel_kwargs,
-                )
-
-        else:
-            with random_init_weights():
-                self.load_model_from_pretrained()
-
-        self.config.model = original_model
 
     def process_quantization_config(self) -> None:
         if self.is_gptq_quantized:
@@ -353,7 +376,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             kwargs["low_cpu_mem_usage"] = self.config.low_cpu_mem_usage
 
         if self.config.no_weights:
-            # we use our own context manager to load the model with random weights
+            # we use our own context manager to load the
+            # model with faster random weights generators
             kwargs["_fast_init"] = False
 
         return kwargs
@@ -393,6 +417,9 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
     @torch.inference_mode()
     def prefill(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
+        assert (
+            kwargs.get("max_new_tokens") == kwargs.get("min_new_tokens") == 1
+        ), "For prefilling, max_new_tokens and min_new_tokens must be equal to 1"
         return self.pretrained_model.generate(**inputs, **kwargs)
 
     @torch.inference_mode()

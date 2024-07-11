@@ -5,18 +5,19 @@ from transformers import PretrainedConfig
 from ..import_utils import is_timm_available
 
 if is_timm_available():
-    import timm  # type: ignore
+    from timm import create_model
+    from timm.models import get_pretrained_cfg, load_model_config_from_hf, parse_model_name
 
 
 def get_timm_pretrained_config(model_name: str) -> PretrainedConfig:
-    model_source, model_name = timm.models.parse_model_name(model_name)
+    model_source, model_name = parse_model_name(model_name)
     if model_source == "hf-hub":
         # For model names specified in the form `hf-hub:path/architecture_name@revision`,
         # load model weights + pretrained_cfg from Hugging Face hub.
-        pretrained_cfg, model_name = timm.models.load_model_config_from_hf(model_name)
+        pretrained_cfg, model_name = load_model_config_from_hf(model_name)
         return pretrained_cfg
 
-    return timm.get_pretrained_cfg(model_name)
+    return get_pretrained_cfg(model_name)
 
 
 def extract_timm_shapes_from_config(config: PretrainedConfig) -> Dict[str, Any]:
@@ -70,3 +71,7 @@ def extract_timm_shapes_from_config(config: PretrainedConfig) -> Dict[str, Any]:
         shapes["num_labels"] = num_classes
 
     return shapes
+
+
+def get_timm_automodel_loader():
+    return create_model

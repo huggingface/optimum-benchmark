@@ -1,4 +1,4 @@
-import importlib
+import json
 import os
 from typing import Optional
 
@@ -17,18 +17,17 @@ _TRANSFORMERS_TASKS_TO_MODEL_LOADERS = {
     "text-to-audio": "AutoModelForTextToSpectrogram",
     "audio-classification": "AutoModelForAudioClassification",
     "audio-frame-classification": "AutoModelForAudioFrameClassification",
-    "conversational": ("AutoModelForCausalLM", "AutoModelForSeq2SeqLM"),
     # image processing
     "mask-generation": "AutoModel",
     "image-to-image": "AutoModelForImageToImage",
     "masked-im": "AutoModelForMaskedImageModeling",
     "object-detection": "AutoModelForObjectDetection",
     "depth-estimation": "AutoModelForDepthEstimation",
+    "image-segmentation": "AutoModelForImageSegmentation",
     "image-classification": "AutoModelForImageClassification",
     "semantic-segmentation": "AutoModelForSemanticSegmentation",
     "zero-shot-object-detection": "AutoModelForZeroShotObjectDetection",
     "zero-shot-image-classification": "AutoModelForZeroShotImageClassification",
-    "image-segmentation": ("AutoModelForImageSegmentation", "AutoModelForSemanticSegmentation"),
     # text generation
     "image-to-text": "AutoModelForVision2Seq",
     "text-generation": "AutoModelForCausalLM",
@@ -41,13 +40,10 @@ _DIFFUSERS_TASKS_TO_MODEL_LOADERS = {
     "inpainting": "AutoPipelineForInpainting",
     "text-to-image": "AutoPipelineForText2Image",
     "image-to-image": "AutoPipelineForImage2Image",
-    "stable-diffusion": "StableDiffusionPipeline",  # should be deprecated
-    "stable-diffusion-xl": "StableDiffusionXLImg2ImgPipeline",  # should be deprecated
 }
 _TIMM_TASKS_TO_MODEL_LOADERS = {
     "image-classification": "create_model",
 }
-
 
 _LIBRARY_TO_TASKS_TO_MODEL_LOADER_MAP = {
     "timm": _TIMM_TASKS_TO_MODEL_LOADERS,
@@ -70,10 +66,6 @@ _SYNONYM_TASK_MAP = {
     "speech2seq-lm": "automatic-speech-recognition",
     "sequence-classification": "text-classification",
     "zero-shot-classification": "text-classification",
-    "causal-lm-with-past": "text-generation-with-past",
-    "default-with-past": "feature-extraction-with-past",
-    "seq2seq-lm-with-past": "text2text-generation-with-past",
-    "speech2seq-lm-with-past": "automatic-speech-recognition-with-past",
 }
 
 IMAGE_DIFFUSION_TASKS = [
@@ -82,6 +74,7 @@ IMAGE_DIFFUSION_TASKS = [
     "image-to-image",
     "stable-diffusion",
     "stable-diffusion-xl",
+    "latent-consistency",
 ]
 
 TEXT_GENERATION_TASKS = [
@@ -93,7 +86,6 @@ TEXT_GENERATION_TASKS = [
 ]
 
 TEXT_EMBEDDING_TASKS = [
-    "fill-mask",
     "feature-extraction",
 ]
 
@@ -105,19 +97,38 @@ def map_from_synonym(task: str) -> str:
 
 
 def infer_library_from_model_name_or_path(model_name_or_path: str, revision: Optional[str] = None) -> str:
+    inferred_library_name = None
+
     is_local = os.path.isdir(model_name_or_path)
 
     if is_local:
-        raise RuntimeError("Cannot infer the library from a local directory yet, please specify the library manually.")
+        local_files = os.listdir(model_name_or_path)
 
-    model_info = huggingface_hub.model_info(model_name_or_path, revision=revision)
+        if "model_index.json" in local_files:
+            inferred_library_name = "diffusers"
+        elif (
+            any(file_path.startswith("sentence_") for file_path in local_files)
+            or "config_sentence_transformers.json" in local_files
+        ):
+            inferred_library_name = "sentence_transformers"
+        elif "config.json" in local_files:
+            config_dict = json.load(open(os.path.join(model_name_or_path, "config.json"), "r"))
 
-    inferred_library_name = getattr(model_info, "library_name", None)
+            if "pretrained_cfg" in config_dict or "architecture" in config_dict:
+                inferred_library_name = "timm"
+            elif "_diffusers_version" in config_dict:
+                inferred_library_name = "diffusers"
+            else:
+                inferred_library_name = "transformers"
+    else:
+        model_info = huggingface_hub.model_info(model_name_or_path, revision=revision)
+        inferred_library_name = getattr(model_info, "library_name", None)
 
     if inferred_library_name is None:
         raise KeyError(f"Could not find the proper library name for {model_name_or_path}.")
 
     if inferred_library_name == "sentence-transformers":
+        # we still don't support sentence-transformers
         inferred_library_name = "transformers"
 
     return inferred_library_name
@@ -140,15 +151,10 @@ def infer_task_from_model_name_or_path(model_name_or_path: str, revision: Option
         inferred_task_name = "feature-extraction"
 
     elif library_name == "diffusers":
-        if "text-to-image" in model_info.tags:
-            inferred_task_name = "text-to-image"
-        elif "image-to-image" in model_info.tags:
-            inferred_task_name = "image-to-image"
-        elif "inpainting" in model_info.tags:
-            inferred_task_name = "inpainting"
+        if model_info.pipeline_tag is not None:
+            inferred_task_name = map_from_synonym(model_info.pipeline_tag)
         else:
-            class_name = model_info.config["diffusers"]["class_name"]
-            inferred_task_name = "stable-diffusion-xl" if "XL" in class_name else "stable-diffusion"
+            inferred_task_name = "text-to-image"
 
     elif library_name == "transformers":
         if model_info.pipeline_tag is not None:
@@ -174,54 +180,3 @@ def infer_task_from_model_name_or_path(model_name_or_path: str, revision: Option
         raise KeyError(f"Could not find the proper task name for {auto_model_class_name}.")
 
     return inferred_task_name
-
-
-# adapted from https://github.com/huggingface/optimum/blob/main/optimum/exporters/tasks.py without torch dependency
-def get_automodel_class_for_task(
-    task: str,
-    auto_model_class_name: Optional[str] = None,
-    model_type: Optional[str] = None,
-    library: str = "transformers",
-    framework: str = "pt",
-):
-    task = map_from_synonym(task)
-
-    if framework == "pt":
-        tasks_to_model_loader = _LIBRARY_TO_TASKS_TO_MODEL_LOADER_MAP[library]
-    elif framework == "jax":
-        raise NotImplementedError("JAX is not supported yet.")
-    elif framework == "tf":
-        raise NotImplementedError("TensorFlow is not supported yet.")
-    else:
-        raise NotImplementedError("Only PyTorch is supported for now.")
-
-    loaded_library = importlib.import_module(library)
-
-    if auto_model_class_name is None:
-        if task not in tasks_to_model_loader:
-            raise KeyError(
-                f"Unknown task: {task}. Possible values are: "
-                + ", ".join([f"`{key}` for {tasks_to_model_loader[key]}" for key in tasks_to_model_loader])
-            )
-
-        if isinstance(tasks_to_model_loader[task], str):
-            inferred_auto_model_class_name = tasks_to_model_loader[task]
-        elif isinstance(tasks_to_model_loader[task], tuple):
-            if model_type is None:
-                inferred_auto_model_class_name = tasks_to_model_loader[task][0]
-            else:
-                for auto_class_name in tasks_to_model_loader[task]:
-                    model_mapping = getattr(loaded_library, auto_class_name)._model_mapping._model_mapping
-
-                    if model_type in model_mapping or model_type.replace("-", "_") in model_mapping:
-                        inferred_auto_model_class_name = auto_class_name
-                        break
-
-                    inferred_auto_model_class_name = None
-
-    if inferred_auto_model_class_name is None:
-        raise ValueError(f"Could not find the model class name for task {task}.")
-
-    inferred_model_class = getattr(loaded_library, inferred_auto_model_class_name)
-
-    return inferred_model_class

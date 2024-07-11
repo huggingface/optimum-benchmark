@@ -2,19 +2,23 @@ from contextlib import contextmanager
 from typing import Any, Dict, Optional, Union
 
 import torch
+import transformers
 from transformers import (
     AutoConfig,
+    AutoFeatureExtractor,
     AutoProcessor,
     AutoTokenizer,
     FeatureExtractionMixin,
     GenerationConfig,
     ImageProcessingMixin,
     PretrainedConfig,
-    PreTrainedTokenizer,
     ProcessorMixin,
+    SpecialTokensMixin,
 )
 
-PretrainedProcessor = Union[FeatureExtractionMixin, ImageProcessingMixin, PreTrainedTokenizer, ProcessorMixin]
+from ..task_utils import _TRANSFORMERS_TASKS_TO_MODEL_LOADERS, map_from_synonym
+
+PretrainedProcessor = Union[FeatureExtractionMixin, ImageProcessingMixin, SpecialTokensMixin, ProcessorMixin]
 
 
 def get_transformers_pretrained_config(model: str, **kwargs) -> "PretrainedConfig":
@@ -36,9 +40,12 @@ def get_transformers_pretrained_processor(model: str, **kwargs) -> Optional["Pre
         return AutoProcessor.from_pretrained(model, **kwargs)
     except Exception:
         try:
-            return AutoTokenizer.from_pretrained(model, **kwargs)
+            return AutoFeatureExtractor.from_pretrained(model, **kwargs)
         except Exception:
-            return None
+            try:
+                return AutoTokenizer.from_pretrained(model, **kwargs)
+            except Exception:
+                raise ValueError(f"Could not load a processor/feature-extractor/tokenizer for model {model}.")
 
 
 def extract_transformers_shapes_from_artifacts(
@@ -114,6 +121,13 @@ def extract_transformers_shapes_from_artifacts(
     return shapes
 
 
+def get_transformers_automodel_loader_for_task(task: str):
+    task = map_from_synonym(task)
+    model_loader_name = _TRANSFORMERS_TASKS_TO_MODEL_LOADERS[task]
+    model_loader_class = getattr(transformers, model_loader_name)
+    return model_loader_class
+
+
 TORCH_INIT_FUNCTIONS = {
     "normal_": torch.nn.init.normal_,
     "uniform_": torch.nn.init.uniform_,
@@ -131,20 +145,20 @@ TORCH_INIT_FUNCTIONS = {
 }
 
 
-def fast_rand(tensor: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:
+def fast_random_tensor(tensor: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:
     return torch.nn.init.uniform_(tensor)
 
 
 @contextmanager
-def random_init_weights():
+def fast_weights_init():
     # Replace the initialization functions
     for name, init_func in TORCH_INIT_FUNCTIONS.items():
-        if name != "uniform_":
-            setattr(torch.nn.init, name, fast_rand)
+        if name != "uniform_":  # avoid recursion
+            setattr(torch.nn.init, name, fast_random_tensor)
     try:
         yield
     finally:
         # Restore the original initialization functions
         for name, init_func in TORCH_INIT_FUNCTIONS.items():
-            if name != "uniform_":
+            if name != "uniform_":  # avoid recursion
                 setattr(torch.nn.init, name, init_func)

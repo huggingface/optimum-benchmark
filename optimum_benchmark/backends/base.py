@@ -1,3 +1,4 @@
+import os
 from abc import ABC
 from collections import OrderedDict
 from logging import getLogger
@@ -5,19 +6,29 @@ from typing import Any, ClassVar, Dict, Generic, Optional, Tuple
 
 import datasets.utils.logging as datasets_logging
 import transformers.utils.logging as transformers_logging
+from safetensors.torch import save_file
 from transformers import GenerationConfig, PretrainedConfig, PreTrainedModel, TrainerState, set_seed
 
-from ..task_utils import get_automodel_class_for_task
+from ..import_utils import is_torch_available
 from .config import BackendConfigT
-from .diffusers_utils import extract_diffusers_shapes_from_model, get_diffusers_pretrained_config
-from .timm_utils import extract_timm_shapes_from_config, get_timm_pretrained_config
+from .diffusers_utils import (
+    extract_diffusers_shapes_from_model,
+    get_diffusers_automodel_loader_for_task,
+    get_diffusers_model_type,
+    get_diffusers_pretrained_config,
+)
+from .timm_utils import extract_timm_shapes_from_config, get_timm_automodel_loader, get_timm_pretrained_config
 from .transformers_utils import (
     PretrainedProcessor,
     extract_transformers_shapes_from_artifacts,
+    get_transformers_automodel_loader_for_task,
     get_transformers_generation_config,
     get_transformers_pretrained_config,
     get_transformers_pretrained_processor,
 )
+
+if is_torch_available():
+    import torch
 
 datasets_logging.set_verbosity_error()
 transformers_logging.set_verbosity_error()
@@ -47,7 +58,8 @@ class Backend(Generic[BackendConfigT], ABC):
             self.logger.info("\t+ Benchmarking a Diffusers pipeline")
             self.pretrained_config = get_diffusers_pretrained_config(self.config.model, **self.config.model_kwargs)
             self.model_shapes = extract_diffusers_shapes_from_model(self.config.model, **self.config.model_kwargs)
-            self.model_type = self.config.task
+            self.automodel_loader = get_diffusers_automodel_loader_for_task(self.config.task)
+            self.model_type = get_diffusers_model_type(self.config.model)
             self.pretrained_processor = None
             self.generation_config = None
 
@@ -55,6 +67,7 @@ class Backend(Generic[BackendConfigT], ABC):
             self.logger.info("\t+ Benchmarking a Timm model")
             self.pretrained_config = get_timm_pretrained_config(self.config.model)
             self.model_shapes = extract_timm_shapes_from_config(self.pretrained_config)
+            self.automodel_loader = get_timm_automodel_loader()
             self.model_type = self.pretrained_config.architecture
             self.pretrained_processor = None
             self.generation_config = None
@@ -69,15 +82,26 @@ class Backend(Generic[BackendConfigT], ABC):
             self.model_shapes = extract_transformers_shapes_from_artifacts(
                 self.pretrained_config, self.pretrained_processor
             )
+            self.automodel_loader = get_transformers_automodel_loader_for_task(self.config.task)
             self.model_type = self.pretrained_config.model_type
-
-        self.automodel_class = get_automodel_class_for_task(
-            model_type=self.model_type, library=self.config.library, task=self.config.task, framework="pt"
-        )
-        self.logger.info(f"\t+ Using automodel class {self.automodel_class.__name__}")
 
     def seed(self) -> None:
         set_seed(self.config.seed)
+
+    def create_no_weights_model(self) -> None:
+        if self.pretrained_config is None:
+            raise ValueError("Can't create no weights model without a pretrained config")
+
+        self.no_weights_model = os.path.join(self.tmpdir.name, "no_weights_model")
+        self.logger.info("\t+ Creating no weights model's directory")
+        os.makedirs(self.no_weights_model, exist_ok=True)
+        self.logger.info("\t+ Creating no weights model's state dict")
+        state_dict = torch.nn.Linear(1, 1).state_dict()
+        self.logger.info("\t+ Saving no weights model's safetensors")
+        safetensors = os.path.join(self.no_weights_model, "model.safetensors")
+        save_file(tensors=state_dict, filename=safetensors, metadata={"format": "pt"})
+        self.logger.info("\t+ Saving no weights model's config")
+        self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
 
     def prepare_for_inference(self, **kwargs) -> None:
         """

@@ -21,11 +21,12 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         if get_start_method(allow_none=True) != self.config.start_method:
             self.logger.info(f"\t+ Setting multiprocessing start method to {self.config.start_method}")
             set_start_method(self.config.start_method, force=True)
-            self.logger.info("\t+ Warming up multiprocessing context")
             # creates the resource tracker with default executable
-            dummy_process = Process()
+            self.logger.info("\t+ Warming up multiprocessing context")
+            dummy_process = Process(target=dummy_target, daemon=False)
             dummy_process.start()
             dummy_process.join()
+            dummy_process.close()
 
     def launch(self, worker: Callable[..., BenchmarkReport], worker_args: List[Any]) -> BenchmarkReport:
         child_connection, parent_connection = Pipe()
@@ -110,3 +111,7 @@ def target(
         logger.info("\t+ Exiting isolated process")
         connection.close()
         exit(0)
+
+
+def dummy_target() -> None:
+    exit(0)
