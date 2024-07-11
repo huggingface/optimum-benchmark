@@ -37,7 +37,7 @@ LIBRARIES_TASKS_MODELS = [
     ("transformers", "text-classification", "FacebookAI/roberta-base"),
     ("transformers", "token-classification", "microsoft/deberta-v3-base"),
     ("transformers", "image-classification", "google/vit-base-patch16-224"),
-    ("diffusers", "stable-diffusion", "CompVis/stable-diffusion-v1-4"),
+    ("diffusers", "text-to-image", "CompVis/stable-diffusion-v1-4"),
 ]
 
 

@@ -45,7 +45,7 @@ def get_transformers_pretrained_processor(model: str, **kwargs) -> Optional["Pre
             try:
                 return AutoTokenizer.from_pretrained(model, **kwargs)
             except Exception:
-                raise ValueError(f"Could not load a processor/feature-extractor/tokenizer for model {model}.")
+                return None
 
 
 def extract_transformers_shapes_from_artifacts(

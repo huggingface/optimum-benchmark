@@ -210,9 +210,7 @@ class ORTBackend(Backend[ORTConfig]):
             calibration_dataset = DatasetGenerator(
                 task=self.config.task, dataset_shapes=dataset_shapes, model_shapes=self.model_shapes
             )()
-            columns_to_be_removed = list(
-                set(calibration_dataset.column_names) - set(self.pretrained_model.inputs_names)
-            )
+            columns_to_be_removed = list(set(calibration_dataset.column_names) - set(self.pretrained_model.input_names))
             calibration_dataset = calibration_dataset.remove_columns(columns_to_be_removed)
 
             self.logger.info("\t+ Processing calibration config")
@@ -283,7 +281,7 @@ class ORTBackend(Backend[ORTConfig]):
         if self.config.library == "transformers":
             for key, value in list(inputs.items()):
                 if key in ["position_ids", "token_type_ids"]:
-                    if key not in self.pretrained_model.inputs_names:
+                    if key not in self.pretrained_model.input_names:
                         inputs.pop(key)
 
         for key, value in inputs.items():
