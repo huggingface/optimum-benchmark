@@ -152,7 +152,9 @@ def infer_task_from_model_name_or_path(model_name_or_path: str, revision: Option
                 AUTO_TEXT2IMAGE_PIPELINES_MAPPING,
             )
 
-            config, _ = DiffusionPipeline.load_config(model_name_or_path)
+            config = DiffusionPipeline.load_config(model_name_or_path)
+            config, _ = config if isinstance(config, tuple) else (config, None)
+
             model_class_name = config["_class_name"]
 
             for task_name, model_mapping in (
