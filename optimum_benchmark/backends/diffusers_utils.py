@@ -24,7 +24,8 @@ if is_diffusers_available():
         for task_name, model_mapping in TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES.items():
             for model_type, model_class in model_mapping.items():
                 TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES[task_name][model_type] = model_class.__name__
-
+    else:
+        TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES = {}
 else:
     TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES = {}
 
