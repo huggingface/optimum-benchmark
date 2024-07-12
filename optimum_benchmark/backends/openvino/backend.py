@@ -15,7 +15,7 @@ from ...task_utils import TEXT_GENERATION_TASKS
 from ..base import Backend
 from ..transformers_utils import fast_weights_init
 from .config import OVConfig
-from .utils import TASKS_TO_OVMODEL, TASKS_TO_OVPIPELINE
+from .utils import TASKS_TO_MODEL_TYPES_TO_OVPIPELINE, TASKS_TO_OVMODEL
 
 if is_accelerate_available():
     from accelerate import Accelerator
@@ -33,13 +33,15 @@ class OVBackend(Backend[OVConfig]):
         if self.config.task in TASKS_TO_OVMODEL:
             self.ovmodel_class = get_class(TASKS_TO_OVMODEL[self.config.task])
             self.logger.info(f"\t+ Using OVModel class {self.ovmodel_class.__name__}")
-        elif self.config.task in TASKS_TO_OVPIPELINE:
-            if self.model_type in TASKS_TO_OVPIPELINE[self.config.task]:
-                self.ovmodel_class = get_class(TASKS_TO_OVPIPELINE[self.config.task][self.model_type])
+        elif self.config.task in TASKS_TO_MODEL_TYPES_TO_OVPIPELINE:
+            if self.config.model_type in TASKS_TO_MODEL_TYPES_TO_OVPIPELINE[self.config.task]:
+                self.ovmodel_class = get_class(
+                    TASKS_TO_MODEL_TYPES_TO_OVPIPELINE[self.config.task][self.config.model_type]
+                )
                 self.logger.info(f"\t+ Using OVPipeline class {self.ovmodel_class.__name__}")
             else:
                 raise NotImplementedError(
-                    f"OVBackend does not support model {self.model_type} for task {self.config.task}"
+                    f"OVBackend does not support model {self.config.model_type} for task {self.config.task}"
                 )
         else:
             raise NotImplementedError(f"OVBackend does not support task {self.config.task}")
