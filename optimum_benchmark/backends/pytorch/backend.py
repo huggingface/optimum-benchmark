@@ -120,7 +120,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 )
             self.pretrained_model.to_empty(device="cpu")
         elif self.config.device_map is None and not self.is_quantized:
-            with init_on_device(device=self.config.device):
+            with init_on_device(device=torch.device(self.config.device), include_buffers=True):
                 self.logger.info("\t+ Loading Transformers model using device context manager for fast initialization")
                 self.pretrained_model = self.automodel_loader.from_pretrained(
                     pretrained_model_name_or_path=self.no_weights_model,
