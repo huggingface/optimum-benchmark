@@ -15,11 +15,11 @@ class TRTLLMBackend(Backend[TRTLLMConfig]):
     def __init__(self, config: TRTLLMConfig):
         super().__init__(config)
 
-        if self.model_type in MODEL_TYPE_TO_TRTLLMMODEL:
-            self.trtllm_loader = get_class(MODEL_TYPE_TO_TRTLLMMODEL[self.model_type])
+        if self.config.model_type in MODEL_TYPE_TO_TRTLLMMODEL:
+            self.trtllm_loader = get_class(MODEL_TYPE_TO_TRTLLMMODEL[self.config.model_type])
             self.logger.info(f"\t+ Using TRTLLMModel class {self.trtllm_loader.__name__}")
         else:
-            raise NotImplementedError(f"TRTLLMBackend does not support model_type {self.model_type}")
+            raise NotImplementedError(f"TRTLLMBackend does not support model_type {self.config.model_type}")
 
         self.logger.info("\t+ Creating backend temporary directory")
         self.tmpdir = TemporaryDirectory()

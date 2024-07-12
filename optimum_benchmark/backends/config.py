@@ -7,7 +7,11 @@ from typing import Any, Dict, Optional, TypeVar
 from psutil import cpu_count
 
 from ..system_utils import get_gpu_device_ids, is_nvidia_system, is_rocm_system
-from ..task_utils import infer_library_from_model_name_or_path, infer_task_from_model_name_or_path
+from ..task_utils import (
+    infer_library_from_model_name_or_path,
+    infer_model_type_from_model_name_or_path,
+    infer_task_from_model_name_or_path,
+)
 
 LOGGER = getLogger("backend")
 
@@ -20,6 +24,7 @@ class BackendConfig(ABC):
 
     task: Optional[str] = None
     library: Optional[str] = None
+    model_type: Optional[str] = None
 
     model: Optional[str] = None
     processor: Optional[str] = None
@@ -62,6 +67,11 @@ class BackendConfig(ABC):
 
         if self.library is None:
             self.library = infer_library_from_model_name_or_path(self.model, self.hub_kwargs.get("revision", None))
+
+        if self.model_type is None:
+            self.model_type = infer_model_type_from_model_name_or_path(
+                self.model, self.hub_kwargs.get("revision", None)
+            )
 
         if self.device is None:
             self.device = "cuda" if is_nvidia_system() or is_rocm_system() else "cpu"

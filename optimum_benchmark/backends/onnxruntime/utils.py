@@ -7,7 +7,7 @@ TASKS_TO_ORTMODELS = {
     task: f"optimum.onnxruntime.{task_dict['class'][0].__name__}" for task, task_dict in ORT_SUPPORTED_TASKS.items()
 }
 
-TASKS_TO_ORTPIPELINES = {
+TASKS_TO_MODEL_TYPES_TO_ORTPIPELINES = {
     "text-to-image": {
         "stable-diffusion": "optimum.onnxruntime.ORTStableDiffusionPipeline",
         "stable-diffusion-xl": "optimum.onnxruntime.ORTStableDiffusionXLPipeline",

@@ -1,3 +1,4 @@
+import importlib
 import json
 import os
 from typing import Optional
@@ -100,7 +101,6 @@ def infer_library_from_model_name_or_path(model_name_or_path: str, revision: Opt
     inferred_library_name = None
 
     is_local = os.path.isdir(model_name_or_path)
-
     if is_local:
         local_files = os.listdir(model_name_or_path)
 
@@ -134,49 +134,125 @@ def infer_library_from_model_name_or_path(model_name_or_path: str, revision: Opt
     return inferred_library_name
 
 
-# adapted from https://github.com/huggingface/optimum/blob/main/optimum/exporters/tasks.py without torch dependency
 def infer_task_from_model_name_or_path(model_name_or_path: str, revision: Optional[str] = None) -> str:
-    is_local = os.path.isdir(model_name_or_path)
-
-    if is_local:
-        raise RuntimeError("Cannot infer the task from a local directory yet, please specify the task manually.")
-
-    model_info = huggingface_hub.model_info(model_name_or_path, revision=revision)
     library_name = infer_library_from_model_name_or_path(model_name_or_path, revision=revision)
+
+    inferred_task_name = None
 
     if library_name == "timm":
         inferred_task_name = "image-classification"
-
     elif library_name == "sentence-transformers":
         inferred_task_name = "feature-extraction"
+    elif os.path.isdir(model_name_or_path):
+        if library_name == "diffusers":
+            from diffusers import DiffusionPipeline
+            from diffusers.pipelines.auto_pipeline import (
+                AUTO_IMAGE2IMAGE_PIPELINES_MAPPING,
+                AUTO_INPAINT_PIPELINES_MAPPING,
+                AUTO_TEXT2IMAGE_PIPELINES_MAPPING,
+            )
 
-    elif library_name == "diffusers":
-        if model_info.pipeline_tag is not None:
-            inferred_task_name = map_from_synonym(model_info.pipeline_tag)
-        else:
-            inferred_task_name = "text-to-image"
+            config, _ = DiffusionPipeline.load_config(model_name_or_path)
+            model_class_name = config["_class_name"]
 
-    elif library_name == "transformers":
-        if model_info.pipeline_tag is not None:
-            inferred_task_name = map_from_synonym(model_info.pipeline_tag)
-        else:
-            pipeline_tag = model_info.transformersInfo.pipeline_tag
-
-            if model_info.transformers_info is not None and pipeline_tag is not None:
-                inferred_task_name = map_from_synonym(pipeline_tag)
-            else:
-                auto_model_class_name = model_info.transformers_info["auto_model"]
-                tasks_to_automodels = _LIBRARY_TO_TASKS_TO_MODEL_LOADER_MAP[model_info.library_name]
-                for task_name, class_name_for_task in tasks_to_automodels.items():
-                    if class_name_for_task == auto_model_class_name:
+            for task_name, model_mapping in (
+                ("image-to-image", AUTO_IMAGE2IMAGE_PIPELINES_MAPPING),
+                ("inpainting", AUTO_INPAINT_PIPELINES_MAPPING),
+                ("text-to-image", AUTO_TEXT2IMAGE_PIPELINES_MAPPING),
+            ):
+                for model_type, model_class in model_mapping.items():
+                    if model_class_name == model_class.__name__:
                         inferred_task_name = task_name
                         break
-                    inferred_task_name = None
+                if inferred_task_name is not None:
+                    break
+        elif library_name == "transformers":
+            from transformers import AutoConfig
 
+            auto_modeling_module = importlib.import_module("transformers.models.auto.modeling_auto")
+            config = AutoConfig.from_pretrained(model_name_or_path)
+            model_type = config.model_type
+
+            for task_name, model_loaders in _TRANSFORMERS_TASKS_TO_MODEL_LOADERS.items():
+                if isinstance(model_loaders, str):
+                    model_loaders = (model_loaders,)
+                for model_loader in model_loaders:
+                    model_loader_class = getattr(auto_modeling_module, model_loader, None)
+                    if model_loader_class is not None:
+                        model_mapping = model_loader_class._model_mapping._model_mapping
+                        if model_type in model_mapping:
+                            inferred_task_name = task_name
+                            break
     else:
-        raise NotImplementedError(f"Library {library_name} is not supported yet.")
+        model_info = huggingface_hub.model_info(model_name_or_path, revision=revision)
+
+        if library_name == "diffusers":
+            if model_info.pipeline_tag is not None:
+                inferred_task_name = map_from_synonym(model_info.pipeline_tag)
+        elif library_name == "transformers":
+            if model_info.pipeline_tag is not None:
+                inferred_task_name = map_from_synonym(model_info.pipeline_tag)
+            else:
+                if model_info.transformers_info is not None and model_info.transformersInfo.pipeline_tag is not None:
+                    inferred_task_name = map_from_synonym(model_info.transformersInfo.pipeline_tag)
+                else:
+                    auto_model_class_name = model_info.transformers_info["auto_model"]
+                    tasks_to_automodels = _TRANSFORMERS_TASKS_TO_MODEL_LOADERS[model_info.library_name]
+                    for task_name, class_name_for_task in tasks_to_automodels.items():
+                        if class_name_for_task == auto_model_class_name:
+                            inferred_task_name = task_name
+                            break
+                        inferred_task_name = None
 
     if inferred_task_name is None:
         raise KeyError(f"Could not find the proper task name for {auto_model_class_name}.")
 
     return inferred_task_name
+
+
+def infer_model_type_from_model_name_or_path(model_name_or_path: str, revision: Optional[str] = None) -> str:
+    library_name = infer_library_from_model_name_or_path(model_name_or_path, revision=revision)
+
+    inferred_model_type = None
+
+    if library_name == "timm":
+        from timm.models import get_pretrained_cfg, load_model_config_from_hf, parse_model_name
+
+        model_source, model_name = parse_model_name(model_name_or_path)
+        if model_source == "hf-hub":
+            _, model_name = load_model_config_from_hf(model_name)
+        config = get_pretrained_cfg(model_name)
+        inferred_model_type = config.architecture
+
+    elif library_name == "diffusers":
+        from diffusers import DiffusionPipeline
+        from diffusers.pipelines.auto_pipeline import (
+            AUTO_IMAGE2IMAGE_PIPELINES_MAPPING,
+            AUTO_INPAINT_PIPELINES_MAPPING,
+            AUTO_TEXT2IMAGE_PIPELINES_MAPPING,
+        )
+
+        config, _ = DiffusionPipeline.load_config(model_name_or_path)
+        model_class_name = config["_class_name"]
+
+        for task_name, model_mapping in (
+            ("image-to-image", AUTO_IMAGE2IMAGE_PIPELINES_MAPPING),
+            ("inpainting", AUTO_INPAINT_PIPELINES_MAPPING),
+            ("text-to-image", AUTO_TEXT2IMAGE_PIPELINES_MAPPING),
+        ):
+            for model_type, model_class in model_mapping.items():
+                if model_class_name == model_class.__name__:
+                    inferred_model_type = model_type
+                    break
+            if inferred_model_type is not None:
+                break
+    else:
+        from transformers import AutoConfig
+
+        config = AutoConfig.from_pretrained(model_name_or_path)
+        inferred_model_type = config.model_type
+
+    if inferred_model_type is None:
+        raise KeyError(f"Could not find the proper model type for {model_name_or_path}.")
+
+    return inferred_model_type

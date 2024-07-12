@@ -22,7 +22,12 @@ from ...task_utils import TEXT_GENERATION_TASKS
 from ..base import Backend
 from ..transformers_utils import fast_weights_init
 from .config import ORTConfig
-from .utils import TASKS_TO_ORTMODELS, TASKS_TO_ORTPIPELINES, format_calibration_config, format_quantization_config
+from .utils import (
+    TASKS_TO_MODEL_TYPES_TO_ORTPIPELINES,
+    TASKS_TO_ORTMODELS,
+    format_calibration_config,
+    format_quantization_config,
+)
 
 if is_accelerate_available():
     from accelerate import Accelerator
@@ -40,13 +45,15 @@ class ORTBackend(Backend[ORTConfig]):
         if self.config.task in TASKS_TO_ORTMODELS:
             self.ort_model_loader = get_class(TASKS_TO_ORTMODELS[self.config.task])
             self.logger.info(f"Using ORT Model class {self.ort_model_loader.__name__}")
-        elif self.config.task in TASKS_TO_ORTPIPELINES:
-            if self.model_type in TASKS_TO_ORTPIPELINES[self.config.task]:
-                self.ort_model_loader = get_class(TASKS_TO_ORTPIPELINES[self.config.task][self.model_type])
+        elif self.config.task in TASKS_TO_MODEL_TYPES_TO_ORTPIPELINES:
+            if self.config.model_type in TASKS_TO_MODEL_TYPES_TO_ORTPIPELINES[self.config.task]:
+                self.ort_model_loader = get_class(
+                    TASKS_TO_MODEL_TYPES_TO_ORTPIPELINES[self.config.task][self.config.model_type]
+                )
                 self.logger.info(f"Using ORT Pipeline class {self.ort_model_loader.__name__}")
             else:
                 raise NotImplementedError(
-                    f"ORTBackend does not support model {self.model_type} for task {self.config.task}"
+                    f"ORTBackend does not support model {self.config.model_type} for task {self.config.task}"
                 )
         else:
             raise NotImplementedError(f"ORTBackend does not support task {self.config.task}")

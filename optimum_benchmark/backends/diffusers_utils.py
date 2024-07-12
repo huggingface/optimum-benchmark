@@ -8,11 +8,6 @@ from ..task_utils import _DIFFUSERS_TASKS_TO_MODEL_LOADERS, map_from_synonym
 if is_diffusers_available():
     import diffusers
     from diffusers import DiffusionPipeline
-    from diffusers.pipelines.auto_pipeline import (
-        AUTO_IMAGE2IMAGE_PIPELINES_MAPPING,
-        AUTO_INPAINT_PIPELINES_MAPPING,
-        AUTO_TEXT2IMAGE_PIPELINES_MAPPING,
-    )
 
 
 def get_diffusers_pretrained_config(model: str, **kwargs) -> Dict[str, int]:
@@ -52,19 +47,3 @@ def get_diffusers_automodel_loader_for_task(task: str):
     model_loader_name = _DIFFUSERS_TASKS_TO_MODEL_LOADERS[task]
     model_loader_class = getattr(diffusers, model_loader_name)
     return model_loader_class
-
-
-def get_diffusers_model_type(model: str) -> str:
-    model_config = get_diffusers_pretrained_config(model)
-    model_class_name = model_config["_class_name"]
-
-    for mapping in [
-        AUTO_IMAGE2IMAGE_PIPELINES_MAPPING,
-        AUTO_INPAINT_PIPELINES_MAPPING,
-        AUTO_TEXT2IMAGE_PIPELINES_MAPPING,
-    ]:
-        for model_type, model_class in mapping.items():
-            if model_class_name == model_class.__name__:
-                return model_type
-
-    return None
