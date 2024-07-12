@@ -216,8 +216,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             # pretrained_model_name_or_path=self.config.model,
             # pretrained_model_or_path=self.config.model,
             device_map=self.config.device_map,
-            **self.config.loader_kwargs,
-            **self.loader_kwargs,
+            **self.config.model_kwargs,
+            **self.automodel_kwargs,
         )
         if self.config.device_map is None and self.config.device != "cpu":
             self.logger.info(f"\t+ Moving Diffusion Pipeline to device: {self.config.device}")
