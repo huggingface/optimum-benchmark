@@ -3,8 +3,8 @@ defaults:
   - _base_ # inherits from base config
   - _cuda_ # inherits from cuda config
   - _inference_ # inherits from inference config
-  - _bert_ # inherits from gpt config
+  - _bge_ # inherits from bge config
   - _self_ # hydra 1.1 compatibility
   - override backend: py-txi
 
-name: cuda_inference_py_txi_bert
+name: cuda_inference_py_txi_bge
