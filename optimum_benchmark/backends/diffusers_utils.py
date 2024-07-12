@@ -7,22 +7,23 @@ from ..import_utils import is_diffusers_available
 if is_diffusers_available():
     import diffusers
     from diffusers import DiffusionPipeline
-    from diffusers.pipelines.auto_pipeline import (
-        AUTO_IMAGE2IMAGE_PIPELINES_MAPPING,
-        AUTO_INPAINT_PIPELINES_MAPPING,
-        AUTO_TEXT2IMAGE_PIPELINES_MAPPING,
-    )
 
-    TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES = {
-        "inpainting": AUTO_INPAINT_PIPELINES_MAPPING.copy(),
-        "text-to-image": AUTO_TEXT2IMAGE_PIPELINES_MAPPING.copy(),
-        "image-to-image": AUTO_IMAGE2IMAGE_PIPELINES_MAPPING.copy(),
-    }
+    if hasattr(diffusers, "pipelines") and hasattr(diffusers.pipelines, "auto_pipeline"):
+        from diffusers.pipelines.auto_pipeline import (
+            AUTO_IMAGE2IMAGE_PIPELINES_MAPPING,
+            AUTO_INPAINT_PIPELINES_MAPPING,
+            AUTO_TEXT2IMAGE_PIPELINES_MAPPING,
+        )
 
-    # classes to class names
-    for task_name, model_mapping in TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES.items():
-        for model_type, model_class in model_mapping.items():
-            TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES[task_name][model_type] = model_class.__name__
+        TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES = {
+            "inpainting": AUTO_INPAINT_PIPELINES_MAPPING.copy(),
+            "text-to-image": AUTO_TEXT2IMAGE_PIPELINES_MAPPING.copy(),
+            "image-to-image": AUTO_IMAGE2IMAGE_PIPELINES_MAPPING.copy(),
+        }
+
+        for task_name, model_mapping in TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES.items():
+            for model_type, model_class in model_mapping.items():
+                TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES[task_name][model_type] = model_class.__name__
 
 else:
     TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES = {}
