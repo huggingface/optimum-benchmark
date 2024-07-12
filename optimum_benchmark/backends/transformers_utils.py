@@ -16,7 +16,54 @@ from transformers import (
     SpecialTokensMixin,
 )
 
-from ..task_utils import _TRANSFORMERS_TASKS_TO_MODEL_LOADERS, map_from_synonym
+from ..import_utils import is_torch_available
+
+TASKS_TO_MODEL_LOADERS = {
+    # text processing
+    "feature-extraction": "AutoModel",
+    "fill-mask": "AutoModelForMaskedLM",
+    "multiple-choice": "AutoModelForMultipleChoice",
+    "question-answering": "AutoModelForQuestionAnswering",
+    "token-classification": "AutoModelForTokenClassification",
+    "text-classification": "AutoModelForSequenceClassification",
+    # audio processing
+    "audio-xvector": "AutoModelForAudioXVector",
+    "text-to-audio": "AutoModelForTextToSpectrogram",
+    "audio-classification": "AutoModelForAudioClassification",
+    "audio-frame-classification": "AutoModelForAudioFrameClassification",
+    # image processing
+    "mask-generation": "AutoModel",
+    "image-to-image": "AutoModelForImageToImage",
+    "masked-im": "AutoModelForMaskedImageModeling",
+    "object-detection": "AutoModelForObjectDetection",
+    "depth-estimation": "AutoModelForDepthEstimation",
+    "image-segmentation": "AutoModelForImageSegmentation",
+    "image-classification": "AutoModelForImageClassification",
+    "semantic-segmentation": "AutoModelForSemanticSegmentation",
+    "zero-shot-object-detection": "AutoModelForZeroShotObjectDetection",
+    "zero-shot-image-classification": "AutoModelForZeroShotImageClassification",
+    # text generation
+    "image-to-text": "AutoModelForVision2Seq",
+    "text-generation": "AutoModelForCausalLM",
+    "text2text-generation": "AutoModelForSeq2SeqLM",
+    "visual-question-answering": "AutoModelForVisualQuestionAnswering",
+    "automatic-speech-recognition": ("AutoModelForSpeechSeq2Seq", "AutoModelForCTC"),
+}
+
+
+if is_torch_available():
+    TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES = {}
+    for task_name, model_loaders in TASKS_TO_MODEL_LOADERS.items():
+        TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES[task_name] = {}
+
+        if isinstance(model_loaders, str):
+            model_loaders = (model_loaders,)
+
+        for model_loader_name in model_loaders:
+            model_loader_class = getattr(transformers, model_loader_name)
+            TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES[task_name].update(model_loader_class._model_mapping._model_mapping)
+else:
+    TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES = {}
 
 PretrainedProcessor = Union[FeatureExtractionMixin, ImageProcessingMixin, SpecialTokensMixin, ProcessorMixin]
 
@@ -122,8 +169,7 @@ def extract_transformers_shapes_from_artifacts(
 
 
 def get_transformers_automodel_loader_for_task(task: str):
-    task = map_from_synonym(task)
-    model_loader_name = _TRANSFORMERS_TASKS_TO_MODEL_LOADERS[task]
+    model_loader_name = TASKS_TO_MODEL_LOADERS[task]
     model_loader_class = getattr(transformers, model_loader_name)
     return model_loader_class
 

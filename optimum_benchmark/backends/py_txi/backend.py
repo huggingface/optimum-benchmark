@@ -3,6 +3,7 @@ from tempfile import TemporaryDirectory
 from typing import Any, Dict, List, Tuple
 
 import torch
+from accelerate import init_empty_weights
 from py_txi import TEI, TGI, TEIConfig, TGIConfig
 from safetensors.torch import save_file
 
@@ -45,7 +46,7 @@ class PyTXIBackend(Backend[PyTXIConfig]):
 
     def download_pretrained_model(self) -> None:
         # directly downloads pretrained model in volume (/data) to change generation config before loading model
-        with torch.device("meta"):
+        with init_empty_weights(include_buffers=True):
             self.automodel_loader.from_pretrained(self.config.model, **self.config.model_kwargs, cache_dir=self.volume)
 
     def prepare_generation_config(self) -> None:
