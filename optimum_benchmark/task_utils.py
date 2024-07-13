@@ -68,8 +68,13 @@ def infer_library_from_model_name_or_path(model_name_or_path: str, revision: Opt
     if huggingface_hub.repo_exists(model_name_or_path):
         model_info = huggingface_hub.model_info(model_name_or_path, revision=revision)
         inferred_library_name = getattr(model_info, "library_name", None)
+
+        if inferred_library_name == "sentence-transformers":
+            inferred_library_name = "transformers"
+
         if inferred_library_name is None:
             raise RuntimeError(f"Could not infer library name from repo {model_name_or_path}.")
+
     elif os.path.isdir(model_name_or_path):
         local_files = os.listdir(model_name_or_path)
 
@@ -87,8 +92,11 @@ def infer_library_from_model_name_or_path(model_name_or_path: str, revision: Opt
         if inferred_library_name is None:
             raise KeyError(f"Could not find the proper library name for directory {model_name_or_path}.")
 
-    if inferred_library_name is None:
-        raise KeyError(f"Could not find the proper library name for {model_name_or_path}.")
+    else:
+        raise KeyError(
+            f"Could not find the proper library name for {model_name_or_path}"
+            " because it's neither a repo nor a directory."
+        )
 
     return inferred_library_name
 
