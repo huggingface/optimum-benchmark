@@ -129,8 +129,6 @@ class ORTBackend(Backend[ORTConfig]):
 
         self.config.model = original_model
 
-
-
     @property
     def is_optimized(self) -> bool:
         return (self.config.auto_optimization is not None) or self.config.optimization
