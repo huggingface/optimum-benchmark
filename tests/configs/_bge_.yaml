@@ -1,3 +1,0 @@
-backend:
-  model: BAAI/bge-small-en-v1.5
-  task: feature-extraction
