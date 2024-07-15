@@ -1,4 +1,5 @@
 import time
+from contextlib import ExitStack
 
 from transformers import LogitsProcessorList
 
@@ -68,52 +69,27 @@ class InferenceScenario(Scenario[InferenceConfig]):
             self.logger.info("\t+ Updating Text Generation kwargs with default values")
             self.config.generate_kwargs = {**TEXT_GENERATION_DEFAULT_KWARGS, **self.config.generate_kwargs}
             self.logger.info("\t+ Initializing Text Generation report")
-
-            self.report = BenchmarkReport.from_list(targets=["prefill", "decode", "per_token"])
-
+            self.report = BenchmarkReport.from_list(targets=["load", "prefill", "decode", "per_token"])
         elif backend.config.task in IMAGE_DIFFUSION_TASKS:
             self.logger.info("\t+ Generating Image Diffusion inputs")
             self.inputs = self.input_generator()
             self.logger.info("\t+ Updating Image Diffusion kwargs with default values")
             self.config.call_kwargs = {**IMAGE_DIFFUSION_DEFAULT_KWARGS, **self.config.call_kwargs}
             self.logger.info("\t+ Initializing Image Diffusion report")
-            self.report = BenchmarkReport.from_list(targets=["call"])
-
+            self.report = BenchmarkReport.from_list(targets=["load", "call"])
         else:
             self.logger.info("\t+ Generating Inference inputs")
             self.inputs = self.input_generator()
             self.logger.info("\t+ Initializing Inference report")
-            self.report = BenchmarkReport.from_list(targets=["forward"])
+            self.report = BenchmarkReport.from_list(targets=["load", "forward"])
+
+        self.logger.info("\t+ Preparing input shapes for Inference")
+        self.config.input_shapes = backend.prepare_input_shapes(input_shapes=self.config.input_shapes)
+
+        self.run_model_loading_tracking(backend)
 
         self.logger.info("\t+ Preparing inputs for Inference")
-        self.inputs, self.config.input_shapes = backend.prepare_inputs(
-            inputs=self.inputs, input_shapes=self.config.input_shapes
-        )
-
-        self.logger.info("\t+ Preparing backend for Inference")
-        backend.prepare_for_inference(
-            input_shapes=self.config.input_shapes,
-            inference_kwargs={
-                **self.config.generate_kwargs,
-                **self.config.forward_kwargs,
-                **self.config.call_kwargs,
-            },
-        )
-
-        if backend.config.task in TEXT_GENERATION_TASKS:
-            self.logger.info("\t+ Warming up backend for Text Generation")
-            _ = backend.generate(self.inputs, self.config.generate_kwargs)
-            for _ in range(self.config.warmup_runs):
-                _ = backend.generate(self.inputs, {**self.config.generate_kwargs, **TEXT_GENERATION_WARMUP_OVERRIDES})
-        elif backend.config.task in IMAGE_DIFFUSION_TASKS:
-            self.logger.info("\t+ Warming up backend for Image Diffusion")
-            _ = backend.call(self.inputs, self.config.call_kwargs)
-            for _ in range(self.config.warmup_runs):
-                _ = backend.call(self.inputs, {**self.config.call_kwargs, **IMAGE_DIFFUSION_WARMUP_OVERRIDES})
-        else:
-            self.logger.info("\t+ Warming up backend for Inference")
-            for _ in range(self.config.warmup_runs):
-                _ = backend.forward(self.inputs, self.config.forward_kwargs)
+        self.inputs = backend.prepare_inputs(inputs=self.inputs)
 
         if self.config.memory:
             if backend.config.task in TEXT_GENERATION_TASKS:
@@ -124,6 +100,15 @@ class InferenceScenario(Scenario[InferenceConfig]):
                 self.run_inference_memory_tracking(backend)
 
             self.report.log_memory()
+
+        if self.config.latency or self.config.energy:
+            # latency and energy are metrics that require some warmup
+            if backend.config.task in TEXT_GENERATION_TASKS:
+                self.warmup_text_generation(backend)
+            elif backend.config.task in IMAGE_DIFFUSION_TASKS:
+                self.warmup_image_diffusion(backend)
+            else:
+                self.warmup_inference(backend)
 
         if self.config.latency:
             if backend.config.task in TEXT_GENERATION_TASKS:
@@ -151,6 +136,57 @@ class InferenceScenario(Scenario[InferenceConfig]):
             self.report.log_efficiency()
 
         return self.report
+
+    def warmup_text_generation(self, backend: Backend[BackendConfigT]):
+        self.logger.info("\t+ Warming up backend for Text Generation")
+        _ = backend.generate(self.inputs, self.config.generate_kwargs)
+        for _ in range(self.config.warmup_runs):
+            _ = backend.generate(self.inputs, {**self.config.generate_kwargs, **TEXT_GENERATION_WARMUP_OVERRIDES})
+
+    def warmup_image_diffusion(self, backend: Backend[BackendConfigT]):
+        self.logger.info("\t+ Warming up backend for Image Diffusion")
+        _ = backend.call(self.inputs, self.config.call_kwargs)
+        for _ in range(self.config.warmup_runs):
+            _ = backend.call(self.inputs, {**self.config.call_kwargs, **IMAGE_DIFFUSION_WARMUP_OVERRIDES})
+
+    def warmup_inference(self, backend: Backend[BackendConfigT]):
+        self.logger.info("\t+ Warming up backend for Inference")
+        for _ in range(self.config.warmup_runs):
+            _ = backend.forward(self.inputs, self.config.forward_kwargs)
+
+    # Loading tracking
+    def run_model_loading_tracking(self, backend: Backend[BackendConfigT]):
+        self.logger.info("\t+ Running model loading tracking")
+
+        if self.config.latency:
+            latency_tracker = LatencyTracker(backend=backend.config.name, device=backend.config.device)
+        if self.config.memory:
+            memory_tracker = MemoryTracker(
+                backend=backend.config.name, device=backend.config.device, device_ids=backend.config.device_ids
+            )
+        if self.config.energy:
+            energy_tracker = EnergyTracker(
+                backend=backend.config.name, device=backend.config.device, device_ids=backend.config.device_ids
+            )
+
+        context_stack = ExitStack()
+        if self.config.latency:
+            context_stack.enter_context(latency_tracker.track())
+        if self.config.memory:
+            context_stack.enter_context(memory_tracker.track())
+        if self.config.energy:
+            context_stack.enter_context(energy_tracker.track())
+
+        with context_stack:
+            self.logger.info("\t+ Loading model for Inference")
+            backend.load()
+
+        if self.config.latency:
+            self.report.load.latency = latency_tracker.get_latency()
+        if self.config.memory:
+            self.report.load.memory = memory_tracker.get_max_memory()
+        if self.config.energy:
+            self.report.load.energy = energy_tracker.get_energy()
 
     ## Memory tracking
     def run_text_generation_memory_tracking(self, backend: Backend[BackendConfigT]):
@@ -272,7 +308,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
         )
 
     def run_latency_inference_tracking(self, backend: Backend[BackendConfigT]):
-        self.logger.info("\t+ Running latency tracking")
+        self.logger.info("\t+ Running Inference latency tracking")
         latency_tracker = LatencyTracker(backend=backend.config.name, device=backend.config.device)
 
         while latency_tracker.elapsed() < self.config.duration or latency_tracker.count() < self.config.iterations:

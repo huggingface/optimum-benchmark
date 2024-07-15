@@ -5,11 +5,40 @@ from hydra.utils import get_class
 from ..import_utils import is_diffusers_available
 
 if is_diffusers_available():
-    import diffusers  # type: ignore
+    import diffusers
+    from diffusers import DiffusionPipeline
+
+    if hasattr(diffusers, "pipelines") and hasattr(diffusers.pipelines, "auto_pipeline"):
+        from diffusers.pipelines.auto_pipeline import (
+            AUTO_IMAGE2IMAGE_PIPELINES_MAPPING,
+            AUTO_INPAINT_PIPELINES_MAPPING,
+            AUTO_TEXT2IMAGE_PIPELINES_MAPPING,
+        )
+
+        TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES = {
+            "inpainting": AUTO_INPAINT_PIPELINES_MAPPING.copy(),
+            "text-to-image": AUTO_TEXT2IMAGE_PIPELINES_MAPPING.copy(),
+            "image-to-image": AUTO_IMAGE2IMAGE_PIPELINES_MAPPING.copy(),
+        }
+
+        for task_name, model_mapping in TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES.items():
+            for model_type, model_class in model_mapping.items():
+                TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES[task_name][model_type] = model_class.__name__
+    else:
+        TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES = {}
+else:
+    TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES = {}
+
+
+TASKS_TO_MODEL_LOADERS = {
+    "inpainting": "AutoPipelineForInpainting",
+    "text-to-image": "AutoPipelineForText2Image",
+    "image-to-image": "AutoPipelineForImage2Image",
+}
 
 
 def get_diffusers_pretrained_config(model: str, **kwargs) -> Dict[str, int]:
-    return diffusers.DiffusionPipeline.load_config(model, **kwargs)
+    return DiffusionPipeline.load_config(model, **kwargs)
 
 
 def extract_diffusers_shapes_from_model(model: str, **kwargs) -> Dict[str, int]:
@@ -38,3 +67,9 @@ def extract_diffusers_shapes_from_model(model: str, **kwargs) -> Dict[str, int]:
         shapes["width"] = -1
 
     return shapes
+
+
+def get_diffusers_automodel_loader_for_task(task: str):
+    model_loader_name = TASKS_TO_MODEL_LOADERS[task]
+    model_loader_class = getattr(diffusers, model_loader_name)
+    return model_loader_class
