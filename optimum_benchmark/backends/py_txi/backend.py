@@ -1,6 +1,6 @@
 import os
 from tempfile import TemporaryDirectory
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 import torch
 from accelerate import init_empty_weights
@@ -19,6 +19,7 @@ class PyTXIBackend(Backend[PyTXIConfig]):
     def __init__(self, config: PyTXIConfig) -> None:
         super().__init__(config)
 
+    def load(self) -> None:
         self.logger.info("\t+ Creating backend temporary directory")
         self.tmpdir = TemporaryDirectory()
 
@@ -138,11 +139,7 @@ class PyTXIBackend(Backend[PyTXIConfig]):
         else:
             raise NotImplementedError(f"TXI does not support task {self.config.task}")
 
-    def prepare_inputs(
-        self, inputs: Dict[str, Any], input_shapes: Dict[str, Any]
-    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-        inputs, input_shapes = super().prepare_inputs(inputs, input_shapes)
-
+    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         if self.config.task in TEXT_GENERATION_TASKS:
             inputs = {"prompt": self.pretrained_processor.batch_decode(inputs["input_ids"].tolist())}
         elif self.config.task in TEXT_EMBEDDING_TASKS:
@@ -150,7 +147,7 @@ class PyTXIBackend(Backend[PyTXIConfig]):
         else:
             raise NotImplementedError(f"TXI does not support task {self.config.task}")
 
-        return inputs, input_shapes
+        return inputs
 
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> List[str]:
         return self.pretrained_model.encode(**inputs, **kwargs)

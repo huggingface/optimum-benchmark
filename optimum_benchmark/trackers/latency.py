@@ -44,9 +44,6 @@ class Latency:
             raise ValueError(f"Invalid index type: {type(index)}, expected int or slice")
 
     def __sub__(self, latency: "Latency") -> "Latency":
-        if not isinstance(latency, Latency):
-            raise ValueError(f"Cannot subtract {type(latency)} from Latency")
-
         latencies = [lat - latency.mean for lat in self.values]
 
         assert not any(latency < 0 for latency in latencies), "Negative latency detected"
@@ -82,14 +79,14 @@ class Latency:
     def log(self, prefix: str = "method"):
         stdev_percentage = 100 * self.stdev / self.mean if self.mean > 0 else 0
         LOGGER.info(f"\t\t+ {prefix} latency:")
-        LOGGER.info(f"\t\t\t+ count: {self.count}")
-        LOGGER.info(f"\t\t\t+ total: {self.total:f} {self.unit}")
-        LOGGER.info(f"\t\t\t+ mean: {self.mean:f} {self.unit}")
-        LOGGER.info(f"\t\t\t+ stdev: {self.stdev:f} {self.unit} ({stdev_percentage:.2f}%)")
-        LOGGER.info(f"\t\t\t+ p50: {self.p50:f} {self.unit}")
-        LOGGER.info(f"\t\t\t+ p90: {self.p90:f} {self.unit}")
-        LOGGER.info(f"\t\t\t+ p95: {self.p95:f} {self.unit}")
-        LOGGER.info(f"\t\t\t+ p99: {self.p99:f} {self.unit}")
+        LOGGER.info(f"\t\t\t- count: {self.count}")
+        LOGGER.info(f"\t\t\t- total: {self.total:f} {self.unit}")
+        LOGGER.info(f"\t\t\t- mean: {self.mean:f} {self.unit}")
+        LOGGER.info(f"\t\t\t- stdev: {self.stdev:f} {self.unit} ({stdev_percentage:.2f}%)")
+        LOGGER.info(f"\t\t\t- p50: {self.p50:f} {self.unit}")
+        LOGGER.info(f"\t\t\t- p90: {self.p90:f} {self.unit}")
+        LOGGER.info(f"\t\t\t- p95: {self.p95:f} {self.unit}")
+        LOGGER.info(f"\t\t\t- p99: {self.p99:f} {self.unit}")
 
 
 @dataclass

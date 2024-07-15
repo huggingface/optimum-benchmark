@@ -18,6 +18,7 @@ class TorchORTBackend(Backend[TorchORTConfig]):
     def __init__(self, config: TorchORTConfig):
         super().__init__(config)
 
+    def load(self) -> None:
         self.logger.info("\t+ Creating backend temporary directory")
         self.tmpdir = TemporaryDirectory()
 
@@ -34,6 +35,7 @@ class TorchORTBackend(Backend[TorchORTConfig]):
             self.logger.info("\t+ Applying PEFT")
             self.pretrained_model = apply_peft(self.pretrained_model, self.config.peft_type, self.config.peft_config)
 
+        self.logger.info("\t+ Cleaning up backend temporary directory")
         self.tmpdir.cleanup()
 
     def load_automodel_with_no_weights(self) -> None:

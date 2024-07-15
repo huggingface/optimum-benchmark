@@ -1,7 +1,7 @@
 import inspect
 from collections import OrderedDict
 from tempfile import TemporaryDirectory
-from typing import Any, Dict, Tuple
+from typing import Any, Dict
 
 import torch
 from hydra.utils import get_class
@@ -50,6 +50,7 @@ class OVBackend(Backend[OVConfig]):
             self.logger.info(f"\t+ Setting inter_op_num_threads to {self.config.inter_op_num_threads}")
             self.config.openvino_config[properties.inference_num_threads()] = self.config.inter_op_num_threads
 
+    def load(self) -> None:
         self.logger.info("\t+ Creating backend temporary directory")
         self.tmpdir = TemporaryDirectory()
 
@@ -62,16 +63,13 @@ class OVBackend(Backend[OVConfig]):
             else:
                 self.logger.info("\t+ Loading pretrained AutoModel")
                 self._load_automodel_from_pretrained()
-
             self.logger.info("\t+ Applying post-training quantization")
             self.quantize_automodel()
-
             original_model, self.config.model = self.config.model, self.quantized_model
             original_export, self.config.export = self.config.export, False
             self.logger.info("\t+ Loading quantized OVModel")
             self._load_ovmodel_from_pretrained()
             self.config.model, self.config.export = original_model, original_export
-
         elif self.config.no_weights:
             self.logger.info("\t+ Creating no weights OVModel")
             self.create_no_weights_model()
@@ -80,6 +78,27 @@ class OVBackend(Backend[OVConfig]):
         else:
             self.logger.info("\t+ Loading pretrained OVModel")
             self._load_ovmodel_from_pretrained()
+
+        if self.config.reshape:
+            static_shapes = {
+                key: value
+                for key, value in {**self.input_shapes, **self.model_shapes}.items()
+                if key in inspect.getfullargspec(self.pretrained_model.reshape).args
+            }
+            if ("sequence_length" in static_shapes) and ("height" in static_shapes) and ("width" in static_shapes):
+                # for vision models, sequence_length is the number of channels
+                static_shapes["sequence_length"] = self.model_shapes.get("num_channels")
+
+            self.logger.info(f"\t+ Reshaping model with static shapes: {static_shapes}")
+            self.pretrained_model.reshape(**static_shapes)
+
+        if self.config.half:
+            self.logger.info("\t+ Converting model to half precision")
+            self.pretrained_model.half()
+
+        if self.config.reshape or self.config.half:
+            self.logger.info("\t+ Compiling model")
+            self.pretrained_model.compile()
 
         self.tmpdir.cleanup()
 
@@ -162,45 +181,27 @@ class OVBackend(Backend[OVConfig]):
             batch_size=1,
         )
 
-    def prepare_inputs(
-        self, inputs: Dict[str, Any], input_shapes: Dict[str, Any]
-    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-        inputs, input_shapes = super().prepare_inputs(inputs, input_shapes)
-
+    def prepare_input_shapes(self, input_shapes: Dict[str, Any]) -> Dict[str, Any]:
         if self.is_dp_distributed:
             if input_shapes["batch_size"] % torch.distributed.get_world_size() != 0:
                 raise ValueError(
-                    f"Batch size {input_shapes['batch_size']} must be divisible by data parallel "
-                    f"world size {torch.distributed.get_world_size()}"
+                    f"Batch size {input_shapes['batch_size']} must be divisible by "
+                    f"data parallel world size {torch.distributed.get_world_size()}"
                 )
-            with Accelerator().split_between_processes(inputs=inputs, apply_padding=False) as split_inputs:
-                input_shapes["batch_size"] = input_shapes["batch_size"] // torch.distributed.get_world_size()
-                inputs = split_inputs
+            # distributing batch size across processes
+            input_shapes["batch_size"] //= torch.distributed.get_world_size()
 
-        return inputs, input_shapes
+        # registering input shapes for usage during model reshaping
+        self.input_shapes = input_shapes
 
-    def prepare_for_inference(self, input_shapes: Dict[str, Any], inference_kwargs: Dict[str, Any]) -> None:
-        if self.config.reshape:
-            all_shapes = {**input_shapes, **inference_kwargs, **self.model_shapes}
+        return input_shapes
 
-            static_shapes = {
-                key: value
-                for key, value in all_shapes.items()
-                if key in inspect.getfullargspec(self.pretrained_model.reshape).args
-            }
-            if (static_shapes.get("height", None) is not None) and ("sequence_length" in static_shapes):
-                static_shapes["sequence_length"] = all_shapes.get("num_channels", 3)
+    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        if self.is_dp_distributed:
+            with Accelerator().split_between_processes(inputs=inputs, apply_padding=False) as process_inputs:
+                inputs = process_inputs
 
-            self.logger.info(f"\t+ Reshaping model with static shapes: {static_shapes}")
-            self.pretrained_model.reshape(**static_shapes)
-
-        if self.config.half:
-            self.logger.info("\t+ Converting model to half precision")
-            self.pretrained_model.half()
-
-        if self.config.reshape or self.config.half:
-            self.logger.info("\t+ Compiling model")
-            self.pretrained_model.compile()
+        return inputs
 
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         return self.pretrained_model.forward(**inputs, **kwargs)

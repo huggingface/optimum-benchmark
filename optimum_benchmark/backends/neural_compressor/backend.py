@@ -27,6 +27,7 @@ class INCBackend(Backend[INCConfig]):
         else:
             raise NotImplementedError(f"INCBackend does not support task {self.config.task}")
 
+    def load(self) -> None:
         self.logger.info("\t+ Creating backend temporary directory")
         self.tmpdir = TemporaryDirectory()
 
@@ -39,21 +40,17 @@ class INCBackend(Backend[INCConfig]):
             else:
                 self.logger.info("\t+ Loading pretrained AutoModel")
                 self.load_automodel_from_pretrained()
-
             self.logger.info("\t+ Applying post-training quantization")
             self.quantize_automodel()
-
             self.logger.info("\t+ Loading quantized INCModel")
             original_model, self.config.model = self.config.model, self.quantized_model
             self.load_incmodel_from_pretrained()
             self.config.model = original_model
-
         elif self.config.no_weights:
             self.logger.info("\t+ Creating no weights INCModel")
             self.create_no_weights_model()
             self.logger.info("\t+ Loading no weights INCModel")
             self.load_incmodel_with_no_weights()
-
         else:
             self.logger.info("\t+ Loading pretrained INCModel")
             self.load_incmodel_from_pretrained()

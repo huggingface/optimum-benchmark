@@ -1,7 +1,7 @@
 import os
 from collections import OrderedDict
 from tempfile import TemporaryDirectory
-from typing import Any, Dict, Tuple
+from typing import Any, Dict
 
 import torch
 from hydra.utils import get_class
@@ -64,6 +64,13 @@ class ORTBackend(Backend[ORTConfig]):
             for key, value in self.config.session_options.items():
                 setattr(self.session_options, key, value)
 
+    def validate_execution_provider(self) -> None:
+        if not self.pretrained_model.providers[0] == self.config.provider:
+            raise ValueError(
+                f"{self.config.provider} is not first in providers list: {self.pretrained_model.providers}"
+            )
+
+    def load(self) -> None:
         self.logger.info("\t+ Creating backend temporary directory")
         self.tmpdir = TemporaryDirectory()
 
@@ -93,9 +100,13 @@ class ORTBackend(Backend[ORTConfig]):
             original_export, self.config.export = self.config.export, False
             self.logger.info("\t+ Loading optimized/quantized model")
             self.load_ortmodel_from_pretrained()
-            self.config.model, self.config.export = original_model, original_export
+            self.config.export = original_export
+            self.config.model = original_model
 
-        self.validate_provider()
+        self.logger.info("\t+ Validating requested Execution Provider")
+        self.validate_execution_provider()
+
+        self.logger.info("\t+ Cleaning up backend temporary directory")
         self.tmpdir.cleanup()
 
     def load_ortmodel_from_pretrained(self) -> None:
@@ -118,11 +129,7 @@ class ORTBackend(Backend[ORTConfig]):
 
         self.config.model = original_model
 
-    def validate_provider(self) -> None:
-        if not self.pretrained_model.providers[0] == self.config.provider:
-            raise ValueError(
-                f"{self.config.provider} is not first in providers list: {self.pretrained_model.providers}"
-            )
+
 
     @property
     def is_optimized(self) -> bool:
@@ -270,20 +277,22 @@ class ORTBackend(Backend[ORTConfig]):
         if self.pretrained_config is not None:
             self.pretrained_config.save_pretrained(self.quantized_model)
 
-    def prepare_inputs(
-        self, inputs: Dict[str, Any], input_shapes: Dict[str, Any]
-    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-        inputs, input_shapes = super().prepare_inputs(inputs, input_shapes)
-
+    def prepare_input_shapes(self, input_shapes: Dict[str, Any]) -> Dict[str, Any]:
         if self.is_dp_distributed:
             if input_shapes["batch_size"] % torch.distributed.get_world_size() != 0:
                 raise ValueError(
-                    f"Batch size {input_shapes['batch_size']} must be divisible by data parallel "
-                    f"world size {torch.distributed.get_world_size()}"
+                    f"Batch size {input_shapes['batch_size']} must be divisible by "
+                    f"data parallel world size {torch.distributed.get_world_size()}"
                 )
-            with Accelerator().split_between_processes(inputs=inputs, apply_padding=False) as split_inputs:
-                input_shapes["batch_size"] = input_shapes["batch_size"] // torch.distributed.get_world_size()
-                inputs = split_inputs
+            # distributing batch size across processes
+            input_shapes["batch_size"] //= torch.distributed.get_world_size()
+
+        return input_shapes
+
+    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        if self.is_dp_distributed:
+            with Accelerator().split_between_processes(inputs=inputs, apply_padding=False) as process_inputs:
+                inputs = process_inputs
 
         if self.config.library == "transformers":
             for key, value in list(inputs.items()):
@@ -295,7 +304,7 @@ class ORTBackend(Backend[ORTConfig]):
             if isinstance(value, torch.Tensor):
                 inputs[key] = value.to(self.config.device)
 
-        return inputs, input_shapes
+        return inputs
 
     @torch.inference_mode()
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:

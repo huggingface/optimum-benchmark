@@ -1,6 +1,6 @@
 import os
 from tempfile import TemporaryDirectory
-from typing import Any, Dict, Tuple
+from typing import Any, Dict
 
 import torch
 from huggingface_hub.constants import HUGGINGFACE_HUB_CACHE
@@ -22,6 +22,7 @@ class VLLMBackend(Backend[VLLMConfig]):
         if self.config.task not in TEXT_GENERATION_TASKS:
             raise NotImplementedError(f"vLLM does not support task {self.config.task}")
 
+    def load(self) -> None:
         self.logger.info("\t+ Creating backend temporary directory")
         self.tmpdir = TemporaryDirectory()
 
@@ -33,14 +34,13 @@ class VLLMBackend(Backend[VLLMConfig]):
         else:
             self.logger.info("\t+ Downloading pretrained model")
             self.download_pretrained_model()
-
             if self.config.task in TEXT_GENERATION_TASKS:
                 self.logger.info("\t+ Preparing generation config")
                 self.prepare_generation_config()
-
             self.logger.info("\t+ Loading pretrained model")
             self.load_model_from_pretrained()
 
+        self.logger.info("\t+ Cleaning up backend temporary directory")
         self.tmpdir.cleanup()
 
     def download_pretrained_model(self) -> None:
@@ -126,17 +126,13 @@ class VLLMBackend(Backend[VLLMConfig]):
             seed=self.config.seed,
         )
 
-    def prepare_inputs(
-        self, inputs: Dict[str, Any], input_shapes: Dict[str, Any]
-    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-        inputs, input_shapes = super().prepare_inputs(inputs, input_shapes)
-
+    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         if self.config.task in TEXT_GENERATION_TASKS:
             inputs = {"prompts": self.pretrained_processor.batch_decode(inputs["input_ids"])}
         else:
             raise NotImplementedError(f"vLLM does not support task {self.config.task}")
 
-        return inputs, input_shapes
+        return inputs
 
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> Any:
         return self.pretrained_model.generate(

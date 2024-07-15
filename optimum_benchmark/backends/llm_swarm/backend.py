@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 import torch
 from huggingface_hub import AsyncInferenceClient
@@ -20,6 +20,7 @@ class LLMSwarmBackend(Backend[LLMSwarmConfig]):
         if self.config.task not in TEXT_GENERATION_TASKS:
             raise NotImplementedError(f"LLM Swarm does not support task {self.config.task}")
 
+    def load(self) -> None:
         self.logger.info("\t+ Downloading pretrained model")
         self.download_pretrained_model()
         self.logger.info("\t+ Preparing generation config")
@@ -58,11 +59,7 @@ class LLMSwarmBackend(Backend[LLMSwarmConfig]):
         self.logger.info("\t+ Saving new pretrained generation config")
         self.generation_config.save_pretrained(save_directory=model_snapshot_path)
 
-    def prepare_inputs(
-        self, inputs: Dict[str, Any], input_shapes: Dict[str, Any]
-    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-        inputs, input_shapes = super().prepare_inputs(inputs, input_shapes)
-
+    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         if "inputs" in inputs:
             inputs = {"prompt": self.pretrained_processor.batch_decode(inputs["inputs"].tolist())}
         elif "input_ids" in inputs:
@@ -70,7 +67,7 @@ class LLMSwarmBackend(Backend[LLMSwarmConfig]):
         else:
             raise ValueError("inputs must contain either input_ids or inputs")
 
-        return inputs, input_shapes
+        return inputs
 
     async def single_client_call(self, prompt: str, kwargs: Dict[str, Any]) -> str:
         return await self.client.text_generation(prompt, max_new_tokens=kwargs.get("max_new_tokens", 1))

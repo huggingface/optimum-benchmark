@@ -2,7 +2,7 @@ import os
 from abc import ABC
 from collections import OrderedDict
 from logging import getLogger
-from typing import Any, ClassVar, Dict, Generic, Optional, Tuple
+from typing import Any, ClassVar, Dict, Generic, Optional
 
 import datasets.utils.logging as datasets_logging
 import transformers.utils.logging as transformers_logging
@@ -99,21 +99,22 @@ class Backend(Generic[BackendConfigT], ABC):
         self.logger.info("\t+ Saving no weights model's config")
         self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
 
-    def prepare_for_inference(self, **kwargs) -> None:
+    def prepare_input_shapes(self, input_shapes: Dict[str, Any]) -> Dict[str, Any]:
         """
-        This method is used to prepare the model for inference.
-        It can be used to compile the model with certain input/output shapes, for example.
+        This method is used to prepare and register the input shapes before using them by the model.
+        It can be used to pad the inputs to the correct shape, or compile it to the correct format.
         """
-        pass
+        return input_shapes
 
-    def prepare_inputs(
-        self, inputs: Dict[str, Any], input_shapes: Dict[str, Any]
-    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         """
-        This method is used to prepare the inputs before passing them to the model.
-        It can be used to move the inputs to the correct device, for example.
+        This method is used to prepare and register the inputs before passing them to the model.
+        It can be used to move the inputs to the correct device, or rename their keys.
         """
-        return inputs, input_shapes
+        return inputs
+
+    def load(self) -> None:
+        raise NotImplementedError("Backend must implement load method")
 
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         """

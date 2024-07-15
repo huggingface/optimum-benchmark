@@ -21,12 +21,14 @@ class TRTLLMBackend(Backend[TRTLLMConfig]):
         else:
             raise NotImplementedError(f"TRTLLMBackend does not support model_type {self.config.model_type}")
 
+    def load(self) -> None:
         self.logger.info("\t+ Creating backend temporary directory")
         self.tmpdir = TemporaryDirectory()
 
         self.logger.info("\t+ Loading pretrained TRTLLMModel")
         self.load_trtmodel_from_pretrained()
 
+        self.logger.info("\t+ Cleaning up backend temporary directory")
         self.tmpdir.cleanup()
 
     def load_trtmodel_from_pretrained(self) -> None:

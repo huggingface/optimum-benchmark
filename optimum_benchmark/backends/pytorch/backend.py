@@ -1,7 +1,7 @@
 import os
 from collections import OrderedDict
 from tempfile import TemporaryDirectory
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, Callable, Dict, List
 
 import torch
 from accelerate import Accelerator, init_empty_weights, init_on_device
@@ -63,6 +63,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 else:
                     raise ValueError(f"Device {self.config.device} not supported for autocast")
 
+    def load(self) -> None:
         self.logger.info("\t+ Creating backend temporary directory")
         self.tmpdir = TemporaryDirectory()
 
@@ -78,7 +79,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         self.logger.info("\t+ Cleaning up backend temporary directory")
         self.tmpdir.cleanup()
 
-    def _load_transformers_model_from_pretrained(self) -> None:
+    def load_transformers_model_from_pretrained(self) -> None:
         if self.is_quantized:
             self.logger.info(f"\t+ Loading {self.quantization_config.quant_method}-quantized model")
             self.pretrained_model = self.automodel_loader.from_pretrained(
@@ -107,7 +108,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 self.logger.info(f"\t+ Moving Transformers model to device: {self.config.device}")
                 self.pretrained_model = self.pretrained_model.to(self.config.device)
 
-    def _load_transformers_model_with_no_weights(self) -> None:
+    def load_transformers_model_with_no_weights(self) -> None:
         original_model, self.config.model = self.config.model, self.no_weights_model
 
         if self.config.deepspeed_inference:
@@ -129,7 +130,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 )
         else:
             with fast_weights_init():
-                self._load_transformers_model_from_pretrained()
+                self.load_transformers_model_from_pretrained()
 
         self.config.model = original_model
 
@@ -147,10 +148,10 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.logger.info("\t+ Creating no weights model")
             self.create_no_weights_model()
             self.logger.info("\t+ Loading model with random weights")
-            self._load_transformers_model_with_no_weights()
+            self.load_transformers_model_with_no_weights()
         else:
             self.logger.info("\t+ Loading model with pretrained weights")
-            self._load_transformers_model_from_pretrained()
+            self.load_transformers_model_from_pretrained()
 
         # KV-Cache
         if self.config.cache_implementation is not None:
@@ -192,25 +193,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             else:
                 raise ValueError(f"Target {self.config.torch_compile_target} not supported")
 
-    def load_diffusers_model(self):
-        self.logger.info("\t+ Loading Diffusion Pipeline")
-        self.logger.info(f"\t+ Using Diffusers Pipeline {self.automodel_loader.__name__}")
-
-        # Model loading
-        if self.config.no_weights:
-            raise ValueError("No weights model not supported for Diffusers")
-        else:
-            self._load_diffusers_pipeline_from_pretrained()
-
-        # Torch compile
-        if self.config.torch_compile:
-            self.logger.info("\t+ Using torch.compile on unet and vae")
-            self.pretrained_model.unet = torch.compile(self.pretrained_model.unet, **self.config.torch_compile_config)
-            self.pretrained_model.vae.decode = torch.compile(
-                self.pretrained_model.vae.decode, **self.config.torch_compile_config
-            )
-
-    def _load_diffusers_pipeline_from_pretrained(self) -> None:
+    def load_diffusers_pipeline_from_pretrained(self) -> None:
         self.pretrained_model = self.automodel_loader.from_pretrained(
             self.config.model,
             # pretrained_model_name_or_path=self.config.model,
@@ -223,6 +206,30 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.logger.info(f"\t+ Moving Diffusion Pipeline to device: {self.config.device}")
             self.pretrained_model = self.pretrained_model.to(self.config.device)
 
+    def load_diffusers_model(self):
+        self.logger.info("\t+ Loading Diffusion Pipeline")
+        self.logger.info(f"\t+ Using Diffusers Pipeline {self.automodel_loader.__name__}")
+
+        # Model loading
+        if self.config.no_weights:
+            raise ValueError("No weights model not supported for Diffusers")
+        else:
+            self.load_diffusers_pipeline_from_pretrained()
+
+        # Torch compile
+        if self.config.torch_compile:
+            self.logger.info("\t+ Using torch.compile on unet and vae")
+            self.pretrained_model.unet = torch.compile(self.pretrained_model.unet, **self.config.torch_compile_config)
+            self.pretrained_model.vae.decode = torch.compile(
+                self.pretrained_model.vae.decode, **self.config.torch_compile_config
+            )
+
+    def load_timm_model_form_pretrained(self) -> None:
+        self.pretrained_model = self.automodel_loader(model_name=self.config.model)
+        if self.config.device != "cpu":
+            self.logger.info(f"\t+ Moving Timm model to device: {self.config.device}")
+            self.pretrained_model = self.pretrained_model.to(self.config.device)
+
     def load_timm_model(self):
         self.logger.info("\t+ Loading Timm model")
         self.logger.info(f"\t+ Using Timm's {self.automodel_loader.__name__}")
@@ -231,7 +238,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         if self.config.no_weights:
             raise ValueError("No weights model not supported for Timm")
         else:
-            self._load_timm_model_form_pretrained()
+            self.load_timm_model_form_pretrained()
 
         # Torch compile
         if self.config.torch_compile:
@@ -245,12 +252,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 self.pretrained_model = torch.compile(self.pretrained_model, **self.config.torch_compile_config)
             else:
                 raise ValueError(f"Target {self.config.torch_compile_target} not supported")
-
-    def _load_timm_model_form_pretrained(self) -> None:
-        self.pretrained_model = self.automodel_loader(model_name=self.config.model)
-        if self.config.device != "cpu":
-            self.logger.info(f"\t+ Moving Timm model to device: {self.config.device}")
-            self.pretrained_model = self.pretrained_model.to(self.config.device)
 
     def create_no_weights_model(self) -> None:
         if self.pretrained_config is None:
@@ -382,25 +383,27 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         return kwargs
 
-    def prepare_inputs(
-        self, inputs: Dict[str, Any], input_shapes: Dict[str, Any]
-    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-        inputs, input_shapes = super().prepare_inputs(inputs, input_shapes)
-
+    def prepare_input_shapes(self, input_shapes: Dict[str, Any]) -> Dict[str, Any]:
         if self.is_dp_distributed:
             if input_shapes["batch_size"] % torch.distributed.get_world_size() != 0:
                 raise ValueError(
-                    f"Batch size {input_shapes['batch_size']} must be divisible by data parallel "
-                    f"world size {torch.distributed.get_world_size()}"
+                    f"Batch size {input_shapes['batch_size']} must be divisible by "
+                    f"data parallel world size {torch.distributed.get_world_size()}"
                 )
-            with Accelerator().split_between_processes(inputs=inputs, apply_padding=False) as split_inputs:
-                input_shapes["batch_size"] = input_shapes["batch_size"] // torch.distributed.get_world_size()
-                inputs = split_inputs
+            # distributing batch size across processes
+            input_shapes["batch_size"] //= torch.distributed.get_world_size()
 
         if self.is_tp_distributed:
             if torch.distributed.get_rank() != 0:
-                # this is to force throughput of non main shards to 0
+                # zeroing throughput on other ranks
                 input_shapes["batch_size"] = 0
+
+        return input_shapes
+
+    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        if self.is_dp_distributed:
+            with Accelerator().split_between_processes(inputs=inputs, apply_padding=False) as process_inputs:
+                inputs = process_inputs
 
         if self.config.library == "timm":
             inputs = {"x": inputs["pixel_values"]}
@@ -409,7 +412,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             if isinstance(value, torch.Tensor):
                 inputs[key] = value.to(self.config.device)
 
-        return inputs, input_shapes
+        return inputs
 
     @torch.inference_mode()
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
