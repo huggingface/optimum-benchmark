@@ -172,3 +172,6 @@ work-in-progress/
 experiments/
 amdsmi/
 amd-*
+
+# Mac specific
+.DS_Store

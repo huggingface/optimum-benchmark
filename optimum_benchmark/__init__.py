@@ -1,6 +1,7 @@
 from .backends import (
     BackendConfig,
     INCConfig,
+    LlamaCppConfig,
     LLMSwarmConfig,
     ORTConfig,
     OVConfig,
@@ -38,4 +39,5 @@ __all__ = [
     "TrainingConfig",
     "TRTLLMConfig",
     "VLLMConfig",
+    "LlamaCppConfig",
 ]

@@ -1,0 +1,23 @@
+defaults:
+  - benchmark
+  - scenario: inference
+  - launcher: inline
+  - backend: pytorch
+  - _base_
+  - _self_
+
+name: llama_tiny_mps
+
+backend:
+  device: mps
+  model: TinyLlama/TinyLlama-1.1B-Chat-v1.0
+  task: text-generation
+
+scenario:
+  input_shapes:
+    batch_size: 4
+    sequence_length: 256
+    vocab_size: 32000
+  generate_kwargs:
+    max_new_tokens: 100
+    min_new_tokens: 100

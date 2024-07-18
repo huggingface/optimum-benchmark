@@ -48,11 +48,15 @@ _TIMM_TASKS_TO_MODEL_LOADERS = {
     "image-classification": "create_model",
 }
 
+_LLAMA_CPP_TASKS_TO_MODEL_LOADERS = {
+    "text-generation": "Llama",
+}
 
 _LIBRARY_TO_TASKS_TO_MODEL_LOADER_MAP = {
     "timm": _TIMM_TASKS_TO_MODEL_LOADERS,
     "diffusers": _DIFFUSERS_TASKS_TO_MODEL_LOADERS,
     "transformers": _TRANSFORMERS_TASKS_TO_MODEL_LOADERS,
+    "llama_cpp": _LLAMA_CPP_TASKS_TO_MODEL_LOADERS
 }
 
 _SYNONYM_TASK_MAP = {
@@ -136,6 +140,9 @@ def infer_task_from_model_name_or_path(model_name_or_path: str, revision: Option
     if library_name == "timm":
         inferred_task_name = "image-classification"
 
+    if library_name == "llama_cpp":
+        inferred_task_name = "text-generation"
+
     elif library_name == "sentence-transformers":
         inferred_task_name = "feature-extraction"
 
@@ -185,6 +192,8 @@ def get_automodel_class_for_task(
     framework: str = "pt",
 ):
     task = map_from_synonym(task)
+
+
 
     if framework == "pt":
         tasks_to_model_loader = _LIBRARY_TO_TASKS_TO_MODEL_LOADER_MAP[library]

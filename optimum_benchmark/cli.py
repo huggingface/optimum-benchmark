@@ -13,6 +13,7 @@ from . import (
     INCConfig,
     InferenceConfig,
     InlineConfig,
+    LlamaCppConfig,
     LLMSwarmConfig,
     ORTConfig,
     OVConfig,
@@ -44,6 +45,7 @@ cs.store(group="backend", name=INCConfig.name, node=INCConfig)
 cs.store(group="backend", name=PyTXIConfig.name, node=PyTXIConfig)
 cs.store(group="backend", name=LLMSwarmConfig.name, node=LLMSwarmConfig)
 cs.store(group="backend", name=VLLMConfig.name, node=VLLMConfig)
+cs.store(group="backend", name=LlamaCppConfig.name, node=LlamaCppConfig)
 # scenarios configurations
 cs.store(group="scenario", name=TrainingConfig.name, node=TrainingConfig)
 cs.store(group="scenario", name=InferenceConfig.name, node=InferenceConfig)

@@ -58,7 +58,13 @@ class Backend(Generic[BackendConfigT], ABC):
             self.model_type = self.pretrained_config.architecture
             self.pretrained_processor = None
             self.generation_config = None
-
+        elif self.config.library == "llama_cpp":
+            self.logger.info("\t+ Benchmarking a Llama.cpp model")
+            self.pretrained_config = None
+            self.model_shapes = {}
+            self.model_type = self.config.task
+            self.pretrained_processor = None
+            self.generation_config = None
         else:
             self.logger.info("\t+ Benchmarking a Transformers model")
             self.generation_config = get_transformers_generation_config(self.config.model, **self.config.model_kwargs)
