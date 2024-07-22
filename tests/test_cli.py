@@ -63,6 +63,9 @@ def test_cli_exit_code_0(launcher):
 
 @pytest.mark.parametrize("launcher", ["inline", "process", "torchrun"])
 def test_cli_exit_code_1(launcher):
+    if launcher == "torchrun" and sys.platform != "linux":
+        pytest.skip("torchrun is only supported on Linux")
+
     args_1 = [
         "optimum-benchmark",
         "--config-dir",
@@ -78,11 +81,13 @@ def test_cli_exit_code_1(launcher):
     ]
 
     popen_1 = run_subprocess_and_log_stream_output(LOGGER, args_1)
-    assert popen_1.returncode == 1
+    assert popen_1.returncode == 1 and "Model type should be one of" in popen_1.stderr
 
 
-@pytest.mark.skipif(sys.platform != "linux", reason="Only run on Linux")
 def test_cli_numactl():
+    if sys.platform != "linux":
+        pytest.skip("numactl is only supported on Linux")
+
     args = [
         "optimum-benchmark",
         "--config-dir",
