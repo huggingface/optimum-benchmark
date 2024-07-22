@@ -1,10 +1,13 @@
+import logging
 import random
 import string
 from abc import ABC
 from typing import Tuple
 
-# TODO: drop torch dependency and use numpy instead ?
+# TODO: drop torch dependency and use numpy instead
 import torch
+
+LOGGER = logging.getLogger("generators")
 
 
 class TaskGenerator(ABC):
@@ -14,18 +17,58 @@ class TaskGenerator(ABC):
 
     @staticmethod
     def generate_random_integers(min_value: int, max_value: int, shape: Tuple[int]):
+        if min_value is None:
+            LOGGER.warning("min_value is None, setting it to 0")
+            min_value = 0
+
+        if max_value is None:
+            LOGGER.warning("max_value is None, setting it to 2")
+            max_value = 2
+
+        if None in shape:
+            LOGGER.warning("shape contains None, setting it to (1, 1)")
+            shape = (1, 1)
+
         return torch.randint(min_value, max_value, shape)
 
     @staticmethod
     def generate_random_floats(min_value: float, max_value: float, shape: Tuple[int]):
+        if min_value is None:
+            LOGGER.warning("min_value is None, setting it to 0")
+            min_value = 0
+
+        if max_value is None:
+            LOGGER.warning("max_value is None, setting it to 1")
+            max_value = 1
+
+        if None in shape:
+            LOGGER.warning("shape contains None, setting it to (1, 1)")
+            shape = (1, 1)
+
         return torch.rand(shape) * (max_value - min_value) + min_value
 
     @staticmethod
     def generate_ranges(start: int, stop: int, shape: Tuple[int]):
+        if start is None:
+            LOGGER.warning("start is None, setting it to 0")
+            start = 0
+
+        if stop is None:
+            LOGGER.warning("stop is None, setting it to 1")
+            stop = 1
+
+        if None in shape:
+            LOGGER.warning("shape contains None, setting it to (1, 1)")
+            shape = (1, 1)
+
         return torch.arange(start, stop).repeat(shape[0], 1)
 
     @staticmethod
     def generate_random_strings(shape: Tuple[int]):
+        if None in shape:
+            LOGGER.warning("shape contains None, setting it to (1, 1)")
+            shape = (1, 1)
+
         return [
             "".join(random.choice(string.ascii_letters + string.digits) for _ in range(shape[1]))
             for _ in range(shape[0])
