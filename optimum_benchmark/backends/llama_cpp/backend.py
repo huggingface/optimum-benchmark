@@ -41,19 +41,17 @@ class LlamaCppBackend(Backend[LlamaCppConfig]):
             raise NotImplementedError(f"Llama.cpp does not support task {self.config.task}")
 
         self.pretrained_model = Llama.from_pretrained(
-            repo_id=self.config.model, # type: ignore
+            repo_id=self.config.model,  # type: ignore
             filename=self.config.filename,
             verbose=False,
-            echo=False
+            echo=False,
         )  # type: ignore
 
     def validate_task(self) -> None:
         if self.config.task not in ["text-generation"]:
             raise ValueError(f"Task {self.config.task} not supported by {self.NAME}")
 
-    def prepare_inputs(
-        self, inputs: Dict[str, Any]
-    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    def prepare_inputs(self, inputs: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         if inputs["input_ids"].shape[0] != 1:
             raise ValueError("Batch size must be 1 for Llama.cpp")
 

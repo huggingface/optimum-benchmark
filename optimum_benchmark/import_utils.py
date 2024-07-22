@@ -38,8 +38,10 @@ _llama_cpp_available = importlib.util.find_spec("llama-cpp-python") is not None
 def is_vllm_available():
     return _vllm_available
 
+
 def is_llama_cpp_available():
     return _llama_cpp_available
+
 
 def is_zentorch_available():
     return _zentorch_available
@@ -224,6 +226,7 @@ def llm_swarm_version():
 def vllm_version():
     if _vllm_available:
         return importlib.metadata.version("vllm")
+
 
 def llama_cpp_version():
     if _llama_cpp_available:

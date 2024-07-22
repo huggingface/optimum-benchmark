@@ -10,6 +10,7 @@ from ..config import BackendConfig
 def llama_cpp_model_kwargs():
     return {"verbose": True}
 
+
 @dataclass
 class LlamaCppConfig(BackendConfig):
     name: str = "llama_cpp"
@@ -28,7 +29,7 @@ class LlamaCppConfig(BackendConfig):
         if self.task not in TEXT_GENERATION_TASKS:
             raise NotImplementedError(f"Llama.cpp does not support task {self.task}")
 
-        self.device = self.device.lower() # type: ignore
+        self.device = self.device.lower()  # type: ignore
 
         if self.device not in ["cuda", "mps", "cpu"]:
             raise ValueError(f"Llama.cpp Backend only supports 'cpu', 'mps' and 'cuda' devices, got {self.device}")
