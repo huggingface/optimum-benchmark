@@ -1,3 +1,4 @@
+import warnings
 from contextlib import contextmanager
 from typing import Any, Dict, Optional, Union
 
@@ -107,7 +108,12 @@ def extract_transformers_shapes_from_artifacts(
         processor_dict = {k: v for k, v in processor.to_dict().items() if v is not None}
         artifacts_dict.update(processor_dict)
     elif processor is not None:
-        processor_dict = {k: getattr(processor, k) for k in dir(processor) if isinstance(getattr(processor, k), int)}
+        try:
+            processor_dict = {
+                k: getattr(processor, k) for k in dir(processor) if isinstance(getattr(processor, k), int)
+            }
+        except Exception:
+            warnings.warn(f"Could not extract shapes from processor {processor}")
 
     shapes = {}
 
