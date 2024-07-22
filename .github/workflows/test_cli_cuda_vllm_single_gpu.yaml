@@ -50,4 +50,4 @@ jobs:
           run: |
             pip install packaging
             pip install -e .[testing,vllm,flash-attn]
-            pytest -x -s -k "cli and cuda and vllm"
+            FORCE_SERIAL=1 pytest -x -s -k "cli and cuda and vllm"

@@ -54,6 +54,12 @@ class PyTorchConfig(BackendConfig):
     def __post_init__(self):
         super().__post_init__()
 
+        if self.model_kwargs.get("torch_dtype", None) is not None:
+            raise ValueError(
+                "`torch_dtype` is an explicit argument in the PyTorch backend config. "
+                "Please remove it from the `model_kwargs` and set it in the backend config directly."
+            )
+
         if self.device_map is not None and self.device_map not in DEVICE_MAPS:
             raise ValueError(f"`device_map` must be one of {DEVICE_MAPS}. Got {self.device_map} instead.")
 

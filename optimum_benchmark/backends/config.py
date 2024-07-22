@@ -30,10 +30,10 @@ class BackendConfig(ABC):
     processor: Optional[str] = None
 
     device: Optional[str] = None
-    device_ids: Optional[str] = None
-    # yes we use a string here instead of a list
+    # we use a string here instead of a list
     # because it's easier to pass in a yaml or from cli
     # and it's consistent with GPU environment variables
+    device_ids: Optional[str] = None
 
     seed: int = 42
     inter_op_num_threads: Optional[int] = None
@@ -44,9 +44,6 @@ class BackendConfig(ABC):
     # processor kwargs that are added to its init method/constructor
     processor_kwargs: Dict[str, Any] = field(default_factory=dict)
 
-    # deprecated
-    hub_kwargs: Dict[str, Any] = field(default_factory=dict)
-
     def __post_init__(self):
         if self.model is None:
             raise ValueError("`model` must be specified.")
@@ -54,23 +51,16 @@ class BackendConfig(ABC):
         if self.processor is None:
             self.processor = self.model
 
-        if self.hub_kwargs:
-            LOGGER.warning(
-                "`hub_kwargs` is deprecated and will be removed in future versions."
-                "Please use `model_kwargs` and `processor_kwargs` seperately."
-            )
-            self.model_kwargs = {**self.model_kwargs, **self.hub_kwargs}
-            self.processor_kwargs = {**self.processor_kwargs, **self.hub_kwargs}
-
+        # TODO: add cache_dir, token, etc. to these methods
         if self.task is None:
-            self.task = infer_task_from_model_name_or_path(self.model, self.hub_kwargs.get("revision", None))
+            self.task = infer_task_from_model_name_or_path(self.model, self.model_kwargs.get("revision", None))
 
         if self.library is None:
-            self.library = infer_library_from_model_name_or_path(self.model, self.hub_kwargs.get("revision", None))
+            self.library = infer_library_from_model_name_or_path(self.model, self.model_kwargs.get("revision", None))
 
         if self.model_type is None:
             self.model_type = infer_model_type_from_model_name_or_path(
-                self.model, self.hub_kwargs.get("revision", None)
+                self.model, self.model_kwargs.get("revision", None)
             )
 
         if self.device is None:

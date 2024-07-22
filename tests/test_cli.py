@@ -8,6 +8,7 @@ from optimum_benchmark.logging_utils import run_subprocess_and_log_stream_output
 LOGGER = getLogger("test")
 
 
+FORCE_SERIAL = os.environ.get("FORCE_SERIAL", "0") == "1"
 TEST_CONFIG_DIR = "/".join(__file__.split("/")[:-1] + ["configs"])
 TEST_CONFIG_NAMES = [
     config.split(".")[0]
@@ -24,11 +25,16 @@ def test_cli_configs(config_name):
         TEST_CONFIG_DIR,
         "--config-name",
         config_name,
-        # to run the tests faster (comment for debugging)
+        # to run the tests faster
         "hydra/launcher=joblib",
         "hydra.launcher.batch_size=1",
         "hydra.launcher.prefer=threads",
     ]
+
+    if FORCE_SERIAL:
+        args += ["hydra.launcher.n_jobs=1"]
+    else:
+        args += ["hydra.launcher.n_jobs=-1"]
 
     popen = run_subprocess_and_log_stream_output(LOGGER, args)
     assert popen.returncode == 0, f"Failed to run {config_name}"
