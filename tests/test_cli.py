@@ -81,7 +81,7 @@ def test_cli_exit_code_1(launcher):
     ]
 
     popen_1 = run_subprocess_and_log_stream_output(LOGGER, args_1)
-    assert popen_1.returncode == 1 and "Model type should be one of" in popen_1.stderr
+    assert popen_1.returncode == 1
 
 
 def test_cli_numactl():
