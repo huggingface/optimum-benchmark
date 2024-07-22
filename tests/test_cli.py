@@ -1,4 +1,5 @@
 import os
+import sys
 from logging import getLogger
 
 import pytest
@@ -80,6 +81,7 @@ def test_cli_exit_code_1(launcher):
     assert popen_1.returncode == 1
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="Only run on Linux")
 def test_cli_numactl():
     args = [
         "optimum-benchmark",

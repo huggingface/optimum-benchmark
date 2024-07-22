@@ -42,16 +42,11 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
-      - name: Install Linux dependencies
-        if: startsWith(matrix.os, 'ubuntu')
+      - name: Install Linux packages
+        if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install -y numactl
-
-      - name: Install MacOS dependencies
-        if: startsWith(matrix.os, 'macos')
-        run: |
-          brew install numactl
 
       - name: Install requirements
         run: |
