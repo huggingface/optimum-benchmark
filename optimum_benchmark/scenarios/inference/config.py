@@ -18,15 +18,23 @@ class InferenceConfig(ScenarioConfig):
     # benchmark options
     iterations: int = field(
         default=10,
-        metadata={"help": "Minimum number of iterations to run the benchmark, set to 0 to disable this constraint"},
+        metadata={
+            "help": "Minimum number of iterations to run the benchmark. "
+            "The number of tracked inferences will be at least this value."
+            "Set to 0 to disable this constraint (benchmark will run for `duration` seconds)."
+        },
     )
     duration: int = field(
         default=10,
-        metadata={"help": "Minimum duration of the benchmark in seconds, set to 0 to disable this constraint"},
+        metadata={
+            "help": "Minimum duration of the benchmark in seconds. "
+            "The sum of tracked inferences will be at least this value."
+            "Set to 0 to disable this constraint (benchmark will run for `iterations` iterations)."
+        },
     )
     warmup_runs: int = field(
         default=10,
-        metadata={"help": "Number of warmup runs to perform before benchmarking, set to 0 to disable warmup"},
+        metadata={"help": "Number of warmup runs to perform before benchmarking."},
     )
 
     # input/output config
@@ -40,8 +48,8 @@ class InferenceConfig(ScenarioConfig):
     )
 
     # tracking options
-    latency: bool = field(default=True, metadata={"help": "Measure latencies and throughputs"})
     memory: bool = field(default=False, metadata={"help": "Measure max memory usage"})
+    latency: bool = field(default=True, metadata={"help": "Measure latencies and throughputs"})
     energy: bool = field(default=False, metadata={"help": "Measure energy usage and efficiency"})
 
     # methods kwargs

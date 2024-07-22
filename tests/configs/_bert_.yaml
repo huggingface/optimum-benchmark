@@ -1,2 +1,3 @@
 backend:
   model: google-bert/bert-base-uncased
+  task: feature-extraction

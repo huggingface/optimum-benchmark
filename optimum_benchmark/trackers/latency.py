@@ -44,9 +44,6 @@ class Latency:
             raise ValueError(f"Invalid index type: {type(index)}, expected int or slice")
 
     def __sub__(self, latency: "Latency") -> "Latency":
-        if not isinstance(latency, Latency):
-            raise ValueError(f"Cannot subtract {type(latency)} from Latency")
-
         latencies = [lat - latency.mean for lat in self.values]
 
         assert not any(latency < 0 for latency in latencies), "Negative latency detected"
@@ -82,14 +79,14 @@ class Latency:
     def log(self, prefix: str = "method"):
         stdev_percentage = 100 * self.stdev / self.mean if self.mean > 0 else 0
         LOGGER.info(f"\t\t+ {prefix} latency:")
-        LOGGER.info(f"\t\t\t+ count: {self.count}")
-        LOGGER.info(f"\t\t\t+ total: {self.total:f} {self.unit}")
-        LOGGER.info(f"\t\t\t+ mean: {self.mean:f} {self.unit}")
-        LOGGER.info(f"\t\t\t+ stdev: {self.stdev:f} {self.unit} ({stdev_percentage:.2f}%)")
-        LOGGER.info(f"\t\t\t+ p50: {self.p50:f} {self.unit}")
-        LOGGER.info(f"\t\t\t+ p90: {self.p90:f} {self.unit}")
-        LOGGER.info(f"\t\t\t+ p95: {self.p95:f} {self.unit}")
-        LOGGER.info(f"\t\t\t+ p99: {self.p99:f} {self.unit}")
+        LOGGER.info(f"\t\t\t- count: {self.count}")
+        LOGGER.info(f"\t\t\t- total: {self.total:f} {self.unit}")
+        LOGGER.info(f"\t\t\t- mean: {self.mean:f} {self.unit}")
+        LOGGER.info(f"\t\t\t- stdev: {self.stdev:f} {self.unit} ({stdev_percentage:.2f}%)")
+        LOGGER.info(f"\t\t\t- p50: {self.p50:f} {self.unit}")
+        LOGGER.info(f"\t\t\t- p90: {self.p90:f} {self.unit}")
+        LOGGER.info(f"\t\t\t- p95: {self.p95:f} {self.unit}")
+        LOGGER.info(f"\t\t\t- p99: {self.p99:f} {self.unit}")
 
 
 @dataclass
@@ -262,9 +259,9 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
             LOGGER.info("\t+ Tracking latency using CPU performance counter")
 
         self.start_time: Optional[float] = None
-        self.next_is_prefill_end_decode_start: Optional[bool] = None
+        self.prefilled: Optional[bool] = None
 
-        self.per_token_events: List[Union[float, torch.cuda.Event]] = []
+        self.per_token_events: List[List[Union[float, torch.cuda.Event]]] = []
         self.prefill_start_events: List[Union[float, torch.cuda.Event]] = []
         self.prefill_end_events: List[Union[float, torch.cuda.Event]] = []
         self.decode_start_events: List[Union[float, torch.cuda.Event]] = []
@@ -272,7 +269,7 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
 
     def reset(self):
         self.start_time = None
-        self.next_is_prefill_end_decode_start = None
+        self.prefilled = None
 
         self.per_token_events = []
         self.prefill_start_events = []
@@ -282,6 +279,9 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
 
     @contextmanager
     def track(self):
+        self.prefilled = False
+        self.per_token_events.append([])
+
         if self.is_distributed:
             torch.distributed.barrier()
 
@@ -291,11 +291,9 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         else:
             self.prefill_start_events.append(time.perf_counter())
 
-        self.next_is_prefill_end_decode_start = True  # this is used to record the end of prefill and start of decode
-
-        yield  # this is where generate is called, and for each decoded token, we record an event
-
-        self.next_is_prefill_end_decode_start = None
+        # this is where generate is called,
+        # and for each decoded token, we record an event
+        yield
 
         if self.is_asynchronous:
             self.decode_end_events.append(torch.cuda.Event(enable_timing=True))
@@ -306,9 +304,11 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         if self.is_distributed:
             torch.distributed.barrier()
 
+        self.prefilled = False
+
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor):
         assert (
-            self.next_is_prefill_end_decode_start is not None
+            self.prefilled is not None
         ), "PerTokenLatencyLogitsProcessor should only be called inside of track() context"
 
         if self.is_asynchronous:
@@ -317,12 +317,12 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         else:
             event = time.perf_counter()
 
-        if self.next_is_prefill_end_decode_start:
+        if not self.prefilled:
             self.prefill_end_events.append(event)
             self.decode_start_events.append(event)
-            self.next_is_prefill_end_decode_start = False
-        else:
-            self.per_token_events.append(event)
+            self.prefilled = True
+
+        self.per_token_events[-1].append(event)
 
         return scores
 
@@ -366,13 +366,15 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
             torch.cuda.synchronize()
 
             latencies_list = [
-                self.per_token_events[i].elapsed_time(self.per_token_events[i + 1]) / 1e3
-                for i in range(0, len(self.per_token_events) - 1)
+                self.per_token_events[i][j].elapsed_time(self.per_token_events[i][j + 1]) / 1e3
+                for i in range(len(self.per_token_events))
+                for j in range(0, len(self.per_token_events[i]) - 1)
             ]
         else:
             latencies_list = [
-                (self.per_token_events[i + 1] - self.per_token_events[i])
-                for i in range(0, len(self.per_token_events) - 1)
+                (self.per_token_events[i][j + 1] - self.per_token_events[i][j])
+                for i in range(len(self.per_token_events))
+                for j in range(0, len(self.per_token_events[i]) - 1)
             ]
 
         assert not any(latency < 0 for latency in latencies_list), "Negative latency detected"

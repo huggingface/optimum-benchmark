@@ -1,20 +1,72 @@
+import warnings
 from contextlib import contextmanager
 from typing import Any, Dict, Optional, Union
 
 import torch
+import transformers
 from transformers import (
     AutoConfig,
+    AutoFeatureExtractor,
     AutoProcessor,
     AutoTokenizer,
     FeatureExtractionMixin,
     GenerationConfig,
     ImageProcessingMixin,
     PretrainedConfig,
-    PreTrainedTokenizer,
     ProcessorMixin,
+    SpecialTokensMixin,
 )
 
-PretrainedProcessor = Union[FeatureExtractionMixin, ImageProcessingMixin, PreTrainedTokenizer, ProcessorMixin]
+from ..import_utils import is_torch_available
+
+TASKS_TO_MODEL_LOADERS = {
+    # text processing
+    "feature-extraction": "AutoModel",
+    "fill-mask": "AutoModelForMaskedLM",
+    "multiple-choice": "AutoModelForMultipleChoice",
+    "question-answering": "AutoModelForQuestionAnswering",
+    "token-classification": "AutoModelForTokenClassification",
+    "text-classification": "AutoModelForSequenceClassification",
+    # audio processing
+    "audio-xvector": "AutoModelForAudioXVector",
+    "text-to-audio": "AutoModelForTextToSpectrogram",
+    "audio-classification": "AutoModelForAudioClassification",
+    "audio-frame-classification": "AutoModelForAudioFrameClassification",
+    # image processing
+    "mask-generation": "AutoModel",
+    "image-to-image": "AutoModelForImageToImage",
+    "masked-im": "AutoModelForMaskedImageModeling",
+    "object-detection": "AutoModelForObjectDetection",
+    "depth-estimation": "AutoModelForDepthEstimation",
+    "image-segmentation": "AutoModelForImageSegmentation",
+    "image-classification": "AutoModelForImageClassification",
+    "semantic-segmentation": "AutoModelForSemanticSegmentation",
+    "zero-shot-object-detection": "AutoModelForZeroShotObjectDetection",
+    "zero-shot-image-classification": "AutoModelForZeroShotImageClassification",
+    # text generation
+    "image-to-text": "AutoModelForVision2Seq",
+    "text-generation": "AutoModelForCausalLM",
+    "text2text-generation": "AutoModelForSeq2SeqLM",
+    "visual-question-answering": "AutoModelForVisualQuestionAnswering",
+    "automatic-speech-recognition": ("AutoModelForSpeechSeq2Seq", "AutoModelForCTC"),
+}
+
+
+if is_torch_available():
+    TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES = {}
+    for task_name, model_loaders in TASKS_TO_MODEL_LOADERS.items():
+        TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES[task_name] = {}
+
+        if isinstance(model_loaders, str):
+            model_loaders = (model_loaders,)
+
+        for model_loader_name in model_loaders:
+            model_loader_class = getattr(transformers, model_loader_name)
+            TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES[task_name].update(model_loader_class._model_mapping._model_mapping)
+else:
+    TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES = {}
+
+PretrainedProcessor = Union[FeatureExtractionMixin, ImageProcessingMixin, SpecialTokensMixin, ProcessorMixin]
 
 
 def get_transformers_pretrained_config(model: str, **kwargs) -> "PretrainedConfig":
@@ -36,9 +88,12 @@ def get_transformers_pretrained_processor(model: str, **kwargs) -> Optional["Pre
         return AutoProcessor.from_pretrained(model, **kwargs)
     except Exception:
         try:
-            return AutoTokenizer.from_pretrained(model, **kwargs)
+            return AutoFeatureExtractor.from_pretrained(model, **kwargs)
         except Exception:
-            return None
+            try:
+                return AutoTokenizer.from_pretrained(model, **kwargs)
+            except Exception:
+                return None
 
 
 def extract_transformers_shapes_from_artifacts(
@@ -53,7 +108,12 @@ def extract_transformers_shapes_from_artifacts(
         processor_dict = {k: v for k, v in processor.to_dict().items() if v is not None}
         artifacts_dict.update(processor_dict)
     elif processor is not None:
-        processor_dict = {k: getattr(processor, k) for k in dir(processor) if isinstance(getattr(processor, k), int)}
+        try:
+            processor_dict = {
+                k: getattr(processor, k) for k in dir(processor) if isinstance(getattr(processor, k), int)
+            }
+        except Exception:
+            warnings.warn(f"Could not extract shapes from processor {processor}")
 
     shapes = {}
 
@@ -114,6 +174,12 @@ def extract_transformers_shapes_from_artifacts(
     return shapes
 
 
+def get_transformers_automodel_loader_for_task(task: str):
+    model_loader_name = TASKS_TO_MODEL_LOADERS[task]
+    model_loader_class = getattr(transformers, model_loader_name)
+    return model_loader_class
+
+
 TORCH_INIT_FUNCTIONS = {
     "normal_": torch.nn.init.normal_,
     "uniform_": torch.nn.init.uniform_,
@@ -131,20 +197,20 @@ TORCH_INIT_FUNCTIONS = {
 }
 
 
-def fast_rand(tensor: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:
+def fast_random_tensor(tensor: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:
     return torch.nn.init.uniform_(tensor)
 
 
 @contextmanager
-def random_init_weights():
+def fast_weights_init():
     # Replace the initialization functions
     for name, init_func in TORCH_INIT_FUNCTIONS.items():
-        if name != "uniform_":
-            setattr(torch.nn.init, name, fast_rand)
+        if name != "uniform_":  # avoid recursion
+            setattr(torch.nn.init, name, fast_random_tensor)
     try:
         yield
     finally:
         # Restore the original initialization functions
         for name, init_func in TORCH_INIT_FUNCTIONS.items():
-            if name != "uniform_":
+            if name != "uniform_":  # avoid recursion
                 setattr(torch.nn.init, name, init_func)

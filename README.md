@@ -14,7 +14,8 @@ Optimum-Benchmark is a unified [multi-backend & multi-device](#backends--devices
 *News* 📰
 
 - 🥳 PyPI package is now available for installation: `pip install optimum-benchmark` 🎉 [check it out](https://pypi.org/project/optimum-benchmark/) !
-- numactl support for Process and Torchrun launchers to control the NUMA nodes on which the benchmark runs 🧠
+- Model loading latency/memory/energy tracking for all backends in the inference scenario 🚀
+- numactl support for Process and Torchrun launchers to control the NUMA nodes on which the benchmark runs.
 - 4 minimal docker images (`cpu`, `cuda`, `rocm`, `cuda-ort`) in [packages](https://github.com/huggingface/optimum-benchmark/pkgs/container/optimum-benchmark) for testing, benchmarking and reproducibility 🐳
 - vLLM backend for benchmarking [vLLM](https://github.com/vllm-project/vllm)'s inference engine 🚀
 - Hosting the codebase of the [LLM-Perf Leaderboard](https://huggingface.co/spaces/optimum/llm-perf-leaderboard) 🥇

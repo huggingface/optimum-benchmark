@@ -1,4 +1,4 @@
 backend:
   library: diffusers
-  task: stable-diffusion
+  task: text-to-image
   model: hf-internal-testing/tiny-stable-diffusion-torch

@@ -10,7 +10,7 @@ from optimum.intel.neural_compressor.quantization import INCQuantizer
 
 from ...generators.dataset_generator import DatasetGenerator
 from ..base import Backend
-from ..transformers_utils import random_init_weights
+from ..transformers_utils import fast_weights_init
 from .config import INCConfig
 from .utils import TASKS_TO_INCMODELS
 
@@ -20,46 +20,70 @@ class INCBackend(Backend[INCConfig]):
 
     def __init__(self, config: INCConfig):
         super().__init__(config)
-        self.validate_task()
 
+        if self.config.task in TASKS_TO_INCMODELS:
+            self.incmodel_class = get_class(TASKS_TO_INCMODELS[self.config.task])
+            self.logger.info(f"Using INCModel class {self.incmodel_class.__name__}")
+        else:
+            raise NotImplementedError(f"INCBackend does not support task {self.config.task}")
+
+    def load(self) -> None:
         self.logger.info("\t+ Creating backend temporary directory")
         self.tmpdir = TemporaryDirectory()
 
         if self.config.ptq_quantization:
             if self.config.no_weights:
+                self.logger.info("\t+ Creating no weights AutoModel")
+                self.create_no_weights_model()
                 self.logger.info("\t+ Loading no weights AutoModel")
                 self.load_automodel_with_no_weights()
             else:
                 self.logger.info("\t+ Loading pretrained AutoModel")
                 self.load_automodel_from_pretrained()
-
             self.logger.info("\t+ Applying post-training quantization")
             self.quantize_automodel()
-
             self.logger.info("\t+ Loading quantized INCModel")
             original_model, self.config.model = self.config.model, self.quantized_model
             self.load_incmodel_from_pretrained()
             self.config.model = original_model
-
         elif self.config.no_weights:
+            self.logger.info("\t+ Creating no weights INCModel")
+            self.create_no_weights_model()
             self.logger.info("\t+ Loading no weights INCModel")
             self.load_incmodel_with_no_weights()
-
         else:
             self.logger.info("\t+ Loading pretrained INCModel")
             self.load_incmodel_from_pretrained()
 
         self.tmpdir.cleanup()
 
-    def validate_task(self) -> None:
-        if self.config.task not in TASKS_TO_INCMODELS:
-            raise NotImplementedError(f"INCBackend does not support task {self.config.task}")
-
-        self.incmodel_class = get_class(TASKS_TO_INCMODELS[self.config.task])
-        self.logger.info(f"Using INCModel class {self.incmodel_class.__name__}")
-
     def load_automodel_from_pretrained(self) -> None:
-        self.pretrained_model = self.automodel_class.from_pretrained(self.config.model, **self.config.model_kwargs)
+        self.pretrained_model = self.automodel_loader.from_pretrained(self.config.model, **self.config.model_kwargs)
+
+    def load_automodel_with_no_weights(self) -> None:
+        original_model, self.config.model = self.config.model, self.no_weights_model
+
+        with fast_weights_init():
+            self.load_automodel_from_pretrained()
+
+        self.logger.info("\t+ Tying model weights")
+        self.pretrained_model.tie_weights()
+
+        self.config.model = original_model
+
+    def load_incmodel_from_pretrained(self) -> None:
+        self.pretrained_model = self.incmodel_class.from_pretrained(self.config.model, **self.config.model_kwargs)
+
+    def load_incmodel_with_no_weights(self) -> None:
+        original_model, self.config.model = self.config.model, self.no_weights_model
+
+        with fast_weights_init():
+            self.load_incmodel_from_pretrained()
+
+        self.logger.info("\t+ Tying model weights")
+        self.pretrained_model.model.tie_weights()
+
+        self.config.model = original_model
 
     def create_no_weights_model(self) -> None:
         self.no_weights_model = os.path.join(self.tmpdir.name, "no_weights_model")
@@ -69,39 +93,8 @@ class INCBackend(Backend[INCConfig]):
         state_dict = torch.nn.Linear(1, 1).state_dict()
         self.logger.info("\t+ Saving no weights model pytorch_model.bin")
         torch.save(state_dict, os.path.join(self.no_weights_model, "pytorch_model.bin"))
-
-        if self.config.library == "transformers":
-            self.logger.info("\t+ Saving no weights model pretrained config")
-            self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
-
-    def load_automodel_with_no_weights(self) -> None:
-        self.logger.info("\t+ Creating no weights model")
-        self.create_no_weights_model()
-
-        with random_init_weights():
-            original_model, self.config.model = self.config.model, self.no_weights_model
-            self.logger.info("\t+ Loading no weights AutoModel")
-            self.load_automodel_from_pretrained()
-            self.config.model = original_model
-
-        self.logger.info("\t+ Tying model weights")
-        self.pretrained_model.tie_weights()
-
-    def load_incmodel_from_pretrained(self) -> None:
-        self.pretrained_model = self.incmodel_class.from_pretrained(self.config.model, **self.config.model_kwargs)
-
-    def load_incmodel_with_no_weights(self) -> None:
-        self.logger.info("\t+ Creating no weights model")
-        self.create_no_weights_model()
-
-        with random_init_weights():
-            original_model, self.config.model = self.config.model, self.no_weights_model
-            self.logger.info("\t+ Loading no weights INCModel")
-            self.load_incmodel_from_pretrained()
-            self.config.model = original_model
-
-        self.logger.info("\t+ Tying model weights")
-        self.pretrained_model.model.tie_weights()
+        self.logger.info("\t+ Saving no weights model pretrained config")
+        self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
 
     def quantize_automodel(self) -> None:
         self.quantized_model = f"{self.tmpdir.name}/quantized_model"

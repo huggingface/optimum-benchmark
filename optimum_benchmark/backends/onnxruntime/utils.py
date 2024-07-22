@@ -3,13 +3,23 @@ from typing import Any, Dict
 from onnxruntime.quantization import CalibrationMethod, QuantFormat, QuantizationMode, QuantType
 from optimum.pipelines import ORT_SUPPORTED_TASKS
 
-TASKS_TO_ORTSD = {
-    "stable-diffusion": "optimum.onnxruntime.ORTStableDiffusionPipeline",
-    "stable-diffusion-xl": "optimum.onnxruntime.ORTStableDiffusionXLPipeline",
-}
-
 TASKS_TO_ORTMODELS = {
     task: f"optimum.onnxruntime.{task_dict['class'][0].__name__}" for task, task_dict in ORT_SUPPORTED_TASKS.items()
+}
+
+TASKS_TO_MODEL_TYPES_TO_ORTPIPELINES = {
+    "text-to-image": {
+        "stable-diffusion": "optimum.onnxruntime.ORTStableDiffusionPipeline",
+        "stable-diffusion-xl": "optimum.onnxruntime.ORTStableDiffusionXLPipeline",
+        "latent-consistency": "optimum.onnxruntime.ORTLatentConsistencyModelPipeline",
+    },
+    "image-to-image": {
+        "stable-diffusion": "optimum.onnxruntime.ORTStableDiffusionImg2ImgPipeline",
+        "stable-diffusion-xl": "optimum.onnxruntime.ORTStableDiffusionImg2ImgXLPipeline",
+    },
+    "inpainting": {
+        "stable-diffusion": "optimum.onnxruntime.ORTStableDiffusionInpaintingPipeline",
+    },
 }
 
 

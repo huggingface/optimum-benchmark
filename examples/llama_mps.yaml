@@ -1,30 +1,23 @@
 defaults:
   - benchmark
   - scenario: inference
-  - launcher: process
-  - backend: vllm
+  - launcher: inline
+  - backend: pytorch
   - _base_
   - _self_
 
-name: vllm_llama
-
-launcher:
-  device_isolation: true
-  device_isolation_action: warn
+name: llama_tiny_mps
 
 backend:
-  device: cuda
-  device_ids: 0
-  no_weights: false
-  serving_mode: offline
+  device: mps
   model: TinyLlama/TinyLlama-1.1B-Chat-v1.0
-  engine_args:
-    enforce_eager: true
+  task: text-generation
 
 scenario:
   input_shapes:
     batch_size: 4
     sequence_length: 256
+    vocab_size: 32000
   generate_kwargs:
     max_new_tokens: 100
     min_new_tokens: 100

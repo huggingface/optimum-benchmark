@@ -29,6 +29,9 @@ class LlamaCppBackend(Backend[LlamaCppConfig]):
         self.load_model_from_pretrained()
         self.tmpdir.cleanup()
 
+    def load(self) -> None:
+        self.load_model_from_pretrained()
+
     def load_model_from_pretrained(self) -> None:
         """
         Load the pretrained model from the given model name (normally GGUF, GGML)
@@ -49,15 +52,15 @@ class LlamaCppBackend(Backend[LlamaCppConfig]):
             raise ValueError(f"Task {self.config.task} not supported by {self.NAME}")
 
     def prepare_inputs(
-        self, inputs: Dict[str, Any], input_shapes: Dict[str, Any]
+        self, inputs: Dict[str, Any]
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         if inputs["input_ids"].shape[0] != 1:
             raise ValueError("Batch size must be 1 for Llama.cpp")
 
-        inputs, input_shapes = super().prepare_inputs(inputs, input_shapes)
+        inputs = super().prepare_inputs(inputs)
         inputs["tokens"] = inputs["input_ids"].squeeze()
 
-        return inputs, input_shapes
+        return inputs
 
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> Any:
         """

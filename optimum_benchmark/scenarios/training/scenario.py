@@ -33,29 +33,38 @@ class TrainingScenario(Scenario[TrainingConfig]):
         self.logger.info("\t+ Initializing training report")
         self.report = BenchmarkReport.from_list(targets=["overall", "warmup", "train"])
 
+        self.logger.info("\t+ Loading model into backend")
+        backend.load()
+
         training_callbackes = []
+
         if self.config.latency:
-            self.logger.info("\t+ Adding latency measuring callback")
+            self.logger.info("\t+ Creating latency tracking callback")
             latency_callback = StepLatencyTrainerCallback(device=backend.config.device, backend=backend.config.name)
+            self.logger.info("\t+ Adding latency measuring callback")
             training_callbackes.append(latency_callback)
 
-        training_trackers = []
+        context_stack = ExitStack()
+
         if self.config.memory:
-            self.logger.info("\t+ Adding memory tracking context manager")
+            self.logger.info("\t+ Creating memory tracking context manager")
             memory_tracker = MemoryTracker(
                 device=backend.config.device, backend=backend.config.name, device_ids=backend.config.device_ids
             )
-            training_trackers.append(memory_tracker.track())
 
         if self.config.energy:
-            self.logger.info("\t+ Adding energy tracking context manager")
+            self.logger.info("\t+ Creating energy tracking context manager")
             energy_tracker = EnergyTracker(device=backend.config.device, device_ids=backend.config.device_ids)
-            training_trackers.append(energy_tracker.track())
 
-        with ExitStack() as stack:
-            for tracker in training_trackers:
-                stack.enter_context(tracker)
+        if self.config.memory:
+            self.logger.info("\t+ Entering memory tracking context manager")
+            context_stack.enter_context(memory_tracker.track())
 
+        if self.config.energy:
+            self.logger.info("\t+ Entering energy tracking context manager")
+            context_stack.enter_context(energy_tracker.track())
+
+        with context_stack:
             backend.train(
                 training_dataset=training_dataset,
                 training_callbacks=training_callbackes,

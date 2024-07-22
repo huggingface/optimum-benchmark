@@ -144,11 +144,12 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
 
         LOGGER.info("\t+ Preparing backend for Inference")
         backend.prepare_for_inference(
-            **backend.model_shapes,
-            **self.config.input_shapes,
-            **self.config.generate_kwargs,
-            **self.config.forward_kwargs,
-            **self.config.call_kwargs,
+            input_shapes=self.config.input_shapes,
+            inference_kwargs={
+                **self.config.generate_kwargs,
+                **self.config.forward_kwargs,
+                **self.config.call_kwargs,
+            },
         )
 
         LOGGER.info("\t+ Warming up backend for Inference")
