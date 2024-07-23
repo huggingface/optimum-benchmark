@@ -1,4 +1,4 @@
-name: CLI Llama.cpp tests
+name: CLI Llama.cpp Tests
 
 on:
   workflow_dispatch:
@@ -42,7 +42,7 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-          pip install -e .[testing,llama_cpp]
+          pip install -e .[testing,lamma-cpp]
 
       - name: Run tests
         run: pytest -s -k "llama_cpp"
