@@ -45,4 +45,4 @@ jobs:
 
       - name: Run tests
         run: |
-          FORCE_SERIAL=1 pytest -s -k "cli and mps and pytorch"
+          PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0 FORCE_SERIAL=1 pytest -s -k "cli and mps and pytorch"
