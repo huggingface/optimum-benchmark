@@ -41,8 +41,8 @@ jobs:
       - name: Install requirements
         run: |
           pip install --upgrade pip
-          pip install -e .[testing,diffusers,timm,peft]
+          pip install -e .[testing]
 
       - name: Run tests
         run: |
-          PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.7 FORCE_SERIAL=1 pytest -s -k "cli and mps and pytorch"
+          PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0 FORCE_SERIAL=1 pytest -s -k "cli and mps and pytorch"
