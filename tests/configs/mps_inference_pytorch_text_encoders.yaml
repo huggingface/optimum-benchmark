@@ -4,9 +4,8 @@ defaults:
   - _mps_ # inherits from mps config
   - _inference_ # inherits from inference config
   - _text_encoders_ # inherits from text encoders config
-  # - _no_weights_ # inherits from no weights config
+  - _no_weights_ # inherits from no weights config
   - _self_ # hydra 1.1 compatibility
   - override backend: pytorch
-  - override launcher: inline
 
 name: mps_inference_pytorch_text_encoders

@@ -44,7 +44,5 @@ jobs:
           pip install -e .[testing]
 
       - name: Run tests
-        env:
-          FORCE_SERIAL: 1
         run: |
-          pytest -s -k "cli and mps and pytorch"
+          FORCE_SERIAL=1 pytest -s -k "cli and mps and pytorch"
