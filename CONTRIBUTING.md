@@ -56,7 +56,7 @@ If you would like to work on any of the open Issues:
 	
 	```bash
 	make build_cpu_image
-	make run_docker_cpu
+	make run_cpu_container
 	make install_cli_cpu_pytorch
 	make test_cli_cpu_pytorch
 	```

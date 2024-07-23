@@ -4,7 +4,6 @@ from typing import Any, Dict, Tuple
 from llama_cpp import Llama
 
 from optimum_benchmark.backends.base import Backend
-from optimum_benchmark.task_utils import TEXT_GENERATION_TASKS
 
 from .config import LlamaCppConfig
 
@@ -15,31 +14,23 @@ class LlamaCppBackend(Backend[LlamaCppConfig]):
     def __init__(self, config: LlamaCppConfig) -> None:
         super().__init__(config)
 
-        self.config.name
-
         if self.config.no_weights:
             self.logger.info("\t+ Loading no weights model")
             raise NotImplementedError("No weights model is not yet implemented")
 
         self.validate_task()
 
+    def load(self) -> None:
         self.logger.info("\t+ Creating backend temporary directory")
         self.tmpdir = TemporaryDirectory()
         self.logger.info("\t+ Loading pretrained model")
         self.load_model_from_pretrained()
         self.tmpdir.cleanup()
 
-    def load(self) -> None:
-        self.load_model_from_pretrained()
-
     def load_model_from_pretrained(self) -> None:
         """
         Load the pretrained model from the given model name (normally GGUF, GGML)
         """
-
-        if self.config.task not in TEXT_GENERATION_TASKS:
-            raise NotImplementedError(f"Llama.cpp does not support task {self.config.task}")
-
         self.pretrained_model = Llama.from_pretrained(
             repo_id=self.config.model,  # type: ignore
             filename=self.config.filename,

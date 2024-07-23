@@ -268,6 +268,4 @@ def get_hf_libs_info():
         "timm_commit": get_git_revision_hash("timm"),
         "peft_version": peft_version() if is_peft_available() else None,
         "peft_commit": get_git_revision_hash("peft"),
-        "llama_cpp_version": llama_cpp_version(),
-        "llama_cpp_commit": get_git_revision_hash("llama_cpp"),
     }

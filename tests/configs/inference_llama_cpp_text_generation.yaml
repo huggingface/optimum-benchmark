@@ -1,0 +1,17 @@
+defaults:
+  - _base_
+  - _inference_
+  - _llama_cpp_
+  - _self_
+  - override backend: llama_cpp
+
+name: inference_llama_cpp_text_generation
+
+scenario:
+  input_shapes:
+    batch_size: 1
+    sequence_length: 256
+    vocab_size: 32000
+  generate_kwargs:
+    max_new_tokens: 100
+    min_new_tokens: 100

@@ -24,8 +24,6 @@ class LlamaCppConfig(BackendConfig):
     def __post_init__(self):
         super().__post_init__()
 
-        print(self.task)
-
         if self.task not in TEXT_GENERATION_TASKS:
             raise NotImplementedError(f"Llama.cpp does not support task {self.task}")
 

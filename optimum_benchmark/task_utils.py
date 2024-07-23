@@ -69,14 +69,14 @@ def infer_library_from_model_name_or_path(model_name_or_path: str, revision: Opt
         model_info = huggingface_hub.model_info(model_name_or_path, revision=revision)
         inferred_library_name = getattr(model_info, "library_name", None)
 
+        if "gguf" in model_info.tags:
+            inferred_library_name = "llama_cpp"
+
         if inferred_library_name == "sentence-transformers":
             inferred_library_name = "transformers"
 
         if inferred_library_name is None:
             raise RuntimeError(f"Could not infer library name from repo {model_name_or_path}.")
-
-        if "gguf" in model_name_or_path.lower():
-            inferred_library_name = "llama_cpp"
 
     elif os.path.isdir(model_name_or_path):
         local_files = os.listdir(model_name_or_path)
