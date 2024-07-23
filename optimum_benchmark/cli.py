@@ -60,6 +60,7 @@ def benchmark_cli(experiment_config: DictConfig) -> None:
 
     # Instantiate the experiment configuration and trigger its __post_init__
     experiment_config: ExperimentConfig = OmegaConf.to_object(experiment_config)
+    print("HERE", type(experiment_config))
     experiment_config.save_json("experiment_config.json")
 
     benchmark_report: BenchmarkReport = launch(experiment_config=experiment_config)
