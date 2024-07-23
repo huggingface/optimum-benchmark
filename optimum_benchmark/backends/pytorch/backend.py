@@ -32,9 +32,6 @@ if is_torch_distributed_available():
 if is_zentorch_available():
     import zentorch  # type: ignore # noqa: F401
 
-if torch.backends.mps.is_available():
-    torch.mps.set_per_process_memory_fraction(0.0)
-
 
 class PyTorchBackend(Backend[PyTorchConfig]):
     NAME = "pytorch"
