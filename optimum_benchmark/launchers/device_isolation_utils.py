@@ -1,5 +1,6 @@
 import os
 import signal
+import sys
 import time
 from logging import getLogger
 from typing import Set
@@ -29,7 +30,8 @@ def isolation_error_signal_handler(signum, frame):
     raise DeviceIsolationError("Received an error signal from the device isolation process")
 
 
-signal.signal(signal.SIGUSR1, isolation_error_signal_handler)
+if sys.platform == "linux":
+    signal.signal(signal.SIGUSR1, isolation_error_signal_handler)
 
 
 def get_nvidia_devices_pids(device_ids: str) -> Set[int]:
