@@ -1,5 +1,6 @@
 import os
 import signal
+import sys
 import time
 from logging import getLogger
 from typing import Set
@@ -29,7 +30,8 @@ def isolation_error_signal_handler(signum, frame):
     raise DeviceIsolationError("Received an error signal from the device isolation process")
 
 
-signal.signal(signal.SIGUSR1, isolation_error_signal_handler)
+if sys.platform == "linux":
+    signal.signal(signal.SIGUSR1, isolation_error_signal_handler)
 
 
 def get_nvidia_devices_pids(device_ids: str) -> Set[int]:
@@ -157,7 +159,11 @@ def assert_device_isolation(pid: int, device_ids: str, action: str):
                 LOGGER.warn("Make sure no other process is running on the device(s) while benchmarking.")
             elif action == "error":
                 LOGGER.error("Signaling the isolated process to error out.")
-                os.kill(pid, signal.SIGUSR1)
+                if sys.platform == "linux":
+                    os.kill(pid, signal.SIGUSR1)
+                else:
+                    LOGGER.error("Sending an error signal is only supported on Linux. Killing the isolated process.")
+                    os.kill(pid, signal.SIGKILL)
             elif action == "kill":
                 LOGGER.error("Killing the isolated process.")
                 os.kill(pid, signal.SIGKILL)

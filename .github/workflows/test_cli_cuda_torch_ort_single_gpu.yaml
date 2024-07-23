@@ -29,12 +29,12 @@ env:
   IMAGE: ghcr.io/huggingface/optimum-benchmark:latest-cuda-ort
 
 jobs:
-  build_image_and_run_cli_cuda_torch_ort_single_gpu_tests:
+  run_cli_cuda_torch_ort_single_gpu_tests:
     runs-on: [single-gpu, nvidia-gpu, a10, ci]
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Run tests
         uses: addnab/docker-run-action@v3

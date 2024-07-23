@@ -3,6 +3,10 @@ name: Security Checks
 on:
   push:
 
+concurrency:
+  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+
 permissions:
   contents: read
 
@@ -10,7 +14,8 @@ jobs:
   secrets:
     runs-on: ubuntu-latest
     steps:
-      - shell: bash
+      - name: Set up environment variables
+        shell: bash
         run: |
           if [ "${{ github.event_name }}" == "push" ]; then
             echo "depth=$(($(jq length <<< '${{ toJson(github.event.commits) }}') + 2))" >> $GITHUB_ENV
@@ -20,10 +25,12 @@ jobs:
             echo "depth=$((${{ github.event.pull_request.commits }}+2))" >> $GITHUB_ENV
             echo "branch=${{ github.event.pull_request.head.ref }}" >> $GITHUB_ENV
           fi
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           ref: ${{env.branch}}
           fetch-depth: ${{env.depth}}
+
       - name: Scan for secrets
         uses: trufflesecurity/trufflehog@main

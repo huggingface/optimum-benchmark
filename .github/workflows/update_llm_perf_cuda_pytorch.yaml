@@ -13,7 +13,7 @@ env:
   IMAGE: ghcr.io/huggingface/optimum-benchmark:latest-cuda
 
 jobs:
-  build_image_and_run_benchmarks:
+  run_benchmarks:
     strategy:
       fail-fast: false
       matrix:
@@ -24,7 +24,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Run benchmarks
         uses: addnab/docker-run-action@v3

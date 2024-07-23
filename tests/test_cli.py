@@ -1,5 +1,7 @@
 import os
+import sys
 from logging import getLogger
+from pathlib import Path
 
 import pytest
 
@@ -7,9 +9,8 @@ from optimum_benchmark.logging_utils import run_subprocess_and_log_stream_output
 
 LOGGER = getLogger("test")
 
-
 FORCE_SERIAL = os.environ.get("FORCE_SERIAL", "0") == "1"
-TEST_CONFIG_DIR = "/".join(__file__.split("/")[:-1] + ["configs"])
+TEST_CONFIG_DIR = Path(__file__).parent / "configs"
 TEST_CONFIG_NAMES = [
     config.split(".")[0]
     for config in os.listdir(TEST_CONFIG_DIR)
@@ -62,6 +63,9 @@ def test_cli_exit_code_0(launcher):
 
 @pytest.mark.parametrize("launcher", ["inline", "process", "torchrun"])
 def test_cli_exit_code_1(launcher):
+    if launcher == "torchrun" and sys.platform != "linux":
+        pytest.skip("torchrun is only supported on Linux")
+
     args_1 = [
         "optimum-benchmark",
         "--config-dir",
@@ -81,6 +85,9 @@ def test_cli_exit_code_1(launcher):
 
 
 def test_cli_numactl():
+    if sys.platform != "linux":
+        pytest.skip("numactl is only supported on Linux")
+
     args = [
         "optimum-benchmark",
         "--config-dir",
