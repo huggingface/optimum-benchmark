@@ -20,7 +20,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build_and_publish_docker_image:
+  publish:
     strategy:
       fail-fast: true
       matrix:

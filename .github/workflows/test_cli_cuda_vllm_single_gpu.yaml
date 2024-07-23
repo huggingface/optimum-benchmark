@@ -1,4 +1,4 @@
-name: CLI CUDA vLLM Tests
+name: CLI CUDA vLLM Single-GPU Tests
 
 on:
   workflow_dispatch:
@@ -34,7 +34,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Run tests
         uses: addnab/docker-run-action@v3
