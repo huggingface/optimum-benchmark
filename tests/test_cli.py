@@ -1,6 +1,7 @@
 import os
 import sys
 from logging import getLogger
+from pathlib import Path
 
 import pytest
 
@@ -8,9 +9,8 @@ from optimum_benchmark.logging_utils import run_subprocess_and_log_stream_output
 
 LOGGER = getLogger("test")
 
-
 FORCE_SERIAL = os.environ.get("FORCE_SERIAL", "0") == "1"
-TEST_CONFIG_DIR = "/".join(__file__.split("/")[:-1] + ["configs"])
+TEST_CONFIG_DIR = Path(__file__).parent / "configs"
 TEST_CONFIG_NAMES = [
     config.split(".")[0]
     for config in os.listdir(TEST_CONFIG_DIR)
