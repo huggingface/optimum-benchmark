@@ -159,7 +159,11 @@ def assert_device_isolation(pid: int, device_ids: str, action: str):
                 LOGGER.warn("Make sure no other process is running on the device(s) while benchmarking.")
             elif action == "error":
                 LOGGER.error("Signaling the isolated process to error out.")
-                os.kill(pid, signal.SIGUSR1)
+                if sys.platform == "linux":
+                    os.kill(pid, signal.SIGUSR1)
+                else:
+                    LOGGER.error("Sending an error signal is only supported on Linux. Killing the isolated process.")
+                    os.kill(pid, signal.SIGKILL)
             elif action == "kill":
                 LOGGER.error("Killing the isolated process.")
                 os.kill(pid, signal.SIGKILL)
