@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   run_cli_mps_pytorch_tests:
-    runs-on: macos-13-xlarge # supports MPS
+    runs-on: macos-14-xlarge
 
     steps:
       - name: Checkout
