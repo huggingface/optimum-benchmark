@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   run_cli_mps_pytorch_tests:
-    runs-on: macos-14-xlarge
+    runs-on: macos-13
 
     steps:
       - name: Checkout
@@ -45,4 +45,4 @@ jobs:
 
       - name: Run tests
         run: |
-          PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.7 FORCE_SERIAL=1 pytest -s -k "cli and mps and pytorch"
+          FORCE_SERIAL=1 pytest -s -k "cli and mps and pytorch"
