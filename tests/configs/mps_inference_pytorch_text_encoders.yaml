@@ -7,6 +7,6 @@ defaults:
   # - _no_weights_ # inherits from no weights config
   - _self_ # hydra 1.1 compatibility
   - override backend: pytorch
-  # - override launcher: inline
+  - override launcher: inline
 
 name: mps_inference_pytorch_text_encoders
