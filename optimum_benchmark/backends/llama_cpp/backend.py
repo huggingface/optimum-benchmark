@@ -18,8 +18,6 @@ class LlamaCppBackend(Backend[LlamaCppConfig]):
             self.logger.info("\t+ Loading no weights model")
             raise NotImplementedError("No weights model is not yet implemented")
 
-        self.validate_task()
-
     def load(self) -> None:
         self.logger.info("\t+ Creating backend temporary directory")
         self.tmpdir = TemporaryDirectory()
@@ -31,11 +29,14 @@ class LlamaCppBackend(Backend[LlamaCppConfig]):
         """
         Load the pretrained model from the given model name (normally GGUF, GGML)
         """
+        embedding = True if self.config.task == "feature-extraction" else False
+
         self.pretrained_model = Llama.from_pretrained(
             repo_id=self.config.model,  # type: ignore
             filename=self.config.filename,
             verbose=False,
             echo=False,
+            embedding=embedding
         )  # type: ignore
 
     def validate_task(self) -> None:
@@ -43,13 +44,31 @@ class LlamaCppBackend(Backend[LlamaCppConfig]):
             raise ValueError(f"Task {self.config.task} not supported by {self.NAME}")
 
     def prepare_inputs(self, inputs: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-        if inputs["input_ids"].shape[0] != 1:
-            raise ValueError("Batch size must be 1 for Llama.cpp")
 
-        inputs = super().prepare_inputs(inputs)
-        inputs["tokens"] = inputs["input_ids"].squeeze()
+        if self.config.task == "text-generation":
+            if inputs["input_ids"].shape[0] != 1:
+                raise ValueError("Batch size must be 1 for Llama.cpp")
 
-        return inputs
+            inputs = super().prepare_inputs(inputs)
+            inputs["tokens"] = inputs["input_ids"].squeeze()
+
+            return inputs
+        elif self.config.task == "feature-extraction":
+
+            test = inputs["input_ids"].squeeze()
+            print("test", test)
+            print("inputs", self.pretrained_model.detokenize(test))
+            hello = self.pretrained_model.detokenize(test)
+            hello_str = hello.decode("utf-8")
+            embeddings = self.pretrained_model.create_embedding(hello_str)
+            print("embeddings", embeddings)
+
+            raise NotImplementedError("Feature extraction not yet implemented")
+
+        else:
+            print("inputs", inputs)
+            raise NotImplementedError(f"Quack")
+        
 
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> Any:
         """

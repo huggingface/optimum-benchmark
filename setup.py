@@ -78,7 +78,7 @@ EXTRAS_REQUIRE = {
     "llm-swarm": ["llm-swarm"],
     "py-txi": ["py-txi"],
     "vllm": ["vllm"],
-    "lamma-cpp": ["lamma-cpp"],
+    "lamma-cpp": ["llama-cpp-python"],
     # optional dependencies
     "autoawq": [AUTOAWQ],
     "auto-gptq": ["optimum", AUTOGPTQ],

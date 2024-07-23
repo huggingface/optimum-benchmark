@@ -175,3 +175,4 @@ amd-*
 
 # Mac specific
 .DS_Store
+outputs/

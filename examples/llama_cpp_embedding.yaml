@@ -18,7 +18,9 @@ scenario:
   input_shapes:
     batch_size: 1
     sequence_length: 256
-    vocab_size: 32000
+    vocab_size: 100
+    type_vocab_size: 100
+    max_position_embeddings: 512
   generate_kwargs:
     max_new_tokens: 100
     min_new_tokens: 100

@@ -114,6 +114,8 @@ def infer_task_from_model_name_or_path(model_name_or_path: str, revision: Option
 
     if library_name == "llama_cpp":
         inferred_task_name = "text-generation"
+        inferred_task_name = "feature-extraction"
+
         # TODO: could also be feature-extraction
     elif library_name == "sentence-transformers":
         inferred_task_name = "feature-extraction"
