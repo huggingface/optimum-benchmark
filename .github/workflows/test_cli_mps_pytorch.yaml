@@ -45,4 +45,5 @@ jobs:
 
       - name: Run tests
         run: |
+          python -c "from transformers import AutoModel; model = AutoModel.from_pretrained('bert-base-uncased').to('mps'); print(model)"
           PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0 FORCE_SERIAL=1 pytest -s -k "cli and mps and pytorch"
