@@ -44,4 +44,5 @@ jobs:
           pip install -e .[testing,diffusers,timm,peft]
 
       - name: Run tests
-        run: pytest -s -k "cli and mps and pytorch"
+        run: |
+          FORCE_SERIAL=1 pytest -s -k "cli and mps and pytorch"
