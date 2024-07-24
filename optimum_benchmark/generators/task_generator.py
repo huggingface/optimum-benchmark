@@ -351,7 +351,12 @@ class FeatureExtractionGenerator(TextGenerator, ImageGenerator):
     def __call__(self):
         dummy = {}
 
-        if "num_channels" in self.shapes and self.shapes["num_channels"] is not None and "height" in self.shapes and self.shapes["height"] is not None:
+        if (
+            "num_channels" in self.shapes
+            and self.shapes["num_channels"] is not None
+            and "height" in self.shapes
+            and self.shapes["height"] is not None
+        ):
             dummy["pixel_values"] = self.pixel_values()
         else:
             dummy["input_ids"] = self.input_ids()

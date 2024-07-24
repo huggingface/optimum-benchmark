@@ -36,7 +36,7 @@ class LlamaCppBackend(Backend[LlamaCppConfig]):
             filename=self.config.filename,
             verbose=False,
             echo=False,
-            embedding=embedding
+            embedding=embedding,
         )  # type: ignore
 
     def validate_task(self) -> None:
@@ -44,7 +44,6 @@ class LlamaCppBackend(Backend[LlamaCppConfig]):
             raise ValueError(f"Task {self.config.task} not supported by {self.NAME}")
 
     def prepare_inputs(self, inputs: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-
         if self.config.task == "text-generation":
             if inputs["input_ids"].shape[0] != 1:
                 raise ValueError("Batch size must be 1 for Llama.cpp text generation")
@@ -55,14 +54,12 @@ class LlamaCppBackend(Backend[LlamaCppConfig]):
             return inputs
         elif self.config.task == "feature-extraction":
             detokenized_batch = list(map(self.pretrained_model.detokenize, inputs["input_ids"]))
-            decoded_batch = list(map(lambda x: x.decode("utf-8"), detokenized_batch))
+            decoded_batch = [x.decode("utf-8") for x in detokenized_batch]
 
             inputs["input_str"] = decoded_batch
             return inputs
 
-
         raise ValueError(f"Task {self.config.task} not supported by {self.NAME}")
-
 
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> Any:
         """

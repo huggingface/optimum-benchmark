@@ -1,8 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from optimum_benchmark.task_utils import TEXT_EMBEDDING_TASKS, TEXT_GENERATION_TASKS
-
 from ...import_utils import llama_cpp_version
 from ..config import BackendConfig
 
