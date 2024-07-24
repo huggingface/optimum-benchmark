@@ -47,37 +47,30 @@ class LlamaCppBackend(Backend[LlamaCppConfig]):
 
         if self.config.task == "text-generation":
             if inputs["input_ids"].shape[0] != 1:
-                raise ValueError("Batch size must be 1 for Llama.cpp")
+                raise ValueError("Batch size must be 1 for Llama.cpp text generation")
 
             inputs = super().prepare_inputs(inputs)
             inputs["tokens"] = inputs["input_ids"].squeeze()
 
             return inputs
         elif self.config.task == "feature-extraction":
+            detokenized_batch = list(map(self.pretrained_model.detokenize, inputs["input_ids"]))
+            decoded_batch = list(map(lambda x: x.decode("utf-8"), detokenized_batch))
 
-            test = inputs["input_ids"].squeeze()
-            print("test", test)
-            print("inputs", self.pretrained_model.detokenize(test))
-            hello = self.pretrained_model.detokenize(test)
-            hello_str = hello.decode("utf-8")
-            embeddings = self.pretrained_model.create_embedding(hello_str)
-            print("embeddings", embeddings)
+            inputs["input_str"] = decoded_batch
+            return inputs
 
-            raise NotImplementedError("Feature extraction not yet implemented")
 
-        else:
-            print("inputs", inputs)
-            raise NotImplementedError(f"Quack")
-        
+        raise ValueError(f"Task {self.config.task} not supported by {self.NAME}")
+
 
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> Any:
         """
         Forward pass of the model\
-        Evaluate the probabilites of the given tokens
+        Get the embeddings of the input tokens
         """
-        return self.pretrained_model.eval(
-            tokens=inputs["input_ids"],
-        )
+
+        return self.pretrained_model.embed(inputs["input_str"])
 
     def prefill(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> list[int]:
         """

@@ -1,15 +1,12 @@
 defaults:
-  - benchmark
-  - scenario: inference
-  - launcher: inline
-  - backend: llama_cpp
   - _base_
+  - _inference_
   - _self_
+  - override backend: llama_cpp
 
-name: llama_cpp_llama
+name: inference_llama_cpp_embedding
 
 backend:
-  device: mps
   model: nomic-ai/nomic-embed-text-v1.5-GGUF
   task: feature-extraction
   filename: nomic-embed-text-v1.5.Q4_0.gguf
