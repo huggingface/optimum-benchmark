@@ -3,8 +3,7 @@ from typing import Any, Dict, Tuple
 
 from llama_cpp import Llama
 
-from optimum_benchmark.backends.base import Backend
-
+from ..base import Backend
 from .config import LlamaCppConfig
 
 
