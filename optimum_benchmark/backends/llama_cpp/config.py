@@ -26,9 +26,6 @@ class LlamaCppConfig(BackendConfig):
     def __post_init__(self):
         super().__post_init__()
 
-        if self.task not in TEXT_GENERATION_TASKS + TEXT_EMBEDDING_TASKS:
-            raise NotImplementedError(f"Llama.cpp does not support task {self.task}")
-
         self.device = self.device.lower()  # type: ignore
 
         if self.device not in ["cuda", "mps", "cpu"]:
