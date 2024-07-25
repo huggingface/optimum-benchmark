@@ -3,7 +3,6 @@ from logging import getLogger
 from typing import Optional
 
 from ...import_utils import llama_cpp_version
-from ...task_utils import TEXT_EMBEDDING_TASKS, TEXT_GENERATION_TASKS
 from ..config import BackendConfig
 
 LOGGER = getLogger("backend")
@@ -27,6 +26,7 @@ class LlamaCppConfig(BackendConfig):
         super().__post_init__()
 
         self.device = self.device.lower()  # type: ignore
+        self.library = "llama_cpp"
 
         if self.device not in ["cuda", "mps", "cpu"]:
             raise ValueError(f"Llama.cpp Backend only supports 'cpu', 'mps' and 'cuda' devices, got {self.device}")

@@ -69,9 +69,6 @@ def infer_library_from_model_name_or_path(model_name_or_path: str, revision: Opt
         model_info = huggingface_hub.model_info(model_name_or_path, revision=revision)
         inferred_library_name = getattr(model_info, "library_name", None)
 
-        if inferred_library_name is None and "gguf" in model_info.tags:
-            inferred_library_name = "llama_cpp"
-
         if inferred_library_name == "sentence-transformers":
             inferred_library_name = "transformers"
 
@@ -104,8 +101,11 @@ def infer_library_from_model_name_or_path(model_name_or_path: str, revision: Opt
     return inferred_library_name
 
 
-def infer_task_from_model_name_or_path(model_name_or_path: str, revision: Optional[str] = None) -> str:
-    library_name = infer_library_from_model_name_or_path(model_name_or_path, revision=revision)
+def infer_task_from_model_name_or_path(
+    model_name_or_path: str, revision: Optional[str] = None, library_name: Optional[str] = None
+) -> str:
+    if library_name is None:
+        library_name = infer_library_from_model_name_or_path(model_name_or_path, revision=revision)
 
     inferred_task_name = None
 
@@ -175,8 +175,11 @@ def infer_task_from_model_name_or_path(model_name_or_path: str, revision: Option
     return inferred_task_name
 
 
-def infer_model_type_from_model_name_or_path(model_name_or_path: str, revision: Optional[str] = None) -> str:
-    library_name = infer_library_from_model_name_or_path(model_name_or_path, revision=revision)
+def infer_model_type_from_model_name_or_path(
+    model_name_or_path: str, revision: Optional[str] = None, library_name: Optional[str] = None
+) -> str:
+    if library_name is None:
+        library_name = infer_library_from_model_name_or_path(model_name_or_path, revision=revision)
 
     inferred_model_type = None
 
