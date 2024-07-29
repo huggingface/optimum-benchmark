@@ -14,7 +14,7 @@ launcher:
   device_isolation_action: warn
 
 backend:
-  device: cpu
+  device: cuda
   device_ids: 0
   no_weights: true
   model: facebook/opt-125m
