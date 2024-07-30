@@ -97,12 +97,19 @@ def get_transformers_pretrained_processor(model: str, **kwargs) -> Optional["Pre
 
 
 def extract_transformers_shapes_from_artifacts(
-    config: "PretrainedConfig", processor: Optional["PretrainedProcessor"] = None
+    config: Optional["PretrainedConfig"] = None, processor: Optional["PretrainedProcessor"] = None
 ) -> Dict[str, Any]:
     artifacts_dict = {}
 
-    config_dict = {k: v for k, v in config.to_dict().items() if v is not None}
-    artifacts_dict.update(config_dict)
+    if config is not None and hasattr(config, "to_dict"):
+        config_dict = {k: v for k, v in config.to_dict().items() if v is not None}
+        artifacts_dict.update(config_dict)
+    elif config is not None:
+        try:
+            config_dict = {k: getattr(config, k) for k in dir(config) if isinstance(getattr(config, k), int)}
+            artifacts_dict.update(config_dict)
+        except Exception:
+            warnings.warn(f"Could not extract shapes from config {config}")
 
     if processor is not None and hasattr(processor, "to_dict"):
         processor_dict = {k: v for k, v in processor.to_dict().items() if v is not None}
