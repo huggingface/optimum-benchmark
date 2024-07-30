@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from logging import getLogger
 from typing import Optional
 
 from ...import_utils import llama_cpp_version

@@ -49,4 +49,4 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PUSH_REPO_ID: optimum-benchmark/misc
         run: |
-          pytest -s -k "api and not (cpu or cuda)"
+          pytest -s -k "api and not (cpu or cuda or rocm or mps)"
