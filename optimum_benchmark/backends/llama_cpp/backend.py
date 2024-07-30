@@ -1,6 +1,5 @@
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, Tuple
-import subprocess
 
 from llama_cpp import Llama
 
