@@ -42,7 +42,7 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-          pip install -e .[testing,lamma-cpp]
+          pip install -e .[testing,llama-cpp]
 
       - name: Run tests
         run: pytest -s -k "llama_cpp"

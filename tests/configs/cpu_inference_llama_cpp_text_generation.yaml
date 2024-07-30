@@ -1,21 +1,21 @@
 defaults:
-  - _base_
-  - _inference_
-  - _self_
+  # order of inheritance, last one overrides previous ones
+  - _base_ # inherits from base config
+  - _cpu_ # inherits from cpu config
+  - _inference_ # inherits from inference config
+  - _self_ # hydra 1.1 compatibility
   - override backend: llama_cpp
 
-name: inference_llama_cpp_text_generation
+name: cpu_inference_llama_cpp_text_generation
 
 backend:
   model: TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF
-  task: text-generation
   filename: tinyllama-1.1b-chat-v1.0.Q4_0.gguf
 
 scenario:
   input_shapes:
     batch_size: 1
     sequence_length: 256
-    vocab_size: 32000
   generate_kwargs:
     max_new_tokens: 100
     min_new_tokens: 100
