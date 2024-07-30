@@ -60,7 +60,7 @@ class TextGenerator(TaskGenerator):
     def token_type_ids(self):
         return self.generate_random_integers(
             min_value=0,
-            max_value=self.shapes["type_vocab_siza"] or DEFAULT_TYPE_VOCAB_SIZE,
+            max_value=self.shapes["type_vocab_size"] or DEFAULT_TYPE_VOCAB_SIZE,
             shape=(self.shapes["batch_size"], self.shapes["sequence_length"]),
         )
 
