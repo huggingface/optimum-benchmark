@@ -1,5 +1,6 @@
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, Tuple
+import subprocess
 
 from llama_cpp import Llama
 
@@ -28,19 +29,24 @@ class LlamaCppBackend(Backend[LlamaCppConfig]):
         """
         Load the pretrained model from the given model name (normally GGUF, GGML)
         """
-        embedding = True if self.config.task == "feature-extraction" else False
 
         self.pretrained_model = Llama.from_pretrained(
-            repo_id=self.config.model,  # type: ignore
+            repo_id=self.config.model,
             filename=self.config.filename,
-            verbose=False,
-            echo=False,
-            embedding=embedding,
-        )  # type: ignore
+            **self.llama_cpp_kwargs,
+        )
 
     def validate_task(self) -> None:
         if self.config.task not in ["text-generation"]:
             raise ValueError(f"Task {self.config.task} not supported by {self.NAME}")
+
+    @property
+    def llama_cpp_kwargs(self) -> Dict[str, Any]:
+        return {
+            "embedding": self.config.task == "feature-extraction",
+            "verbose": False,
+            "echo": False,
+        }
 
     def prepare_inputs(self, inputs: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         if self.config.task == "text-generation":

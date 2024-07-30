@@ -5,12 +5,6 @@ from typing import Optional
 from ...import_utils import llama_cpp_version
 from ..config import BackendConfig
 
-LOGGER = getLogger("backend")
-
-
-def llama_cpp_model_kwargs():
-    return {"verbose": True}
-
 
 @dataclass
 class LlamaCppConfig(BackendConfig):
@@ -30,5 +24,3 @@ class LlamaCppConfig(BackendConfig):
 
         if self.device not in ["cuda", "mps", "cpu"]:
             raise ValueError(f"Llama.cpp Backend only supports 'cpu', 'mps' and 'cuda' devices, got {self.device}")
-
-        LOGGER.warning("Llama.cpp automatically selects the device, ignoring the device parameter in the config.")
