@@ -1,4 +1,4 @@
-name: CLI CPU Llama.Cpp Tests
+name: CLI CPU LlamaCpp Tests
 
 on:
   workflow_dispatch:
