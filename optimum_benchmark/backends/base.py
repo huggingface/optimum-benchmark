@@ -63,25 +63,31 @@ class Backend(Generic[BackendConfigT], ABC):
 
         elif self.config.library == "timm":
             self.logger.info("\t+ Benchmarking a Timm model")
-            self.pretrained_config = get_timm_pretrained_config(self.config.model)
             self.model_shapes = extract_timm_shapes_from_config(self.pretrained_config)
+            self.pretrained_config = get_timm_pretrained_config(self.config.model)
             self.automodel_loader = get_timm_automodel_loader()
             self.pretrained_processor = None
             self.generation_config = None
+
         elif self.config.library == "llama_cpp":
-            self.logger.info("\t+ Benchmarking a Llama.cpp model")
+            self.logger.info("\t+ Benchmarking a LlamaCpp model")
+            self.pretrained_processor = None
+            self.generation_config = None
+            self.pretrained_config = None
+            self.automodel_loader = None
             self.model_shapes = {}
+
         else:
             self.logger.info("\t+ Benchmarking a Transformers model")
             self.generation_config = get_transformers_generation_config(self.config.model, **self.config.model_kwargs)
             self.pretrained_config = get_transformers_pretrained_config(self.config.model, **self.config.model_kwargs)
+            self.automodel_loader = get_transformers_automodel_loader_for_task(self.config.task)
             self.pretrained_processor = get_transformers_pretrained_processor(
                 self.config.processor, **self.config.processor_kwargs
             )
             self.model_shapes = extract_transformers_shapes_from_artifacts(
                 self.pretrained_config, self.pretrained_processor
             )
-            self.automodel_loader = get_transformers_automodel_loader_for_task(self.config.task)
 
     def seed(self) -> None:
         set_seed(self.config.seed)
