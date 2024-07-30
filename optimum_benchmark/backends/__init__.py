@@ -1,4 +1,5 @@
 from .config import BackendConfig
+from .llama_cpp.config import LlamaCppConfig
 from .llm_swarm.config import LLMSwarmConfig
 from .neural_compressor.config import INCConfig
 from .onnxruntime.config import ORTConfig
@@ -20,4 +21,5 @@ __all__ = [
     "LLMSwarmConfig",
     "BackendConfig",
     "VLLMConfig",
+    "LlamaCppConfig",
 ]

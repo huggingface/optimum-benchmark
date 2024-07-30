@@ -1,0 +1,23 @@
+defaults:
+  - _base_
+  - _inference_
+  - _self_
+  - override backend: llama_cpp
+
+name: inference_llama_cpp_embedding
+
+backend:
+  model: nomic-ai/nomic-embed-text-v1.5-GGUF
+  task: feature-extraction
+  filename: nomic-embed-text-v1.5.Q4_0.gguf
+
+scenario:
+  input_shapes:
+    batch_size: 1
+    sequence_length: 256
+    vocab_size: 30000
+    type_vocab_size: 1
+    max_position_embeddings: 512
+  generate_kwargs:
+    max_new_tokens: 100
+    min_new_tokens: 100

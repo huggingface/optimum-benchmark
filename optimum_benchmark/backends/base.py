@@ -68,7 +68,9 @@ class Backend(Generic[BackendConfigT], ABC):
             self.automodel_loader = get_timm_automodel_loader()
             self.pretrained_processor = None
             self.generation_config = None
-
+        elif self.config.library == "llama_cpp":
+            self.logger.info("\t+ Benchmarking a Llama.cpp model")
+            self.model_shapes = {}
         else:
             self.logger.info("\t+ Benchmarking a Transformers model")
             self.generation_config = get_transformers_generation_config(self.config.model, **self.config.model_kwargs)

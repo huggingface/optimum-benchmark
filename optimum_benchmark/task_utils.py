@@ -101,13 +101,20 @@ def infer_library_from_model_name_or_path(model_name_or_path: str, revision: Opt
     return inferred_library_name
 
 
-def infer_task_from_model_name_or_path(model_name_or_path: str, revision: Optional[str] = None) -> str:
-    library_name = infer_library_from_model_name_or_path(model_name_or_path, revision=revision)
+def infer_task_from_model_name_or_path(
+    model_name_or_path: str, revision: Optional[str] = None, library_name: Optional[str] = None
+) -> str:
+    if library_name is None:
+        library_name = infer_library_from_model_name_or_path(model_name_or_path, revision=revision)
 
     inferred_task_name = None
 
     if library_name == "timm":
         inferred_task_name = "image-classification"
+
+    if library_name == "llama_cpp":
+        inferred_task_name = "text-generation"
+
     elif library_name == "sentence-transformers":
         inferred_task_name = "feature-extraction"
     elif huggingface_hub.repo_exists(model_name_or_path):
@@ -168,8 +175,11 @@ def infer_task_from_model_name_or_path(model_name_or_path: str, revision: Option
     return inferred_task_name
 
 
-def infer_model_type_from_model_name_or_path(model_name_or_path: str, revision: Optional[str] = None) -> str:
-    library_name = infer_library_from_model_name_or_path(model_name_or_path, revision=revision)
+def infer_model_type_from_model_name_or_path(
+    model_name_or_path: str, revision: Optional[str] = None, library_name: Optional[str] = None
+) -> str:
+    if library_name is None:
+        library_name = infer_library_from_model_name_or_path(model_name_or_path, revision=revision)
 
     inferred_model_type = None
 
@@ -191,6 +201,8 @@ def infer_model_type_from_model_name_or_path(model_name_or_path: str, revision: 
                     break
             if inferred_model_type is not None:
                 break
+    elif library_name == "llama_cpp":
+        inferred_model_type = "llama_cpp"
     else:
         from transformers import AutoConfig
 
