@@ -63,8 +63,8 @@ class Backend(Generic[BackendConfigT], ABC):
 
         elif self.config.library == "timm":
             self.logger.info("\t+ Benchmarking a Timm model")
-            self.model_shapes = extract_timm_shapes_from_config(self.pretrained_config)
             self.pretrained_config = get_timm_pretrained_config(self.config.model)
+            self.model_shapes = extract_timm_shapes_from_config(self.pretrained_config)
             self.automodel_loader = get_timm_automodel_loader()
             self.pretrained_processor = None
             self.generation_config = None
