@@ -58,7 +58,7 @@ class LlamaCppBackend(Backend[LlamaCppConfig]):
         raise ValueError(f"Task {self.config.task} not supported by {self.NAME}")
 
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> Any:
-        self.pretrained_model.embed(**inputs["input"])
+        self.pretrained_model.embed(**inputs)
 
     def prefill(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> list[int]:
         next(self.pretrained_model.generate(**inputs))
