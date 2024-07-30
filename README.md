@@ -13,6 +13,7 @@ Optimum-Benchmark is a unified [multi-backend & multi-device](#backends--devices
 
 *News* 📰
 
+- LlamaCpp backend for benchmarking [`llama-cpp-python`](https://github.com/abetlen/llama-cpp-python) bindings with all its supported devices 🚀
 - 🥳 PyPI package is now available for installation: `pip install optimum-benchmark` 🎉 [check it out](https://pypi.org/project/optimum-benchmark/) !
 - Model loading latency/memory/energy tracking for all backends in the inference scenario 🚀
 - numactl support for Process and Torchrun launchers to control the NUMA nodes on which the benchmark runs.
@@ -47,6 +48,7 @@ Optimum-Benchmark is continuously and intensively tested on a variety of devices
 
 ### CLI 📈
 
+[![CLI_CPU_LLAMA_CPP](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_llama_cpp.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_llama_cpp.yaml)
 [![CLI_CPU_NEURAL_COMPRESSOR](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_neural_compressor.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_neural_compressor.yaml)
 [![CLI_CPU_ONNXRUNTIME](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_onnxruntime.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_onnxruntime.yaml)
 [![CLI_CPU_OPENVINO](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_openvino.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_openvino.yaml)
