@@ -1,0 +1,7 @@
+hydra:
+  mode: MULTIRUN
+  sweeper:
+    params:
+      backend.task: text-generation,feature-extraction
+      backend.model: QuantFactory/gpt2-GGUF
+      backend.filename: gpt2.Q4_0.gguf
