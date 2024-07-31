@@ -65,7 +65,10 @@ def extract_diffusers_shapes_from_model(model: str, **kwargs) -> Dict[str, int]:
         shapes["width"] = vae_config["sample_size"]
 
     else:
-        warnings.warn("Could not extract shapes from the model.")
+        warnings.warn("Could not extract shapes [num_channels, height, width] from diffusion pipeline.")
+        shapes["num_channels"] = -1
+        shapes["height"] = -1
+        shapes["width"] = -1
 
     return shapes
 

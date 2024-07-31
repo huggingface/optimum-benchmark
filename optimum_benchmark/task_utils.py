@@ -196,16 +196,15 @@ def infer_model_type_from_model_name_or_path(
 
     inferred_model_type = None
 
-    if library_name == "timm":
+    if library_name == "llama_cpp":
+        inferred_model_type = "llama_cpp"
+
+    elif library_name == "timm":
         timm_config = get_timm_pretrained_config(model_name_or_path)
         inferred_model_type = timm_config.architecture
 
     elif library_name == "diffusers":
-        from diffusers import DiffusionPipeline
-
-        get_diffusers_pretrained_config
-        config = DiffusionPipeline.load_config(model_name_or_path)
-        config, _ = config if isinstance(config, tuple) else (config, None)
+        config = get_diffusers_pretrained_config(model_name_or_path, revision=revision, token=token)
         class_name = config["_class_name"]
 
         for task_name, model_mapping in DIFFUSERS_TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES.items():
@@ -215,9 +214,6 @@ def infer_model_type_from_model_name_or_path(
                     break
             if inferred_model_type is not None:
                 break
-
-    elif library_name == "llama_cpp":
-        inferred_model_type = "llama_cpp"
 
     else:
         transformers_config = get_transformers_pretrained_config(model_name_or_path, revision=revision, token=token)
