@@ -1,3 +1,4 @@
+import warnings
 from typing import Dict
 
 from hydra.utils import get_class
@@ -38,7 +39,9 @@ TASKS_TO_MODEL_LOADERS = {
 
 
 def get_diffusers_pretrained_config(model: str, **kwargs) -> Dict[str, int]:
-    return DiffusionPipeline.load_config(model, **kwargs)
+    config = DiffusionPipeline.load_config(model, **kwargs)
+    pipeline_config = config[0] if isinstance(config, tuple) else config
+    return pipeline_config
 
 
 def extract_diffusers_shapes_from_model(model: str, **kwargs) -> Dict[str, int]:
@@ -62,6 +65,7 @@ def extract_diffusers_shapes_from_model(model: str, **kwargs) -> Dict[str, int]:
         shapes["width"] = vae_config["sample_size"]
 
     else:
+        warnings.warn("Could not extract shapes [num_channels, height, width] from diffusion pipeline.")
         shapes["num_channels"] = -1
         shapes["height"] = -1
         shapes["width"] = -1

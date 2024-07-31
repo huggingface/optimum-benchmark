@@ -52,17 +52,27 @@ class BackendConfig(ABC):
             self.processor = self.model
 
         # TODO: add cache_dir, token, etc. to these methods
-        if self.task is None:
-            self.task = infer_task_from_model_name_or_path(
-                self.model, self.model_kwargs.get("revision", None), self.library
+        if self.library is None:
+            self.library = infer_library_from_model_name_or_path(
+                self.model,
+                revision=self.model_kwargs.get("revision", None),
+                token=self.model_kwargs.get("token", None),
             )
 
-        if self.library is None:
-            self.library = infer_library_from_model_name_or_path(self.model, self.model_kwargs.get("revision", None))
+        if self.task is None:
+            self.task = infer_task_from_model_name_or_path(
+                self.model,
+                self.library,
+                revision=self.model_kwargs.get("revision", None),
+                token=self.model_kwargs.get("token", None),
+            )
 
         if self.model_type is None:
             self.model_type = infer_model_type_from_model_name_or_path(
-                self.model, self.model_kwargs.get("revision", None), self.library
+                self.model,
+                self.library,
+                revision=self.model_kwargs.get("revision", None),
+                token=self.model_kwargs.get("token", None),
             )
 
         if self.device is None:

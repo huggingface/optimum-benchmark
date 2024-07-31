@@ -75,10 +75,10 @@ EXTRAS_REQUIRE = {
     "neural-compressor": [f"optimum[neural-compressor]>={MIN_OPTIMUM_VERSION}"],
     "torch-ort": ["torch-ort", "onnxruntime-training", f"optimum>={MIN_OPTIMUM_VERSION}"],
     # other backends
+    "llama-cpp": ["llama-cpp-python"],
     "llm-swarm": ["llm-swarm"],
     "py-txi": ["py-txi"],
     "vllm": ["vllm"],
-    "lamma-cpp": ["llama-cpp-python"],
     # optional dependencies
     "autoawq": [AUTOAWQ],
     "auto-gptq": ["optimum", AUTOGPTQ],
