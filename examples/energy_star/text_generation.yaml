@@ -37,10 +37,10 @@ benchmark:
 hydra:
   run:
     # where to store run results
-    dir: runs/${experiment_name}/${backend.model}/${now:%Y-%m-%d-%H-%M-%S}
+    dir: /fsx/sasha_luccioni/optimum-benchmark/runs/${experiment_name}/${backend.model}/${now:%Y-%m-%d-%H-%M-%S}
   sweep:
     # where to store sweep results
-    dir: sweeps/${experiment_name}/${backend.model}/${now:%Y-%m-%d-%H-%M-%S}
+    dir: /fsx/sasha_luccioni/optimum-benchmark/sweeps/${experiment_name}/${backend.model}/${now:%Y-%m-%d-%H-%M-%S}
   job:
     # change working directory to the run directory
     chdir: true
