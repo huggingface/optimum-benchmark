@@ -1,7 +1,6 @@
 name: Update LLM Perf Benchmarks - CUDA PyTorch
 
-on:
-  push:
+on: push
   # For debugging purpose the workflow is triggered manually
   # schedule:
   #   - cron: "0 */6 * * *"
