@@ -2,8 +2,9 @@ name: Update LLM Perf Benchmarks - CUDA PyTorch
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 0 * * *"
+  # For debugging purpose the workflow is triggered manually
+  # schedule:
+  #   - cron: "0 */6 * * *"
 
 concurrency:
   cancel-in-progress: true
