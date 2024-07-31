@@ -1,7 +1,9 @@
 name: Update LLM Perf Benchmarks - CUDA PyTorch
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - "add-t4-for-llm-perf-leaderboard"
   # For debugging purpose the workflow is triggered manually
   # schedule:
   #   - cron: "0 */6 * * *"
