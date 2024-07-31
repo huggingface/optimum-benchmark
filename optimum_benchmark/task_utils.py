@@ -62,19 +62,25 @@ def map_from_synonym(task: str) -> str:
     return task
 
 
-def infer_library_from_model_name_or_path(model_name_or_path: str, revision: Optional[str] = None) -> str:
+def infer_library_from_model_name_or_path(
+    model_name_or_path: str, revision: Optional[str] = None, token: Optional[str] = None
+) -> str:
     inferred_library_name = None
 
-    if huggingface_hub.repo_exists(model_name_or_path):
-        model_info = huggingface_hub.model_info(model_name_or_path, revision=revision)
+    # if model_name_or_path is a repo
+    if huggingface_hub.repo_exists(model_name_or_path, token=token):
+        model_info = huggingface_hub.model_info(model_name_or_path, revision=revision, token=token)
         inferred_library_name = getattr(model_info, "library_name", None)
 
-        if inferred_library_name == "sentence-transformers":
-            inferred_library_name = "transformers"
+        if inferred_library_name is None:
+            repo_files = huggingface_hub.list_repo_files(model_name_or_path, revision=revision, token=token)
+            if "model_index.json" in repo_files:
+                inferred_library_name = "diffusers"
 
         if inferred_library_name is None:
             raise RuntimeError(f"Could not infer library name from repo {model_name_or_path}.")
 
+    # if model_name_or_path is a directory
     elif os.path.isdir(model_name_or_path):
         local_files = os.listdir(model_name_or_path)
 
@@ -98,51 +104,33 @@ def infer_library_from_model_name_or_path(model_name_or_path: str, revision: Opt
             " because it's neither a repo nor a directory."
         )
 
+    # for now, we still use transformers for sentence-transformers
+    if inferred_library_name == "sentence-transformers":
+        inferred_library_name = "transformers"
+
     return inferred_library_name
 
 
 def infer_task_from_model_name_or_path(
-    model_name_or_path: str, revision: Optional[str] = None, library_name: Optional[str] = None
+    model_name_or_path: str,
+    library_name: Optional[str] = None,
+    revision: Optional[str] = None,
+    token: Optional[str] = None,
 ) -> str:
     if library_name is None:
-        library_name = infer_library_from_model_name_or_path(model_name_or_path, revision=revision)
+        library_name = infer_library_from_model_name_or_path(model_name_or_path, revision=revision, token=token)
 
     inferred_task_name = None
 
     if library_name == "timm":
         inferred_task_name = "image-classification"
 
-    if library_name == "llama_cpp":
-        inferred_task_name = "text-generation"
-
     elif library_name == "sentence-transformers":
         inferred_task_name = "feature-extraction"
-    elif huggingface_hub.repo_exists(model_name_or_path):
-        model_info = huggingface_hub.model_info(model_name_or_path, revision=revision)
 
-        if library_name == "diffusers":
-            if model_info.pipeline_tag is not None:
-                inferred_task_name = map_from_synonym(model_info.pipeline_tag)
-        elif library_name == "transformers":
-            if model_info.pipeline_tag is not None:
-                inferred_task_name = map_from_synonym(model_info.pipeline_tag)
-            else:
-                if model_info.transformers_info is not None and model_info.transformersInfo.pipeline_tag is not None:
-                    inferred_task_name = map_from_synonym(model_info.transformersInfo.pipeline_tag)
-                else:
-                    auto_model_class_name = model_info.transformers_info["auto_model"]
-                    for task_name, model_loaders in TASKS_TO_MODEL_LOADERS.items():
-                        if isinstance(model_loaders, str):
-                            model_loaders = (model_loaders,)
-                        for model_loader in model_loaders:
-                            if auto_model_class_name == model_loader:
-                                inferred_task_name = task_name
-                                break
-                        if inferred_task_name is not None:
-                            break
     elif os.path.isdir(model_name_or_path):
         if library_name == "diffusers":
-            diffusers_config = get_diffusers_pretrained_config(model_name_or_path, revision=revision)
+            diffusers_config = get_diffusers_pretrained_config(model_name_or_path, revision=revision, token=token)
             class_name = diffusers_config["_class_name"]
 
             for task_name, model_mapping in DIFFUSERS_TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES.items():
@@ -152,9 +140,10 @@ def infer_task_from_model_name_or_path(
                         break
                 if inferred_task_name is not None:
                     break
+
         elif library_name == "transformers":
+            transformers_config = get_transformers_pretrained_config(model_name_or_path, revision=revision, token=token)
             auto_modeling_module = importlib.import_module("transformers.models.auto.modeling_auto")
-            transformers_config = get_transformers_pretrained_config(model_name_or_path, revision=revision)
             model_type = transformers_config.model_type
 
             for task_name, model_loaders in TRANSFORMERS_TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES.items():
@@ -169,6 +158,27 @@ def infer_task_from_model_name_or_path(
                 if inferred_task_name is not None:
                     break
 
+    elif huggingface_hub.repo_exists(model_name_or_path, token=token):
+        model_info = huggingface_hub.model_info(model_name_or_path, revision=revision, token=token)
+
+        if model_info.pipeline_tag is not None:
+            inferred_task_name = map_from_synonym(model_info.pipeline_tag)
+
+        elif inferred_task_name is None:
+            if model_info.transformers_info is not None and model_info.transformersInfo.pipeline_tag is not None:
+                inferred_task_name = map_from_synonym(model_info.transformersInfo.pipeline_tag)
+            else:
+                auto_model_class_name = model_info.transformers_info["auto_model"]
+                for task_name, model_loaders in TASKS_TO_MODEL_LOADERS.items():
+                    if isinstance(model_loaders, str):
+                        model_loaders = (model_loaders,)
+                    for model_loader in model_loaders:
+                        if auto_model_class_name == model_loader:
+                            inferred_task_name = task_name
+                            break
+                    if inferred_task_name is not None:
+                        break
+
     if inferred_task_name is None:
         raise KeyError(f"Could not find the proper task name for {auto_model_class_name}.")
 
@@ -176,10 +186,13 @@ def infer_task_from_model_name_or_path(
 
 
 def infer_model_type_from_model_name_or_path(
-    model_name_or_path: str, revision: Optional[str] = None, library_name: Optional[str] = None
+    model_name_or_path: str,
+    library_name: Optional[str] = None,
+    revision: Optional[str] = None,
+    token: Optional[str] = None,
 ) -> str:
     if library_name is None:
-        library_name = infer_library_from_model_name_or_path(model_name_or_path, revision=revision)
+        library_name = infer_library_from_model_name_or_path(model_name_or_path, revision=revision, token=token)
 
     inferred_model_type = None
 
@@ -190,6 +203,7 @@ def infer_model_type_from_model_name_or_path(
     elif library_name == "diffusers":
         from diffusers import DiffusionPipeline
 
+        get_diffusers_pretrained_config
         config = DiffusionPipeline.load_config(model_name_or_path)
         config, _ = config if isinstance(config, tuple) else (config, None)
         class_name = config["_class_name"]
@@ -201,13 +215,13 @@ def infer_model_type_from_model_name_or_path(
                     break
             if inferred_model_type is not None:
                 break
+
     elif library_name == "llama_cpp":
         inferred_model_type = "llama_cpp"
-    else:
-        from transformers import AutoConfig
 
-        config = AutoConfig.from_pretrained(model_name_or_path)
-        inferred_model_type = config.model_type
+    else:
+        transformers_config = get_transformers_pretrained_config(model_name_or_path, revision=revision, token=token)
+        inferred_model_type = transformers_config.model_type
 
     if inferred_model_type is None:
         raise KeyError(f"Could not find the proper model type for {model_name_or_path}.")
