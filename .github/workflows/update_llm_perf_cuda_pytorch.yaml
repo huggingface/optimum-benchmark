@@ -21,8 +21,8 @@ jobs:
       fail-fast: false
       matrix:
         subset: [unquantized, bnb, awq, gptq]
-        # { name: 1xA10, runs-on: [single-gpu, nvidia-gpu, a10, ci] }, 
-        machine: [{ name: 1xT4, runs-on: [single-gpu, nvidia-gpu, t4, ci] }]
+        # { name: 1xA10, runs-on: [aws-g5-4xlarge-plus] }, 
+        machine: [{ name: 1xT4, runs-on: [aws-g4dn-2xlarge] }]
 
     runs-on: ${{ matrix.machine.runs-on }}
 
