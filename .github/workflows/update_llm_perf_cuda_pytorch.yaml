@@ -21,8 +21,11 @@ jobs:
       fail-fast: false
       matrix:
         subset: [unquantized, bnb, awq, gptq]
-        # { name: 1xA10, runs-on: ... }, 
-        machine: [{ name: 1xT4, runs-on: { group: 'aws-g4dn-2xlarge' } }]
+        
+        machine: [
+        # {name: 1xA10, runs-on: {group: 'aws-g5-4xlarge-plus'}}, 
+          {name: 1xT4, runs-on: {group: 'aws-g4dn-2xlarge'}}
+        ]
 
     runs-on: ${{ matrix.machine.runs-on }}
 
