@@ -22,7 +22,7 @@ jobs:
       matrix:
         subset: [unquantized, bnb, awq, gptq]
         # { name: 1xA10, runs-on: [aws-g5-4xlarge-plus] }, 
-        machine: [{ name: 1xT4, runs-on: [aws-g4dn-2xlarge] }]
+        machine: [{ name: 1xT4, runs-on: aws-g4dn-2xlarge }]
 
     runs-on: ${{ matrix.machine.runs-on }}
 
