@@ -55,9 +55,9 @@ If you would like to work on any of the open Issues:
 	For a better development experience, we recommend using isolated docker containers to run tests:
 	
 	```bash
-	make build_docker_cpu
-	make run_docker_cpu
-	make install_cli_cpu_pytorch_extras
+	make build_cpu_image
+	make run_cpu_container
+	make install_cli_cpu_pytorch
 	make test_cli_cpu_pytorch
 	```
 
