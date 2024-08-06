@@ -44,8 +44,8 @@ PRETRAINED_OPEN_LLM_LIST = (
 #     model for model in PRETRAINED_OPEN_LLM_LIST if model.split("/")[0] in CANONICAL_ORGANIZATIONS
 # ]
 CANONICAL_PRETRAINED_OPEN_LLM_LIST = [
-    "01-ai/Yi-6B",
-    "01-ai/Yi-34B",
+    # "01-ai/Yi-6B",
+    # "01-ai/Yi-34B",
     "Deci/DeciLM-7B",
     "Deci/DeciCoder-1b",
     "EleutherAI/gpt-j-6b",
