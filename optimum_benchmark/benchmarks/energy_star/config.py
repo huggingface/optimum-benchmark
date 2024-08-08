@@ -35,7 +35,7 @@ class EnergyStarConfig(BenchmarkConfig):
     dataset_prefix2 : str = field(default = "", metadata={"help": "Prefix to add to text2textgeneration input."})
     t5_task : str = field(default = "", metadata={"help": "Task for categorizing text2textgeneration tasks."})
 
-    # text dataset options
+    # image dataset options
     image_column_name: str = field(default="image", metadata={"help": "Name of the column with the image input."})
     resize: Union[bool, str] = field(default=False, metadata={"help": "To resize the input images."})
 
@@ -55,6 +55,10 @@ class EnergyStarConfig(BenchmarkConfig):
     audio_column_name: str = field(default="audio", metadata={"help": "Name of the column with the audio."})
 
     # benchmark options
+    iterations: int = field(
+        default=10,
+        metadata={"help": "Minimum number of iterations to run the benchmark, set to 0 to disable this constraint"},
+    )
     warmup_runs: int = field(default=10, metadata={"help": "Number of warmup runs to perform before benchmarking"})
 
     # tracking options
