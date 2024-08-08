@@ -1,12 +1,9 @@
 name: Update LLM Perf Benchmarks - CUDA PyTorch
 
-on: workflow_dispatch
-  # push:
-  #   branches:
-  #     - "add-t4-for-llm-perf-leaderboard"
-  # For debugging purpose the workflow is triggered manually
-  # schedule:
-  #   - cron: "0 */6 * * *"
+on: 
+  workflow_dispatch:  # Manual trigger
+  release:            # Trigger on new release
+    types: [published]  
 
 concurrency:
   cancel-in-progress: true
@@ -23,7 +20,7 @@ jobs:
         subset: [unquantized, bnb, awq, gptq]
         
         machine: [
-        # {name: 1xA10, runs-on: {group: 'aws-g5-4xlarge-plus'}}, 
+          {name: 1xA10, runs-on: {group: 'aws-g5-4xlarge-plus'}}, 
           {name: 1xT4, runs-on: {group: 'aws-g4dn-2xlarge'}}
         ]
 
