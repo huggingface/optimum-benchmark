@@ -174,5 +174,6 @@ amdsmi/
 amd-*
 
 # Mac specific
+external_repos/
 .DS_Store
 outputs/
