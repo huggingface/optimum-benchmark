@@ -134,7 +134,7 @@ def benchmark_cuda_pytorch(model, attn_implementation, weights_config):
         quantization_scheme=quant_scheme,
         quantization_config=quant_config,
         attn_implementation=attn_implementation,
-        hub_kwargs={"trust_remote_code": True},
+        model_kwargs={"trust_remote_code": True},
     )
 
     benchmark_config = BenchmarkConfig(

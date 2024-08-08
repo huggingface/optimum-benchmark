@@ -32,7 +32,7 @@ def gather_benchmarks(subset: str, machine: str):
 
 def update_perf_dfs():
     for subset in ["unquantized", "bnb", "awq", "gptq"]:
-        for machine in ["1xA10", "1xA100"]:
+        for machine in ["1xA10", "1xA100", "1xT4"]:
             try:
                 gather_benchmarks(subset, machine)
             except Exception:
