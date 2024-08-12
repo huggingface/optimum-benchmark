@@ -175,6 +175,8 @@ test_cli_rocm_pytorch_single_gpu:
 	pytest -s -k "cli and rocm and pytorch and not (dp or ddp or device_map or deepspeed) and not (bnb or awq)"
 
 # llm-perf
+test_cli_llama_cpp:
+	pytest -s -k "llama_cpp"
 
 install_llm_perf_cuda_pytorch:
 	pip install packaging && pip install flash-attn einops scipy auto-gptq optimum bitsandbytes autoawq codecarbon
