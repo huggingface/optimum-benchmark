@@ -8,10 +8,6 @@ on:
     paths:
       - docker/**
       - .github/workflows/images.yaml
-  pull_request:
-    paths:
-      - docker/**
-      - .github/workflows/images.yaml
   schedule:
     - cron: "0 0 * * *"
 
