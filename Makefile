@@ -4,7 +4,6 @@
 PWD := $(shell pwd)
 USER_ID := $(shell id -u)
 GROUP_ID := $(shell id -g)
-TORCH_VERSION := 2.3.1
 
 quality:
 	ruff check .
@@ -109,8 +108,9 @@ install_cli_cpu_neural_compressor:
 	pip install -e .[testing,peft,timm,diffusers,neural-compressor]
 
 install_cli_cuda_pytorch:
-	python scripts/install_autoawq.py
-	pip install -e .[testing,timm,diffusers,peft,auto-gptq,bitsandbytes,deepspeed]
+	pip install -e .[testing,timm,diffusers,peft,autoawq,auto-gptq,bitsandbytes,deepspeed]
+	optimum-benchmark +install_auto_awq_from_source=True
+	optimum-benchmark +install_auto_gptq_from_source=True
 
 install_cli_rocm_pytorch:
 	pip install -e .[testing,timm,diffusers,peft,autoawq,auto-gptq,deepspeed]
