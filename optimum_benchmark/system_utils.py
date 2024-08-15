@@ -96,7 +96,8 @@ def get_gpus():
         for i in range(pynvml.nvmlDeviceGetCount()):
             handle = pynvml.nvmlDeviceGetHandleByIndex(i)
             gpu = pynvml.nvmlDeviceGetName(handle)
-            gpu = gpu.decode("utf-8") if isinstance(gpu, bytes) else gpu # Older pynvml may return bytes 
+            # Older pynvml versions may return bytes
+            gpu = gpu.decode("utf-8") if isinstance(gpu, bytes) else gpu
             gpus.append(gpu)
         pynvml.nvmlShutdown()
 
