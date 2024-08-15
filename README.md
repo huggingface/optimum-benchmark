@@ -13,6 +13,7 @@ Optimum-Benchmark is a unified [multi-backend & multi-device](#backends--devices
 
 *News* 📰
 
+- LlamaCpp backend for benchmarking [`llama-cpp-python`](https://github.com/abetlen/llama-cpp-python) bindings with all its supported devices 🚀
 - 🥳 PyPI package is now available for installation: `pip install optimum-benchmark` 🎉 [check it out](https://pypi.org/project/optimum-benchmark/) !
 - Model loading latency/memory/energy tracking for all backends in the inference scenario 🚀
 - numactl support for Process and Torchrun launchers to control the NUMA nodes on which the benchmark runs.
@@ -47,18 +48,20 @@ Optimum-Benchmark is continuously and intensively tested on a variety of devices
 
 ### CLI 📈
 
+[![CLI_CPU_LLAMA_CPP](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_llama_cpp.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_llama_cpp.yaml)
 [![CLI_CPU_NEURAL_COMPRESSOR](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_neural_compressor.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_neural_compressor.yaml)
 [![CLI_CPU_ONNXRUNTIME](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_onnxruntime.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_onnxruntime.yaml)
 [![CLI_CPU_OPENVINO](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_openvino.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_openvino.yaml)
 [![CLI_CPU_PYTORCH](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_pytorch.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_pytorch.yaml)
 [![CLI_CPU_PY_TXI](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_py_txi.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_py_txi.yaml)
 [![CLI_CUDA_ONNXRUNTIME](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_onnxruntime.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_onnxruntime.yaml)
-[![CLI_CUDA_VLLM](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_vllm.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_vllm.yaml)
 [![CLI_CUDA_PYTORCH_MULTI_GPU](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_pytorch_multi_gpu.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_pytorch_multi_gpu.yaml)
 [![CLI_CUDA_PYTORCH_SINGLE_GPU](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_pytorch_single_gpu.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_pytorch_single_gpu.yaml)
-[![CLI_CUDA_TENSORRT_LLM](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_tensorrt_llm.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_tensorrt_llm.yaml)
+[![CLI_CUDA_PY_TXI](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_py_txi.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_py_txi.yaml)
+[![CLI_CUDA_TENSORRT_LLM_SINGLE_GPU](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_tensorrt_llm_single_gpu.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_tensorrt_llm_single_gpu.yaml)
 [![CLI_CUDA_TORCH_ORT_MULTI_GPU](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_torch_ort_multi_gpu.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_torch_ort_multi_gpu.yaml)
 [![CLI_CUDA_TORCH_ORT_SINGLE_GPU](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_torch_ort_single_gpu.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_torch_ort_single_gpu.yaml)
+[![CLI_CUDA_VLLM_SINGLE_GPU](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_vllm_single_gpu.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_vllm_single_gpu.yaml)
 [![CLI_MISC](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_misc.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_misc.yaml)
 [![CLI_ROCM_PYTORCH_MULTI_GPU](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_rocm_pytorch_multi_gpu.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_rocm_pytorch_multi_gpu.yaml)
 [![CLI_ROCM_PYTORCH_SINGLE_GPU](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_rocm_pytorch_single_gpu.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_rocm_pytorch_single_gpu.yaml)

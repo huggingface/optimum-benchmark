@@ -461,6 +461,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         training_data_collator: Callable[[List[Dict[str, Any]]], Dict[str, Any]],
     ) -> TrainerState:
         self.logger.info(f"\t+ Wrapping training arguments with {TrainingArguments.__name__}")
+        training_arguments["use_cpu"] = self.config.device == "cpu"
         training_arguments = TrainingArguments(**training_arguments)
         self.logger.info(f"\t+ Wrapping model with {Trainer.__name__}")
         trainer = Trainer(

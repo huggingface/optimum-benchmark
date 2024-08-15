@@ -1,4 +1,4 @@
-name: API Misc Tests
+name: CLI CPU LlamaCpp Tests
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - .github/workflows/test_api_misc.yaml
+      - .github/workflows/test_cli_llama_cpp.yaml
       - "optimum_benchmark/**"
       - "docker/**"
       - "tests/**"
@@ -15,7 +15,7 @@ on:
     branches:
       - main
     paths:
-      - .github/workflows/test_api_misc.yaml
+      - .github/workflows/test_cli_llama_cpp.yaml
       - "optimum_benchmark/**"
       - "docker/**"
       - "tests/**"
@@ -26,7 +26,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
 jobs:
-  run_api_misc_tests:
+  run_cli_cpu_llama_cpp_tests:
     runs-on: ubuntu-latest
 
     steps:
@@ -42,11 +42,7 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-          pip install -e .[testing,timm,diffusers,codecarbon]
+          pip install -e .[testing,llama-cpp]
 
       - name: Run tests
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          PUSH_REPO_ID: optimum-benchmark/misc
-        run: |
-          pytest -s -k "api and not (cpu or cuda or rocm or mps)"
+        run: pytest -s -k "llama_cpp"

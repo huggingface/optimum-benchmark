@@ -1,0 +1,10 @@
+defaults:
+  # order of inheritance, last one overrides previous ones
+  - _base_ # inherits from base config
+  - _cpu_ # inherits from cpu config
+  - _inference_ # inherits from inference config
+  - _gguf_ # inherits from llama_cpp config
+  - _self_ # hydra 1.1 compatibility
+  - override backend: llama_cpp
+
+name: cpu_inference_llama_cpp_gpt2_gguf

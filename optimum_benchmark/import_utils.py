@@ -32,10 +32,15 @@ _pyrsmi_available = importlib.util.find_spec("pyrsmi") is not None
 _llm_swarm_available = importlib.util.find_spec("llm_swarm") is not None
 _zentorch_available = importlib.util.find_spec("zentorch") is not None
 _vllm_available = importlib.util.find_spec("vllm") is not None
+_llama_cpp_available = importlib.util.find_spec("llama-cpp-python") is not None
 
 
 def is_vllm_available():
     return _vllm_available
+
+
+def is_llama_cpp_available():
+    return _llama_cpp_available
 
 
 def is_zentorch_available():
@@ -221,6 +226,11 @@ def llm_swarm_version():
 def vllm_version():
     if _vllm_available:
         return importlib.metadata.version("vllm")
+
+
+def llama_cpp_version():
+    if _llama_cpp_available:
+        return importlib.metadata.version("llama_cpp")
 
 
 def get_git_revision_hash(package_name: str) -> Optional[str]:

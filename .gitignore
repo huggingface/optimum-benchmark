@@ -173,5 +173,9 @@ experiments/
 amdsmi/
 amd-*
 
+
 external_repos/
 outputs/
+
+# Mac specific
+.DS_Store
