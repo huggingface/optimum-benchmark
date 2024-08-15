@@ -122,7 +122,7 @@ install_cli_cuda_onnxruntime:
 # Run tests
 
 test_api_misc:
-	pytest -s -k "api and not (cpu or cuda)
+	pytest -s -k "api and not (cpu or cuda or mps)"
 
 test_api_cpu:
 	pytest -s -k "api and cpu"
@@ -134,7 +134,7 @@ test_api_rocm:
 	pytest -s -k "api and cuda"
 
 test_cli_misc:
-	pytest -s -k "cli and not (cpu or cuda)"
+	pytest -s -k "cli and not (cpu or cuda or mps)"
 
 test_cli_cpu_pytorch:
 	pytest -s -k "cli and cpu and pytorch"
