@@ -33,9 +33,7 @@ def clone_or_pull_repo(repo_url, repo_location_path):
 
 def install_autogptq_from_source():
     """Install the AutoGPTQ package from GitHub."""
-
     print("Installing AutoGPTQ package.")
-
     autogptq_repo_path = os.path.join(EXTERNAL_REPOS_DIR, "AutoGPTQ")
 
     clone_or_pull_repo("https://github.com/PanQiWei/AutoGPTQ.git", autogptq_repo_path)
@@ -53,7 +51,6 @@ def install_autogptq_from_source():
 
 def install_autoawq_from_source():
     """Install the AutoAWQ and AutoAWQ_kernels packages from GitHub."""
-
     print("Installing AutoAWQ and AutoAWQ_kernels packages.")
 
     autoawq_kernels_repo_name = "AutoAWQ_kernels"
@@ -102,7 +99,9 @@ def main():
     elif args.install_autogptq_from_source:
         install_autogptq_from_source()
     else:
-        print("Please specify an installation option. Use --install-autoawq or --install-autogptq.")
+        print(
+            "Please specify an installation option. Use --install-autoawq-from-source or --install-autogptq-from-source."
+        )
         sys.exit(1)
 
 
