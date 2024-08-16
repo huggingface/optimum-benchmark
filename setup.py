@@ -58,7 +58,6 @@ if USE_ROCM:
             "Please install amdsmi from https://github.com/ROCm/amdsmi to enable this feature."
         )
 
-
 if USE_ROCM:
     AUTOAWQ = "autoawq@https://github.com/casper-hansen/AutoAWQ/releases/download/v0.2.1/autoawq-0.2.1+rocm571-cp310-cp310-linux_x86_64.whl"
     AUTOGPTQ = "auto-gptq@https://huggingface.github.io/autogptq-index/whl/rocm573/auto-gptq/auto_gptq-0.7.1%2Brocm5.7.3-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
