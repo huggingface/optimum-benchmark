@@ -293,7 +293,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 raise ImportError(
                     "GPTQ quantization requires the AutoGPTQ package. "
                     "Please install it from source at `https://github.com/AutoGPTQ/AutoGPTQ`"
-                    "Or `curl -s https://raw.githubusercontent.com/huggingface/optimum-benchmark/main/scripts/install_quantization_libs | python - --install-autogptq-from-source`"
+                    "Or use `python scripts/install_quantization_libs.py --install-autogptq-from-source` from our repository"
                 )
 
             self.quantization_config = GPTQConfig(
@@ -308,7 +308,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 raise ImportError(
                     "AWQ quantization requires the AutoAWQ package. "
                     "Please install it from source at `https://github.com/casper-hansen/AutoAWQ`"
-                    "Or `curl -s https://raw.githubusercontent.com/huggingface/optimum-benchmark/main/scripts/install_quantization_libs | python - --install-autoawq-from-source`"
+                    "Or use `python scripts/install_quantization_libs.py --install-autoawq-from-source` from our repository"
                 )
 
             self.quantization_config = AwqConfig(

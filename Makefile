@@ -109,7 +109,7 @@ install_cli_cpu_neural_compressor:
 
 install_cli_cuda_pytorch:
 	pip install -e .[testing,timm,diffusers,peft,autoawq,auto-gptq,bitsandbytes,deepspeed]
-	curl -s https://raw.githubusercontent.com/huggingface/optimum-benchmark/main/scripts/install_quantization_libs.py | python - --install-autoawq-from-source --install-autogptq-from-source
+	python scripts/install_quantization_libs.py --install-autoawq-from-source --install-autogptq-from-source
 
 install_cli_rocm_pytorch:
 	pip install -e .[testing,timm,diffusers,peft,autoawq,auto-gptq,deepspeed]
