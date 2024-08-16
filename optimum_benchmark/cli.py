@@ -6,8 +6,6 @@ import hydra
 from hydra.core.config_store import ConfigStore
 from omegaconf import DictConfig, OmegaConf
 
-from optimum_benchmark.install_utils import InstallConfig, install_autoawq, install_autogptq
-
 from . import (
     Benchmark,
     BenchmarkConfig,
@@ -57,20 +55,10 @@ cs.store(group="launcher", name=InlineConfig.name, node=InlineConfig)
 cs.store(group="launcher", name=ProcessConfig.name, node=ProcessConfig)
 cs.store(group="launcher", name=TorchrunConfig.name, node=TorchrunConfig)
 
-cs.store(name="install_config", node=InstallConfig)
-
 
 # optimum-benchmark
 @hydra.main(version_base=None)
 def main(config: DictConfig) -> None:
-    if "install_auto_awq_from_source" in config and config.install_auto_awq_from_source:
-        install_autoawq()
-        return
-
-    if "install_auto_gptq_from_source" in config and config.install_auto_gptq_from_source:
-        install_autogptq()
-        return
-
     log_level = os.environ.get("LOG_LEVEL", "INFO")
     log_to_file = os.environ.get("LOG_TO_FILE", "1") == "1"
     override_benchmarks = os.environ.get("OVERRIDE_BENCHMARKS", "0") == "1"
