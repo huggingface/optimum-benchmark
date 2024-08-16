@@ -37,7 +37,6 @@ PTQ_QUANTIZATION_CONFIG = {
     "quant_level": "auto",
     "accuracy_criterion": ACCURACY_CRITERION_CONFIG,
     "tuning_criterion": TUNING_CRITERION_CONFIG,
-    "diagnosis": False,
 }
 
 
