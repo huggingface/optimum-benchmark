@@ -114,7 +114,7 @@ setup(
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
     ],
     keywords="benchmark, transformers, quantization, pruning, optimization, training, inference, onnx, onnx runtime, intel, "
-    "habana, graphcore, neural compressor, ipex, ipu, hpu, llm-swarm, py-txi, vllm, auto-gptq, autoawq, "
+    "habana, graphcore, neural compressor, ipex, ipu, hpu, llm-swarm, py-txi, vllm, llama-cpp, auto-gptq, autoawq, "
     "sentence-transformers, bitsandbytes, codecarbon, flash-attn, deepspeed, diffusers, timm, peft",
     long_description=open("README.md", "r", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
