@@ -23,8 +23,7 @@ jobs:
       - name: Install quality requirements
         run: |
           pip install --upgrade pip
-          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-          pip install -e .[quality]
+          pip install ruff
 
       - name: Check style
         run: make quality

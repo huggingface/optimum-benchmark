@@ -95,7 +95,10 @@ def get_gpus():
         pynvml.nvmlInit()
         for i in range(pynvml.nvmlDeviceGetCount()):
             handle = pynvml.nvmlDeviceGetHandleByIndex(i)
-            gpus.append(pynvml.nvmlDeviceGetName(handle))
+            gpu = pynvml.nvmlDeviceGetName(handle)
+            # Older pynvml versions may return bytes
+            gpu = gpu.decode("utf-8") if isinstance(gpu, bytes) else gpu
+            gpus.append(gpu)
         pynvml.nvmlShutdown()
 
     elif is_rocm_system():
