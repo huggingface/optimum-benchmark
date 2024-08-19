@@ -73,6 +73,7 @@ class BackendConfig(ABC):
                 self.library,
                 revision=self.model_kwargs.get("revision", None),
                 token=self.model_kwargs.get("token", None),
+                trust_remote_code=self.model_kwargs.get("trust_remote_code", False),
             )
 
         if self.device is None:
