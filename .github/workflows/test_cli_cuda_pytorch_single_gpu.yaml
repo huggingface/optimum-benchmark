@@ -49,4 +49,5 @@ jobs:
             --workdir /workspace
           run: |
             pip install -e .[testing,diffusers,timm,peft,bitsandbytes,autoawq,auto-gptq]
+            python scripts/install_quantization_libs.py --install-autoawq-from-source --install-autogptq-from-source
             pytest -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not (awq)"
