@@ -26,7 +26,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
 env:
-  IMAGE: ghcr.io/huggingface/optimum-benchmark:latest-cuda-ort
+  IMAGE: ghcr.io/huggingface/optimum-benchmark:latest-cuda
 
 jobs:
   run_cli_cuda_onnxruntime_tests:
