@@ -89,16 +89,19 @@ def main():
         help="Install AutoAWQ and AutoAWQ_kernels packages from source.",
     )
     parser.add_argument(
-        "--install-autogptq-from-source", action="store_true", help="Install AutoGPTQ package from source."
+        "--install-autogptq-from-source", 
+        action="store_true", 
+        help="Install AutoGPTQ package from source."
     )
 
     args = parser.parse_args()
 
     if args.install_autoawq_from_source:
         install_autoawq_from_source()
-    elif args.install_autogptq_from_source:
+    if  args.install_autogptq_from_source:
         install_autogptq_from_source()
-    else:
+
+    if not args.install_autoawq_from_source and not args.install_autogptq_from_source:
         print(
             "Please specify an installation option. Use --install-autoawq-from-source or --install-autogptq-from-source."
         )
