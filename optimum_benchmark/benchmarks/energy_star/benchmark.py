@@ -184,7 +184,7 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
     def run_text_generation_energy_tracking(self, backend: Backend[BackendConfigT]):
         LOGGER.info(f"\t+ Running Text Generation energy tracking for {self.config.iterations} iterations")
 
-        measures = []
+        prefill_measures = []
 
         prefill_kwargs = self.config.generate_kwargs.copy()
         prefill_kwargs.update({"max_new_tokens": 1, "min_new_tokens": 1})
@@ -200,25 +200,25 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
                         prefill_volume += inputs["input_ids"].size(dim=1) * self.config.input_shapes["batch_size"]
                     except:
                         prefill_volume +=1
-            measures.append(self.energy_tracker.get_energy())
+            prefill_measures.append(self.energy_tracker.get_energy())
 
-        prefill_energy = Energy.aggregate(measures)
+        prefill_energy = Energy.aggregate(prefill_measures)
         self.report.prefill.energy = prefill_energy
         self.report.prefill.efficiency = Efficiency.from_energy(
             prefill_energy, prefill_volume, unit=TEXT_GENERATION_EFFICIENCY_UNIT
         )
+        self.report.prefill.measures = prefill_measures
 
-        measures.clear()
-
+        generate_measures = []
         for k in range(self.config.iterations):
             LOGGER.info(f"\t+ Decoding iteration {k+1}/{self.config.iterations}")
             with self.energy_tracker.track(file_prefix="generate"):
                 for inputs in tqdm(self.dataloader):
                     inputs = backend.prepare_inputs(inputs)
                     _ = backend.generate(inputs, self.config.generate_kwargs)
-            measures.append(self.energy_tracker.get_energy())
+            generate_measures.append(self.energy_tracker.get_energy())
 
-        generate_energy = Energy.aggregate(measures)
+        generate_energy = Energy.aggregate(generate_measures)
         decode_energy = generate_energy - prefill_energy
         decode_volume = self.atomic_decode_volume * self.config.num_samples
 
@@ -226,6 +226,7 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
         self.report.decode.efficiency = Efficiency.from_energy(
             decode_energy, decode_volume, unit=TEXT_GENERATION_EFFICIENCY_UNIT
         )
+        self.report.decode.measures = [generate_measures[i] - prefill_measures[i] for i in range(self.config.iterations)]
 
     def run_image_diffusion_energy_tracking(self, backend: Backend[BackendConfigT]):
         LOGGER.info(f"\t+ Running Image Diffusion energy tracking for {self.config.iterations} iterations")
@@ -247,6 +248,7 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
         self.report.call.efficiency = Efficiency.from_energy(
             call_energy, call_volume, unit=IMAGE_DIFFUSION_EFFICIENCY_UNIT
         )
+        self.report.call.measures = measures
 
     def run_inference_energy_tracking(self, backend: Backend[BackendConfigT]):
         LOGGER.info(f"\t+ Running Inference energy tracking for {self.config.iterations} iterations")
@@ -268,6 +270,7 @@ class EnergyStarBenchmark(Benchmark[EnergyStarConfig]):
         self.report.forward.efficiency = Efficiency.from_energy(
             forward_energy, forward_volume, unit=INFERENCE_EFFICIENCY_UNIT
         )
+        self.report.forward.measures = measures
 
     @property
     def atomic_forward_volume(self) -> int:  # in samples

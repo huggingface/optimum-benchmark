@@ -17,6 +17,7 @@ class BenchmarkMeasurements:
     throughput: Optional[Throughput] = None
     energy: Optional[Energy] = None
     efficiency: Optional[Efficiency] = None
+    measures: Optional[List] = None
 
     @staticmethod
     def aggregate(measurements: List["BenchmarkMeasurements"]) -> "BenchmarkMeasurements":
@@ -78,6 +79,9 @@ class BenchmarkReport(PushToHubMixin):
             measurements: BenchmarkMeasurements = getattr(self, target)
             if measurements.energy is not None:
                 measurements.energy.log(prefix=target)
+            if measurements.measures is not None:
+                for i, measure in enumerate(measurements.measures):
+                    measure.log(prefix=f"{target}_iteration_{i+1}")
 
     def log_efficiency(self):
         for target in self.to_dict().keys():
@@ -98,6 +102,9 @@ class BenchmarkReport(PushToHubMixin):
                 measurements.energy.log(prefix=target)
             if measurements.efficiency is not None:
                 measurements.efficiency.log(prefix=target)
+            if measurements.measures is not None:
+                for i, measure in enumerate(measurements.measures):
+                    measure.log(prefix=f"{target}_iteration_{i+1}")
 
     @classmethod
     def aggregate(cls, reports: List["BenchmarkReport"]) -> "BenchmarkReport":
