@@ -1,5 +1,4 @@
 import os
-import traceback
 from itertools import product
 from logging import getLogger
 
@@ -12,7 +11,7 @@ from llm_perf.utils import (
     is_benchmark_conducted,
     is_benchmark_supported,
 )
-from optimum_benchmark import Benchmark, BenchmarkConfig, BenchmarkReport, InferenceConfig, ProcessConfig, ORTConfig
+from optimum_benchmark import Benchmark, BenchmarkConfig, InferenceConfig, ORTConfig, ProcessConfig
 from optimum_benchmark.logging_utils import setup_logging
 
 SUBSET = os.getenv("SUBSET", None)
@@ -102,7 +101,6 @@ def benchmark_intel_ort(model, attn_implementation, weights_config):
     subfolder = f"{benchmark_name}/{model.replace('/', '--')}"
 
     torch_dtype = WEIGHTS_CONFIGS[weights_config]["torch_dtype"]
-    quant_scheme = WEIGHTS_CONFIGS[weights_config]["quant_scheme"]
     quant_config = WEIGHTS_CONFIGS[weights_config]["quant_config"]
 
     if not is_benchmark_supported(weights_config, attn_implementation, HARDWARE):
