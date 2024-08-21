@@ -23,7 +23,7 @@ build_cpu_image:
 	docker build --build-arg IMAGE=optimum-benchmark:latest-cpu --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cpu docker/unroot
 
 build_cuda_image:
-	docker build -t optimum-benchmark:latest-cuda docker/cuda
+	docker build -t optimum-benchmark:latest-cuda -f docker/cuda/Dockerfile .
 	docker build --build-arg IMAGE=optimum-benchmark:latest-cuda --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cuda docker/unroot
 
 build_cuda_ort_image:
@@ -109,7 +109,7 @@ install_cli_cpu_neural_compressor:
 
 install_cli_cuda_pytorch:
 	pip install -e .[testing,timm,diffusers,peft,autoawq,auto-gptq,bitsandbytes,deepspeed]
-	python scripts/install_quantization_libs.py --install-autoawq-from-source --install-autogptq-from-source
+	# python scripts/install_quantization_libs.py --install-autoawq-from-source --install-autogptq-from-source
 
 install_cli_rocm_pytorch:
 	pip install -e .[testing,timm,diffusers,peft,autoawq,auto-gptq,deepspeed]
