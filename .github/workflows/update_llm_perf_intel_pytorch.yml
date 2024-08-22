@@ -10,7 +10,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
 
 env:
-  IMAGE: ghcr.io/huggingface/optimum-benchmark:latest-cuda
+  IMAGE: ghcr.io/huggingface/optimum-benchmark:latest-cpu
 
 jobs:
   run_benchmarks:
