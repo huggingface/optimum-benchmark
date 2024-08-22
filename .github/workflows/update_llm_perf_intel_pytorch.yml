@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        subset: [unquantized, bnb, awq, gptq]
+        subset: [unquantized]
         
         machine: [
           {name: c7i, runs-on: {group: 'aws-c7i-8xlarge-plus'}}, 
@@ -48,7 +48,7 @@ jobs:
             --volume ${{ github.workspace }}:/workspace
             --workdir /workspace
           run: |
-            pip install packaging && pip install flash-attn einops scipy auto-gptq optimum bitsandbytes autoawq codecarbon
+            pip install packaging && pip install einops scipy optimum codecarbon
             pip install -U transformers huggingface_hub[hf_transfer]
             pip install -e .
             python llm_perf/hardware/intel/update_llm_perf_intel_pytorch.py
