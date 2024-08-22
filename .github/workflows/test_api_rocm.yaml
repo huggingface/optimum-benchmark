@@ -30,7 +30,7 @@ env:
 
 jobs:
   build_image_and_run_api_rocm_tests:
-    runs-on: [single-gpu, amd-gpu, mi250, ci]
+    runs-on: [self-hosted, amd-gpu, single-gpu, mi250]
 
     steps:
       - name: Checkout

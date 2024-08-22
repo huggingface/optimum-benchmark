@@ -30,7 +30,7 @@ env:
 
 jobs:
   run_cli_rocm_pytorch_multi_gpu_tests:
-    runs-on: [multi-gpu, amd-gpu, mi250, ci]
+    runs-on: [self-hosted, amd-gpu, multi-gpu, mi250]
 
     steps:
       - name: Checkout code
