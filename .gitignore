@@ -173,6 +173,11 @@ experiments/
 amdsmi/
 amd-*
 
+# Code carbon
+generate_codecarbon.json
+task_codecarbon.json
+prefill_codecarbon.json
+
 # Mac specific
 .DS_Store
 outputs/
