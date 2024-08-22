@@ -51,4 +51,4 @@ jobs:
             pip install packaging && pip install flash-attn einops scipy auto-gptq optimum bitsandbytes autoawq codecarbon
             pip install -U transformers huggingface_hub[hf_transfer]
             pip install -e .
-            python llm_perf/hardware/intel/update_llm_perf_cuda_pytorch.py
+            python llm_perf/hardware/intel/update_llm_perf_intel_pytorch.py
