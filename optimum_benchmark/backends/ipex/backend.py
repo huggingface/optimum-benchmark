@@ -12,7 +12,7 @@ from ...task_utils import TEXT_GENERATION_TASKS
 from ..base import Backend
 from ..transformers_utils import fast_weights_init
 from .config import IPEXConfig
-from .utils import TASKS_TO_MODEL_TYPES_TO_IPEXPIPELINE, TASKS_TO_IPEXMODEL
+from .utils import TASKS_TO_IPEXMODEL
 
 if is_accelerate_available():
     from accelerate import Accelerator
@@ -30,16 +30,6 @@ class IPEXBackend(Backend[IPEXConfig]):
         if self.config.task in TASKS_TO_IPEXMODEL:
             self.ipexmodel_class = get_class(TASKS_TO_IPEXMODEL[self.config.task])
             self.logger.info(f"\t+ Using IPEXModel class {self.ipexmodel_class.__name__}")
-        elif self.config.task in TASKS_TO_MODEL_TYPES_TO_IPEXPIPELINE:
-            if self.config.model_type in TASKS_TO_MODEL_TYPES_TO_IPEXPIPELINE[self.config.task]:
-                self.ipexmodel_class = get_class(
-                    TASKS_TO_MODEL_TYPES_TO_IPEXPIPELINE[self.config.task][self.config.model_type]
-                )
-                self.logger.info(f"\t+ Using IPEXPipeline class {self.ipexmodel_class.__name__}")
-            else:
-                raise NotImplementedError(
-                    f"IPEXBackend does not support model {self.config.model_type} for task {self.config.task}"
-                )
         else:
             raise NotImplementedError(f"IPEXBackend does not support task {self.config.task}")
 
