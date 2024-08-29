@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.10 python3-pip python3.10-dev google-perftools && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 && \
-    pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir --upgrade pip setuptools wheel
 
 ENV LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4"
 
