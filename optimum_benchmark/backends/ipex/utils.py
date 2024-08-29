@@ -10,6 +10,7 @@ TASKS_TO_IPEXMODEL = {
     "audio-classification": "optimum.intel.IPEXModelForAudioClassification",
     "pix2struct": "optimum.intel.IPEXModelForPix2Struct",
 }
+
 TASKS_TO_MODEL_TYPES_TO_IPEXPIPELINE = {
     "text-to-image": {
         "lcm": "optimum.intel.IPEXLatentConsistencyModelPipeline",

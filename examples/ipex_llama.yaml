@@ -31,5 +31,6 @@ scenario:
 
 backend:
   device: cpu
-  no_weights: true
+  export: true
+  no_weights: false
   model: TinyLlama/TinyLlama-1.1B-Chat-v1.0

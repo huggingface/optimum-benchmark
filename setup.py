@@ -13,7 +13,7 @@ try:
 except Exception as error:
     assert False, "Error: Could not open '%s' due %s\n" % (filepath, error)
 
-MIN_OPTIMUM_VERSION = "1.16.0"
+MIN_OPTIMUM_VERSION = "1.18.0"
 INSTALL_REQUIRES = [
     # HF dependencies
     "transformers",
