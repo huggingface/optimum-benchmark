@@ -15,6 +15,7 @@ _peft_available = importlib.util.find_spec("peft") is not None
 _pynvml_available = importlib.util.find_spec("pynvml") is not None
 _torch_distributed_available = importlib.util.find_spec("torch.distributed") is not None
 _onnxruntime_available = importlib.util.find_spec("onnxruntime") is not None
+_ipex_available = importlib.util.find_spec("intel_extension_for_pytorch") is not None
 _openvino_available = importlib.util.find_spec("openvino") is not None
 _neural_compressor_available = importlib.util.find_spec("neural_compressor") is not None
 _codecarbon_available = importlib.util.find_spec("codecarbon") is not None
@@ -157,11 +158,13 @@ def onnxruntime_version():
             except importlib.metadata.PackageNotFoundError:
                 return None
 
-
 def openvino_version():
     if _openvino_available:
         return importlib.metadata.version("openvino")
 
+def ipex_version():
+    if _ipex_available:
+        return importlib.metadata.version("intel_extension_for_pytorch")
 
 def neural_compressor_version():
     if _neural_compressor_available:

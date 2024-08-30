@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG CUDNN_VERSION=8
-ARG CUDA_VERSION=12.1.1
+ARG CUDA_VERSION=12.4.1
 ARG UBUNTU_VERSION=22.04
 
-FROM nvidia/cuda:${CUDA_VERSION}-cudnn${CUDNN_VERSION}-devel-ubuntu${UBUNTU_VERSION}
+FROM nvidia/cuda:${CUDA_VERSION}-cudnn-devel-ubuntu${UBUNTU_VERSION}
 
 # Install necessary packages
 ENV DEBIAN_FRONTEND=noninteractive
@@ -28,7 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pip install --no-cache-dir --upgrade pip setuptools wheel requests ninja
 
 # Install PyTorch
-ARG TORCH_CUDA=cu121
+ARG TORCH_CUDA=cu124
 ARG TORCH_VERSION=stable
 
 RUN if [ "${TORCH_VERSION}" = "stable" ]; then \

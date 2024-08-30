@@ -25,43 +25,31 @@ concurrency:
   cancel-in-progress: true
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
-env:
-  IMAGE: ghcr.io/huggingface/optimum-benchmark:latest-rocm
-
 jobs:
-  build_image_and_run_api_rocm_tests:
-    runs-on: [single-gpu, amd-gpu, mi250, ci]
+  run_api_rocm_tests:
+    runs-on: [self-hosted, amd-gpu, single-gpu, mi250]
+
+    container:
+      image: ghcr.io/huggingface/optimum-benchmark:latest-rocm
+      options: --ipc host
+        --shm-size "16gb"
+        --group-add video
+        --device /dev/kfd
+        --device /dev/dri
+        --env ROCR_VISIBLE_DEVICES
+        --volume /mnt/cache/.cache/huggingface:/mnt/cache/
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set target devices
+      - name: Install dependencies
         run: |
-          echo "DEVICE:$DEVICE"
-          echo "DEVICE=$DEVICE" >> $GITHUB_ENV
-
-      - name: Unroot docker image
-        run: |
-          docker build --build-arg IMAGE=${{ env.IMAGE }} --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) -t ${{ env.IMAGE }}-unroot docker/unroot
+          pip install -e .[testing,timm,diffusers,codecarbon]
 
       - name: Run tests
-        uses: addnab/docker-run-action@v3
         env:
-          DEVICE: ${{ env.DEVICE }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PUSH_REPO_ID: optimum-benchmark/rocm
-        with:
-          image: ${{ env.IMAGE }}-unroot
-          options: |
-            --rm
-            --shm-size 64G
-            --env HF_TOKEN
-            --env PUSH_REPO_ID
-            --device /dev/kfd
-            --device /dev/dri/${{ env.DEVICE }}
-            --volume ${{ github.workspace }}:/workspace
-            --workdir /workspace
-          run: |
-            pip install -e .[testing,timm,diffusers,codecarbon]
-            pytest -s -x -k "api and cuda"
+        run: |
+          pytest -s -x -k "api and cuda"

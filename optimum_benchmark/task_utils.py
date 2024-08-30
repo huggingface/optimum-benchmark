@@ -190,6 +190,7 @@ def infer_model_type_from_model_name_or_path(
     library_name: Optional[str] = None,
     revision: Optional[str] = None,
     token: Optional[str] = None,
+    trust_remote_code: bool = False,
 ) -> str:
     if library_name is None:
         library_name = infer_library_from_model_name_or_path(model_name_or_path, revision=revision, token=token)
@@ -216,7 +217,9 @@ def infer_model_type_from_model_name_or_path(
                 break
 
     else:
-        transformers_config = get_transformers_pretrained_config(model_name_or_path, revision=revision, token=token)
+        transformers_config = get_transformers_pretrained_config(
+            model_name_or_path, revision=revision, token=token, trust_remote_code=trust_remote_code
+        )
         inferred_model_type = transformers_config.model_type
 
     if inferred_model_type is None:

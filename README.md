@@ -96,6 +96,7 @@ pip install -e .
 Depending on the backends you want to use, you can install `optimum-benchmark` with the following extras:
 
 - PyTorch (default): `pip install optimum-benchmark`
+- IPEX: `pip install optimum-benchmark[ipex]`
 - OpenVINO: `pip install optimum-benchmark[openvino]`
 - Torch-ORT: `pip install optimum-benchmark[torch-ort]`
 - OnnxRuntime: `pip install optimum-benchmark[onnxruntime]`
