@@ -86,9 +86,6 @@ EXTRAS_REQUIRE = {
     "peft": ["peft"],
 }
 
-if USE_ROCM:
-    EXTRAS_REQUIRE["autoawq"] = [AUTOAWQ]
-    EXTRAS_REQUIRE["auto-gptq"].append(AUTOGPTQ)
 
 setup(
     packages=find_packages(),
