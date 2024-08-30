@@ -64,7 +64,7 @@ def install_autoawq_from_source():
     kernels_setup_file_path = os.path.join(kernels_repo_path, "setup.py")
     remove_torch_from_setup(kernels_setup_file_path)
     subprocess.run(
-        f"cd {kernels_repo_path} && {sys.executable} -m pip install --no-build-isolation -e .",
+        f"cd {kernels_repo_path} && {sys.executable} -m pip install --no-build-isolation .",
         shell=True,
         check=True,
         env=os.environ,
