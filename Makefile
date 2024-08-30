@@ -158,7 +158,7 @@ test_cli_cuda_pytorch_multi_gpu:
 	pytest -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed) and not awq"
 
 test_cli_cuda_pytorch_single_gpu:
-	pytest -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not awq" --ignore=external_repos
+	pytest -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not awq"
 
 test_cli_cuda_torch_ort_multi_gpu:
 	pytest -s -k "cli and cuda and torch-ort and (dp or ddp or device_map or deepspeed) and not peft"
