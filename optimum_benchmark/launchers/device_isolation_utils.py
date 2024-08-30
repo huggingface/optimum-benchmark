@@ -65,6 +65,7 @@ def get_amd_devices_pids(device_ids: str) -> Set[int]:
         )
 
     amdsmi.amdsmi_init()
+    permission_denied = False
 
     devices_pids = set()
     devices_ids = list(map(int, device_ids.split(",")))
@@ -72,17 +73,23 @@ def get_amd_devices_pids(device_ids: str) -> Set[int]:
     processor_handles = amdsmi.amdsmi_get_processor_handles()
     for device_id in devices_ids:
         processor_handle = processor_handles[device_id]
+
+        if permission_denied:
+            continue
+
         try:
             # these functions fail a lot for no apparent reason
             processes_handles = amdsmi.amdsmi_get_gpu_process_list(processor_handle)
-        except Exception:
+        except Exception as e:
+            permission_denied = "Permission denied" in str(e)
             continue
 
         for process_handle in processes_handles:
             try:
                 # these functions fail a lot for no apparent reason
                 info = amdsmi.amdsmi_get_gpu_process_info(processor_handle, process_handle)
-            except Exception:
+            except Exception as e:
+                permission_denied = "Permission denied" in str(e)
                 continue
 
             if info["memory_usage"]["vram_mem"] == 4096:
