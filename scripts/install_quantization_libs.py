@@ -7,13 +7,17 @@ import sys
 EXTERNAL_REPOS_DIR = "external_repos"
 
 
-def remove_torch_from_setup(setup_file_path):
-    """Remove any torch requirement from the setup.py file."""
+def process_setup_file(setup_file_path):
     with open(setup_file_path, "r") as file:
         setup_content = file.read()
 
     # Use a regular expression to remove any line containing "torch=="
     setup_content = re.sub(r'"torch==[^\"]+",', "", setup_content)
+
+    # Set IS_CPU_ONLY to False
+    setup_content = setup_content.replace(
+        "IS_CPU_ONLY = not torch.backends.mps.is_available() and not torch.cuda.is_available()", "IS_CPU_ONLY = False"
+    )
 
     # Write the modified content back to setup.py
     with open(setup_file_path, "w") as file:
@@ -31,54 +35,56 @@ def clone_or_pull_repo(repo_url, repo_location_path):
         subprocess.run(f"git clone {repo_url} {repo_location_path}", shell=True, check=True)
 
 
-def install_autogptq_from_source():
-    """Install the AutoGPTQ package from GitHub."""
-    print("Installing AutoGPTQ package.")
-    autogptq_repo_path = os.path.join(EXTERNAL_REPOS_DIR, "AutoGPTQ")
-
-    clone_or_pull_repo("https://github.com/PanQiWei/AutoGPTQ.git", autogptq_repo_path)
-
-    subprocess.run("pip install numpy gekko pandas", shell=True, check=True)
-
-    subprocess.run(
-        f"cd {autogptq_repo_path} && {sys.executable} -m pip install -vvv --no-build-isolation .",
-        shell=True,
-        check=True,
-    )
-
-    print("AutoGPTQ package installed.")
-
-
 def install_autoawq_from_source():
     """Install the AutoAWQ and AutoAWQ_kernels packages from GitHub."""
     print("Installing AutoAWQ and AutoAWQ_kernels packages.")
 
-    autoawq_kernels_repo_name = "AutoAWQ_kernels"
     autoawq_repo_name = "AutoAWQ"
+    autoawq_kernels_repo_name = "AutoAWQ_kernels"
 
-    kernels_repo_path = os.path.join(EXTERNAL_REPOS_DIR, autoawq_kernels_repo_name)
     autoawq_repo_path = os.path.join(EXTERNAL_REPOS_DIR, autoawq_repo_name)
+    kernels_repo_path = os.path.join(EXTERNAL_REPOS_DIR, autoawq_kernels_repo_name)
 
     clone_or_pull_repo(f"https://github.com/casper-hansen/{autoawq_kernels_repo_name}", kernels_repo_path)
-
     kernels_setup_file_path = os.path.join(kernels_repo_path, "setup.py")
-    remove_torch_from_setup(kernels_setup_file_path)
+    process_setup_file(kernels_setup_file_path)
     subprocess.run(
-        f"cd {kernels_repo_path} && {sys.executable} -m pip install --no-build-isolation .",
+        f"cd {kernels_repo_path} && {sys.executable} -m pip install --no-build-isolation -e .",
         shell=True,
         check=True,
         env=os.environ,
     )
 
     clone_or_pull_repo(f"https://github.com/casper-hansen/{autoawq_repo_name}", autoawq_repo_path)
-
     autoawq_setup_file_path = os.path.join(autoawq_repo_path, "setup.py")
-    remove_torch_from_setup(autoawq_setup_file_path)
+    process_setup_file(autoawq_setup_file_path)
     subprocess.run(
-        f"cd {autoawq_repo_path} && {sys.executable} -m pip install .", shell=True, check=True, env=os.environ
+        f"cd {autoawq_repo_path} && {sys.executable} -m pip install .",
+        shell=True,
+        check=True,
+        env=os.environ,
     )
 
     print("AutoAWQ and AutoAWQ_kernels packages installed.")
+
+
+def install_autogptq_from_source():
+    """Install the AutoGPTQ package from GitHub."""
+    print("Installing AutoGPTQ package.")
+    autogptq_repo_path = os.path.join(EXTERNAL_REPOS_DIR, "AutoGPTQ")
+
+    clone_or_pull_repo("https://github.com/PanQiWei/AutoGPTQ.git", autogptq_repo_path)
+    subprocess.run("pip install numpy gekko pandas", shell=True, check=True, env=os.environ)
+    autogptq_setup_file_path = os.path.join(autogptq_repo_path, "setup.py")
+    process_setup_file(autogptq_setup_file_path)
+    subprocess.run(
+        f"cd {autogptq_repo_path} && {sys.executable} -m pip install -vvv --no-build-isolation .",
+        shell=True,
+        check=True,
+        env=os.environ,
+    )
+
+    print("AutoGPTQ package installed.")
 
 
 def main():
