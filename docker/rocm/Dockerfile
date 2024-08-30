@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG ROCM_VERSION=5.7.1
+ARG ROCM_VERSION=6.1.2
 ARG UBUNTU_VERSION=22.04
 
 FROM rocm/dev-ubuntu-${UBUNTU_VERSION}:${ROCM_VERSION}
@@ -29,7 +29,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
     cd /opt/rocm/share/amd_smi && pip install .
 
 # Install PyTorch
-ARG TORCH_ROCM=rocm5.7
+ARG TORCH_ROCM=rocm6.1
 ARG TORCH_VERSION=stable
 
 RUN if [ "${TORCH_VERSION}" = "stable" ]; then \
