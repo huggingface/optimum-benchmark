@@ -74,8 +74,8 @@ EXTRAS_REQUIRE = {
     "py-txi": ["py-txi"],
     "vllm": ["vllm"],
     # optional dependencies
-    "autoawq": [],
-    "auto-gptq": ["optimum"],
+    "autoawq": ["autoawq"],
+    "auto-gptq": ["optimum", "auto-gptq"],
     "sentence-transformers": ["sentence-transformers"],
     "bitsandbytes": ["bitsandbytes"],
     "codecarbon": ["codecarbon"],
