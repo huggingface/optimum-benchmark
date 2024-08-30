@@ -1,4 +1,3 @@
-import inspect
 from collections import OrderedDict
 from tempfile import TemporaryDirectory
 from typing import Any, Dict
@@ -6,9 +5,7 @@ from typing import Any, Dict
 import torch
 from hydra.utils import get_class
 
-from ...generators.dataset_generator import DatasetGenerator
 from ...import_utils import is_accelerate_available, is_torch_distributed_available
-from ...task_utils import TEXT_GENERATION_TASKS
 from ..base import Backend
 from ..transformers_utils import fast_weights_init
 from .config import IPEXConfig
@@ -32,7 +29,6 @@ class IPEXBackend(Backend[IPEXConfig]):
             self.logger.info(f"\t+ Using IPEXModel class {self.ipexmodel_class.__name__}")
         else:
             raise NotImplementedError(f"IPEXBackend does not support task {self.config.task}")
-
 
     def load(self) -> None:
         self.logger.info("\t+ Creating backend temporary directory")

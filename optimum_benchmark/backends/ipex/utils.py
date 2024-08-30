@@ -7,4 +7,3 @@ TASKS_TO_IPEXMODEL = {
     "image-classification": "optimum.intel.IPEXModelForImageClassification",
     "audio-classification": "optimum.intel.IPEXModelForAudioClassification",
 }
-

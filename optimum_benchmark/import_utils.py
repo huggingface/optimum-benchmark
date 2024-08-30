@@ -158,13 +158,16 @@ def onnxruntime_version():
             except importlib.metadata.PackageNotFoundError:
                 return None
 
+
 def openvino_version():
     if _openvino_available:
         return importlib.metadata.version("openvino")
 
+
 def ipex_version():
     if _ipex_available:
         return importlib.metadata.version("intel_extension_for_pytorch")
+
 
 def neural_compressor_version():
     if _neural_compressor_available:
