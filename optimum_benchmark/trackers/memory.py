@@ -290,6 +290,7 @@ def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connectio
 
         amdsmi.amdsmi_init()
         rocml.smi_initialize()
+        permission_denied = False
         devices_handles = amdsmi.amdsmi_get_processor_handles()
 
         while not stop:
@@ -300,10 +301,20 @@ def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connectio
 
             for device_id in device_ids:
                 device_handle = devices_handles[device_id]
+
+                try:
+                    used_global_memory += rocml.smi_get_device_memory_used(device_id)
+                except Exception as e:
+                    LOGGER.warning(f"Could not get memory usage for device {device_id}: {e}")
+
+                if permission_denied:
+                    continue
+
                 try:
                     processes_handles = amdsmi.amdsmi_get_gpu_process_list(device_handle)
                 except Exception as e:
                     LOGGER.warning(f"Could not get process list for device {device_id}: {e}")
+                    permission_denied = "Permission Denied" in str(e)
                     continue
 
                 for process_handle in processes_handles:
@@ -311,15 +322,11 @@ def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connectio
                         gpu_process_info = amdsmi.amdsmi_get_gpu_process_info(device_handle, process_handle)
                     except Exception as e:
                         LOGGER.warning(f"Could not get process info for process {process_handle}: {e}")
+                        permission_denied = "Permission Denied" in str(e)
                         continue
 
                     if gpu_process_info["pid"] in monitored_pids:
                         max_used_process_memory += gpu_process_info["memory_usage"]["vram_mem"]
-
-                try:
-                    used_global_memory += rocml.smi_get_device_memory_used(device_id)
-                except Exception as e:
-                    LOGGER.warning(f"Could not get memory usage for device {device_id}: {e}")
 
             max_used_global_memory = max(max_used_global_memory, used_global_memory)
             max_used_process_memory = max(max_used_process_memory, used_process_memory)

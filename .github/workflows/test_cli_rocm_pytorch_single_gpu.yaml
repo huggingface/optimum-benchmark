@@ -25,39 +25,31 @@ concurrency:
   cancel-in-progress: true
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
-env:
-  IMAGE: ghcr.io/huggingface/optimum-benchmark:latest-rocm
-
 jobs:
   run_cli_rocm_pytorch_single_gpu_tests:
-    runs-on: [self-hosted, amd-gpu, single-gpu, mi250]
+    runs-on: [self-hosted, amd-gpu, single-gpu]
+
+    container:
+      image: ghcr.io/huggingface/optimum-benchmark:latest-rocm
+      options: --ipc host
+        --shm-size "16gb"
+        --group-add video
+        --device /dev/kfd
+        --device /dev/dri
+        --env ROCR_VISIBLE_DEVICES
+        --volume /mnt/cache/.cache/huggingface:/mnt/cache/
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set target devices
+      - name: Install dependencies
         run: |
-          echo "DEVICE:$DEVICE"
-          echo "DEVICE=$DEVICE" >> $GITHUB_ENV
-
-      - name: Unroot docker image
-        run: |
-          docker build --build-arg IMAGE=${{ env.IMAGE }} --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) -t ${{ env.IMAGE }}-unroot docker/unroot
+          pip install -e .[testing,diffusers,timm,peft,autoawq,auto-gptq]
 
       - name: Run tests
-        uses: addnab/docker-run-action@v3
         env:
-          DEVICE: ${{ env.DEVICE }}
-        with:
-          image: ${{ env.IMAGE }}-unroot
-          options: |
-            --rm
-            --shm-size 64G
-            --device /dev/kfd
-            --device /dev/dri/${{ env.DEVICE }}
-            --volume ${{ github.workspace }}:/workspace
-            --workdir /workspace
-          run: |
-            pip install -e .[testing,diffusers,timm,peft,autoawq,auto-gptq]
-            pytest -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not (bnb or awq)"
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          PUSH_REPO_ID: optimum-benchmark/rocm
+        run: |
+          pytest -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not (bnb or awq)"
