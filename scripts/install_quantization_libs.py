@@ -41,7 +41,7 @@ def install_autogptq_from_source():
     subprocess.run("pip install numpy gekko pandas", shell=True, check=True)
 
     subprocess.run(
-        f"cd {autogptq_repo_path} && {sys.executable} -m pip install -vvv --no-build-isolation -e .",
+        f"cd {autogptq_repo_path} && {sys.executable} -m pip install -vvv --no-build-isolation .",
         shell=True,
         check=True,
     )
