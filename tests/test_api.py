@@ -253,8 +253,8 @@ def test_api_memory_tracker(device, backend):
         if backend == "pytorch":
             measured_memory = final_memory.max_allocated - initial_memory.max_allocated
         else:
-            # because user namespace is not visible to pynvml/amdsmi,
-            # we use global vram instead of process specific vram.
+            # namespace is not visible to pynvml/amdsmi,
+            # so we use global vram instead of process specific vram.
             measured_memory = final_memory.max_global_vram - initial_memory.max_global_vram
     else:
         measured_memory = final_memory.max_ram - initial_memory.max_ram
