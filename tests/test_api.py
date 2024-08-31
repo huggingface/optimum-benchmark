@@ -49,7 +49,7 @@ def test_api_launch(device, scenario, library, task, model):
 
     if device == "cuda":
         if torch.version.hip is not None:
-            device_ids = os.environ.get("ROCR_VISIBLE_DEVICES", "0")
+            device_ids = os.environ.get("HIP_VISIBLE_DEVICES", "0")
         else:
             device_ids = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
     else:
@@ -224,7 +224,7 @@ def test_api_memory_tracker(device, backend):
 
     if device == "cuda":
         if torch.version.hip is not None:
-            device_ids = os.environ.get("ROCR_VISIBLE_DEVICES", "0")
+            device_ids = os.environ.get("HIP_VISIBLE_DEVICES", "0")
         else:
             device_ids = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
     else:
