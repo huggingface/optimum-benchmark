@@ -81,7 +81,7 @@ class Memory:
             max_allocated=max_allocated,
         )
 
-    def log(self, prefix: str = "forward"):
+    def log(self, prefix: str = ""):
         LOGGER.info(f"\t\t+ {prefix} memory:")
         if self.max_ram is not None:
             LOGGER.info(f"\t\t\t- max RAM: {self.max_ram:f} ({self.unit})")

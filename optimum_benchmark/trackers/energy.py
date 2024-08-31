@@ -105,7 +105,7 @@ class Efficiency:
     def from_energy(energy: "Energy", volume: int, unit: str) -> "Efficiency":
         return Efficiency(value=volume / energy.total if energy.total > 0 else 0, unit=unit)
 
-    def log(self, prefix: str = "method"):
+    def log(self, prefix: str = ""):
         LOGGER.info(f"\t\t+ {prefix} energy efficiency: {self.value:f} ({self.unit})")
 
 

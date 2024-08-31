@@ -52,4 +52,4 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PUSH_REPO_ID: optimum-benchmark/rocm
         run: |
-          pytest -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not (bnb or awq)"
+          pytest -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not (bnb or awq or gptq)"

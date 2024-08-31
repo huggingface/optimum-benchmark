@@ -214,7 +214,14 @@ def test_api_memory_tracker(device, backend):
     if torch.cuda.is_available():
         reload(torch.cuda)
 
-    device_ids = "0" if device == "cuda" else None
+    if device == "cuda":
+        if torch.cuda.hip is not None:
+            device_ids = os.environ.get("ROCR_VISIBLE_DEVICES", "0")
+        else:
+            device_ids = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
+    else:
+        device_ids = None
+
     tracker = MemoryTracker(device=device, backend=backend, device_ids=device_ids)
 
     tracker.reset()
@@ -238,7 +245,8 @@ def test_api_memory_tracker(device, backend):
         if backend == "pytorch":
             measured_memory = final_memory.max_allocated - initial_memory.max_allocated
         else:
-            # because user namespace is not visible to pynvml/amdsmi, we use global vram
+            # because user namespace is not visible to pynvml/amdsmi,
+            # we use global vram instead of process specific vram.
             measured_memory = final_memory.max_global_vram - initial_memory.max_global_vram
     else:
         measured_memory = final_memory.max_ram - initial_memory.max_ram
