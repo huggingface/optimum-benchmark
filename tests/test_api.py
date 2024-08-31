@@ -7,6 +7,7 @@ from tempfile import TemporaryDirectory
 import pandas as pd
 import pytest
 import torch
+import torch.version
 
 from optimum_benchmark import Benchmark, BenchmarkConfig, InferenceConfig, ProcessConfig, PyTorchConfig, TrainingConfig
 from optimum_benchmark.backends.diffusers_utils import (
@@ -46,8 +47,15 @@ LIBRARIES_TASKS_MODELS = [
 def test_api_launch(device, scenario, library, task, model):
     benchmark_name = f"{device}_{scenario}_{library}_{task}_{model}"
 
+    if device == "cuda":
+        if torch.version.hip is not None:
+            device_ids = os.environ.get("ROCR_VISIBLE_DEVICES", "0")
+        else:
+            device_ids = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
+    else:
+        device_ids = None
+
     device_isolation = device == "cuda"
-    device_ids = "0" if device == "cuda" else None
     no_weights = False if library != "transformers" else True
 
     launcher_config = ProcessConfig(device_isolation=device_isolation, device_isolation_action="error")
@@ -215,7 +223,7 @@ def test_api_memory_tracker(device, backend):
         reload(torch.cuda)
 
     if device == "cuda":
-        if torch.cuda.hip is not None:
+        if torch.version.hip is not None:
             device_ids = os.environ.get("ROCR_VISIBLE_DEVICES", "0")
         else:
             device_ids = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
