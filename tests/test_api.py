@@ -24,7 +24,6 @@ from optimum_benchmark.generators.input_generator import InputGenerator
 from optimum_benchmark.import_utils import get_git_revision_hash
 from optimum_benchmark.scenarios.inference.config import INPUT_SHAPES
 from optimum_benchmark.scenarios.training.config import DATASET_SHAPES
-from optimum_benchmark.system_utils import get_gpu_device_ids
 from optimum_benchmark.trackers import LatencyTracker, MemoryTracker
 
 PUSH_REPO_ID = os.environ.get("PUSH_REPO_ID", "optimum-benchmark/local")
@@ -47,9 +46,9 @@ LIBRARIES_TASKS_MODELS = [
 def test_api_launch(device, scenario, library, task, model):
     benchmark_name = f"{device}_{scenario}_{library}_{task}_{model}"
 
-    device_ids = get_gpu_device_ids() if device == "cuda" else None
-    no_weights = False if library != "transformers" else True
     device_isolation = device == "cuda"
+    device_ids = "0" if device == "cuda" else None
+    no_weights = False if library != "transformers" else True
 
     launcher_config = ProcessConfig(device_isolation=device_isolation, device_isolation_action="error")
 
@@ -73,10 +72,18 @@ def test_api_launch(device, scenario, library, task, model):
         )
 
     backend_config = PyTorchConfig(
-        device=device, device_ids=device_ids, no_weights=no_weights, library=library, model=model, task=task
+        device=device,
+        device_ids=device_ids,
+        no_weights=no_weights,
+        library=library,
+        model=model,
+        task=task,
     )
     benchmark_config = BenchmarkConfig(
-        name=benchmark_name, scenario=scenario_config, launcher=launcher_config, backend=backend_config
+        name=benchmark_name,
+        scenario=scenario_config,
+        launcher=launcher_config,
+        backend=backend_config,
     )
     benchmark_report = Benchmark.launch(benchmark_config)
 
@@ -207,7 +214,7 @@ def test_api_memory_tracker(device, backend):
     if torch.cuda.is_available():
         reload(torch.cuda)
 
-    device_ids = get_gpu_device_ids() if device == "cuda" else None
+    device_ids = "0" if device == "cuda" else None
     tracker = MemoryTracker(device=device, backend=backend, device_ids=device_ids)
 
     tracker.reset()

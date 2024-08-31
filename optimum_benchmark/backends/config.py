@@ -98,8 +98,7 @@ class BackendConfig(ABC):
                 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
                 os.environ["CUDA_VISIBLE_DEVICES"] = self.device_ids
             elif is_rocm_system():
-                # https://rocm.docs.amd.com/en/latest/conceptual/gpu-isolation.html
-                os.environ["ROCR_VISIBLE_DEVICES"] = self.device_ids
+                os.environ["HIP_VISIBLE_DEVICES"] = self.device_ids
             else:
                 raise RuntimeError("CUDA device is only supported on systems with NVIDIA or ROCm drivers.")
 
