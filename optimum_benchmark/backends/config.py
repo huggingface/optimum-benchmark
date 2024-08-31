@@ -96,13 +96,9 @@ class BackendConfig(ABC):
 
             if is_nvidia_system():
                 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-                if os.environ.get("CUDA_VISIBLE_DEVICES", None) is None:
-                    os.environ["CUDA_VISIBLE_DEVICES"] = self.device_ids
+                os.environ["CUDA_VISIBLE_DEVICES"] = self.device_ids
             elif is_rocm_system():
-                if os.environ.get("ROCR_VISIBLE_DEVICES", None) is None:
-                    os.environ["ROCR_VISIBLE_DEVICES"] = self.device_ids
-                elif os.environ.get("HIP_VISIBLE_DEVICES", None) is None:
-                    os.environ["HIP_VISIBLE_DEVICES"] = self.device_ids
+                os.environ["HIP_VISIBLE_DEVICES"] = self.device_ids
             else:
                 raise RuntimeError("CUDA device is only supported on systems with NVIDIA or ROCm drivers.")
 
