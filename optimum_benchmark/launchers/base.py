@@ -42,7 +42,7 @@ class Launcher(Generic[LauncherConfigT], ABC):
             if is_nvidia_system():
                 device_ids = os.environ.get("CUDA_VISIBLE_DEVICES", None)
             elif is_rocm_system():
-                device_ids = os.environ.get("ROCR_VISIBLE_DEVICES", None)
+                device_ids = os.environ.get("HIP_VISIBLE_DEVICES", None)
 
         self.device_isolation_process = Process(
             target=assert_device_isolation,

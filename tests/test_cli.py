@@ -9,6 +9,8 @@ from optimum_benchmark.logging_utils import run_subprocess_and_log_stream_output
 
 LOGGER = getLogger("test")
 
+CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", None)
+HIP_VISIBLE_DEVICES = os.environ.get("HIP_VISIBLE_DEVICES", None)
 FORCE_SERIAL = os.environ.get("FORCE_SERIAL", "0") == "1"
 TEST_CONFIG_DIR = Path(__file__).parent / "configs"
 TEST_CONFIG_NAMES = [
@@ -36,6 +38,11 @@ def test_cli_configs(config_name):
         args += ["hydra.launcher.n_jobs=1"]
     else:
         args += ["hydra.launcher.n_jobs=-1"]
+
+    if HIP_VISIBLE_DEVICES is not None:
+        args += [f"backend.device_ids={os.environ['HIP_VISIBLE_DEVICES']}"]
+    elif CUDA_VISIBLE_DEVICES is not None:
+        args += [f"backend.device_ids={os.environ['CUDA_VISIBLE_DEVICES']}"]
 
     popen = run_subprocess_and_log_stream_output(LOGGER, args)
     assert popen.returncode == 0, f"Failed to run {config_name}"
