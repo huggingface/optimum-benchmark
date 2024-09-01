@@ -36,7 +36,7 @@ jobs:
         --group-add video
         --device /dev/kfd
         --device /dev/dri
-        --env ROCR_VISIBLE_DEVICES
+        --env HIP_VISIBLE_DEVICES=$ROCR_VISIBLE_DEVICES
         --volume /mnt/cache/.cache/huggingface:/mnt/cache/
 
     steps:

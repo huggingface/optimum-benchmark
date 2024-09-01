@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   run_api_rocm_tests:
-    runs-on: [self-hosted, amd-gpu, single-gpu, mi250]
+    runs-on: [self-hosted, amd-gpu, single-gpu]
 
     container:
       image: ghcr.io/huggingface/optimum-benchmark:latest-rocm
@@ -36,7 +36,7 @@ jobs:
         --group-add video
         --device /dev/kfd
         --device /dev/dri
-        --env ROCR_VISIBLE_DEVICES
+        --env HIP_VISIBLE_DEVICES=$ROCR_VISIBLE_DEVICES
         --volume /mnt/cache/.cache/huggingface:/mnt/cache/
 
     steps:
