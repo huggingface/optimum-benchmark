@@ -7,7 +7,6 @@ from tempfile import TemporaryDirectory
 import pandas as pd
 import pytest
 import torch
-import torch.version
 
 from optimum_benchmark import Benchmark, BenchmarkConfig, InferenceConfig, ProcessConfig, PyTorchConfig, TrainingConfig
 from optimum_benchmark.backends.diffusers_utils import (

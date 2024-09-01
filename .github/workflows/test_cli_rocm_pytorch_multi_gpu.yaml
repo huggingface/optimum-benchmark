@@ -36,7 +36,7 @@ jobs:
         --group-add video
         --device /dev/kfd
         --device /dev/dri
-        --env HIP_VISIBLE_DEVICES=$ROCR_VISIBLE_DEVICES
+        --env ROCR_VISIBLE_DEVICES
         --volume /mnt/cache/.cache/huggingface:/mnt/cache/
 
     steps:
@@ -52,4 +52,5 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PUSH_REPO_ID: optimum-benchmark/rocm
         run: |
+          export HIP_VISIBLE_DEVICES=${ROCR_VISIBLE_DEVICES} && unset ROCR_VISIBLE_DEVICES
           pytest -x -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed) and not (bnb or awq)"
