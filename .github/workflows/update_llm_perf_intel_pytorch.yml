@@ -50,7 +50,7 @@ jobs:
             --volume ${{ github.workspace }}:/workspace
             --workdir /workspace
           run: |
-            pip install packaging && pip install einops scipy optimum codecarbon
+            pip install packaging && pip install einops scipy optimum codecarbon onnxruntime openvino
             pip install -U transformers huggingface_hub[hf_transfer]
             pip install -e .
             python llm_perf/hardware/intel/update_llm_perf_intel.py
