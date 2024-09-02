@@ -12,7 +12,16 @@ from llm_perf.utils import (
     is_benchmark_conducted,
     is_benchmark_supported,
 )
-from optimum_benchmark import Benchmark, BenchmarkConfig, BenchmarkReport, InferenceConfig, ProcessConfig, PyTorchConfig, ORTConfig, OVConfig
+from optimum_benchmark import (
+    Benchmark,
+    BenchmarkConfig,
+    BenchmarkReport,
+    InferenceConfig,
+    ORTConfig,
+    OVConfig,
+    ProcessConfig,
+    PyTorchConfig,
+)
 from optimum_benchmark.logging_utils import setup_logging
 
 SUBSET = os.getenv("SUBSET", None)
