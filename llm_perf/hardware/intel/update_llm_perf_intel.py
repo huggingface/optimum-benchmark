@@ -26,9 +26,8 @@ from optimum_benchmark.logging_utils import setup_logging
 
 SUBSET = os.getenv("SUBSET", None)
 MACHINE = os.getenv("MACHINE", None)
-HARDWARE = "intel"
 BACKEND = os.getenv("BACKEND", None)
-
+HARDWARE = "intel"
 
 if os.getenv("MACHINE", None) is None and os.getenv("SUBSET", None) is None:
     PUSH_REPO_ID = "optimum-benchmark/llm-perf-pytorch-intel-debug"

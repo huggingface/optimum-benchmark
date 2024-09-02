@@ -17,8 +17,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        subset: [unquantized]
         backend: [pytorch, onnxruntime, openvino]
+        subset: [unquantized]
         machine: [
           {name: c7i, runs-on: {group: 'aws-c7i-8xlarge-plus'}}, 
         ]
@@ -32,8 +32,8 @@ jobs:
       - name: Run benchmarks
         uses: addnab/docker-run-action@v3
         env:
-          SUBSET: ${{ matrix.subset }}
           BACKEND: ${{ matrix.backend }}
+          SUBSET: ${{ matrix.subset }}
           MACHINE: ${{ matrix.machine.name }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         with:
