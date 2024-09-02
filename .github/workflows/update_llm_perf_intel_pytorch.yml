@@ -33,6 +33,7 @@ jobs:
         uses: addnab/docker-run-action@v3
         env:
           SUBSET: ${{ matrix.subset }}
+          BACKEND: ${{ matrix.backend }}
           MACHINE: ${{ matrix.machine.name }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         with:
