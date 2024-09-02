@@ -27,6 +27,7 @@ from optimum_benchmark.logging_utils import setup_logging
 SUBSET = os.getenv("SUBSET", None)
 MACHINE = os.getenv("MACHINE", None)
 HARDWARE = "intel"
+BACKEND = os.getenv("BACKEND", None)
 
 
 if os.getenv("MACHINE", None) is None and os.getenv("SUBSET", None) is None:
@@ -39,7 +40,6 @@ else:
     raise ValueError("Either both MACHINE and SUBSET should be set for benchmarking or neither for debugging")
 
 ATTENTION_CONFIGS = ["eager", "sdpa"]
-BACKENDS = ["pytorch", "onnxruntime", "openvino"]
 
 
 if SUBSET == "unquantized":
@@ -109,8 +109,8 @@ LOGGER.info(f"len(PRETRAINED_OPEN_LLM_LIST): {len(PRETRAINED_OPEN_LLM_LIST)}")
 LOGGER.info(f"len(CANONICAL_PRETRAINED_OPEN_LLM_LIST): {len(CANONICAL_PRETRAINED_OPEN_LLM_LIST)}")
 
 
-def benchmark_intel(model, attn_implementation, weights_config, backend):
-    benchmark_name = f"{weights_config}-{attn_implementation}-{backend}"
+def benchmark_intel(model, attn_implementation, weights_config):
+    benchmark_name = f"{weights_config}-{attn_implementation}-{BACKEND}"
     subfolder = f"{benchmark_name}/{model.replace('/', '--')}"
 
     torch_dtype = WEIGHTS_CONFIGS[weights_config]["torch_dtype"]
@@ -137,7 +137,7 @@ def benchmark_intel(model, attn_implementation, weights_config, backend):
         generate_kwargs=GENERATE_KWARGS,
     )
 
-    if backend == "pytorch":
+    if BACKEND == "pytorch":
         backend_config = PyTorchConfig(
             model=model,
             device="cpu",
@@ -150,7 +150,7 @@ def benchmark_intel(model, attn_implementation, weights_config, backend):
             attn_implementation=attn_implementation,
             model_kwargs={"trust_remote_code": True},
         )
-    elif backend == "onnxruntime":
+    elif BACKEND == "onnxruntime":
         backend_config = ORTConfig(
             model=model,
             device="cpu",
@@ -162,7 +162,7 @@ def benchmark_intel(model, attn_implementation, weights_config, backend):
             quantization_config=quant_config,
             model_kwargs={"trust_remote_code": True},
         )
-    elif backend == "openvino":
+    elif BACKEND == "openvino":
         backend_config = OVConfig(
             model=model,
             device="cpu",
@@ -174,7 +174,7 @@ def benchmark_intel(model, attn_implementation, weights_config, backend):
             model_kwargs={"trust_remote_code": True},
         )
     else:
-        raise ValueError(f"Unsupported backend: {backend}")
+        raise ValueError(f"Unsupported backend: {BACKEND}")
 
     benchmark_config = BenchmarkConfig(
         name=benchmark_name, scenario=scenario_config, launcher=launcher_config, backend=backend_config
@@ -206,7 +206,7 @@ if __name__ == "__main__":
     setup_logging(level="INFO", prefix="MAIN-PROCESS")
 
     models_attentions_weights = list(
-        product(CANONICAL_PRETRAINED_OPEN_LLM_LIST, ATTENTION_CONFIGS, WEIGHTS_CONFIGS.keys(), BACKENDS)
+        product(CANONICAL_PRETRAINED_OPEN_LLM_LIST, ATTENTION_CONFIGS, WEIGHTS_CONFIGS.keys())
     )
 
     LOGGER.info(
@@ -216,5 +216,5 @@ if __name__ == "__main__":
         f"and {len(WEIGHTS_CONFIGS)} weights configurations."
     )
 
-    for model, attn_implementation, weights_config, backend in models_attentions_weights:
-        benchmark_intel(model, attn_implementation, weights_config, backend)
+    for model, attn_implementation, weights_config in models_attentions_weights:
+        benchmark_intel(model, attn_implementation, weights_config)
