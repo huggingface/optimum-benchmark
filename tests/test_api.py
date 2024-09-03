@@ -24,6 +24,7 @@ from optimum_benchmark.generators.input_generator import InputGenerator
 from optimum_benchmark.import_utils import get_git_revision_hash
 from optimum_benchmark.scenarios.inference.config import INPUT_SHAPES
 from optimum_benchmark.scenarios.training.config import DATASET_SHAPES
+from optimum_benchmark.system_utils import is_nvidia_system, is_rocm_system
 from optimum_benchmark.trackers import LatencyTracker, MemoryTracker
 
 PUSH_REPO_ID = os.environ.get("PUSH_REPO_ID", "optimum-benchmark/local")
@@ -48,10 +49,10 @@ def test_api_launch(device, scenario, library, task, model):
 
     if device == "cuda":
         device_isolation = True
-        if torch.version.hip is not None:
-            device_isolation_action = "warn"
+        if is_rocm_system():
+            device_isolation_action = "warn"  # problematic
             device_ids = os.environ.get("ROCR_VISIBLE_DEVICES", "0")
-        else:
+        elif is_nvidia_system():
             device_isolation_action = "error"
             device_ids = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
     else:
@@ -69,7 +70,7 @@ def test_api_launch(device, scenario, library, task, model):
 
     elif scenario == "inference":
         scenario_config = InferenceConfig(
-            energy=torch.version.hip is None,
+            energy=not is_rocm_system(),
             latency=True,
             memory=True,
             duration=1,
@@ -226,9 +227,9 @@ def test_api_memory_tracker(device, backend):
         reload(torch.cuda)
 
     if device == "cuda":
-        if torch.version.hip is not None:
+        if is_rocm_system():
             device_ids = os.environ.get("ROCR_VISIBLE_DEVICES", "0")
-        else:
+        elif is_nvidia_system():
             device_ids = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
     else:
         device_ids = None

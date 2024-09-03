@@ -18,7 +18,7 @@ TEST_CONFIG_NAMES = [
     if config.endswith(".yaml") and not (config.startswith("_") or config.endswith("_"))
 ]
 
-HIP_VISIBLE_DEVICES = os.environ.get("HIP_VISIBLE_DEVICES", None)
+ROCR_VISIBLE_DEVICES = os.environ.get("ROCR_VISIBLE_DEVICES", None)
 CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", None)
 
 
@@ -41,8 +41,8 @@ def test_cli_configs(config_name):
     else:
         args += ["hydra.launcher.n_jobs=-1"]
 
-    if HIP_VISIBLE_DEVICES is not None:
-        args += [f'backend.device_ids="{HIP_VISIBLE_DEVICES}"']
+    if ROCR_VISIBLE_DEVICES is not None:
+        args += [f'backend.device_ids="{ROCR_VISIBLE_DEVICES}"']
     elif CUDA_VISIBLE_DEVICES is not None:
         args += [f'backend.device_ids="{CUDA_VISIBLE_DEVICES}"']
 
