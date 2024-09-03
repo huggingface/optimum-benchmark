@@ -173,7 +173,9 @@ def get_gpu_vram_mb() -> List[int]:
 
 def get_gpu_device_ids() -> str:
     if is_nvidia_system():
-        if os.environ.get("CUDA_VISIBLE_DEVICES", None) is not None:
+        if os.environ.get("NVIDIA_VISIBLE_DEVICES", None) is not None:
+            device_ids = os.environ["NVIDIA_VISIBLE_DEVICES"]
+        elif os.environ.get("CUDA_VISIBLE_DEVICES", None) is not None:
             device_ids = os.environ["CUDA_VISIBLE_DEVICES"]
         else:
             if not is_pynvml_available():
@@ -187,8 +189,12 @@ def get_gpu_device_ids() -> str:
             device_ids = ",".join(str(i) for i in device_ids)
             pynvml.nvmlShutdown()
     elif is_rocm_system():
-        if os.environ.get("HIP_VISIBLE_DEVICES", None) is not None:
+        if os.environ.get("ROCR_VISIBLE_DEVICES", None) is not None:
+            device_ids = os.environ["ROCR_VISIBLE_DEVICES"]
+        elif os.environ.get("HIP_VISIBLE_DEVICES", None) is not None:
             device_ids = os.environ["HIP_VISIBLE_DEVICES"]
+        elif os.environ.get("CUDA_VISIBLE_DEVICES", None) is not None:
+            device_ids = os.environ["CUDA_VISIBLE_DEVICES"]
         else:
             if not is_amdsmi_available() or not is_pyrsmi_available():
                 raise ValueError(

@@ -47,17 +47,19 @@ def test_api_launch(device, scenario, library, task, model):
     benchmark_name = f"{device}_{scenario}_{library}_{task}_{model}"
 
     if device == "cuda":
+        device_isolation = True
         if torch.version.hip is not None:
+            device_isolation_action = "warn"
             device_ids = os.environ.get("ROCR_VISIBLE_DEVICES", "0")
         else:
+            device_isolation_action = "error"
             device_ids = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
     else:
         device_ids = None
+        device_isolation = False
+        device_isolation_action = "warn"
 
-    device_isolation = device == "cuda"
-    no_weights = False if library != "transformers" else True
-
-    launcher_config = ProcessConfig(device_isolation=device_isolation, device_isolation_action="warn")
+    launcher_config = ProcessConfig(device_isolation=device_isolation, device_isolation_action=device_isolation_action)
 
     if scenario == "training":
         if library == "transformers":
@@ -77,6 +79,8 @@ def test_api_launch(device, scenario, library, task, model):
             generate_kwargs={"max_new_tokens": 2, "min_new_tokens": 2},
             call_kwargs={"num_inference_steps": 2},
         )
+
+    no_weights = False if library != "transformers" else True
 
     backend_config = PyTorchConfig(
         device=device,
