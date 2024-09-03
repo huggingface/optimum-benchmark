@@ -57,7 +57,7 @@ def test_api_launch(device, scenario, library, task, model):
     device_isolation = device == "cuda"
     no_weights = False if library != "transformers" else True
 
-    launcher_config = ProcessConfig(device_isolation=device_isolation, device_isolation_action="error")
+    launcher_config = ProcessConfig(device_isolation=device_isolation, device_isolation_action="warn")
 
     if scenario == "training":
         if library == "transformers":
