@@ -30,11 +30,11 @@ BACKEND = os.getenv("BACKEND", None)
 HARDWARE = "intel"
 
 if os.getenv("MACHINE", None) is None and os.getenv("SUBSET", None) is None:
-    PUSH_REPO_ID = "optimum-benchmark/llm-perf-pytorch-intel-debug"
+    PUSH_REPO_ID = f"optimum-benchmark/llm-perf-{BACKEND}-intel-debug"
     CANONICAL_PRETRAINED_OPEN_LLM_LIST = ["gpt2"]
     SUBSET = "unquantized"
 elif os.getenv("MACHINE", None) is not None and os.getenv("SUBSET", None) is not None:
-    PUSH_REPO_ID = f"optimum-benchmark/llm-perf-pytorch-intel-{SUBSET}-{MACHINE}-{BACKEND}"
+    PUSH_REPO_ID = f"optimum-benchmark/llm-perf-{BACKEND}-intel-{SUBSET}-{MACHINE}"
 else:
     raise ValueError("Either both MACHINE and SUBSET should be set for benchmarking or neither for debugging")
 
