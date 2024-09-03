@@ -34,7 +34,7 @@ if os.getenv("MACHINE", None) is None and os.getenv("SUBSET", None) is None:
     CANONICAL_PRETRAINED_OPEN_LLM_LIST = ["gpt2"]
     SUBSET = "unquantized"
 elif os.getenv("MACHINE", None) is not None and os.getenv("SUBSET", None) is not None:
-    PUSH_REPO_ID = f"optimum-benchmark/llm-perf-pytorch-intel-{SUBSET}-{MACHINE}"
+    PUSH_REPO_ID = f"optimum-benchmark/llm-perf-pytorch-intel-{SUBSET}-{MACHINE}-{BACKEND}"
 else:
     raise ValueError("Either both MACHINE and SUBSET should be set for benchmarking or neither for debugging")
 
