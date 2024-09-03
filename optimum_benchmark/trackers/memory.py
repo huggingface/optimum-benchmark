@@ -303,7 +303,12 @@ def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connectio
                 device_handle = devices_handles[device_id]
 
                 try:
-                    used_global_memory += rocml.smi_get_device_memory_used(device_id)
+                    if is_amdsmi_available():
+                        used_global_memory += amdsmi.amdsmi_get_gpu_memory_total(
+                            device_handle, mem_type=amdsmi.AmdSmiMemoryType.VRAM
+                        )
+                    elif is_pyrsmi_available():
+                        used_global_memory += rocml.smi_get_device_memory_used(device_id, type="VRAM")
                 except Exception as e:
                     LOGGER.warning(f"Could not get memory usage for device {device_id}: {e}")
 

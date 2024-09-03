@@ -52,5 +52,4 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PUSH_REPO_ID: optimum-benchmark/rocm
         run: |
-          export HIP_VISIBLE_DEVICES=${ROCR_VISIBLE_DEVICES} && unset ROCR_VISIBLE_DEVICES
           pytest -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not (bnb or awq or gptq)"

@@ -39,10 +39,10 @@ class Launcher(Generic[LauncherConfigT], ABC):
     @contextmanager
     def device_isolation(self, pid: int, device_ids: Optional[str] = None):
         if device_ids is None:
-            if is_nvidia_system():
+            if is_rocm_system():
+                device_ids = os.environ.get("ROCR_VISIBLE_DEVICES", None)
+            elif is_nvidia_system():
                 device_ids = os.environ.get("CUDA_VISIBLE_DEVICES", None)
-            elif is_rocm_system():
-                device_ids = os.environ.get("HIP_VISIBLE_DEVICES", None)
 
         self.device_isolation_process = Process(
             target=assert_device_isolation,
