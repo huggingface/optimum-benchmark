@@ -101,8 +101,6 @@ class BackendConfig(ABC):
             elif is_rocm_system():
                 os.environ["ROCR_VISIBLE_DEVICES"] = self.device_ids
                 LOGGER.info(f"ROCR_VISIBLE_DEVICES was set to {os.environ['ROCR_VISIBLE_DEVICES']}.")
-                os.environ["HIP_VISIBLE_DEVICES"] = ",".join(list(range(len(self.device_ids.split(",")))))
-                LOGGER.info(f"HIP_VISIBLE_DEVICES was set to {os.environ['HIP_VISIBLE_DEVICES']}.")
             else:
                 raise RuntimeError("CUDA device is only supported on systems with NVIDIA or ROCm drivers.")
 
