@@ -49,18 +49,15 @@ def test_api_launch(device, scenario, library, task, model):
 
     if device == "cuda":
         device_isolation = True
-        device_isolation_action = "error"
-
         if is_rocm_system():
             device_ids = os.environ.get("ROCR_VISIBLE_DEVICES", "0")
         elif is_nvidia_system():
             device_ids = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
     else:
-        device_ids = None
         device_isolation = False
-        device_isolation_action = "warn"
+        device_ids = None
 
-    launcher_config = ProcessConfig(device_isolation=device_isolation, device_isolation_action=device_isolation_action)
+    launcher_config = ProcessConfig(device_isolation=device_isolation, device_isolation_action="error")
 
     if scenario == "training":
         if library == "transformers":
@@ -223,12 +220,14 @@ def test_api_latency_tracker(device, backend):
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 @pytest.mark.parametrize("backend", ["pytorch", "other"])
 def test_api_memory_tracker(device, backend):
+    if device == "cuda" and backend == "other" and is_rocm_system():
+        pytest.skip("Measuring memory usage is only supported for PyTorch backend on ROCm system for now")
+
     if torch.cuda.is_available():
         reload(torch.cuda)
 
     if device == "cuda":
         if is_rocm_system():
-            pytest.skip("Memory tracking with ROCm is failing for now")
             device_ids = os.environ.get("ROCR_VISIBLE_DEVICES", "0")
         elif is_nvidia_system():
             device_ids = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
@@ -258,8 +257,7 @@ def test_api_memory_tracker(device, backend):
         if backend == "pytorch":
             measured_memory = final_memory.max_allocated - initial_memory.max_allocated
         else:
-            # namespace is not visible to pynvml/amdsmi,
-            # so we use global vram instead of process specific vram.
+            # namespace is not visible to pynvml/amdsmi, so we use global vram instead of process specific.
             measured_memory = final_memory.max_global_vram - initial_memory.max_global_vram
     else:
         measured_memory = final_memory.max_ram - initial_memory.max_ram
