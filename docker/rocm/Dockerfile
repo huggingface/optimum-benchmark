@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG ROCM_VERSION=6.1.2
+ARG ROCM_VERSION=5.7.1
 ARG UBUNTU_VERSION=22.04
 
 FROM rocm/dev-ubuntu-${UBUNTU_VERSION}:${ROCM_VERSION}
 
 # Install necessary packages
 ENV PATH="/opt/rocm/bin:${PATH}"
-ENV DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \ 
     sudo build-essential git bash-completion \
     python3.10 python3-pip python3.10-dev && \
@@ -29,13 +29,13 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
     cd /opt/rocm/share/amd_smi && pip install .
 
 # Install PyTorch
-ARG TORCH_ROCM=rocm6.1
+ARG TORCH_ROCM=rocm5.7
 ARG TORCH_VERSION=stable
 
 RUN if [ "${TORCH_VERSION}" = "stable" ]; then \
     pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_ROCM} ; \
-elif [ "${TORCH_VERSION}" = "nighly" ]; then \
-    pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_ROCM} ; \
+elif [ "${TORCH_VERSION}" = "nightly" ]; then \
+    pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/${TORCH_ROCM} ; \
 else \
     pip install --no-cache-dir torch==${TORCH_VERSION} torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_ROCM} ; \
 fi
