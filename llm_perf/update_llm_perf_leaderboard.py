@@ -5,8 +5,9 @@ import pandas as pd
 from huggingface_hub import create_repo, snapshot_download, upload_file
 from tqdm import tqdm
 
-from .hardware.utils import load_hardware_configs
 from optimum_benchmark import Benchmark
+
+from .hardware.utils import load_hardware_configs
 
 REPO_TYPE = "dataset"
 MAIN_REPO_ID = "optimum-benchmark/llm-perf-leaderboard"
@@ -39,7 +40,6 @@ def update_perf_dfs():
     Update the performance dataframes for all subsets and machines
     """
     hardware_configs = load_hardware_configs("hardware.yml")
-
 
     for hardware_config in hardware_configs:
         for subset in hardware_config.subsets:
