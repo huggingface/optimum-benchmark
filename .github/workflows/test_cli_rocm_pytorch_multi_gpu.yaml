@@ -49,8 +49,5 @@ jobs:
           pip install -e .[testing,diffusers,timm,deepspeed,peft,autoawq,auto-gptq] "deepspeed<0.15"
 
       - name: Run tests
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          PUSH_REPO_ID: optimum-benchmark/rocm
         run: |
-          pytest -x -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed) and not (bnb or awq)"
+          pytest -x -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed) and not bnb"

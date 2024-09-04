@@ -19,7 +19,7 @@ install:
 ## Build docker
 
 build_cpu_image:
-	docker build -t optimum-benchmark:latest-cpu docker/cpu
+	docker build -t optimum-benchmark:latest-cpu -f docker/cpu/Dockerfile .
 	docker build --build-arg IMAGE=optimum-benchmark:latest-cpu --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cpu docker/unroot
 
 build_cuda_image:
@@ -27,11 +27,11 @@ build_cuda_image:
 	docker build --build-arg IMAGE=optimum-benchmark:latest-cuda --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cuda docker/unroot
 
 build_cuda_ort_image:
-	docker build -t optimum-benchmark:latest-cuda-ort docker/cuda-ort
+	docker build -t optimum-benchmark:latest-cuda-ort -f docker/cuda-ort/Dockerfile .
 	docker build --build-arg IMAGE=optimum-benchmark:latest-cuda-ort --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cuda-ort docker/unroot
 
 build_rocm_image:
-	docker build -t optimum-benchmark:latest-rocm docker/rocm
+	docker build -t optimum-benchmark:latest-rocm -f docker/rocm/Dockerfile .
 	docker build --build-arg IMAGE=optimum-benchmark:latest-rocm --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-rocm docker/unroot
 
 # Run docker
@@ -111,7 +111,7 @@ install_cli_cuda_pytorch:
 	pip install -e .[testing,timm,diffusers,peft,autoawq,auto-gptq,bitsandbytes,deepspeed]
 
 install_cli_rocm_pytorch:
-	pip install -e .[testing,timm,diffusers,peft,autoawq,auto-gptq,deepspeed]
+	pip install -e .[testing,timm,diffusers,peft,autoawq,auto-gptq] "deepspeed<0.15"
 
 install_cli_cuda_torch_ort:
 	pip install -e .[testing,timm,diffusers,peft,torch-ort,deepspeed]
@@ -167,10 +167,10 @@ test_cli_cuda_torch_ort_single_gpu:
 	pytest -s -k "cli and cuda and torch-ort and not (dp or ddp or device_map or deepspeed) and not peft"
 
 test_cli_rocm_pytorch_multi_gpu:
-	pytest -s -k "cli and rocm and pytorch and (dp or ddp or device_map or deepspeed) and not (bnb or awq)"
+	pytest -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed) and not bnb"
 
 test_cli_rocm_pytorch_single_gpu:
-	pytest -s -k "cli and rocm and pytorch and not (dp or ddp or device_map or deepspeed) and not (bnb or awq)"
+	pytest -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not bnb"
 
 test_cli_llama_cpp:
 	pytest -s -k "llama_cpp"

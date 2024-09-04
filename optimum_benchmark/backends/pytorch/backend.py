@@ -291,9 +291,11 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 import exllamav2_kernels  # noqa: F401
             except ImportError:
                 raise ImportError(
-                    "GPTQ quantization requires the AutoGPTQ package. "
-                    "Please install it from source at `https://github.com/AutoGPTQ/AutoGPTQ`"
-                    "Or use `python scripts/install_quantization_libs.py --install-autogptq-from-source` from our repository"
+                    "Tried to import `exllamav2_kernels` but failed. "
+                    "This means that the AutoGPTQ package is either not installed or not compiled with the right torch version. "
+                    "Please install it from source following the instructions at `https://github.com/AutoGPTQ/AutoGPTQ`"
+                    "Or use `python scripts/install_quantization_libs.py --install-autogptq-from-source` in "
+                    "`optimum-benchmark` repository at `https://github.com/huggingface/optimum-benchmark`."
                 )
 
             self.quantization_config = GPTQConfig(
@@ -303,12 +305,14 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.logger.info("\t+ Processing AWQ config")
 
             try:
-                import awq_ext  # noqa: F401
+                import exlv2_ext  # noqa: F401
             except ImportError:
                 raise ImportError(
-                    "AWQ quantization requires the AutoAWQ package. "
-                    "Please install it from source at `https://github.com/casper-hansen/AutoAWQ`"
-                    "Or use `python scripts/install_quantization_libs.py --install-autoawq-from-source` from our repository"
+                    "Tried to import `exlv2_ext` but failed. "
+                    "This means that the AutoAWQ package is either not installed or not compiled with the right torch version. "
+                    "Please install it from source following the instructions at `https://github.com/casper-hansen/AutoAWQ`"
+                    "Or use `python scripts/install_quantization_libs.py --install-autoawq-from-source` in "
+                    "`optimum-benchmark` repository at `https://github.com/huggingface/optimum-benchmark`."
                 )
 
             self.quantization_config = AwqConfig(

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG ROCM_VERSION=6.1.2
+ARG ROCM_VERSION=5.7.1
 ARG UBUNTU_VERSION=22.04
 
 FROM rocm/dev-ubuntu-${UBUNTU_VERSION}:${ROCM_VERSION}
@@ -21,15 +21,16 @@ FROM rocm/dev-ubuntu-${UBUNTU_VERSION}:${ROCM_VERSION}
 ENV PATH="/opt/rocm/bin:${PATH}"
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \ 
+    rocsparse-dev hipsparse-dev rocthrust-dev rocblas-dev hipblas-dev \
     sudo build-essential git bash-completion \
     python3.10 python3-pip python3.10-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 && \
-    pip install --no-cache-dir --upgrade pip setuptools wheel  && \
+    pip install --no-cache-dir --upgrade pip setuptools wheel requests && \
     cd /opt/rocm/share/amd_smi && pip install .
 
 # Install PyTorch
-ARG TORCH_ROCM=rocm6.1
+ARG TORCH_ROCM=rocm5.7
 ARG TORCH_VERSION=stable
 
 RUN if [ "${TORCH_VERSION}" = "stable" ]; then \
@@ -39,3 +40,10 @@ elif [ "${TORCH_VERSION}" = "nightly" ]; then \
 else \
     pip install --no-cache-dir torch==${TORCH_VERSION} torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_ROCM} ; \
 fi
+
+# Install quantization libraries from source
+ENV ROCM_VERSION=5.7
+ENV PYTORCH_ROCM_ARCH="gfx900;gfx906;gfx908;gfx90a;gfx1030;gfx1100"
+
+COPY scripts/install_quantization_libs.py /internal/install_quantization_libs.py
+RUN python internal/install_quantization_libs.py --install-autogptq-from-source --install-autoawq-from-source

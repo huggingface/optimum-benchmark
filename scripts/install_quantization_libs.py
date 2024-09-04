@@ -95,7 +95,9 @@ def main():
         help="Install AutoAWQ and AutoAWQ_kernels packages from source.",
     )
     parser.add_argument(
-        "--install-autogptq-from-source", action="store_true", help="Install AutoGPTQ package from source."
+        "--install-autogptq-from-source",
+        action="store_true",
+        help="Install AutoGPTQ package from source.",
     )
 
     args = parser.parse_args()
