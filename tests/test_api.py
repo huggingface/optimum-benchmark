@@ -50,14 +50,17 @@ def test_api_launch(device, scenario, library, task, model):
     if device == "cuda":
         device_isolation = True
         if is_rocm_system():
+            device_isolation_action = "warn"
             device_ids = os.environ.get("ROCR_VISIBLE_DEVICES", "0")
         elif is_nvidia_system():
+            device_isolation_action = "error"
             device_ids = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
     else:
+        device_isolation_action = None
         device_isolation = False
         device_ids = None
 
-    launcher_config = ProcessConfig(device_isolation=device_isolation, device_isolation_action="error")
+    launcher_config = ProcessConfig(device_isolation=device_isolation, device_isolation_action=device_isolation_action)
 
     if scenario == "training":
         if library == "transformers":
