@@ -2,12 +2,11 @@ import subprocess
 from glob import glob
 
 import pandas as pd
+from hardware.utils import load_hardware_configs
 from huggingface_hub import create_repo, snapshot_download, upload_file
 from tqdm import tqdm
 
 from optimum_benchmark import Benchmark
-
-from .hardware.utils import load_hardware_configs
 
 REPO_TYPE = "dataset"
 MAIN_REPO_ID = "optimum-benchmark/llm-perf-leaderboard"
