@@ -24,7 +24,7 @@ from optimum_benchmark.generators.input_generator import InputGenerator
 from optimum_benchmark.import_utils import get_git_revision_hash
 from optimum_benchmark.scenarios.inference.config import INPUT_SHAPES
 from optimum_benchmark.scenarios.training.config import DATASET_SHAPES
-from optimum_benchmark.system_utils import get_gpu_device_ids
+from optimum_benchmark.system_utils import is_nvidia_system, is_rocm_system
 from optimum_benchmark.trackers import LatencyTracker, MemoryTracker
 
 PUSH_REPO_ID = os.environ.get("PUSH_REPO_ID", "optimum-benchmark/local")
@@ -47,9 +47,15 @@ LIBRARIES_TASKS_MODELS = [
 def test_api_launch(device, scenario, library, task, model):
     benchmark_name = f"{device}_{scenario}_{library}_{task}_{model}"
 
-    device_ids = get_gpu_device_ids() if device == "cuda" else None
-    no_weights = False if library != "transformers" else True
-    device_isolation = device == "cuda"
+    if device == "cuda":
+        device_isolation = True
+        if is_rocm_system():
+            device_ids = os.environ.get("ROCR_VISIBLE_DEVICES", "0")
+        elif is_nvidia_system():
+            device_ids = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
+    else:
+        device_isolation = False
+        device_ids = None
 
     launcher_config = ProcessConfig(device_isolation=device_isolation, device_isolation_action="error")
 
@@ -61,7 +67,7 @@ def test_api_launch(device, scenario, library, task, model):
 
     elif scenario == "inference":
         scenario_config = InferenceConfig(
-            energy=torch.version.hip is None,
+            energy=not is_rocm_system(),
             latency=True,
             memory=True,
             duration=1,
@@ -72,11 +78,21 @@ def test_api_launch(device, scenario, library, task, model):
             call_kwargs={"num_inference_steps": 2},
         )
 
+    no_weights = False if library != "transformers" else True
+
     backend_config = PyTorchConfig(
-        device=device, device_ids=device_ids, no_weights=no_weights, library=library, model=model, task=task
+        device=device,
+        device_ids=device_ids,
+        no_weights=no_weights,
+        library=library,
+        model=model,
+        task=task,
     )
     benchmark_config = BenchmarkConfig(
-        name=benchmark_name, scenario=scenario_config, launcher=launcher_config, backend=backend_config
+        name=benchmark_name,
+        scenario=scenario_config,
+        launcher=launcher_config,
+        backend=backend_config,
     )
     benchmark_report = Benchmark.launch(benchmark_config)
 
@@ -204,10 +220,20 @@ def test_api_latency_tracker(device, backend):
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 @pytest.mark.parametrize("backend", ["pytorch", "other"])
 def test_api_memory_tracker(device, backend):
+    if device == "cuda" and backend == "other" and is_rocm_system():
+        pytest.skip("Measuring memory usage is only supported for PyTorch backend on ROCm system for now")
+
     if torch.cuda.is_available():
         reload(torch.cuda)
 
-    device_ids = get_gpu_device_ids() if device == "cuda" else None
+    if device == "cuda":
+        if is_rocm_system():
+            device_ids = os.environ.get("ROCR_VISIBLE_DEVICES", "0")
+        elif is_nvidia_system():
+            device_ids = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
+    else:
+        device_ids = None
+
     tracker = MemoryTracker(device=device, backend=backend, device_ids=device_ids)
 
     tracker.reset()
@@ -231,7 +257,7 @@ def test_api_memory_tracker(device, backend):
         if backend == "pytorch":
             measured_memory = final_memory.max_allocated - initial_memory.max_allocated
         else:
-            # because user namespace is not visible to pynvml/amdsmi, we use global vram
+            # namespace is not visible to pynvml/amdsmi, so we use global vram instead of process specific.
             measured_memory = final_memory.max_global_vram - initial_memory.max_global_vram
     else:
         measured_memory = final_memory.max_ram - initial_memory.max_ram
