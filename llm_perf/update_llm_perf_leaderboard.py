@@ -18,7 +18,7 @@ LLM_DF = "llm-df.csv"
 
 def gather_benchmarks(subset: str, machine: str, backend: str, hardware_type: str):
     """
-    Gather the benchmarks for a given subset and machine
+    Gather the benchmarks for a given machine
     """
     perf_repo_id = PERF_REPO_ID.format(subset=subset, machine=machine, backend=backend, hardware_type=hardware_type)
     snapshot = snapshot_download(repo_type=REPO_TYPE, repo_id=perf_repo_id, allow_patterns=["**/benchmark.json"])
@@ -36,7 +36,7 @@ def gather_benchmarks(subset: str, machine: str, backend: str, hardware_type: st
 
 def update_perf_dfs():
     """
-    Update the performance dataframes for all subsets and machines
+    Update the performance dataframes for all machines
     """
     hardware_configs = load_hardware_configs("llm_perf/hardware.yml")
 
@@ -66,5 +66,5 @@ def update_llm_df():
 
 
 if __name__ == "__main__":
-    # update_llm_df()
+    update_llm_df()
     update_perf_dfs()
