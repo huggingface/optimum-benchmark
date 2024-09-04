@@ -1,0 +1,43 @@
+- machine: 1xA10
+  description: A10-24GB-150W 🖥️
+  type: cuda
+  subsets:
+    - unquantized
+    - awq
+    - bnb
+    - gptq
+  backends:
+    - pytorch
+
+- machine: 1xA100
+  description: A100-80GB-275W 🖥️
+  type: cuda
+  subsets:
+    - unquantized
+    - awq
+    - bnb
+    - gptq
+  backends:
+    - pytorch
+
+- machine: 1xT4
+  description: T4-16GB-70W 🖥️
+  type: cuda
+  subsets:
+    - unquantized
+    - awq
+    - bnb
+    - gptq
+  backends:
+    - pytorch
+
+- machine: c7i
+  description: 4th-Gen-Intel-Xeon-385W 🖥️
+  type: intel
+  subsets:
+    - unquantized
+    - awq
+    - bnb
+    - gptq
+  backends:
+    - pytorch

@@ -5,18 +5,22 @@ import pandas as pd
 from huggingface_hub import create_repo, snapshot_download, upload_file
 from tqdm import tqdm
 
+from .hardware.utils import load_hardware_configs
 from optimum_benchmark import Benchmark
 
 REPO_TYPE = "dataset"
 MAIN_REPO_ID = "optimum-benchmark/llm-perf-leaderboard"
-PERF_REPO_ID = "optimum-benchmark/llm-perf-pytorch-cuda-{subset}-{machine}"
+PERF_REPO_ID = "optimum-benchmark/llm-perf-{backend}-{hardware}-{subset}-{machine}"
 
 PERF_DF = "perf-df-{subset}-{machine}.csv"
 LLM_DF = "llm-df.csv"
 
 
-def gather_benchmarks(subset: str, machine: str):
-    perf_repo_id = PERF_REPO_ID.format(subset=subset, machine=machine)
+def gather_benchmarks(subset: str, machine: str, backend: str, hardware_type: str):
+    """
+    Gather the benchmarks for a given subset and machine
+    """
+    perf_repo_id = PERF_REPO_ID.format(subset=subset, machine=machine, backend=backend, hardware_type=hardware_type)
     snapshot = snapshot_download(repo_type=REPO_TYPE, repo_id=perf_repo_id, allow_patterns=["**/benchmark.json"])
 
     dfs = []
@@ -31,12 +35,19 @@ def gather_benchmarks(subset: str, machine: str):
 
 
 def update_perf_dfs():
-    for subset in ["unquantized", "bnb", "awq", "gptq"]:
-        for machine in ["1xA10", "1xA100", "1xT4"]:
-            try:
-                gather_benchmarks(subset, machine)
-            except Exception:
-                print(f"Subset {subset} for machine {machine} not found")
+    """
+    Update the performance dataframes for all subsets and machines
+    """
+    hardware_configs = load_hardware_configs("hardware.yml")
+
+
+    for hardware_config in hardware_configs:
+        for subset in hardware_config.subsets:
+            for backend in hardware_config.backends:
+                try:
+                    gather_benchmarks(subset, hardware_config.machine, backend, hardware_config.type)
+                except Exception:
+                    print(f"Subset {subset} for machine {hardware_config.machine} not found")
 
 
 scrapping_script = """
@@ -48,6 +59,9 @@ rm -rf scrape-open-llm-leaderboard
 
 
 def update_llm_df():
+    """
+    Scrape the open-llm-leaderboard and update the leaderboard dataframe
+    """
     subprocess.run(scrapping_script, shell=True)
     create_repo(repo_id=MAIN_REPO_ID, repo_type=REPO_TYPE, exist_ok=True, private=False)
     upload_file(
