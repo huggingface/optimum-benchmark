@@ -58,12 +58,6 @@ if USE_ROCM:
             "Please install amdsmi from https://github.com/ROCm/amdsmi to enable this feature."
         )
 
-if USE_ROCM:
-    AUTOAWQ = "autoawq@https://github.com/casper-hansen/AutoAWQ/releases/download/v0.2.1/autoawq-0.2.1+rocm571-cp310-cp310-linux_x86_64.whl"
-    AUTOGPTQ = "auto-gptq@https://huggingface.github.io/autogptq-index/whl/rocm573/auto-gptq/auto_gptq-0.7.1%2Brocm5.7.3-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
-else:
-    AUTOAWQ = "autoawq==0.2.1"
-    AUTOGPTQ = "auto-gptq==0.7.1"
 
 EXTRAS_REQUIRE = {
     "quality": ["ruff"],
@@ -81,8 +75,8 @@ EXTRAS_REQUIRE = {
     "py-txi": ["py-txi"],
     "vllm": ["vllm"],
     # optional dependencies
-    "autoawq": [AUTOAWQ],
-    "auto-gptq": ["optimum", AUTOGPTQ],
+    "autoawq": ["autoawq"],
+    "auto-gptq": ["optimum", "auto-gptq"],
     "sentence-transformers": ["sentence-transformers"],
     "bitsandbytes": ["bitsandbytes"],
     "codecarbon": ["codecarbon"],
@@ -114,7 +108,7 @@ setup(
         "License :: OSI Approved :: Apache Software License",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
     ],
-    keywords="benchmaek, transformers, quantization, pruning, optimization, training, inference, onnx, onnx runtime, intel, "
+    keywords="benchmark, transformers, quantization, pruning, optimization, training, inference, onnx, onnx runtime, intel, "
     "habana, graphcore, neural compressor, ipex, ipu, hpu, llm-swarm, py-txi, vllm, llama-cpp, auto-gptq, autoawq, "
     "sentence-transformers, bitsandbytes, codecarbon, flash-attn, deepspeed, diffusers, timm, peft",
     long_description=open("README.md", "r", encoding="utf-8").read(),
