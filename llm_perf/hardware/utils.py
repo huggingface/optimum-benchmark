@@ -7,14 +7,14 @@ class HardwareConfig:
     def __init__(self, data: Dict[str, Any]):
         self.machine = data["machine"]
         self.description = data["description"]
-        self.type = data["type"]
+        self.hardware_type = data["hardware_type"]
         self.subsets = data["subsets"]
         self.backends = data["backends"]
 
     def __repr__(self):
         return (
             f"HardwareConfig(machine='{self.machine}', description='{self.description}', "
-            f"type={self.type}, subsets={self.subsets}, backends={self.backends})"
+            f"hardware_type={self.hardware_type}, subsets={self.subsets}, backends={self.backends})"
         )
 
 

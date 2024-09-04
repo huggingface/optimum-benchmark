@@ -1,6 +1,6 @@
 - machine: 1xA10
   description: A10-24GB-150W 🖥️
-  type: cuda
+  hardware_type: cuda
   subsets:
     - unquantized
     - awq
@@ -11,7 +11,7 @@
 
 - machine: 1xA100
   description: A100-80GB-275W 🖥️
-  type: cuda
+  hardware_type: cuda
   subsets:
     - unquantized
     - awq
@@ -22,7 +22,7 @@
 
 - machine: 1xT4
   description: T4-16GB-70W 🖥️
-  type: cuda
+  hardware_type: cuda
   subsets:
     - unquantized
     - awq
@@ -33,7 +33,7 @@
 
 - machine: c7i
   description: 4th-Gen-Intel-Xeon-385W 🖥️
-  type: intel
+  hardware_type: intel
   subsets:
     - unquantized
     - awq

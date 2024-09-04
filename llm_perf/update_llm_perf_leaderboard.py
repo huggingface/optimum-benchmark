@@ -10,7 +10,7 @@ from optimum_benchmark import Benchmark
 
 REPO_TYPE = "dataset"
 MAIN_REPO_ID = "optimum-benchmark/llm-perf-leaderboard"
-PERF_REPO_ID = "optimum-benchmark/llm-perf-{backend}-{hardware}-{subset}-{machine}"
+PERF_REPO_ID = "optimum-benchmark/llm-perf-{backend}-{hardware_type}-{subset}-{machine}"
 
 PERF_DF = "perf-df-{subset}-{machine}.csv"
 LLM_DF = "llm-df.csv"
@@ -43,10 +43,7 @@ def update_perf_dfs():
     for hardware_config in hardware_configs:
         for subset in hardware_config.subsets:
             for backend in hardware_config.backends:
-                try:
-                    gather_benchmarks(subset, hardware_config.machine, backend, hardware_config.type)
-                except Exception:
-                    print(f"Subset {subset} for machine {hardware_config.machine} not found")
+                gather_benchmarks(subset, hardware_config.machine, backend, hardware_config.hardware_type)
 
 
 scrapping_script = """
@@ -69,5 +66,5 @@ def update_llm_df():
 
 
 if __name__ == "__main__":
-    update_llm_df()
+    # update_llm_df()
     update_perf_dfs()
