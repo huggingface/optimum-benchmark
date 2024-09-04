@@ -63,7 +63,7 @@ EXTRAS_REQUIRE = {
     "quality": ["ruff"],
     "testing": ["pytest", "hydra-joblib-launcher"],
     # optimum backends
-    "ipex":[f"optimum[ipex]>={MIN_OPTIMUM_VERSION}"],
+    "ipex": [f"optimum[ipex]>={MIN_OPTIMUM_VERSION}"],
     "openvino": [f"optimum[openvino,nncf]>={MIN_OPTIMUM_VERSION}"],
     "onnxruntime": [f"optimum[onnxruntime]>={MIN_OPTIMUM_VERSION}"],
     "onnxruntime-gpu": [f"optimum[onnxruntime-gpu]>={MIN_OPTIMUM_VERSION}"],

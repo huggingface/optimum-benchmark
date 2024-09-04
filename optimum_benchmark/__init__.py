@@ -1,7 +1,7 @@
 from .backends import (
     BackendConfig,
-    IPEXConfig,
     INCConfig,
+    IPEXConfig,
     LlamaCppConfig,
     LLMSwarmConfig,
     ORTConfig,

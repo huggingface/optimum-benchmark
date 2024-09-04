@@ -37,6 +37,7 @@ jobs:
         --device /dev/kfd
         --device /dev/dri
         --env ROCR_VISIBLE_DEVICES
+        --env HIP_VISIBLE_DEVICES=0,1
         --volume /mnt/cache/.cache/huggingface:/mnt/cache/
 
     steps:
@@ -45,7 +46,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -e .[testing,diffusers,timm,deepspeed,peft,autoawq,auto-gptq]
+          pip install -e .[testing,diffusers,timm,deepspeed,peft,autoawq,auto-gptq] "deepspeed<0.15"
 
       - name: Run tests
         env:

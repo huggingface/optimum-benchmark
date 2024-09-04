@@ -1,4 +1,4 @@
-ARG IMAGE
+ARG IMAGE="optimum-benchmark:latest"
 
 FROM $IMAGE
 

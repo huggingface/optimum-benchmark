@@ -76,7 +76,7 @@ class Latency:
             values=values,
         )
 
-    def log(self, prefix: str = "method"):
+    def log(self, prefix: str = ""):
         stdev_percentage = 100 * self.stdev / self.mean if self.mean > 0 else 0
         LOGGER.info(f"\t\t+ {prefix} latency:")
         LOGGER.info(f"\t\t\t- count: {self.count}")
