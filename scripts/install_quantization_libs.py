@@ -49,7 +49,7 @@ def install_autoawq_from_source():
     kernels_setup_file_path = os.path.join(kernels_repo_path, "setup.py")
     process_setup_file(kernels_setup_file_path)
     subprocess.run(
-        f"cd {kernels_repo_path} && {sys.executable} -m pip install --no-build-isolation -e .",
+        f"cd {kernels_repo_path} && {sys.executable} -m pip install .",
         shell=True,
         check=True,
         env=os.environ,
@@ -78,7 +78,7 @@ def install_autogptq_from_source():
     autogptq_setup_file_path = os.path.join(autogptq_repo_path, "setup.py")
     process_setup_file(autogptq_setup_file_path)
     subprocess.run(
-        f"cd {autogptq_repo_path} && {sys.executable} -m pip install -vvv --no-build-isolation .",
+        f"cd {autogptq_repo_path} && {sys.executable} -m pip install .",
         shell=True,
         check=True,
         env=os.environ,
