@@ -2,6 +2,7 @@ name: Update LLM Perf Benchmarks - Intel Openvino
 
 on:
   workflow_dispatch:
+  push:
   schedule:
     - cron: "0 0 * * *"
 
