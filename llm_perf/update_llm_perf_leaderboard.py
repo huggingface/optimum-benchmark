@@ -2,7 +2,7 @@ import subprocess
 from glob import glob
 
 import pandas as pd
-from hardware.utils import load_hardware_configs
+from utils import load_hardware_configs
 from huggingface_hub import create_repo, snapshot_download, upload_file
 from tqdm import tqdm
 

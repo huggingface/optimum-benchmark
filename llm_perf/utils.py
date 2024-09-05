@@ -1,4 +1,8 @@
+from enum import Enum, auto
+from typing import Any, Dict, List
+
 import pandas as pd
+import yaml
 
 from optimum_benchmark.benchmark.report import BenchmarkReport
 
@@ -146,3 +150,31 @@ def is_benchmark_supported(weights_config, attn_implementation, hardware):
             return False
 
     return True
+
+
+class HardwareType(Enum):
+    CPU = auto()
+    GPU = auto()
+
+
+class HardwareConfig:
+    def __init__(self, data: Dict[str, Any]):
+        self.machine = data["machine"]
+        self.description = data["description"]
+        self.hardware_provider = data["hardware provider"]
+        self.hardware_type = data["hardware type"]
+        assert self.hardware_type in HardwareType, f"Hardware type {self.hardware_type} not supported"
+        self.subsets = data["subsets"]
+        self.backends = data["backends"]
+
+    def __repr__(self):
+        return (
+            f"HardwareConfig(machine='{self.machine}', description='{self.description}', "
+            f"hardware_type={self.hardware_type}, subsets={self.subsets}, backends={self.backends})"
+        )
+
+
+def load_hardware_configs(file_path: str) -> List[HardwareConfig]:
+    with open(file_path, "r") as file:
+        data = yaml.safe_load(file)
+    return [HardwareConfig(config) for config in data]
