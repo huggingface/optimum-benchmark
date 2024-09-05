@@ -1,6 +1,7 @@
 from .backends import (
     BackendConfig,
     INCConfig,
+    IPEXConfig,
     LlamaCppConfig,
     LLMSwarmConfig,
     ORTConfig,
@@ -24,6 +25,7 @@ __all__ = [
     "BenchmarkReport",
     "EnergyStarConfig",
     "InferenceConfig",
+    "IPEXConfig",
     "INCConfig",
     "InlineConfig",
     "LauncherConfig",

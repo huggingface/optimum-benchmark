@@ -1,4 +1,5 @@
 from .config import BackendConfig
+from .ipex.config import IPEXConfig
 from .llama_cpp.config import LlamaCppConfig
 from .llm_swarm.config import LLMSwarmConfig
 from .neural_compressor.config import INCConfig
@@ -13,6 +14,7 @@ from .vllm.config import VLLMConfig
 __all__ = [
     "PyTorchConfig",
     "ORTConfig",
+    "IPEXConfig",
     "OVConfig",
     "TorchORTConfig",
     "TRTLLMConfig",

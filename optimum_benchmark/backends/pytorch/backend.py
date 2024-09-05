@@ -286,11 +286,35 @@ class PyTorchBackend(Backend[PyTorchConfig]):
     def process_quantization_config(self) -> None:
         if self.is_gptq_quantized:
             self.logger.info("\t+ Processing GPTQ config")
+
+            try:
+                import exllamav2_kernels  # noqa: F401
+            except ImportError:
+                raise ImportError(
+                    "Tried to import `exllamav2_kernels` but failed. "
+                    "This means that the AutoGPTQ package is either not installed or not compiled with the right torch version. "
+                    "Please install it from source following the instructions at `https://github.com/AutoGPTQ/AutoGPTQ`"
+                    "Or use `python scripts/install_quantization_libs.py --install-autogptq-from-source` in "
+                    "`optimum-benchmark` repository at `https://github.com/huggingface/optimum-benchmark`."
+                )
+
             self.quantization_config = GPTQConfig(
                 **dict(getattr(self.pretrained_config, "quantization_config", {}), **self.config.quantization_config)
             )
         elif self.is_awq_quantized:
             self.logger.info("\t+ Processing AWQ config")
+
+            try:
+                import exlv2_ext  # noqa: F401
+            except ImportError:
+                raise ImportError(
+                    "Tried to import `exlv2_ext` but failed. "
+                    "This means that the AutoAWQ package is either not installed or not compiled with the right torch version. "
+                    "Please install it from source following the instructions at `https://github.com/casper-hansen/AutoAWQ`"
+                    "Or use `python scripts/install_quantization_libs.py --install-autoawq-from-source` in "
+                    "`optimum-benchmark` repository at `https://github.com/huggingface/optimum-benchmark`."
+                )
+
             self.quantization_config = AwqConfig(
                 **dict(getattr(self.pretrained_config, "quantization_config", {}), **self.config.quantization_config)
             )

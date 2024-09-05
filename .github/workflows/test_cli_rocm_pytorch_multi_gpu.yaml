@@ -25,43 +25,29 @@ concurrency:
   cancel-in-progress: true
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
-env:
-  IMAGE: ghcr.io/huggingface/optimum-benchmark:latest-rocm
-
 jobs:
   run_cli_rocm_pytorch_multi_gpu_tests:
-    runs-on: [multi-gpu, amd-gpu, mi250, ci]
+    runs-on: [self-hosted, amd-gpu, multi-gpu]
+
+    container:
+      image: ghcr.io/huggingface/optimum-benchmark:latest-rocm
+      options: --ipc host
+        --shm-size "16gb"
+        --group-add video
+        --device /dev/kfd
+        --device /dev/dri
+        --env ROCR_VISIBLE_DEVICES
+        --env HIP_VISIBLE_DEVICES=0,1
+        --volume /mnt/cache/.cache/huggingface:/mnt/cache/
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set target devices
+      - name: Install dependencies
         run: |
-          echo "DEVICE0:$DEVICE0"
-          echo "DEVICE1:$DEVICE1"
-          echo "DEVICE0=$DEVICE0" >> $GITHUB_ENV
-          echo "DEVICE1=$DEVICE1" >> $GITHUB_ENV
-
-      - name: Unroot docker image
-        run: |
-          docker build --build-arg IMAGE=${{ env.IMAGE }} --build-arg USER_ID=$(id -u) --build-arg GROUP_ID=$(id -g) -t ${{ env.IMAGE }}-unroot docker/unroot
+          pip install -e .[testing,diffusers,timm,deepspeed,peft,autoawq,auto-gptq] "deepspeed<0.15"
 
       - name: Run tests
-        uses: addnab/docker-run-action@v3
-        env:
-          DEVICE0: ${{ env.DEVICE0 }}
-          DEVICE1: ${{ env.DEVICE1 }}
-        with:
-          image: ${{ env.IMAGE }}-unroot
-          options: |
-            --rm
-            --shm-size 64G
-            --device /dev/kfd
-            --device /dev/dri/${{ env.DEVICE0 }}
-            --device /dev/dri/${{ env.DEVICE1 }}
-            --volume ${{ github.workspace }}:/workspace
-            --workdir /workspace
-          run: |
-            pip install -e .[testing,diffusers,timm,deepspeed,peft,autoawq,auto-gptq]
-            pytest -x -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed) and not (bnb or awq)"
+        run: |
+          pytest -x -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed) and not bnb"

@@ -18,13 +18,13 @@ ARG UBUNTU_VERSION=22.04
 FROM nvidia/cuda:${CUDA_VERSION}-cudnn-devel-ubuntu${UBUNTU_VERSION}
 
 # Install necessary packages
-ENV DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
     sudo build-essential git bash-completion \
     python3.10 python3-pip python3.10-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 && \
-    pip install --no-cache-dir --upgrade pip setuptools wheel 
+    pip install --no-cache-dir --upgrade pip setuptools wheel requests
 
 # Install PyTorch
 ARG TORCH_CUDA=cu124
@@ -37,3 +37,10 @@ elif [ "${TORCH_VERSION}" = "nighly" ]; then \
 else \
     pip install --no-cache-dir torch==${TORCH_VERSION} torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
 fi
+
+# Install quantization libraries from source
+ENV CUDA_VERSION=12.4
+ENV TORCH_CUDA_ARCH_LIST="6.0 7.0 7.5 8.0 8.6 9.0+PTX"
+
+COPY scripts/install_quantization_libs.py /internal/install_quantization_libs.py
+RUN python internal/install_quantization_libs.py --install-autogptq-from-source --install-autoawq-from-source

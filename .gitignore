@@ -179,5 +179,6 @@ task_codecarbon.json
 prefill_codecarbon.json
 
 # Mac specific
+external_repos/
 .DS_Store
 outputs/

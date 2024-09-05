@@ -13,6 +13,7 @@ from . import (
     INCConfig,
     InferenceConfig,
     InlineConfig,
+    IPEXConfig,
     LlamaCppConfig,
     LLMSwarmConfig,
     ORTConfig,
@@ -36,6 +37,7 @@ cs = ConfigStore.instance()
 # benchmark configuration
 cs.store(name="benchmark", node=BenchmarkConfig)
 # backends configurations
+cs.store(group="backend", name=IPEXConfig.name, node=IPEXConfig)
 cs.store(group="backend", name=OVConfig.name, node=OVConfig)
 cs.store(group="backend", name=PyTorchConfig.name, node=PyTorchConfig)
 cs.store(group="backend", name=ORTConfig.name, node=ORTConfig)
