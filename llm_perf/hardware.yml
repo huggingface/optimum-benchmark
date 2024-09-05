@@ -36,8 +36,7 @@
   hardware_type: intel
   subsets:
     - unquantized
-    - awq
-    - bnb
-    - gptq
   backends:
     - pytorch
+    - onnxruntime
+    - openvino
