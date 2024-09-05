@@ -2,9 +2,9 @@ import subprocess
 from glob import glob
 
 import pandas as pd
-from utils import load_hardware_configs
 from huggingface_hub import create_repo, snapshot_download, upload_file
 from tqdm import tqdm
+from utils import load_hardware_configs
 
 from optimum_benchmark import Benchmark
 
