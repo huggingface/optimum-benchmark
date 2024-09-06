@@ -10,17 +10,22 @@ from optimum_benchmark import Benchmark
 
 REPO_TYPE = "dataset"
 MAIN_REPO_ID = "optimum-benchmark/llm-perf-leaderboard"
-PERF_REPO_ID = "optimum-benchmark/llm-perf-{backend}-{hardware_type}-{subset}-{machine}"
+PERF_REPO_ID = "optimum-benchmark/llm-perf-{backend}-{hardware}-{subset}-{machine}"
 
 PERF_DF = "perf-df-{subset}-{machine}.csv"
 LLM_DF = "llm-df.csv"
 
 
-def gather_benchmarks(subset: str, machine: str, backend: str, hardware_type: str):
+def gather_benchmarks(subset: str, machine: str, backend: str, hardware_provider: str):
     """
     Gather the benchmarks for a given machine
     """
-    perf_repo_id = PERF_REPO_ID.format(subset=subset, machine=machine, backend=backend, hardware_type=hardware_type)
+    if hardware_provider == "nvidia":
+        hardware = "cuda"
+    else:
+        hardware = hardware_provider
+
+    perf_repo_id = PERF_REPO_ID.format(subset=subset, machine=machine, backend=backend, hardware=hardware)
     snapshot = snapshot_download(repo_type=REPO_TYPE, repo_id=perf_repo_id, allow_patterns=["**/benchmark.json"])
 
     dfs = []
@@ -44,10 +49,10 @@ def update_perf_dfs():
         for subset in hardware_config.subsets:
             for backend in hardware_config.backends:
                 try:
-                    gather_benchmarks(subset, hardware_config.machine, backend, hardware_config.hardware_type)
+                    gather_benchmarks(subset, hardware_config.machine, backend, hardware_config.hardware_provider)
                 except Exception as e:
                     print(
-                        f"Error gathering benchmarks for {hardware_config.machine} with {hardware_config.hardware_type} and {subset} with {backend}: {e}"
+                        f"Error gathering benchmarks for {hardware_config.machine} with {hardware_config.hardware_provider} and {subset} with {backend}: {e}"
                     )
 
 
