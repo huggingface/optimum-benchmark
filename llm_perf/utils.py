@@ -140,26 +140,19 @@ def is_benchmark_conducted(push_repo_id, subfolder):
     except Exception:
         return False
 
-
-class HardwareType(Enum):
-    CPU = auto()
-    GPU = auto()
-
-
 class HardwareConfig:
     def __init__(self, data: Dict[str, Any]):
         self.machine = data["machine"]
         self.description = data["description"]
         self.hardware_provider = data["hardware provider"]
-        self.hardware_type = data["hardware type"]
-        assert self.hardware_type in HardwareType, f"Hardware type {self.hardware_type} not supported"
+        self.hardware_backend = data["hardware_backend type"]
         self.subsets = data["subsets"]
         self.backends = data["backends"]
 
     def __repr__(self):
         return (
             f"HardwareConfig(machine='{self.machine}', description='{self.description}', "
-            f"hardware_type={self.hardware_type}, subsets={self.subsets}, backends={self.backends})"
+            f"hardware_type={self.hardware_backend}, subsets={self.subsets}, backends={self.backends})"
         )
 
 
