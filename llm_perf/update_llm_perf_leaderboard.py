@@ -20,7 +20,9 @@ def gather_benchmarks(subset: str, machine: str, backend: str, hardware_backend:
     """
     Gather the benchmarks for a given machine
     """
-    perf_repo_id = PERF_REPO_ID.format(subset=subset, machine=machine, backend=backend, hardware_backend=hardware_backend)
+    perf_repo_id = PERF_REPO_ID.format(
+        subset=subset, machine=machine, backend=backend, hardware_backend=hardware_backend
+    )
     snapshot = snapshot_download(repo_type=REPO_TYPE, repo_id=perf_repo_id, allow_patterns=["**/benchmark.json"])
 
     dfs = []

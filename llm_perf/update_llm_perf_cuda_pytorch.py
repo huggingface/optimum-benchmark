@@ -10,15 +10,12 @@ from llm_perf.utils import (
     OPEN_LLM_LIST,
     PRETRAINED_OPEN_LLM_LIST,
     is_benchmark_conducted,
-    is_benchmark_supported,
 )
 from optimum_benchmark import Benchmark, BenchmarkConfig, BenchmarkReport, InferenceConfig, ProcessConfig, PyTorchConfig
 from optimum_benchmark.logging_utils import setup_logging
 
 SUBSET = os.getenv("SUBSET", None)
 MACHINE = os.getenv("MACHINE", None)
-HARDWARE = "cuda"
-
 
 if os.getenv("MACHINE", None) is None and os.getenv("SUBSET", None) is None:
     PUSH_REPO_ID = "optimum-benchmark/llm-perf-pytorch-cuda-debug"
@@ -97,6 +94,13 @@ LOGGER.info(f"len(PRETRAINED_OPEN_LLM_LIST): {len(PRETRAINED_OPEN_LLM_LIST)}")
 LOGGER.info(f"len(CANONICAL_PRETRAINED_OPEN_LLM_LIST): {len(CANONICAL_PRETRAINED_OPEN_LLM_LIST)}")
 
 
+def is_benchmark_supported(weights_config, attn_implementation):
+    if attn_implementation == "flash_attention_2" and weights_config == "float32":
+        return False
+
+    return True
+
+
 def benchmark_cuda_pytorch(model, attn_implementation, weights_config):
     benchmark_name = f"{weights_config}-{attn_implementation}"
     subfolder = f"{benchmark_name}/{model.replace('/', '--')}"
@@ -105,7 +109,7 @@ def benchmark_cuda_pytorch(model, attn_implementation, weights_config):
     quant_scheme = WEIGHTS_CONFIGS[weights_config]["quant_scheme"]
     quant_config = WEIGHTS_CONFIGS[weights_config]["quant_config"]
 
-    if not is_benchmark_supported(weights_config, attn_implementation, HARDWARE):
+    if not is_benchmark_supported(weights_config, attn_implementation):
         LOGGER.info(f"Skipping benchmark {benchmark_name} with model {model} since it is not supported")
         return
 

@@ -10,7 +10,6 @@ from llm_perf.utils import (
     OPEN_LLM_LIST,
     PRETRAINED_OPEN_LLM_LIST,
     is_benchmark_conducted,
-    is_benchmark_supported,
 )
 from optimum_benchmark import (
     Benchmark,
@@ -54,6 +53,13 @@ LOGGER = getLogger("llm-perf-backend")
 LOGGER.info(f"len(OPEN_LLM_LIST): {len(OPEN_LLM_LIST)}")
 LOGGER.info(f"len(PRETRAINED_OPEN_LLM_LIST): {len(PRETRAINED_OPEN_LLM_LIST)}")
 LOGGER.info(f"len(CANONICAL_PRETRAINED_OPEN_LLM_LIST): {len(CANONICAL_PRETRAINED_OPEN_LLM_LIST)}")
+
+
+def is_benchmark_supported(weights_config, attn_implementation, hardware):
+    if attn_implementation == "flash_attention_2":
+        return False
+
+    return True
 
 
 def benchmark_intel(model, attn_implementation, weights_config):
