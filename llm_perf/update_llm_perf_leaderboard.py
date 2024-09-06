@@ -10,22 +10,17 @@ from optimum_benchmark import Benchmark
 
 REPO_TYPE = "dataset"
 MAIN_REPO_ID = "optimum-benchmark/llm-perf-leaderboard"
-PERF_REPO_ID = "optimum-benchmark/llm-perf-{backend}-{hardware}-{subset}-{machine}"
+PERF_REPO_ID = "optimum-benchmark/llm-perf-{backend}-{hardware_backend}-{subset}-{machine}"
 
 PERF_DF = "perf-df-{subset}-{machine}.csv"
 LLM_DF = "llm-df.csv"
 
 
-def gather_benchmarks(subset: str, machine: str, backend: str, hardware_provider: str):
+def gather_benchmarks(subset: str, machine: str, backend: str, hardware_backend: str):
     """
     Gather the benchmarks for a given machine
     """
-    if hardware_provider == "nvidia":
-        hardware = "cuda"
-    else:
-        hardware = hardware_provider
-
-    perf_repo_id = PERF_REPO_ID.format(subset=subset, machine=machine, backend=backend, hardware=hardware)
+    perf_repo_id = PERF_REPO_ID.format(subset=subset, machine=machine, backend=backend, hardware_backend=hardware_backend)
     snapshot = snapshot_download(repo_type=REPO_TYPE, repo_id=perf_repo_id, allow_patterns=["**/benchmark.json"])
 
     dfs = []

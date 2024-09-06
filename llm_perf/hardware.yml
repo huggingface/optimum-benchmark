@@ -1,7 +1,7 @@
 - machine: 1xA10
   description: A10-24GB-150W 🖥️
   hardware_provider: nvidia
-  hardware_type: gpu
+  hardware_backend: cuda
   subsets:
     - unquantized
     - awq
@@ -13,7 +13,7 @@
 - machine: 1xA100
   description: A100-80GB-275W 🖥️
   hardware_provider: nvidia
-  hardware_type: gpu
+  hardware_backend: cuda
   subsets:
     - unquantized
     - awq
@@ -25,7 +25,7 @@
 - machine: 1xT4
   description: T4-16GB-70W 🖥️
   hardware_provider: nvidia
-  hardware_type: gpu
+  hardware_backend: cuda
   subsets:
     - unquantized
     - awq
@@ -37,7 +37,7 @@
 - machine: c7i
   description: 4th-Gen-Intel-Xeon-385W 🖥️
   hardware_provider: intel
-  hardware_type: cpu
+  hardware_backend: cpu
   subsets:
     - unquantized
   backends:
