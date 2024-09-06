@@ -51,4 +51,4 @@ jobs:
             pip install packaging && pip install einops scipy optimum codecarbon
             pip install -U transformers huggingface_hub[hf_transfer]
             pip install -e .[onnxruntime,openvino]
-            python llm_perf/scripts/update_llm_perf_cpu_pytorch.py
+            python llm_perf/update_llm_perf_cpu_pytorch.py
