@@ -1,4 +1,3 @@
-from enum import Enum, auto
 from typing import Any, Dict, List
 
 import pandas as pd
@@ -139,6 +138,7 @@ def is_benchmark_conducted(push_repo_id, subfolder):
             return True
     except Exception:
         return False
+
 
 class HardwareConfig:
     def __init__(self, data: Dict[str, Any]):
