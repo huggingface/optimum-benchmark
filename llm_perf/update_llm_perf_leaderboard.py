@@ -4,8 +4,8 @@ from glob import glob
 import pandas as pd
 from huggingface_hub import create_repo, snapshot_download, upload_file
 from tqdm import tqdm
-from utils import load_hardware_configs
 
+from llm_perf.common.utils import load_hardware_configs
 from optimum_benchmark import Benchmark
 
 REPO_TYPE = "dataset"

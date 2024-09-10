@@ -33,14 +33,3 @@
     - gptq
   backends:
     - pytorch
-
-- machine: c7i
-  description: 4th-Gen-Intel-Xeon-385W 🖥️
-  hardware_provider: intel
-  hardware_backend: cpu
-  subsets:
-    - unquantized
-  backends:
-    - pytorch
-    - onnxruntime
-    - openvino

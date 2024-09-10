@@ -1,9 +1,4 @@
-from typing import Any, Dict, List
-
 import pandas as pd
-import yaml
-
-from optimum_benchmark.benchmark.report import BenchmarkReport
 
 INPUT_SHAPES = {"batch_size": 1, "sequence_length": 256}
 GENERATE_KWARGS = {"max_new_tokens": 64, "min_new_tokens": 64}
@@ -127,36 +122,3 @@ CANONICAL_PRETRAINED_OPEN_LLM_LIST = [
     "togethercomputer/RedPajama-INCITE-Base-3B-v1",
     "togethercomputer/RedPajama-INCITE-Base-7B-v0.1",
 ]
-
-
-def is_benchmark_conducted(push_repo_id, subfolder):
-    try:
-        report = BenchmarkReport.from_pretrained(repo_id=push_repo_id, subfolder=subfolder)
-        if "traceback" in report.to_dict():
-            return False
-        else:
-            return True
-    except Exception:
-        return False
-
-
-class HardwareConfig:
-    def __init__(self, data: Dict[str, Any]):
-        self.machine = data["machine"]
-        self.description = data["description"]
-        self.hardware_provider = data["hardware provider"]
-        self.hardware_backend = data["hardware_backend type"]
-        self.subsets = data["subsets"]
-        self.backends = data["backends"]
-
-    def __repr__(self):
-        return (
-            f"HardwareConfig(machine='{self.machine}', description='{self.description}', "
-            f"hardware_type={self.hardware_backend}, subsets={self.subsets}, backends={self.backends})"
-        )
-
-
-def load_hardware_configs(file_path: str) -> List[HardwareConfig]:
-    with open(file_path, "r") as file:
-        data = yaml.safe_load(file)
-    return [HardwareConfig(config) for config in data]
