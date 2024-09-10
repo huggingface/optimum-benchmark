@@ -1,11 +1,12 @@
 from typing import Any, Dict, List
 
-from llm_perf.common.benchmark_runner import BenchmarkRunner
-from llm_perf.common.utils import GENERATE_KWARGS, INPUT_SHAPES
 from optimum_benchmark import PyTorchConfig
 from optimum_benchmark.benchmark.config import BenchmarkConfig
 from optimum_benchmark.launchers.process.config import ProcessConfig
 from optimum_benchmark.scenarios.inference.config import InferenceConfig
+
+from ..common.benchmark_runner import BenchmarkRunner
+from ..common.utils import GENERATE_KWARGS, INPUT_SHAPES
 
 
 class CUDAPyTorchBenchmarkRunner(BenchmarkRunner):
