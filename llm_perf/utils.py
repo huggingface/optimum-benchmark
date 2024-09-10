@@ -135,10 +135,3 @@ def is_benchmark_conducted(push_repo_id, subfolder):
             return True
     except Exception:
         return False
-
-
-def is_benchmark_supported(weights_config, attn_implementation):
-    if attn_implementation == "flash_attention_2" and weights_config == "float32":
-        return False
-
-    return True

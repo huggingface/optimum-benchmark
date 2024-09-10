@@ -11,22 +11,33 @@ from llm_perf.utils import (
     PRETRAINED_OPEN_LLM_LIST,
     is_benchmark_conducted,
 )
-from optimum_benchmark import Benchmark, BenchmarkConfig, BenchmarkReport, InferenceConfig, ProcessConfig, PyTorchConfig
+from optimum_benchmark import (
+    Benchmark,
+    BenchmarkConfig,
+    BenchmarkReport,
+    InferenceConfig,
+    ProcessConfig,
+    PyTorchConfig,
+)
 from optimum_benchmark.logging_utils import setup_logging
 
 SUBSET = os.getenv("SUBSET", None)
 MACHINE = os.getenv("MACHINE", None)
+BACKEND = "pytorch"
+HARDWARE = "cpu"
 
 if os.getenv("MACHINE", None) is None and os.getenv("SUBSET", None) is None:
-    PUSH_REPO_ID = "optimum-benchmark/llm-perf-pytorch-cuda-debug"
+    PUSH_REPO_ID = f"optimum-benchmark/llm-perf-{BACKEND}-{HARDWARE}-debug"
     CANONICAL_PRETRAINED_OPEN_LLM_LIST = ["gpt2"]
     SUBSET = "unquantized"
 elif os.getenv("MACHINE", None) is not None and os.getenv("SUBSET", None) is not None:
-    PUSH_REPO_ID = f"optimum-benchmark/llm-perf-pytorch-cuda-{SUBSET}-{MACHINE}"
+    PUSH_REPO_ID = f"optimum-benchmark/llm-perf-{BACKEND}-{HARDWARE}-{SUBSET}-{MACHINE}"
 else:
     raise ValueError("Either both MACHINE and SUBSET should be set for benchmarking or neither for debugging")
 
-ATTENTION_CONFIGS = ["eager", "sdpa", "flash_attention_2"]
+ATTENTION_CONFIGS = ["eager", "sdpa"]
+
+
 if SUBSET == "unquantized":
     WEIGHTS_CONFIGS = {
         # unquantized
@@ -34,58 +45,8 @@ if SUBSET == "unquantized":
         "float16": {"torch_dtype": "float16", "quant_scheme": None, "quant_config": {}},
         "bfloat16": {"torch_dtype": "bfloat16", "quant_scheme": None, "quant_config": {}},
     }
-elif SUBSET == "bnb":
-    WEIGHTS_CONFIGS = {
-        # bnb
-        "4bit-bnb": {"torch_dtype": "float16", "quant_scheme": "bnb", "quant_config": {"load_in_4bit": True}},
-        "8bit-bnb": {"torch_dtype": "float16", "quant_scheme": "bnb", "quant_config": {"load_in_8bit": True}},
-    }
-elif SUBSET == "gptq":
-    WEIGHTS_CONFIGS = {
-        # gptq
-        "4bit-gptq-exllama-v1": {
-            "quant_scheme": "gptq",
-            "torch_dtype": "float16",
-            "quant_config": {"bits": 4, "use_exllama ": True, "version": 1, "model_seqlen": 256},
-        },
-        "4bit-gptq-exllama-v2": {
-            "torch_dtype": "float16",
-            "quant_scheme": "gptq",
-            "quant_config": {"bits": 4, "use_exllama ": True, "version": 2, "model_seqlen": 256},
-        },
-    }
-elif SUBSET == "awq":
-    WEIGHTS_CONFIGS = {
-        # awq
-        "4bit-awq-gemm": {
-            "torch_dtype": "float16",
-            "quant_scheme": "awq",
-            "quant_config": {"bits": 4, "version": "gemm"},
-        },
-        "4bit-awq-gemv": {
-            "torch_dtype": "float16",
-            "quant_scheme": "awq",
-            "quant_config": {"bits": 4, "version": "gemv"},
-        },
-        "4bit-awq-exllama-v1": {
-            "torch_dtype": "float16",
-            "quant_scheme": "awq",
-            "quant_config": {
-                "bits": 4,
-                "version": "exllama",
-                "exllama_config": {"version": 1, "max_input_len": 64, "max_batch_size": 1},
-            },
-        },
-        "4bit-awq-exllama-v2": {
-            "torch_dtype": "float16",
-            "quant_scheme": "awq",
-            "quant_config": {
-                "bits": 4,
-                "version": "exllama",
-                "exllama_config": {"version": 2, "max_input_len": 64, "max_batch_size": 1},
-            },
-        },
-    }
+else:
+    raise ValueError(f"Subset {SUBSET} not supported")
 
 
 LOGGER = getLogger("llm-perf-backend")
@@ -94,22 +55,22 @@ LOGGER.info(f"len(PRETRAINED_OPEN_LLM_LIST): {len(PRETRAINED_OPEN_LLM_LIST)}")
 LOGGER.info(f"len(CANONICAL_PRETRAINED_OPEN_LLM_LIST): {len(CANONICAL_PRETRAINED_OPEN_LLM_LIST)}")
 
 
-def is_benchmark_supported(weights_config, attn_implementation):
-    if attn_implementation == "flash_attention_2" and weights_config == "float32":
+def is_benchmark_supported(weights_config, attn_implementation, hardware):
+    if attn_implementation == "flash_attention_2":
         return False
 
     return True
 
 
-def benchmark_cuda_pytorch(model, attn_implementation, weights_config):
-    benchmark_name = f"{weights_config}-{attn_implementation}"
+def benchmark_cpu_pytorch(model, attn_implementation, weights_config):
+    benchmark_name = f"{weights_config}-{attn_implementation}-{BACKEND}"
     subfolder = f"{benchmark_name}/{model.replace('/', '--')}"
 
     torch_dtype = WEIGHTS_CONFIGS[weights_config]["torch_dtype"]
     quant_scheme = WEIGHTS_CONFIGS[weights_config]["quant_scheme"]
     quant_config = WEIGHTS_CONFIGS[weights_config]["quant_config"]
 
-    if not is_benchmark_supported(weights_config, attn_implementation):
+    if not is_benchmark_supported(weights_config, attn_implementation, HARDWARE):
         LOGGER.info(f"Skipping benchmark {benchmark_name} with model {model} since it is not supported")
         return
 
@@ -117,7 +78,7 @@ def benchmark_cuda_pytorch(model, attn_implementation, weights_config):
         LOGGER.info(f"Skipping benchmark {benchmark_name} with model {model} since it was already conducted")
         return
 
-    launcher_config = ProcessConfig(device_isolation=True, device_isolation_action="kill")
+    launcher_config = ProcessConfig()
     scenario_config = InferenceConfig(
         memory=True,
         energy=True,
@@ -128,10 +89,10 @@ def benchmark_cuda_pytorch(model, attn_implementation, weights_config):
         input_shapes=INPUT_SHAPES,
         generate_kwargs=GENERATE_KWARGS,
     )
+
     backend_config = PyTorchConfig(
         model=model,
-        device="cuda",
-        device_ids="0",
+        device="cpu",
         no_weights=True,
         library="transformers",
         task="text-generation",
@@ -183,4 +144,4 @@ if __name__ == "__main__":
     )
 
     for model, attn_implementation, weights_config in models_attentions_weights:
-        benchmark_cuda_pytorch(model, attn_implementation, weights_config)
+        benchmark_cpu_pytorch(model, attn_implementation, weights_config)
