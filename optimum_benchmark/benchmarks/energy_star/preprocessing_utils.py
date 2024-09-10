@@ -331,7 +331,9 @@ def image_to_text_preprocessing(dataset: Dataset, config: EnergyStarConfig, proc
         # Add a pad token if the tokenizer doesn't have one
     if getattr(processor.tokenizer, "pad_token", None) is None:
         processor.tokenizer.pad_token = processor.tokenizer.eos_token
-
+        
+    if getattr(processor.tokenizer, "eos_token", None) is None:
+        processor.tokenizer.eos_token = processor.tokenizer.pad_token
     def preprocess_function(examples):
         return processor(images=examples[config.image_column_name])
 
