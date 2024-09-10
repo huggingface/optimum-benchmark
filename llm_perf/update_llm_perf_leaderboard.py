@@ -2,26 +2,26 @@ import subprocess
 from glob import glob
 
 import pandas as pd
-from llm_perf.common.hardware_config import load_hardware_configs
 from huggingface_hub import create_repo, snapshot_download, upload_file
 from tqdm import tqdm
 
+from llm_perf.common.hardware_config import load_hardware_configs
 from optimum_benchmark import Benchmark
 
 REPO_TYPE = "dataset"
 MAIN_REPO_ID = "optimum-benchmark/llm-perf-leaderboard"
-PERF_REPO_ID = "optimum-benchmark/llm-perf-{backend}-{hardware_backend}-{subset}-{machine}"
+PERF_REPO_ID = "optimum-benchmark/llm-perf-{backend}-{hardware}-{subset}-{machine}"
 
 PERF_DF = "perf-df-{subset}-{machine}.csv"
 LLM_DF = "llm-df.csv"
 
 
-def gather_benchmarks(subset: str, machine: str, backend: str, hardware_backend: str):
+def gather_benchmarks(subset: str, machine: str, backend: str, hardware: str):
     """
     Gather the benchmarks for a given machine
     """
     perf_repo_id = PERF_REPO_ID.format(
-        subset=subset, machine=machine, backend=backend, hardware_backend=hardware_backend
+        subset=subset, machine=machine, backend=backend, hardware=hardware
     )
     snapshot = snapshot_download(repo_type=REPO_TYPE, repo_id=perf_repo_id, allow_patterns=["**/benchmark.json"])
 
@@ -46,12 +46,13 @@ def update_perf_dfs():
         for subset in hardware_config.subsets:
             for backend in hardware_config.backends:
                 try:
-                    gather_benchmarks(subset, hardware_config.machine, backend, hardware_config.hardware_provider)
+                    gather_benchmarks(subset, hardware_config.machine, backend, hardware_config.hardware)
                 except Exception as e:
                     print(
-                        f"Error gathering benchmarks for {hardware_config.machine} with {hardware_config.hardware_provider} and {subset} with {backend}: {e}"
+                        f"Error gathering benchmarks for machine {hardware_config.machine}, "
+                        f"hardware {hardware_config.hardware}, subset {subset}, backend {backend}: {e}"
                     )
-
+                    
 
 scrapping_script = """
 git clone https://github.com/Weyaxi/scrape-open-llm-leaderboard.git

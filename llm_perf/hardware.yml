@@ -1,7 +1,5 @@
 - machine: 1xA10
-  description: A10-24GB-150W 🖥️
-  hardware_provider: nvidia
-  hardware_backend: cuda
+  hardware: cuda
   subsets:
     - unquantized
     - awq
@@ -11,9 +9,7 @@
     - pytorch
 
 - machine: 1xA100
-  description: A100-80GB-275W 🖥️
-  hardware_provider: nvidia
-  hardware_backend: cuda
+  hardware: cuda
   subsets:
     - unquantized
     - awq
@@ -23,9 +19,7 @@
     - pytorch
 
 - machine: 1xT4
-  description: T4-16GB-70W 🖥️
-  hardware_provider: nvidia
-  hardware_backend: cuda
+  hardware: cuda
   subsets:
     - unquantized
     - awq
