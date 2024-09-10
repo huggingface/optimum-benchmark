@@ -1,7 +1,4 @@
-from typing import Any, Dict, List
-
 import pandas as pd
-import yaml
 
 from optimum_benchmark.benchmark.report import BenchmarkReport
 
