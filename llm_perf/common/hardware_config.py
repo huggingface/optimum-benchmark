@@ -1,9 +1,8 @@
-from typing import Any, Dict, List
+from dataclasses import dataclass
+from typing import List
 
 import yaml
 
-from dataclasses import dataclass
-from typing import List
 
 @dataclass
 class HardwareConfig:
