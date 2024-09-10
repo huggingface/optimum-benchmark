@@ -2,6 +2,7 @@ name: Update LLM Perf Leaderboard
 
 on:
   workflow_dispatch:
+  push:
   schedule:
     - cron: "0 */6 * * *"
 
