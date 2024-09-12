@@ -27,3 +27,10 @@
     - gptq
   backends:
     - pytorch
+
+- machine: 32vCPU-C7i
+  hardware: cpu
+  subsets:
+    - unquantized
+  backends:
+    - pytorch
