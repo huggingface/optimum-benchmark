@@ -50,4 +50,4 @@ jobs:
             pip install packaging && pip install einops scipy optimum codecarbon
             pip install -U transformers huggingface_hub[hf_transfer]
             pip install -e .
-            python llm_perf/update_llm_perf_cpu_pytorch.py
+            python llm_perf/benchmark_runners/update_llm_perf_cpu_pytorch.py
