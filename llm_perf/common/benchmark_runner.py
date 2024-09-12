@@ -48,9 +48,8 @@ class BenchmarkRunner(ABC):
     def _get_attention_configs(self) -> List[str]:
         raise NotImplementedError("This method should be implemented in the child class")
 
-    @abstractmethod
     def is_benchmark_supported(self, weights_config: str, attn_implementation: str) -> bool:
-        raise NotImplementedError("This method should be implemented in the child class")
+        return True
 
     def run_benchmarks(self):
         os.environ["LOG_TO_FILE"] = "0"
