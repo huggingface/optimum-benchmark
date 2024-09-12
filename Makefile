@@ -1,5 +1,5 @@
 # List of targets that are not associated with files
-.PHONY: quality style install build_docker_cpu build_docker_cuda build_docker_rocm run_docker_cpu run_docker_cuda run_docker_rocm install_api_misc install_api_cpu install_api_cuda install_api_rocm install_cli_misc install_cli_cpu_pytorch install_cli_cpu_openvino install_cli_cpu_onnxruntime install_cli_cpu_neural_compressor install_cli_cuda_pytorch install_cli_rocm_pytorch install_cli_cuda_torch_ort install_cli_cuda_onnxruntime test_api_misc test_api_cpu test_api_cuda test_api_rocm test_cli_misc test_cli_cpu_pytorch test_cli_cpu_openvino test_cli_cpu_onnxruntime test_cli_cpu_neural_compressor test_cli_cuda_onnxruntime test_cli_cuda_pytorch_multi_gpu test_cli_cuda_pytorch_single_gpu test_cli_cuda_torch_ort_multi_gpu test_cli_cuda_torch_ort_single_gpu test_cli_rocm_pytorch_multi_gpu test_cli_rocm_pytorch_single_gpu
+.PHONY: quality style install build_cpu_image build_cuda_image build_cuda_ort_image build_rocm_image run_cpu_container run_cuda_container run_cuda_ort_container run_rocm_container install_api_misc install_api_cpu install_api_cuda install_api_rocm install_cli_misc install_cli_cpu_pytorch install_cli_cpu_openvino install_cli_cpu_onnxruntime install_cli_cpu_neural_compressor install_cli_cuda_pytorch install_cli_rocm_pytorch install_cli_cuda_torch_ort install_cli_cuda_onnxruntime test_api_misc test_api_cpu test_api_cuda test_api_rocm test_cli_misc test_cli_cpu_pytorch test_cli_cpu_openvino test_cli_cpu_onnxruntime test_cli_cpu_neural_compressor test_cli_cuda_onnxruntime test_cli_cuda_vllm test_cli_cuda_pytorch_multi_gpu test_cli_cuda_pytorch_single_gpu test_cli_cuda_torch_ort_multi_gpu test_cli_cuda_torch_ort_single_gpu test_cli_rocm_pytorch_multi_gpu test_cli_rocm_pytorch_single_gpu install_llm_perf_cuda_pytorch run_llm_perf_cuda_pytorch_unquantized run_llm_perf_cuda_pytorch_bnb run_llm_perf_cuda_pytorch_gptq run_llm_perf_cuda_pytorch_awq
 
 PWD := $(shell pwd)
 USER_ID := $(shell id -u)
@@ -19,16 +19,20 @@ install:
 ## Build docker
 
 build_cpu_image:
-	docker build --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t opt-bench-cpu:22.04 docker/cpu
+	docker build -t optimum-benchmark:latest-cpu -f docker/cpu/Dockerfile .
+	docker build --build-arg IMAGE=optimum-benchmark:latest-cpu --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cpu docker/unroot
 
-build_cuda_118_image:
-	docker build --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) --build-arg TORCH_CUDA=cu118 --build-arg CUDA_VERSION=11.8.0 -t opt-bench-cuda:11.8.0 docker/cuda
+build_cuda_image:
+	docker build -t optimum-benchmark:latest-cuda -f docker/cuda/Dockerfile .
+	docker build --build-arg IMAGE=optimum-benchmark:latest-cuda --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cuda docker/unroot
 
-build_cuda_121_image:
-	docker build --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) --build-arg TORCH_CUDA=cu121 --build-arg CUDA_VERSION=12.1.1 -t opt-bench-cuda:12.1.1 docker/cuda
+build_cuda_ort_image:
+	docker build -t optimum-benchmark:latest-cuda-ort -f docker/cuda-ort/Dockerfile .
+	docker build --build-arg IMAGE=optimum-benchmark:latest-cuda-ort --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cuda-ort docker/unroot
 
 build_rocm_image:
-	docker build --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t opt-bench-rocm:5.7.1 docker/rocm
+	docker build -t optimum-benchmark:latest-rocm -f docker/rocm/Dockerfile .
+	docker build --build-arg IMAGE=optimum-benchmark:latest-rocm --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-rocm docker/unroot
 
 # Run docker
 
@@ -37,64 +41,59 @@ run_cpu_container:
 	-it \
 	--rm \
 	--pid host \
-	--volume $(PWD):/workspace \
-	--entrypoint /bin/bash \
-	--workdir /workspace \
-	opt-bench-cpu:22.04
+	--volume $(PWD):/optimum-benchmark \
+	--workdir /optimum-benchmark \
+	optimum-benchmark:latest-cpu
 
-run_cuda_118_container:
+run_cuda_container:
 	docker run \
 	-it \
 	--rm \
 	--pid host \
 	--gpus all \
 	--shm-size 64G \
-	--volume $(PWD):/workspace \
-	--entrypoint /bin/bash \
-	--workdir /workspace \
-	opt-bench-cuda:11.8.0
+	--volume $(PWD):/optimum-benchmark \
+	--workdir /optimum-benchmark \
+	optimum-benchmark:latest-cuda
 
-run_cuda_121_container:
+run_cuda_ort_container:
 	docker run \
 	-it \
 	--rm \
 	--pid host \
 	--gpus all \
 	--shm-size 64G \
-	--volume $(PWD):/workspace \
-	--entrypoint /bin/bash \
-	--workdir /workspace \
-	opt-bench-cuda:12.1.1
+	--volume $(PWD):/optimum-benchmark \
+	--workdir /optimum-benchmark \
+	optimum-benchmark:latest-cuda-ort
 
 run_rocm_container:
 	docker run \
 	-it \
 	--rm \
-	--pid host \
 	--shm-size 64G \
 	--device /dev/kfd \
 	--device /dev/dri \
-	--volume $(PWD):/workspace \
-	--entrypoint /bin/bash \
-	--workdir /workspace \
-	opt-bench-rocm:5.7.1
+	--volume $(PWD):/optimum-benchmark \
+	--workdir /optimum-benchmark \
+	optimum-benchmark:latest-rocm
 
 ## Install extras
 
 install_api_misc:
-	pip install -e .[testing,timm,diffusers,peft]
+	pip install -e .[testing,timm,diffusers,peft,codecarbon]
 
 install_api_cpu:
-	pip install -e .[testing,timm,diffusers,peft]
+	pip install -e .[testing,timm,diffusers,peft,codecarbon]
 
 install_api_cuda:
-	pip install -e .[testing,timm,diffusers,peft]
+	pip install -e .[testing,timm,diffusers,peft,codecarbon]
 
 install_api_rocm:
-	pip install -e .[testing,timm,diffusers,peft]
+	pip install -e .[testing,timm,diffusers,peft,codecarbon]
 
 install_cli_misc:
-	pip install -e .[testing,timm,diffusers,peft]
+	pip install -e .[testing,timm,diffusers,peft,codecarbon]
 
 install_cli_cpu_pytorch:
 	pip install -e .[testing,peft,timm,diffusers]
@@ -112,11 +111,10 @@ install_cli_cuda_pytorch:
 	pip install -e .[testing,timm,diffusers,peft,autoawq,auto-gptq,bitsandbytes,deepspeed]
 
 install_cli_rocm_pytorch:
-	pip install -e .[testing,timm,diffusers,peft,autoawq,auto-gptq,deepspeed]
+	pip install -e .[testing,timm,diffusers,peft,autoawq,auto-gptq] "deepspeed<0.15"
 
 install_cli_cuda_torch_ort:
 	pip install -e .[testing,timm,diffusers,peft,torch-ort,deepspeed]
-	python -m torch_ort.configure
 
 install_cli_cuda_onnxruntime:
 	pip install -e .[testing,timm,diffusers,peft,onnxruntime-gpu]
@@ -124,7 +122,7 @@ install_cli_cuda_onnxruntime:
 # Run tests
 
 test_api_misc:
-	pytest -s -k "api and not (cpu or cuda)
+	pytest -s -k "api and not (cpu or cuda or mps)"
 
 test_api_cpu:
 	pytest -s -k "api and cpu"
@@ -136,7 +134,7 @@ test_api_rocm:
 	pytest -s -k "api and cuda"
 
 test_cli_misc:
-	pytest -s -k "cli and not (cpu or cuda)"
+	pytest -s -k "cli and not (cpu or cuda or mps)"
 
 test_cli_cpu_pytorch:
 	pytest -s -k "cli and cpu and pytorch"
@@ -153,6 +151,9 @@ test_cli_cpu_neural_compressor:
 test_cli_cuda_onnxruntime:
 	pytest -s -k "cli and cuda and onnxruntime"
 
+test_cli_cuda_vllm:
+	pytest -s -k "cli and cuda and vllm"
+
 test_cli_cuda_pytorch_multi_gpu:
 	pytest -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed) and not awq"
 
@@ -166,26 +167,28 @@ test_cli_cuda_torch_ort_single_gpu:
 	pytest -s -k "cli and cuda and torch-ort and not (dp or ddp or device_map or deepspeed) and not peft"
 
 test_cli_rocm_pytorch_multi_gpu:
-	pytest -s -k "cli and rocm and pytorch and (dp or ddp or device_map or deepspeed) and not (bnb or awq)"
+	pytest -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed) and not bnb"
 
 test_cli_rocm_pytorch_single_gpu:
-	pytest -s -k "cli and rocm and pytorch and not (dp or ddp or device_map or deepspeed) and not (bnb or awq)"
+	pytest -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not bnb"
+
+test_cli_llama_cpp:
+	pytest -s -k "llama_cpp"
 
 # llm-perf
-
 install_llm_perf_cuda_pytorch:
-	pip install packaging && pip install flash-attn einops scipy auto-gptq optimum bitsandbytes autoawq
+	pip install packaging && pip install flash-attn einops scipy auto-gptq optimum bitsandbytes autoawq codecarbon
 	pip install -U transformers huggingface_hub[hf_transfer]
-	pip install -e .[codecarbon]
+	pip install -e .
 
 run_llm_perf_cuda_pytorch_unquantized:
-	SUBSET=unquantized python llm_perf/benchmark_cuda_pytorch.py
+	MACHINE=1xA100 SUBSET=unquantized python llm_perf/update_llm_perf_cuda_pytorch.py
 
 run_llm_perf_cuda_pytorch_bnb:
-	SUBSET=bnb python llm_perf/benchmark_cuda_pytorch.py
+	MACHINE=1xA100 SUBSET=bnb python llm_perf/update_llm_perf_cuda_pytorch.py
 
 run_llm_perf_cuda_pytorch_gptq:
-	SUBSET=gptq python llm_perf/benchmark_cuda_pytorch.py
+	MACHINE=1xA100 SUBSET=gptq python llm_perf/update_llm_perf_cuda_pytorch.py
 
 run_llm_perf_cuda_pytorch_awq:
-	SUBSET=awq python llm_perf/benchmark_cuda_pytorch.py
+	MACHINE=1xA100 SUBSET=awq python llm_perf/update_llm_perf_cuda_pytorch.py

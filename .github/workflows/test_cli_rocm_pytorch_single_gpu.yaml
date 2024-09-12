@@ -3,56 +3,51 @@ name: CLI ROCm Pytorch Single-GPU Tests
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
+    paths:
+      - .github/workflows/test_cli_rocm_pytorch_single_gpu.yaml
+      - "optimum_benchmark/**"
+      - "docker/**"
+      - "tests/**"
+      - "setup.py"
   pull_request:
-    types: [opened, reopened, synchronize]
+    branches:
+      - main
+    paths:
+      - .github/workflows/test_cli_rocm_pytorch_single_gpu.yaml
+      - "optimum_benchmark/**"
+      - "docker/**"
+      - "tests/**"
+      - "setup.py"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
 jobs:
   run_cli_rocm_pytorch_single_gpu_tests:
-    strategy:
-      fail-fast: false
-      matrix:
-        image: [{ rocm_version: 5.7.1, torch_rocm: rocm5.7 }]
+    runs-on: [self-hosted, amd-gpu, single-gpu]
 
-    runs-on: [single-gpu, amd-gpu, mi250, ci]
+    container:
+      image: ghcr.io/huggingface/optimum-benchmark:latest-rocm
+      options: --ipc host
+        --shm-size "16gb"
+        --group-add video
+        --device /dev/kfd
+        --device /dev/dri
+        --env ROCR_VISIBLE_DEVICES
+        --env HIP_VISIBLE_DEVICES=0
+        --volume /mnt/cache/.cache/huggingface:/mnt/cache/
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Target devices
+      - name: Install dependencies
         run: |
-          echo "DEVICE0: $DEVICE0"
-          echo "DEVICE1: $DEVICE1"
-          echo "DEVICE0=$DEVICE0" >> $GITHUB_ENV
-          echo "DEVICE1=$DEVICE1" >> $GITHUB_ENV
-
-      - name: Build image
-        run: docker build
-          --build-arg USER_ID=$(id -u)
-          --build-arg GROUP_ID=$(id -g)
-          --build-arg TORCH_ROCM=${{ matrix.image.torch_rocm }}
-          --build-arg ROCM_VERSION=${{ matrix.image.rocm_version }}
-          --tag opt-bench-rocm:${{ matrix.image.rocm_version }}
-          docker/rocm
+          pip install -e .[testing,diffusers,timm,peft,autoawq,auto-gptq]
 
       - name: Run tests
-        uses: addnab/docker-run-action@v3
-        env:
-          DEVICE: ${{ env.DEVICE }}
-        with:
-          image: opt-bench-rocm:${{ matrix.image.rocm_version }}
-          options: |
-            --rm
-            --shm-size 64G
-            --device /dev/kfd
-            --device /dev/dri/${{ env.DEVICE }}
-            --volume ${{ github.workspace }}:/workspace
-            --workdir /workspace
-          run: |
-            pip install -e .[testing,diffusers,timm,peft,autoawq-rocm,auto-gptq-rocm]
-            pytest -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not (bnb or awq)"
+        run: |
+          pytest -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not bnb"

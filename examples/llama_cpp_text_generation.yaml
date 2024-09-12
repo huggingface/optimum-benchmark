@@ -1,0 +1,25 @@
+defaults:
+  - benchmark
+  - scenario: inference
+  - launcher: inline
+  - backend: llama_cpp
+  - _base_
+  - _self_
+
+name: llama_cpp_llama
+
+backend:
+  device: mps
+  model: TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF
+  task: text-generation
+  filename: tinyllama-1.1b-chat-v1.0.Q4_0.gguf
+
+
+scenario:
+  input_shapes:
+    batch_size: 1
+    sequence_length: 256
+    vocab_size: 32000
+  generate_kwargs:
+    max_new_tokens: 100
+    min_new_tokens: 100

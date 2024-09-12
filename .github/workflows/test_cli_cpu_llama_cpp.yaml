@@ -1,0 +1,48 @@
+name: CLI CPU LlamaCpp Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/test_cli_llama_cpp.yaml
+      - "optimum_benchmark/**"
+      - "docker/**"
+      - "tests/**"
+      - "setup.py"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/test_cli_llama_cpp.yaml
+      - "optimum_benchmark/**"
+      - "docker/**"
+      - "tests/**"
+      - "setup.py"
+
+concurrency:
+  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+
+jobs:
+  run_cli_cpu_llama_cpp_tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install requirements
+        run: |
+          pip install --upgrade pip
+          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+          pip install -e .[testing,llama-cpp]
+
+      - name: Run tests
+        run: pytest -s -k "llama_cpp"

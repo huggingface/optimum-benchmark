@@ -48,16 +48,16 @@ If you would like to work on any of the open Issues:
 6. Depending on the feature you're working on and your development environment, you can run tests locally in an isolated docker container using the [makefile](Makefile). For example, to test the CLI with CPU device and PyTorch backend, you can run the following commands:
 
 	```bash
-	make install_cli_cpu_pytorch_extras
+	make install_cli_cpu_pytorch
 	make test_cli_cpu_pytorch
 	```
 
 	For a better development experience, we recommend using isolated docker containers to run tests:
 	
 	```bash
-	make build_docker_cpu
-	make run_docker_cpu
-	make install_cli_cpu_pytorch_extras
+	make build_cpu_image
+	make run_cpu_container
+	make install_cli_cpu_pytorch
 	make test_cli_cpu_pytorch
 	```
 

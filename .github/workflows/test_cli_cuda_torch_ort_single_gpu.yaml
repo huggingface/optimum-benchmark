@@ -3,40 +3,43 @@ name: CLI CUDA Torch-ORT Single-GPU Tests
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
+    paths:
+      - .github/workflows/test_cli_cuda_torch_ort_single_gpu.yaml
+      - "optimum_benchmark/**"
+      - "docker/**"
+      - "tests/**"
+      - "setup.py"
   pull_request:
-    types: [opened, reopened, synchronize]
+    branches:
+      - main
+    paths:
+      - .github/workflows/test_cli_cuda_torch_ort_single_gpu.yaml
+      - "optimum_benchmark/**"
+      - "docker/**"
+      - "tests/**"
+      - "setup.py"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+
+env:
+  IMAGE: ghcr.io/huggingface/optimum-benchmark:latest-cuda-ort
 
 jobs:
-  build_image_and_run_cli_cuda_torch_ort_single_gpu_tests:
-    strategy:
-      fail-fast: false
-      matrix:
-        image: [{ cuda_version: 11.8.0, torch_cuda: cu118 }]
-
+  run_cli_cuda_torch_ort_single_gpu_tests:
     runs-on: [single-gpu, nvidia-gpu, a10, ci]
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Build image
-        run: docker build
-          --build-arg USER_ID=$(id -u)
-          --build-arg GROUP_ID=$(id -g)
-          --build-arg TORCH_CUDA=${{ matrix.image.torch_cuda }}
-          --build-arg CUDA_VERSION=${{ matrix.image.cuda_version }}
-          --tag opt-bench-cuda:${{ matrix.image.cuda_version }}
-          docker/cuda
+        uses: actions/checkout@v4
 
       - name: Run tests
         uses: addnab/docker-run-action@v3
         with:
-          image: opt-bench-cuda:${{ matrix.image.cuda_version }}
+          image: ${{ env.IMAGE }}
           options: |
             --rm
             --gpus all
@@ -45,5 +48,5 @@ jobs:
             --volume ${{ github.workspace }}:/workspace
             --workdir /workspace
           run: |
-            pip install -e .[testing,torch-ort,peft] && python -m torch_ort.configure
+            pip install -e .[testing,torch-ort,peft]
             pytest -x -s -k "cli and cuda and torch_ort and not (dp or ddp or device_map) and not (peft)"

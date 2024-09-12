@@ -15,6 +15,7 @@ _peft_available = importlib.util.find_spec("peft") is not None
 _pynvml_available = importlib.util.find_spec("pynvml") is not None
 _torch_distributed_available = importlib.util.find_spec("torch.distributed") is not None
 _onnxruntime_available = importlib.util.find_spec("onnxruntime") is not None
+_ipex_available = importlib.util.find_spec("intel_extension_for_pytorch") is not None
 _openvino_available = importlib.util.find_spec("openvino") is not None
 _neural_compressor_available = importlib.util.find_spec("neural_compressor") is not None
 _codecarbon_available = importlib.util.find_spec("codecarbon") is not None
@@ -31,6 +32,16 @@ _py_txi_available = importlib.util.find_spec("py_txi") is not None
 _pyrsmi_available = importlib.util.find_spec("pyrsmi") is not None
 _llm_swarm_available = importlib.util.find_spec("llm_swarm") is not None
 _zentorch_available = importlib.util.find_spec("zentorch") is not None
+_vllm_available = importlib.util.find_spec("vllm") is not None
+_llama_cpp_available = importlib.util.find_spec("llama-cpp-python") is not None
+
+
+def is_vllm_available():
+    return _vllm_available
+
+
+def is_llama_cpp_available():
+    return _llama_cpp_available
 
 
 def is_zentorch_available():
@@ -153,6 +164,11 @@ def openvino_version():
         return importlib.metadata.version("openvino")
 
 
+def ipex_version():
+    if _ipex_available:
+        return importlib.metadata.version("intel_extension_for_pytorch")
+
+
 def neural_compressor_version():
     if _neural_compressor_available:
         return importlib.metadata.version("neural_compressor")
@@ -213,6 +229,16 @@ def llm_swarm_version():
         return importlib.metadata.version("llm_swarm")
 
 
+def vllm_version():
+    if _vllm_available:
+        return importlib.metadata.version("vllm")
+
+
+def llama_cpp_version():
+    if _llama_cpp_available:
+        return importlib.metadata.version("llama_cpp")
+
+
 def get_git_revision_hash(package_name: str) -> Optional[str]:
     """
     Returns the git commit SHA of a package installed from a git repository.
@@ -236,16 +262,16 @@ def get_hf_libs_info():
     return {
         "optimum_benchmark_version": optimum_benchmark_version(),
         "optimum_benchmark_commit": get_git_revision_hash("optimum_benchmark"),
-        "transformers_version": transformers_version(),
+        "transformers_version": transformers_version() if is_transformers_available() else None,
         "transformers_commit": get_git_revision_hash("transformers"),
-        "accelerate_version": accelerate_version(),
+        "accelerate_version": accelerate_version() if is_accelerate_available else None,
         "accelerate_commit": get_git_revision_hash("accelerate"),
-        "diffusers_version": diffusers_version(),
+        "diffusers_version": diffusers_version() if is_diffusers_available() else None,
         "diffusers_commit": get_git_revision_hash("diffusers"),
-        "optimum_version": optimum_version(),
+        "optimum_version": optimum_version() if is_optimum_available() else None,
         "optimum_commit": get_git_revision_hash("optimum"),
-        "timm_version": timm_version(),
+        "timm_version": timm_version() if is_timm_available() else None,
         "timm_commit": get_git_revision_hash("timm"),
-        "peft_version": peft_version(),
+        "peft_version": peft_version() if is_peft_available() else None,
         "peft_commit": get_git_revision_hash("peft"),
     }

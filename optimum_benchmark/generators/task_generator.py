@@ -1,13 +1,17 @@
+import logging
 import random
 import string
 from abc import ABC
-from logging import getLogger
-from typing import Tuple
+from typing import List, Tuple
 
-# TODO: drop torch dependency and use numpy instead ?
+# TODO: drop torch dependency and use numpy instead
 import torch
 
-LOGGER = getLogger("task-generator")
+LOGGER = logging.getLogger("generators")
+
+DEFAULT_NUM_LABELS = 2
+DEFAULT_VOCAB_SIZE = 2
+DEFAULT_TYPE_VOCAB_SIZE = 2
 
 
 class TaskGenerator(ABC):
@@ -28,10 +32,10 @@ class TaskGenerator(ABC):
         return torch.arange(start, stop).repeat(shape[0], 1)
 
     @staticmethod
-    def generate_random_strings(shape: Tuple[int]):
+    def generate_random_strings(num_seq: int) -> List[str]:
         return [
-            "".join(random.choice(string.ascii_letters + string.digits) for _ in range(shape[1]))
-            for _ in range(shape[0])
+            "".join(random.choice(string.ascii_letters + string.digits) for _ in range(random.randint(10, 100)))
+            for _ in range(num_seq)
         ]
 
     def __call__(self):
@@ -42,7 +46,7 @@ class TextGenerator(TaskGenerator):
     def input_ids(self):
         return self.generate_random_integers(
             min_value=0,
-            max_value=self.shapes["vocab_size"],
+            max_value=self.shapes["vocab_size"] or DEFAULT_VOCAB_SIZE,
             shape=(self.shapes["batch_size"], self.shapes["sequence_length"]),
         )
 
@@ -56,7 +60,7 @@ class TextGenerator(TaskGenerator):
     def token_type_ids(self):
         return self.generate_random_integers(
             min_value=0,
-            max_value=self.shapes["type_vocab_size"],
+            max_value=self.shapes["type_vocab_size"] or DEFAULT_TYPE_VOCAB_SIZE,
             shape=(self.shapes["batch_size"], self.shapes["sequence_length"]),
         )
 
@@ -100,7 +104,7 @@ class AudioGenerator(TaskGenerator):
 class TextClassificationGenerator(TextGenerator):
     def labels(self):
         return self.generate_random_integers(
-            min_value=0, max_value=self.shapes["num_labels"], shape=(self.shapes["batch_size"],)
+            min_value=0, max_value=self.shapes["num_labels"] or DEFAULT_NUM_LABELS, shape=(self.shapes["batch_size"],)
         )
 
     def __call__(self):
@@ -125,7 +129,7 @@ class TokenClassificationGenerator(TextGenerator):
     def labels(self):
         return self.generate_random_integers(
             min_value=0,
-            max_value=self.shapes["num_labels"],
+            max_value=self.shapes["num_labels"] or DEFAULT_NUM_LABELS,
             shape=(self.shapes["batch_size"], self.shapes["sequence_length"]),
         )
 
@@ -252,7 +256,7 @@ class MultipleChoiceGenerator(TextGenerator):
 class ImageClassificationGenerator(ImageGenerator):
     def labels(self):
         return self.generate_random_integers(
-            min_value=0, max_value=self.shapes["num_labels"], shape=(self.shapes["batch_size"],)
+            min_value=0, max_value=self.shapes["num_labels"] or DEFAULT_NUM_LABELS, shape=(self.shapes["batch_size"],)
         )
 
     def __call__(self):
@@ -270,7 +274,9 @@ class ObjectDetectionGenerator(ImageGenerator):
         return [
             {
                 "class_labels": self.generate_random_integers(
-                    min_value=0, max_value=self.shapes["num_labels"], shape=(self.shapes["num_queries"],)
+                    min_value=0,
+                    max_value=self.shapes["num_labels"] or DEFAULT_NUM_LABELS,
+                    shape=(self.shapes["num_queries"],),
                 ),
                 "boxes": self.generate_random_floats(min_value=-1, max_value=1, shape=(self.shapes["num_queries"], 4)),
             }
@@ -291,7 +297,7 @@ class SemanticSegmentationGenerator(ImageGenerator):
     def labels(self):
         return self.generate_random_integers(
             min_value=0,
-            max_value=self.shapes["num_labels"],
+            max_value=self.shapes["num_labels"] or DEFAULT_NUM_LABELS,
             shape=(self.shapes["batch_size"], self.shapes["height"], self.shapes["width"]),
         )
 
@@ -308,7 +314,7 @@ class SemanticSegmentationGenerator(ImageGenerator):
 class AudioClassificationGenerator(AudioGenerator):
     def labels(self):
         return self.generate_random_integers(
-            min_value=0, max_value=self.shapes["num_labels"], shape=(self.shapes["batch_size"],)
+            min_value=0, max_value=self.shapes["num_labels"] or DEFAULT_NUM_LABELS, shape=(self.shapes["batch_size"],)
         )
 
     def __call__(self):
@@ -325,7 +331,7 @@ class AutomaticSpeechRecognitionGenerator(AudioGenerator):
     def labels(self):
         return self.generate_random_integers(
             min_value=0,
-            max_value=self.shapes["vocab_size"],
+            max_value=self.shapes["vocab_size"] or DEFAULT_TYPE_VOCAB_SIZE,
             shape=(self.shapes["batch_size"], self.shapes["sequence_length"]),
         )
 
@@ -341,7 +347,7 @@ class AutomaticSpeechRecognitionGenerator(AudioGenerator):
 
 class PromptGenerator(TaskGenerator):
     def prompt(self):
-        return self.generate_random_strings(shape=(self.shapes["batch_size"], 10))
+        return self.generate_random_strings(num_seq=self.shapes["batch_size"])
 
     def __call__(self):
         dummy = {}
@@ -354,7 +360,7 @@ class FeatureExtractionGenerator(TextGenerator, ImageGenerator):
     def __call__(self):
         dummy = {}
 
-        if self.shapes["num_channels"] is not None and self.shapes["height"] is not None:
+        if self.shapes.get("num_channels", None) is not None and self.shapes.get("height", None) is not None:
             dummy["pixel_values"] = self.pixel_values()
         else:
             dummy["input_ids"] = self.input_ids()

@@ -19,37 +19,31 @@ FROM rocm/dev-ubuntu-${UBUNTU_VERSION}:${ROCM_VERSION}
 
 # Install necessary packages
 ENV PATH="/opt/rocm/bin:${PATH}"
-ENV DEBIAN_FRONTEND noninteractive
-ENV PATH="/home/user/.local/bin:${PATH}"
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
-    build-essential git bash-completion \
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \ 
+    rocsparse-dev hipsparse-dev rocthrust-dev rocblas-dev hipblas-dev \
+    sudo build-essential git bash-completion \
     python3.10 python3-pip python3.10-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 && \
-    pip install --no-cache-dir --upgrade pip setuptools wheel  && \
+    pip install --no-cache-dir --upgrade pip setuptools wheel requests && \
     cd /opt/rocm/share/amd_smi && pip install .
-
-# Create a non-root user
-ARG GROUP_ID
-ARG USER_ID
-
-RUN addgroup --gid $GROUP_ID group
-RUN adduser --disabled-password --gecos '' --uid $USER_ID --gid $GROUP_ID user
-
-RUN usermod -a -G video user
-RUN usermod -a -G render user
-
-USER user
-WORKDIR /home/user
 
 # Install PyTorch
 ARG TORCH_ROCM=rocm5.7
-ARG TORCH_VERSION="stable"
+ARG TORCH_VERSION=stable
 
 RUN if [ "${TORCH_VERSION}" = "stable" ]; then \
     pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_ROCM} ; \
-elif [ "${TORCH_VERSION}" = "nighly" ]; then \
-    pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_ROCM} ; \
+elif [ "${TORCH_VERSION}" = "nightly" ]; then \
+    pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/${TORCH_ROCM} ; \
 else \
     pip install --no-cache-dir torch==${TORCH_VERSION} torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_ROCM} ; \
 fi
+
+# Install quantization libraries from source
+ENV ROCM_VERSION=5.7
+ENV PYTORCH_ROCM_ARCH="gfx900;gfx906;gfx908;gfx90a;gfx1030;gfx1100"
+
+COPY scripts/install_quantization_libs.py /internal/install_quantization_libs.py
+RUN python internal/install_quantization_libs.py --install-autogptq-from-source --install-autoawq-from-source

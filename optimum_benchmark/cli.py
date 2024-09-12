@@ -6,29 +6,38 @@ import hydra
 from hydra.core.config_store import ConfigStore
 from omegaconf import DictConfig, OmegaConf
 
-from .backends.llm_swarm.config import LLMSwarmConfig
-from .backends.neural_compressor.config import INCConfig
-from .backends.onnxruntime.config import ORTConfig
-from .backends.openvino.config import OVConfig
-from .backends.py_txi.config import PyTXIConfig
-from .backends.pytorch.config import PyTorchConfig
-from .backends.tensorrt_llm.config import TRTLLMConfig
-from .backends.torch_ort.config import TorchORTConfig
-from .benchmarks.energy_star.config import EnergyStarConfig
-from .benchmarks.inference.config import InferenceConfig
-from .benchmarks.report import BenchmarkReport
-from .benchmarks.training.config import TrainingConfig
-from .experiment import ExperimentConfig, launch
-from .launchers.inline.config import InlineConfig
-from .launchers.process.config import ProcessConfig
-from .launchers.torchrun.config import TorchrunConfig
+from . import (
+    Benchmark,
+    BenchmarkConfig,
+    EnergyStarConfig,
+    INCConfig,
+    InferenceConfig,
+    InlineConfig,
+    IPEXConfig,
+    LlamaCppConfig,
+    LLMSwarmConfig,
+    ORTConfig,
+    OVConfig,
+    ProcessConfig,
+    PyTorchConfig,
+    PyTXIConfig,
+    TorchORTConfig,
+    TorchrunConfig,
+    TrainingConfig,
+    TRTLLMConfig,
+    VLLMConfig,
+)
+from .logging_utils import setup_logging
 
-LOGGER = getLogger("cli")
+LOGGER = getLogger("hydra-cli")
+
 
 # Register configurations
 cs = ConfigStore.instance()
-cs.store(name="experiment", node=ExperimentConfig)
+# benchmark configuration
+cs.store(name="benchmark", node=BenchmarkConfig)
 # backends configurations
+cs.store(group="backend", name=IPEXConfig.name, node=IPEXConfig)
 cs.store(group="backend", name=OVConfig.name, node=OVConfig)
 cs.store(group="backend", name=PyTorchConfig.name, node=PyTorchConfig)
 cs.store(group="backend", name=ORTConfig.name, node=ORTConfig)
@@ -37,10 +46,12 @@ cs.store(group="backend", name=TRTLLMConfig.name, node=TRTLLMConfig)
 cs.store(group="backend", name=INCConfig.name, node=INCConfig)
 cs.store(group="backend", name=PyTXIConfig.name, node=PyTXIConfig)
 cs.store(group="backend", name=LLMSwarmConfig.name, node=LLMSwarmConfig)
-# benchmarks configurations
-cs.store(group="benchmark", name=TrainingConfig.name, node=TrainingConfig)
-cs.store(group="benchmark", name=InferenceConfig.name, node=InferenceConfig)
-cs.store(group="benchmark", name=EnergyStarConfig.name, node=EnergyStarConfig)
+cs.store(group="backend", name=VLLMConfig.name, node=VLLMConfig)
+cs.store(group="backend", name=LlamaCppConfig.name, node=LlamaCppConfig)
+# scenarios configurations
+cs.store(group="scenario", name=TrainingConfig.name, node=TrainingConfig)
+cs.store(group="scenario", name=InferenceConfig.name, node=InferenceConfig)
+cs.store(group="scenario", name=EnergyStarConfig.name, node=EnergyStarConfig)
 # launchers configurations
 cs.store(group="launcher", name=InlineConfig.name, node=InlineConfig)
 cs.store(group="launcher", name=ProcessConfig.name, node=ProcessConfig)
@@ -49,18 +60,25 @@ cs.store(group="launcher", name=TorchrunConfig.name, node=TorchrunConfig)
 
 # optimum-benchmark
 @hydra.main(version_base=None)
-def benchmark_cli(experiment_config: DictConfig) -> None:
-    os.environ["BENCHMARK_INTERFACE"] = "CLI"
+def main(config: DictConfig) -> None:
+    log_level = os.environ.get("LOG_LEVEL", "INFO")
+    log_to_file = os.environ.get("LOG_TO_FILE", "1") == "1"
+    override_benchmarks = os.environ.get("OVERRIDE_BENCHMARKS", "0") == "1"
+    setup_logging(level=log_level, to_file=log_to_file, prefix="MAIN-PROCESS")
 
-    if glob.glob("benchmark_report.json") and os.environ.get("OVERRIDE_BENCHMARKS", "0") != "1":
+    if glob.glob("benchmark_report.json") and not override_benchmarks:
         LOGGER.warning(
-            "Benchmark report already exists. If you want to override it, set the environment variable OVERRIDE_BENCHMARKS=1"
+            "Benchmark was already conducted in the current directory. "
+            "If you want to override it, set the environment variable OVERRIDE_BENCHMARKS=1 (in hydra.job.env_set)"
         )
         return
 
-    # Instantiate the experiment configuration and trigger its __post_init__
-    experiment_config: ExperimentConfig = OmegaConf.to_object(experiment_config)
-    experiment_config.save_json("experiment_config.json")
+    # Instantiates the configuration with the right class and triggers its __post_init__
+    benchmark_config: BenchmarkConfig = OmegaConf.to_object(config)
+    benchmark_config.save_json("benchmark_config.json")
 
-    benchmark_report: BenchmarkReport = launch(experiment_config=experiment_config)
+    benchmark_report = Benchmark.launch(benchmark_config)
     benchmark_report.save_json("benchmark_report.json")
+
+    benchmark = Benchmark(config=benchmark_config, report=benchmark_report)
+    benchmark.save_json("benchmark.json")

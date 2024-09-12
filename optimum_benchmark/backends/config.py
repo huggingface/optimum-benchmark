@@ -7,17 +7,13 @@ from typing import Any, Dict, Optional, TypeVar
 from psutil import cpu_count
 
 from ..system_utils import get_gpu_device_ids, is_nvidia_system, is_rocm_system
-from ..task_utils import infer_library_from_model_name_or_path, infer_task_from_model_name_or_path
+from ..task_utils import (
+    infer_library_from_model_name_or_path,
+    infer_model_type_from_model_name_or_path,
+    infer_task_from_model_name_or_path,
+)
 
 LOGGER = getLogger("backend")
-
-# backends share the same hub kwargs
-HUB_KWARGS = {
-    "revision": "main",
-    "force_download": False,
-    "local_files_only": False,
-    "trust_remote_code": True,
-}
 
 
 @dataclass
@@ -27,31 +23,58 @@ class BackendConfig(ABC):
     _target_: str
 
     task: Optional[str] = None
+    library: Optional[str] = None
+    model_type: Optional[str] = None
+
     model: Optional[str] = None
     processor: Optional[str] = None
-    library: Optional[str] = None
 
     device: Optional[str] = None
-    device_ids: Optional[str] = None
-    # yes we use a string here instead of a list
+    # we use a string here instead of a list
     # because it's easier to pass in a yaml or from cli
     # and it's consistent with GPU environment variables
+    device_ids: Optional[str] = None
 
     seed: int = 42
     inter_op_num_threads: Optional[int] = None
     intra_op_num_threads: Optional[int] = None
 
-    hub_kwargs: Dict[str, Any] = field(default_factory=dict)
+    # model kwargs that are added to its init method/constructor
+    model_kwargs: Dict[str, Any] = field(default_factory=dict)
+    # processor kwargs that are added to its init method/constructor
+    processor_kwargs: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         if self.model is None:
             raise ValueError("`model` must be specified.")
 
-        if self.task is None:
-            self.task = infer_task_from_model_name_or_path(self.model, self.hub_kwargs.get("revision", None))
+        if self.processor is None:
+            self.processor = self.model
 
+        # TODO: add cache_dir, token, etc. to these methods
         if self.library is None:
-            self.library = infer_library_from_model_name_or_path(self.model, self.hub_kwargs.get("revision", None))
+            self.library = infer_library_from_model_name_or_path(
+                self.model,
+                revision=self.model_kwargs.get("revision", None),
+                token=self.model_kwargs.get("token", None),
+            )
+
+        if self.task is None:
+            self.task = infer_task_from_model_name_or_path(
+                self.model,
+                self.library,
+                revision=self.model_kwargs.get("revision", None),
+                token=self.model_kwargs.get("token", None),
+            )
+
+        if self.model_type is None:
+            self.model_type = infer_model_type_from_model_name_or_path(
+                self.model,
+                self.library,
+                revision=self.model_kwargs.get("revision", None),
+                token=self.model_kwargs.get("token", None),
+                trust_remote_code=self.model_kwargs.get("trust_remote_code", False),
+            )
 
         if self.device is None:
             self.device = "cuda" if is_nvidia_system() or is_rocm_system() else "cpu"
@@ -74,14 +97,17 @@ class BackendConfig(ABC):
             if is_nvidia_system():
                 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
                 os.environ["CUDA_VISIBLE_DEVICES"] = self.device_ids
+                LOGGER.info(f"CUDA_VISIBLE_DEVICES was set to {os.environ['CUDA_VISIBLE_DEVICES']}.")
             elif is_rocm_system():
-                # https://rocm.docs.amd.com/en/latest/conceptual/gpu-isolation.html
                 os.environ["ROCR_VISIBLE_DEVICES"] = self.device_ids
+                LOGGER.info(f"ROCR_VISIBLE_DEVICES was set to {os.environ['ROCR_VISIBLE_DEVICES']}.")
             else:
                 raise RuntimeError("CUDA device is only supported on systems with NVIDIA or ROCm drivers.")
 
-        if self.library not in ["transformers", "diffusers", "timm"]:
-            raise ValueError(f"`library` must be either `transformers`, `diffusers` or `timm`, but got {self.library}")
+        if self.library not in ["transformers", "diffusers", "timm", "llama_cpp"]:
+            raise ValueError(
+                f"`library` must be either `transformers`, `diffusers`, `timm` or `llama_cpp`, but got {self.library}"
+            )
 
         if self.inter_op_num_threads is not None:
             if self.inter_op_num_threads == -1:
@@ -90,8 +116,6 @@ class BackendConfig(ABC):
         if self.intra_op_num_threads is not None:
             if self.intra_op_num_threads == -1:
                 self.intra_op_num_threads = cpu_count()
-
-        self.hub_kwargs = {**HUB_KWARGS, **self.hub_kwargs}
 
 
 BackendConfigT = TypeVar("BackendConfigT", bound=BackendConfig)

@@ -1,0 +1,19 @@
+defaults:
+  - benchmark
+  - backend: onnxruntime
+  - scenario: inference
+  - launcher: process
+  - _base_
+  - _self_
+
+name: onnxruntime_timm
+
+backend:
+  device: cpu
+  model: timm/mobilenetv3_large_100.ra_in1k
+
+scenario:
+  memory: true
+  latency: true
+  input_shapes:
+    batch_size: 2

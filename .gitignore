@@ -168,6 +168,17 @@ data/
 version.txt
 
 .engine/
+work-in-progress/
 experiments/
 amdsmi/
 amd-*
+
+# Code carbon
+generate_codecarbon.json
+task_codecarbon.json
+prefill_codecarbon.json
+
+# Mac specific
+external_repos/
+.DS_Store
+outputs/

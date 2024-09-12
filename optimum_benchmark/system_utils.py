@@ -9,6 +9,15 @@ import psutil
 from .import_utils import is_amdsmi_available, is_pynvml_available, is_pyrsmi_available
 
 
+# Network related stuff
+def get_socket_ifname() -> Optional[str]:
+    for interface in psutil.net_if_addrs():
+        if interface.startswith("e"):
+            return interface
+
+    raise None
+
+
 ## CPU related stuff
 def get_cpu() -> Optional[str]:
     if platform.system() == "Windows":
@@ -86,7 +95,10 @@ def get_gpus():
         pynvml.nvmlInit()
         for i in range(pynvml.nvmlDeviceGetCount()):
             handle = pynvml.nvmlDeviceGetHandleByIndex(i)
-            gpus.append(pynvml.nvmlDeviceGetName(handle))
+            gpu = pynvml.nvmlDeviceGetName(handle)
+            # Older pynvml versions may return bytes
+            gpu = gpu.decode("utf-8") if isinstance(gpu, bytes) else gpu
+            gpus.append(gpu)
         pynvml.nvmlShutdown()
 
     elif is_rocm_system():
@@ -161,7 +173,9 @@ def get_gpu_vram_mb() -> List[int]:
 
 def get_gpu_device_ids() -> str:
     if is_nvidia_system():
-        if os.environ.get("CUDA_VISIBLE_DEVICES", None) is not None:
+        if os.environ.get("NVIDIA_VISIBLE_DEVICES", None) is not None:
+            device_ids = os.environ["NVIDIA_VISIBLE_DEVICES"]
+        elif os.environ.get("CUDA_VISIBLE_DEVICES", None) is not None:
             device_ids = os.environ["CUDA_VISIBLE_DEVICES"]
         else:
             if not is_pynvml_available():
@@ -175,12 +189,12 @@ def get_gpu_device_ids() -> str:
             device_ids = ",".join(str(i) for i in device_ids)
             pynvml.nvmlShutdown()
     elif is_rocm_system():
-        if os.environ.get("GPU_DEVICE_ORDINAL", None) is not None:
-            device_ids = os.environ["GPU_DEVICE_ORDINAL"]
+        if os.environ.get("ROCR_VISIBLE_DEVICES", None) is not None:
+            device_ids = os.environ["ROCR_VISIBLE_DEVICES"]
         elif os.environ.get("HIP_VISIBLE_DEVICES", None) is not None:
             device_ids = os.environ["HIP_VISIBLE_DEVICES"]
-        elif os.environ.get("ROCR_VISIBLE_DEVICES", None) is not None:
-            device_ids = os.environ["ROCR_VISIBLE_DEVICES"]
+        elif os.environ.get("CUDA_VISIBLE_DEVICES", None) is not None:
+            device_ids = os.environ["CUDA_VISIBLE_DEVICES"]
         else:
             if not is_amdsmi_available() or not is_pyrsmi_available():
                 raise ValueError(
@@ -189,17 +203,18 @@ def get_gpu_device_ids() -> str:
                     "or PyRSMI library from https://github.com/ROCm/pyrsmi."
                 )
 
-            if is_amdsmi_available():
+            if is_pyrsmi_available():
+                rocml.smi_initialize()
+                device_ids = list(range(rocml.smi_get_device_count()))
+                device_ids = ",".join(str(i) for i in device_ids)
+                rocml.smi_shutdown()
+
+            elif is_amdsmi_available():
                 amdsmi.amdsmi_init()
                 device_ids = list(range(len(amdsmi.amdsmi_get_processor_handles())))
                 device_ids = ",".join(str(i) for i in device_ids)
                 amdsmi.amdsmi_shut_down()
 
-            elif is_pyrsmi_available():
-                rocml.smi_initialize()
-                device_ids = list(range(rocml.smi_get_device_count()))
-                device_ids = ",".join(str(i) for i in device_ids)
-                rocml.smi_shutdown()
     else:
         raise ValueError("Couldn't infer GPU device ids.")
 

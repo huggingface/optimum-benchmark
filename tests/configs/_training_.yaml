@@ -1,6 +1,6 @@
 defaults:
-  - override benchmark: training
+  - override scenario: training
 
-benchmark:
+scenario:
   max_steps: 5
   warmup_steps: 2

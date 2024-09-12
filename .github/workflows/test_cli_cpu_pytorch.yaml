@@ -3,13 +3,27 @@ name: CLI CPU Pytorch tests
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
+    paths:
+      - .github/workflows/test_cli_cpu_pytorch.yaml
+      - "optimum_benchmark/**"
+      - "docker/**"
+      - "tests/**"
+      - "setup.py"
   pull_request:
-    types: [opened, reopened, synchronize]
+    branches:
+      - main
+    paths:
+      - .github/workflows/test_cli_cpu_pytorch.yaml
+      - "optimum_benchmark/**"
+      - "docker/**"
+      - "tests/**"
+      - "setup.py"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
 jobs:
   run_cli_cpu_pytorch_tests:
@@ -17,10 +31,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python 3.10
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 

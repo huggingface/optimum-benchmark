@@ -59,16 +59,17 @@ class Memory:
 
         max_ram = sum(memory.max_ram for memory in memories)
 
-        max_global_vram = (
-            max(memory.max_global_vram for memory in memories) if memories[0].max_global_vram is not None else None
-        )
         max_process_vram = (
-            max(memory.max_process_vram for memory in memories) if memories[0].max_process_vram is not None else None
+            sum(memory.max_process_vram for memory in memories) if memories[0].max_process_vram is not None else None
         )
 
         max_reserved = sum(memory.max_reserved for memory in memories) if memories[0].max_reserved is not None else None
         max_allocated = (
             sum(memory.max_allocated for memory in memories) if memories[0].max_allocated is not None else None
+        )
+
+        max_global_vram = (
+            max(memory.max_global_vram for memory in memories) if memories[0].max_global_vram is not None else None
         )
 
         return Memory(
@@ -80,7 +81,7 @@ class Memory:
             max_allocated=max_allocated,
         )
 
-    def log(self, prefix: str = "forward"):
+    def log(self, prefix: str = ""):
         LOGGER.info(f"\t\t+ {prefix} memory:")
         if self.max_ram is not None:
             LOGGER.info(f"\t\t\t- max RAM: {self.max_ram:f} ({self.unit})")
@@ -99,17 +100,20 @@ class MemoryTracker:
         self.device = device
         self.backend = backend
         self.device_ids = device_ids
-        self.monitored_pid = int(os.environ.get("BENCHMARK_PID", os.getpid()))
-        self.track_cuda_pytorch_memory = self.device == "cuda" and self.backend == "pytorch"
-        self.distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
+        self.monitored_pid = os.getpid()
+        self.uses_cuda_pytorch_allocator = self.device == "cuda" and self.backend == "pytorch"
+        self.is_distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
-        LOGGER.info("\t+ Tracking RAM memory")
+        LOGGER.info(f"\t+ Tracking RAM memory of process [{self.monitored_pid}]")
 
         if self.device == "cuda":
-            self.device_ids = list(map(int, self.device_ids.split(",")))
-            LOGGER.info(f"\t+ Tracking VRAM memory of CUDA devices {self.device_ids}")
+            if self.device_ids is None:
+                raise ValueError("The CUDA device IDs must be provided when tracking VRAM memory.")
 
-        if self.track_cuda_pytorch_memory:
+            LOGGER.info(f"\t+ Tracking VRAM memory of CUDA devices [{self.device_ids}]")
+            self.device_ids = list(map(int, self.device_ids.split(",")))
+
+        if self.uses_cuda_pytorch_allocator:
             self.num_pytorch_devices = torch.cuda.device_count()
             if len(self.device_ids) != self.num_pytorch_devices:
                 raise ValueError(
@@ -133,21 +137,23 @@ class MemoryTracker:
 
     @contextmanager
     def track(self):
-        if self.distributed:
+        if self.is_distributed:
             torch.distributed.barrier()
 
-        if self.track_cuda_pytorch_memory:
+        if self.uses_cuda_pytorch_allocator:
             yield from self._cuda_pytorch_memory()
         elif self.device == "cuda":
             yield from self._cuda_memory()
         else:
             yield from self._cpu_memory()
 
-        if self.distributed:
+        if self.is_distributed:
             torch.distributed.barrier()
 
     def _cuda_pytorch_memory(self):
-        torch.cuda.empty_cache()
+        self.max_allocated_memory = 0
+        self.max_reserved_memory = 0
+
         torch.cuda.synchronize()
 
         for device in range(self.num_pytorch_devices):
@@ -158,15 +164,14 @@ class MemoryTracker:
 
         yield from self._cuda_memory()
 
-        self.max_allocated_memory = sum(
-            torch.cuda.max_memory_allocated(device=device) / 1e6 for device in range(self.num_pytorch_devices)
-        )
-        self.max_reserved_memory = sum(
-            torch.cuda.max_memory_reserved(device=device) / 1e6 for device in range(self.num_pytorch_devices)
-        )
-
         torch.cuda.synchronize()
-        torch.cuda.empty_cache()
+
+        for device in range(self.num_pytorch_devices):
+            try:
+                self.max_allocated_memory += torch.cuda.max_memory_allocated(device=device) / 1e6
+                self.max_reserved_memory += torch.cuda.max_memory_reserved(device=device) / 1e6
+            except Exception as e:
+                LOGGER.warning(f"\t\t+ Could not get max memory stats for device {device}: {e}")
 
     def _cuda_memory(self):
         child_connection, parent_connection = Pipe()
@@ -285,6 +290,7 @@ def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connectio
 
         amdsmi.amdsmi_init()
         rocml.smi_initialize()
+        permission_denied = False
         devices_handles = amdsmi.amdsmi_get_processor_handles()
 
         while not stop:
@@ -295,10 +301,25 @@ def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connectio
 
             for device_id in device_ids:
                 device_handle = devices_handles[device_id]
+
+                try:
+                    if is_amdsmi_available():
+                        used_global_memory += amdsmi.amdsmi_get_gpu_memory_total(
+                            device_handle, mem_type=amdsmi.AmdSmiMemoryType.VRAM
+                        )
+                    elif is_pyrsmi_available():
+                        used_global_memory += rocml.smi_get_device_memory_used(device_id, type="VRAM")
+                except Exception as e:
+                    LOGGER.warning(f"Could not get memory usage for device {device_id}: {e}")
+
+                if permission_denied:
+                    continue
+
                 try:
                     processes_handles = amdsmi.amdsmi_get_gpu_process_list(device_handle)
                 except Exception as e:
                     LOGGER.warning(f"Could not get process list for device {device_id}: {e}")
+                    permission_denied = "Permission Denied" in str(e)
                     continue
 
                 for process_handle in processes_handles:
@@ -306,15 +327,11 @@ def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connectio
                         gpu_process_info = amdsmi.amdsmi_get_gpu_process_info(device_handle, process_handle)
                     except Exception as e:
                         LOGGER.warning(f"Could not get process info for process {process_handle}: {e}")
+                        permission_denied = "Permission Denied" in str(e)
                         continue
 
                     if gpu_process_info["pid"] in monitored_pids:
                         max_used_process_memory += gpu_process_info["memory_usage"]["vram_mem"]
-
-                try:
-                    used_global_memory += rocml.smi_get_device_memory_used(device_id)
-                except Exception as e:
-                    LOGGER.warning(f"Could not get memory usage for device {device_id}: {e}")
 
             max_used_global_memory = max(max_used_global_memory, used_global_memory)
             max_used_process_memory = max(max_used_process_memory, used_process_memory)

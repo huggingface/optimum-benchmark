@@ -3,13 +3,30 @@ name: CLI CUDA Pytorch Single-GPU Tests
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
+    paths:
+      - .github/workflows/test_cli_cuda_pytorch_single_gpu.yaml
+      - "optimum_benchmark/**"
+      - "docker/**"
+      - "tests/**"
+      - "setup.py"
   pull_request:
-    types: [opened, reopened, synchronize]
+    branches:
+      - main
+    paths:
+      - .github/workflows/test_cli_cuda_pytorch_single_gpu.yaml
+      - "optimum_benchmark/**"
+      - "docker/**"
+      - "tests/**"
+      - "setup.py"
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+
+env:
+  IMAGE: ghcr.io/huggingface/optimum-benchmark:latest-cuda
 
 jobs:
   run_cli_cuda_pytorch_single_gpu_tests:
@@ -17,15 +34,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Pull image
-        run: docker pull pytorch/pytorch:2.2.2-cuda12.1-cudnn8-devel
+        uses: actions/checkout@v4
 
       - name: Run tests
         uses: addnab/docker-run-action@v3
         with:
-          image: pytorch/pytorch:2.2.2-cuda12.1-cudnn8-devel
+          image: ${{ env.IMAGE }}
           options: |
             --rm
             --gpus all
@@ -35,4 +49,4 @@ jobs:
             --workdir /workspace
           run: |
             pip install -e .[testing,diffusers,timm,peft,bitsandbytes,autoawq,auto-gptq]
-            pytest -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not (awq)"
+            pytest -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed)"

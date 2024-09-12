@@ -20,27 +20,20 @@ FROM ubuntu:${UBUNTU_VERSION}
 ENV DEBIAN_FRONTEND noninteractive
 ENV PATH="/home/user/.local/bin:${PATH}"
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential git bash-completion \
-    python3.10 python3-pip python3.10-dev && \
+    libgl1-mesa-dev libglib2.0-0 \
+    sudo build-essential git bash-completion numactl \
+    python3.10 python3-pip python3.10-dev google-perftools && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 && \
-    pip install --no-cache-dir --upgrade pip setuptools wheel 
+    pip install --no-cache-dir --upgrade pip setuptools wheel intel-openmp
 
-# Create a non-root user
-ARG GROUP_ID
-ARG USER_ID
-
-RUN addgroup --gid $GROUP_ID group
-RUN adduser --disabled-password --gecos '' --uid $USER_ID --gid $GROUP_ID user
-
-USER user
-WORKDIR /home/user
+ENV LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4:/usr/local/lib/libiomp5.so"
 
 # Install PyTorch
-ARG TORCH_VERSION="stable"
+ARG TORCH_VERSION=stable
 
 RUN if [ "${TORCH_VERSION}" = "stable" ]; then \
-    pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu ; \
+    pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu ; \
 elif [ "${TORCH_VERSION}" = "nighly" ]; then \
     pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cpu ; \
 else \

@@ -1,36 +1,26 @@
 defaults:
-  - experiment # inheriting experiment schema
-  - benchmark: inference
+  - benchmark
+  - scenario: inference
   - launcher: process
   - backend: pytorch
-  - _self_ # for hydra 1.1 compatibility
-  - override hydra/job_logging: colorlog # colorful logging
-  - override hydra/hydra_logging: colorlog # colorful logging
+  - _base_
+  - _self_
 
-experiment_name: pytorch_bert
+name: pytorch_bert
 
 launcher:
   device_isolation: true
+  device_isolation_action: warn
 
-benchmark:
+scenario:
   latency: true
   memory: true
+  input_shapes:
+    batch_size: 1
+    sequence_length: 128
 
 backend:
   device: cuda
   device_ids: 0
   no_weights: true
   model: bert-base-uncased
-
-# hydra/cli specific settings
-hydra:
-  run:
-    # where to store run results
-    dir: runs/${experiment_name}
-  job:
-    # change working directory to the run directory
-    chdir: true
-    env_set:
-      # set environment variable OVERRIDE_BENCHMARKS to 1
-      # to not skip benchmarks that have been run before
-      OVERRIDE_BENCHMARKS: 1

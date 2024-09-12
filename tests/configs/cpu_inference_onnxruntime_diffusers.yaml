@@ -7,4 +7,4 @@ defaults:
   - _self_ # hydra 1.1 compatibility
   - override backend: onnxruntime
 
-experiment_name: cpu_inference_onnxruntime_diffusers
+name: cpu_inference_onnxruntime_diffusers
