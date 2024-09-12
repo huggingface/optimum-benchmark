@@ -47,9 +47,8 @@ def update_perf_dfs():
                     gather_benchmarks(subset, hardware_config.machine, backend, hardware_config.hardware)
                 except Exception as e:
                     print(
-                        f"Error gathering benchmarks for machine {hardware_config.machine}, "
-                        f"hardware {hardware_config.hardware}, subset {subset}, backend {backend}: {e}"
-                    )
+                            f"benchmark for subset: {subset}, machine: {hardware_config.machine}, backend: {backend}, hardware: {hardware_config.hardware} not found"
+                        )
 
 
 scrapping_script = """
