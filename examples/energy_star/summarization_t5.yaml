@@ -1,13 +1,12 @@
 defaults:
-  - backend: pytorch # default backend
-  - launcher: process # default launcher
-  - benchmark: energy_star # default benchmark
-  - experiment # inheriting experiment schema
-  - _self_ # for hydra 1.1 compatibility
-  - override hydra/job_logging: colorlog # colorful logging
-  - override hydra/hydra_logging: colorlog # colorful logging
+  - benchmark
+  - backend: pytorch
+  - launcher: process
+  - scenario: energy_star
+  - _base_
+  - _self_
 
-experiment_name: summarization_t5
+name: summarization_t5
 
 launcher:
   device_isolation: true
@@ -20,7 +19,7 @@ backend:
   model: google-t5/t5-large
   task: text2text-generation
 
-benchmark:
+scenario:
   dataset_name: EnergyStarAI/summarization
   num_samples: 1000
   text_column_name: text
@@ -33,19 +32,3 @@ benchmark:
   generate_kwargs:
     max_new_tokens: 10
     min_new_tokens: 10
-
-# hydra/cli specific settings
-hydra:
-  run:
-    # where to store run results
-    dir: runs/${experiment_name}/${backend.model}/${now:%Y-%m-%d-%H-%M-%S}
-  sweep:
-    # where to store sweep results
-    dir: sweeps/${experiment_name}/${backend.model}/${now:%Y-%m-%d-%H-%M-%S}
-  job:
-    # change working directory to the run directory
-    chdir: true
-    env_set:
-      # set environment variable OVERRIDE_BENCHMARKS to 1
-      # to not skip benchmarks that have been run before
-      OVERRIDE_BENCHMARKS: 1

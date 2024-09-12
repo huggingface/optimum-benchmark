@@ -1,15 +1,21 @@
 from typing import Dict
 
+import numpy as np
 from datasets import Dataset
 from PIL.Image import Image
 from transformers import PreTrainedTokenizer
-import numpy as np
 
-from ...backends.transformers_utils import PretrainedProcessor, PretrainedConfig
+from ...backends.transformers_utils import PretrainedConfig, PretrainedProcessor
 from .config import EnergyStarConfig
 
 
-def preprocess(dataset: Dataset, task: str, config: EnergyStarConfig, preprocessor: PretrainedProcessor,  pretrained_config: PretrainedConfig) -> Dataset:
+def preprocess(
+    dataset: Dataset,
+    task: str,
+    config: EnergyStarConfig,
+    preprocessor: PretrainedProcessor,
+    pretrained_config: PretrainedConfig,
+) -> Dataset:
     task_to_preprocessing = {
         "feature-extraction": feature_extraction_preprocessing,
         "sentence-similarity": sentence_similarity_preprocessing,
@@ -29,7 +35,10 @@ def preprocess(dataset: Dataset, task: str, config: EnergyStarConfig, preprocess
 
 
 def feature_extraction_preprocessing(
-    dataset: Dataset, config: EnergyStarConfig, tokenizer: PreTrainedTokenizer,  pretrained_config: PretrainedConfig,
+    dataset: Dataset,
+    config: EnergyStarConfig,
+    tokenizer: PreTrainedTokenizer,
+    pretrained_config: PretrainedConfig,
 ) -> Dataset:
     # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
     if config.input_shapes["batch_size"] == 1:
@@ -49,9 +58,8 @@ def feature_extraction_preprocessing(
             examples[config.text_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length = getattr(pretrained_config, "max_position_embeddings", 512)
-            )
-
+            max_length=getattr(pretrained_config, "max_position_embeddings", 512),
+        )
 
     dataset = dataset.map(
         tokenize_function,
@@ -64,8 +72,12 @@ def feature_extraction_preprocessing(
 
     return dataset
 
+
 def summarization_preprocessing(
-    dataset: Dataset, config: EnergyStarConfig, tokenizer: PreTrainedTokenizer,  pretrained_config: PretrainedConfig,
+    dataset: Dataset,
+    config: EnergyStarConfig,
+    tokenizer: PreTrainedTokenizer,
+    pretrained_config: PretrainedConfig,
 ) -> Dataset:
     # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
     if config.input_shapes["batch_size"] == 1:
@@ -85,8 +97,8 @@ def summarization_preprocessing(
             examples[config.text_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length = getattr(pretrained_config, "max_position_embeddings", 512)
-            )
+            max_length=getattr(pretrained_config, "max_position_embeddings", 512),
+        )
 
     dataset = dataset.map(
         tokenize_function,
@@ -96,9 +108,13 @@ def summarization_preprocessing(
     ).with_format("torch")
 
     return dataset
+
 
 def text_classification_preprocessing(
-    dataset: Dataset, config: EnergyStarConfig, tokenizer: PreTrainedTokenizer, pretrained_config: PretrainedConfig,
+    dataset: Dataset,
+    config: EnergyStarConfig,
+    tokenizer: PreTrainedTokenizer,
+    pretrained_config: PretrainedConfig,
 ) -> Dataset:
     # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
     if config.input_shapes["batch_size"] == 1:
@@ -118,9 +134,9 @@ def text_classification_preprocessing(
             examples[config.text_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length = getattr(pretrained_config, "max_position_embeddings", 512)
-            #max_length = 512
-            )
+            max_length=getattr(pretrained_config, "max_position_embeddings", 512),
+            # max_length = 512
+        )
 
     dataset = dataset.map(
         tokenize_function,
@@ -131,8 +147,12 @@ def text_classification_preprocessing(
 
     return dataset
 
+
 def image_generation_preprocessing(
-    dataset: Dataset, config: EnergyStarConfig, processor: PretrainedProcessor,  pretrained_config: PretrainedConfig,
+    dataset: Dataset,
+    config: EnergyStarConfig,
+    processor: PretrainedProcessor,
+    pretrained_config: PretrainedConfig,
 ) -> Dataset:
     # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
     if config.input_shapes["batch_size"] == 1:
@@ -145,7 +165,10 @@ def image_generation_preprocessing(
 
 
 def question_answering_preprocessing(
-    dataset: Dataset, config: EnergyStarConfig, tokenizer: PreTrainedTokenizer,  pretrained_config: PretrainedConfig,
+    dataset: Dataset,
+    config: EnergyStarConfig,
+    tokenizer: PreTrainedTokenizer,
+    pretrained_config: PretrainedConfig,
 ) -> Dataset:
     # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
     if config.input_shapes["batch_size"] == 1:
@@ -168,9 +191,8 @@ def question_answering_preprocessing(
             examples[config.context_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length = getattr(pretrained_config, "max_position_embeddings", 512)
-            )
-
+            max_length=getattr(pretrained_config, "max_position_embeddings", 512),
+        )
 
     dataset = dataset.map(
         tokenize_function,
@@ -181,8 +203,12 @@ def question_answering_preprocessing(
 
     return dataset
 
+
 def text2text_generation_preprocessing(
-    dataset: Dataset, config: EnergyStarConfig, tokenizer: PreTrainedTokenizer,  pretrained_config: PretrainedConfig,
+    dataset: Dataset,
+    config: EnergyStarConfig,
+    tokenizer: PreTrainedTokenizer,
+    pretrained_config: PretrainedConfig,
 ) -> Dataset:
     # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
     if config.num_samples != -1:
@@ -199,7 +225,12 @@ def text2text_generation_preprocessing(
         return example
 
     def add_qa_prefix(example):
-        example[config.text_column_name] = config.dataset_prefix1 + str(example[config.question_column_name]) + str(config.dataset_prefix2) + example[config.context_column_name]
+        example[config.text_column_name] = (
+            config.dataset_prefix1
+            + str(example[config.question_column_name])
+            + str(config.dataset_prefix2)
+            + example[config.context_column_name]
+        )
         return example
 
     def tokenize_function_double(examples):
@@ -208,8 +239,9 @@ def text2text_generation_preprocessing(
             truncation=config.truncation,
             return_token_type_ids=False,
             padding=padding,
-            max_length = getattr(pretrained_config, "max_position_embeddings", 512)- (len(tokenizer(config.dataset_prefix1)) + len(tokenizer(config.dataset_prefix2)))
-            )
+            max_length=getattr(pretrained_config, "max_position_embeddings", 512)
+            - (len(tokenizer(config.dataset_prefix1)) + len(tokenizer(config.dataset_prefix2))),
+        )
 
     def tokenize_function_single(examples):
         return tokenizer(
@@ -217,19 +249,22 @@ def text2text_generation_preprocessing(
             truncation=config.truncation,
             return_token_type_ids=False,
             padding=padding,
-            max_length = getattr(pretrained_config, "max_position_embeddings", 512)- len(tokenizer(config.dataset_prefix1))
-            )
+            max_length=getattr(pretrained_config, "max_position_embeddings", 512)
+            - len(tokenizer(config.dataset_prefix1)),
+        )
+
     def tokenize_function(examples):
         return tokenizer(
             examples[config.text_column_name],
             truncation=config.truncation,
             return_token_type_ids=False,
             padding=padding,
-            max_length = getattr(pretrained_config, "max_position_embeddings", 512) - config.generate_kwargs['max_new_tokens']
-            )
+            max_length=getattr(pretrained_config, "max_position_embeddings", 512)
+            - config.generate_kwargs["max_new_tokens"],
+        )
 
-    if config.t5_task in ['question_answering']:
-        dataset=dataset.map(add_qa_prefix)
+    if config.t5_task in ["question_answering"]:
+        dataset = dataset.map(add_qa_prefix)
         dataset = dataset.map(
             tokenize_function_double,
             batched=True,
@@ -238,8 +273,8 @@ def text2text_generation_preprocessing(
             desc="Running tokenizer on dataset",
         ).with_format("torch")
 
-    elif config.t5_task in ['text_classification', 'summarization']:
-        dataset=dataset.map(add_single_prefix)
+    elif config.t5_task in ["text_classification", "summarization"]:
+        dataset = dataset.map(add_single_prefix)
         dataset = dataset.map(
             tokenize_function_single,
             batched=True,
@@ -248,7 +283,7 @@ def text2text_generation_preprocessing(
             desc="Running tokenizer on dataset",
         ).with_format("torch")
 
-    elif config.t5_task in ['text_generation']:
+    elif config.t5_task in ["text_generation"]:
         dataset = dataset.map(
             tokenize_function,
             batched=True,
@@ -259,8 +294,12 @@ def text2text_generation_preprocessing(
 
     return dataset
 
+
 def text_generation_preprocessing(
-    dataset: Dataset, config: EnergyStarConfig, tokenizer: PreTrainedTokenizer,  pretrained_config: PretrainedConfig,
+    dataset: Dataset,
+    config: EnergyStarConfig,
+    tokenizer: PreTrainedTokenizer,
+    pretrained_config: PretrainedConfig,
 ) -> Dataset:
     # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
     if config.input_shapes["batch_size"] == 1:
@@ -281,8 +320,9 @@ def text_generation_preprocessing(
             truncation=config.truncation,
             return_token_type_ids=False,
             padding=padding,
-            max_length = getattr(pretrained_config, "max_position_embeddings", 512) - config.generate_kwargs['max_new_tokens']
-            )
+            max_length=getattr(pretrained_config, "max_position_embeddings", 512)
+            - config.generate_kwargs["max_new_tokens"],
+        )
 
     dataset = dataset.map(
         tokenize_function,
@@ -295,7 +335,11 @@ def text_generation_preprocessing(
     return dataset
 
 
-def image_preprocessing(dataset: Dataset, config: EnergyStarConfig, processor: PretrainedProcessor,  pretrained_config: PretrainedConfig,
+def image_preprocessing(
+    dataset: Dataset,
+    config: EnergyStarConfig,
+    processor: PretrainedProcessor,
+    pretrained_config: PretrainedConfig,
 ) -> Dataset:
     # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
     if config.input_shapes["batch_size"] == 1:
@@ -320,7 +364,11 @@ def image_preprocessing(dataset: Dataset, config: EnergyStarConfig, processor: P
     return dataset
 
 
-def image_to_text_preprocessing(dataset: Dataset, config: EnergyStarConfig, processor: PretrainedProcessor,  pretrained_config: PretrainedConfig,
+def image_to_text_preprocessing(
+    dataset: Dataset,
+    config: EnergyStarConfig,
+    processor: PretrainedProcessor,
+    pretrained_config: PretrainedConfig,
 ) -> Dataset:
     # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
     if config.input_shapes["batch_size"] == 1:
@@ -334,6 +382,7 @@ def image_to_text_preprocessing(dataset: Dataset, config: EnergyStarConfig, proc
 
     if getattr(processor.tokenizer, "eos_token", None) is None:
         processor.tokenizer.eos_token = processor.tokenizer.pad_token
+
     def preprocess_function(examples):
         return processor(images=examples[config.image_column_name])
 
@@ -348,7 +397,10 @@ def image_to_text_preprocessing(dataset: Dataset, config: EnergyStarConfig, proc
 
 
 def automatic_speech_recognition_preprocessing(
-    dataset: Dataset, config: EnergyStarConfig, processor: PretrainedProcessor,  pretrained_config: PretrainedConfig,
+    dataset: Dataset,
+    config: EnergyStarConfig,
+    processor: PretrainedProcessor,
+    pretrained_config: PretrainedConfig,
 ) -> Dataset:
     # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
     if config.input_shapes["batch_size"] == 1:
@@ -386,7 +438,10 @@ def automatic_speech_recognition_preprocessing(
 
 
 def sentence_similarity_preprocessing(
-    dataset: Dataset, config: EnergyStarConfig, tokenizer: PreTrainedTokenizer,  pretrained_config: PretrainedConfig,
+    dataset: Dataset,
+    config: EnergyStarConfig,
+    tokenizer: PreTrainedTokenizer,
+    pretrained_config: PretrainedConfig,
 ) -> Dataset:
     # Remove empty samples when batch_size is 1 because empty inputs will make the model fail
     if config.input_shapes["batch_size"] == 1:
@@ -409,8 +464,9 @@ def sentence_similarity_preprocessing(
             examples[config.sentence2_column_name],
             padding=padding,
             truncation=config.truncation,
-            max_length = getattr(pretrained_config, "max_position_embeddings", 512)
-            )
+            max_length=getattr(pretrained_config, "max_position_embeddings", 512),
+        )
+
     dataset = dataset.map(
         tokenize_function,
         batched=True,

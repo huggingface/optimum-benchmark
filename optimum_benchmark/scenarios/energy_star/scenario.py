@@ -11,7 +11,7 @@ from ...backends.base import Backend, BackendConfigT
 from ...benchmark.report import BenchmarkMeasurements, BenchmarkReport
 from ...import_utils import is_torch_distributed_available
 from ...task_utils import IMAGE_DIFFUSION_TASKS, TEXT_GENERATION_TASKS
-from ...trackers.energy import Energy, Efficiency, EnergyTracker
+from ...trackers.energy import Efficiency, Energy, EnergyTracker
 from ..base import Scenario
 from .config import EnergyStarConfig
 from .preprocessing_utils import preprocess
@@ -136,7 +136,7 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
                 task=backend.config.task,
                 config=self.config,
                 preprocessor=backend.pretrained_processor,
-                pretrained_config= backend.pretrained_config,
+                pretrained_config=backend.pretrained_config,
             )
 
         self.report.preprocess.energy = self.energy_tracker.get_energy()
@@ -214,7 +214,7 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
                     try:
                         prefill_volume += inputs["input_ids"].size(dim=1) * self.config.input_shapes["batch_size"]
                     except:
-                        prefill_volume +=1
+                        prefill_volume += 1
             prefill_measures.append(self.energy_tracker.get_energy())
 
         prefill_energy = Energy.aggregate(prefill_measures)
@@ -241,7 +241,9 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
         self.report.decode.efficiency = Efficiency.from_energy(
             decode_energy, decode_volume, unit=TEXT_GENERATION_EFFICIENCY_UNIT
         )
-        self.report.decode.measures = [generate_measures[i] - prefill_measures[i] for i in range(self.config.iterations)]
+        self.report.decode.measures = [
+            generate_measures[i] - prefill_measures[i] for i in range(self.config.iterations)
+        ]
 
     def run_image_diffusion_energy_tracking(self, backend: Backend[BackendConfigT]):
         LOGGER.info(f"\t+ Running Image Diffusion energy tracking for {self.config.iterations} iterations")
