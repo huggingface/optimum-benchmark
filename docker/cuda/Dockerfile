@@ -41,6 +41,7 @@ fi
 # Install quantization libraries from source
 ENV CUDA_VERSION=12.4
 ENV TORCH_CUDA_ARCH_LIST="6.0 7.0 7.5 8.0 8.6 9.0+PTX"
+ENV CUDA_HOME=/usr/local/cuda
 
 COPY scripts/install_quantization_libs.py /internal/install_quantization_libs.py
 RUN python internal/install_quantization_libs.py --install-autogptq-from-source --install-autoawq-from-source
