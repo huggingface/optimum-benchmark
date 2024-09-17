@@ -93,7 +93,7 @@ CANONICAL_PRETRAINED_OPEN_LLM_LIST = [
     "google/gemma-2b",
     "google/gemma-7b",
     "google/recurrentgemma-2b",
-    "google/recurrentgemma-7b",
+    "google/recurrentgemma-9b",
     "internlm/internlm-20b",
     "internlm/internlm2-20b",
     "huggyllama/llama-7b",
