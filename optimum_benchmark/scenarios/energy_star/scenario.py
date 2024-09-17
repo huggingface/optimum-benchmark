@@ -1,6 +1,5 @@
 import os
-from dataclasses import dataclass
-from logging import getLogger
+from contextlib import ExitStack
 
 import torch
 from datasets import load_dataset
@@ -8,7 +7,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from ...backends.base import Backend, BackendConfigT
-from ...benchmark.report import BenchmarkMeasurements, BenchmarkReport
+from ...benchmark.report import BenchmarkReport
 from ...import_utils import is_torch_distributed_available
 from ...task_utils import IMAGE_DIFFUSION_TASKS, TEXT_GENERATION_TASKS
 from ...trackers.energy import Efficiency, Energy, EnergyTracker
@@ -19,7 +18,6 @@ from .preprocessing_utils import preprocess
 if is_torch_distributed_available():
     import torch.distributed
 
-LOGGER = getLogger("energy_star")
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
@@ -32,7 +30,6 @@ TEXT_GENERATION_DEFAULT_KWARGS = {
     "temperature": 1.0,
     "do_sample": False,
     "use_cache": True,
-    "pad_token_id": 0,
     "num_beams": 1,
 }
 TEXT_GENERATION_PREFILL_OVERRIDES = {
@@ -63,26 +60,6 @@ PREPROCESSING_EFFICIENCY_UNIT = "samples/kWh"
 INFERENCE_EFFICIENCY_UNIT = "samples/kWh"
 
 
-@dataclass
-class TextGenerationReport(BenchmarkReport):
-    preprocess: BenchmarkMeasurements
-    per_token: BenchmarkMeasurements
-    prefill: BenchmarkMeasurements
-    decode: BenchmarkMeasurements
-
-
-@dataclass
-class ImageDiffusionReport(BenchmarkReport):
-    preprocess: BenchmarkMeasurements
-    call: BenchmarkMeasurements
-
-
-@dataclass
-class InferenceReport(BenchmarkReport):
-    preprocess: BenchmarkMeasurements
-    forward: BenchmarkMeasurements
-
-
 class EnergyStarScenario(Scenario[EnergyStarConfig]):
     NAME = "energy_star"
 
@@ -91,14 +68,14 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
 
     def run(self, backend: Backend[BackendConfigT]) -> BenchmarkReport:
         if is_torch_distributed_available() and torch.distributed.is_initialized():
-            LOGGER.info("\t+ Distributing batch size across processes")
+            self.logger.info("\t+ Distributing batch size across processes")
             if self.config.input_shapes["batch_size"] % torch.distributed.get_world_size() != 0:
                 raise ValueError(
                     "The batch size must be divisible by the number of processes in a distributed environment"
                 )
             self.config.input_shapes["batch_size"] //= torch.distributed.get_world_size()
 
-        LOGGER.info("\t+ Loading raw dataset")
+        self.logger.info("\t+ Loading raw dataset")
         raw_dataset = load_dataset(
             self.config.dataset_name,
             self.config.dataset_config,
@@ -106,30 +83,24 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
         )
 
         if backend.config.task in TEXT_GENERATION_TASKS and backend.pretrained_model.can_generate():
-            LOGGER.info("\t+ Updating Text Generation kwargs with default values")
-            self.config.generate_kwargs = {**TEXT_GENERATION_WARMUP_OVERRIDES, **self.config.generate_kwargs}
-            LOGGER.info("\t+ Initializing Text Generation report")
-            self.report = TextGenerationReport(
-                preprocess=BenchmarkMeasurements(),
-                per_token=BenchmarkMeasurements(),
-                prefill=BenchmarkMeasurements(),
-                decode=BenchmarkMeasurements(),
-            )
+            self.logger.info("\t+ Updating Text Generation kwargs with default values")
+            self.config.generate_kwargs = {**TEXT_GENERATION_DEFAULT_KWARGS, **self.config.generate_kwargs}
+            self.logger.info("\t+ Initializing Text Generation report")
+            BenchmarkReport.from_list(targets=["preprocess", "load", "prefill", "decode", "per_token"])
         elif backend.config.task in IMAGE_DIFFUSION_TASKS:
-            LOGGER.info("\t+ Updating Image Diffusion kwargs with default values")
-            self.config.call_kwargs = {**IMAGE_DIFFUSION_WARMUP_OVERRIDES, **self.config.call_kwargs}
-            LOGGER.info("\t+ Initializing Image Diffusion report")
-            self.report = ImageDiffusionReport(preprocess=BenchmarkMeasurements(), call=BenchmarkMeasurements())
-
+            self.logger.info("\t+ Updating Image Diffusion kwargs with default values")
+            self.config.call_kwargs = {**IMAGE_DIFFUSION_DEFAULT_KWARGS, **self.config.call_kwargs}
+            self.logger.info("\t+ Initializing Image Diffusion report")
+            self.report = BenchmarkReport.from_list(targets=["preprocess", "load", "call"])
         else:
-            LOGGER.info("\t+ Initializing Inference report")
-            self.report = InferenceReport(preprocess=BenchmarkMeasurements(), forward=BenchmarkMeasurements())
+            self.logger.info("\t+ Initializing Inference report")
+            self.report = BenchmarkReport.from_list(targets=["preprocess", "load", "forward"])
 
         self.energy_tracker = EnergyTracker(
             backend=backend.config.name, device=backend.config.device, device_ids=backend.config.device_ids
         )
 
-        LOGGER.info("\t+ Preprocessing dataset")
+        self.logger.info("\t+ Preprocessing dataset")
         with self.energy_tracker.track(file_prefix="preprocess"):
             self.dataset = preprocess(
                 dataset=raw_dataset,
@@ -146,41 +117,32 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
             unit=PREPROCESSING_EFFICIENCY_UNIT,
         )
 
-        LOGGER.info("\t+ Preparing backend for Inference")
-        backend.prepare_for_inference(
-            input_shapes=self.config.input_shapes,
-            inference_kwargs={
-                **self.config.generate_kwargs,
-                **self.config.forward_kwargs,
-                **self.config.call_kwargs,
-            },
-        )
+        self.run_model_loading_tracking(backend)
 
-        LOGGER.info("\t+ Initialising dataloader")
+        self.logger.info("\t+ Initialising dataloader")
         self.dataloader = DataLoader(self.dataset, batch_size=self.config.input_shapes["batch_size"])
 
-        LOGGER.info("\t+ Warming up backend for Inference")
+        self.logger.info("\t+ Warming up backend for Inference")
         self.sample_inputs = backend.prepare_inputs(next(iter(self.dataloader)))
 
         for _ in range(self.config.warmup_runs):
             if backend.config.task in TEXT_GENERATION_TASKS and backend.pretrained_model.can_generate():
-                warmup_kwargs = self.config.generate_kwargs.copy()
-                warmup_kwargs.update({"max_new_tokens": 2, "min_new_tokens": 2})
-                _ = backend.generate(self.sample_inputs, warmup_kwargs)
+                _ = backend.generate(
+                    self.sample_inputs, {**self.config.generate_kwargs, **TEXT_GENERATION_WARMUP_OVERRIDES}
+                )
             elif backend.config.task in IMAGE_DIFFUSION_TASKS:
-                warmup_kwargs = self.config.call_kwargs.copy()
-                warmup_kwargs.update({"num_inference_steps": 2})
-                _ = backend.call(self.sample_inputs, warmup_kwargs)
+                _ = backend.call(self.sample_inputs, {**self.config.call_kwargs, **IMAGE_DIFFUSION_WARMUP_OVERRIDES})
             else:
-                warmup_kwargs = self.config.forward_kwargs.copy()
-                _ = backend.forward(self.sample_inputs, warmup_kwargs)
+                _ = backend.forward(self.sample_inputs, self.config.forward_kwargs)
 
         if backend.config.task in TEXT_GENERATION_TASKS and backend.pretrained_model.can_generate():
-            LOGGER.info("\t+ Additional warmup for Text Generation")
-            _ = backend.generate(self.sample_inputs, self.config.generate_kwargs)
+            self.logger.info("\t+ Additional warmup for Text Generation")
+            _ = backend.generate(
+                self.sample_inputs, {**self.config.generate_kwargs, **TEXT_GENERATION_WARMUP_OVERRIDES}
+            )
         elif backend.config.task in IMAGE_DIFFUSION_TASKS:
-            LOGGER.info("\t+ Additional warmup for Image Diffusion")
-            _ = backend.call(self.sample_inputs, self.config.call_kwargs)
+            self.logger.info("\t+ Additional warmup for Image Diffusion")
+            _ = backend.call(self.sample_inputs, {**self.config.call_kwargs, **IMAGE_DIFFUSION_WARMUP_OVERRIDES})
 
         if self.config.energy:
             if backend.config.task in TEXT_GENERATION_TASKS and backend.pretrained_model.can_generate():
@@ -195,17 +157,36 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
 
         return self.report
 
+    # Loading tracking
+    def run_model_loading_tracking(self, backend: Backend[BackendConfigT]):
+        self.logger.info("\t+ Running model loading tracking")
+
+        if self.config.energy:
+            energy_tracker = EnergyTracker(
+                backend=backend.config.name, device=backend.config.device, device_ids=backend.config.device_ids
+            )
+
+        context_stack = ExitStack()
+        if self.config.energy:
+            context_stack.enter_context(energy_tracker.track())
+
+        with context_stack:
+            self.logger.info("\t+ Loading model for Inference")
+            backend.load()
+
+        if self.config.energy:
+            self.report.load.energy = energy_tracker.get_energy()
+
     ## Energy tracking
     def run_text_generation_energy_tracking(self, backend: Backend[BackendConfigT]):
-        LOGGER.info(f"\t+ Running Text Generation energy tracking for {self.config.iterations} iterations")
+        self.logger.info(f"\t+ Running Text Generation energy tracking for {self.config.iterations} iterations")
 
         prefill_measures = []
 
-        prefill_kwargs = self.config.generate_kwargs.copy()
-        prefill_kwargs.update({"max_new_tokens": 1, "min_new_tokens": 1})
+        prefill_kwargs = {**self.config.generate_kwargs, **TEXT_GENERATION_PREFILL_OVERRIDES}
 
         for k in range(self.config.iterations):
-            LOGGER.info(f"\t+ Prefill iteration {k+1}/{self.config.iterations}")
+            self.logger.info(f"\t+ Prefill iteration {k+1}/{self.config.iterations}")
             with self.energy_tracker.track(file_prefix="prefill"):
                 prefill_volume = 0
                 for inputs in tqdm(self.dataloader):
@@ -213,7 +194,7 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
                     _ = backend.prefill(inputs, prefill_kwargs)
                     try:
                         prefill_volume += inputs["input_ids"].size(dim=1) * self.config.input_shapes["batch_size"]
-                    except:
+                    except KeyError:
                         prefill_volume += 1
             prefill_measures.append(self.energy_tracker.get_energy())
 
@@ -226,7 +207,7 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
 
         generate_measures = []
         for k in range(self.config.iterations):
-            LOGGER.info(f"\t+ Decoding iteration {k+1}/{self.config.iterations}")
+            self.logger.info(f"\t+ Decoding iteration {k+1}/{self.config.iterations}")
             with self.energy_tracker.track(file_prefix="generate"):
                 for inputs in tqdm(self.dataloader):
                     inputs = backend.prepare_inputs(inputs)
@@ -235,7 +216,7 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
 
         generate_energy = Energy.aggregate(generate_measures)
         decode_energy = generate_energy - prefill_energy
-        decode_volume = self.atomic_decode_volume * self.config.num_samples
+        decode_volume = self.atomic_decode_volume
 
         self.report.decode.energy = decode_energy
         self.report.decode.efficiency = Efficiency.from_energy(
@@ -246,12 +227,12 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
         ]
 
     def run_image_diffusion_energy_tracking(self, backend: Backend[BackendConfigT]):
-        LOGGER.info(f"\t+ Running Image Diffusion energy tracking for {self.config.iterations} iterations")
+        self.logger.info(f"\t+ Running Image Diffusion energy tracking for {self.config.iterations} iterations")
 
         measures = []
 
         for k in range(self.config.iterations):
-            LOGGER.info(f"\t+ Iteration {k+1}/{self.config.iterations}")
+            self.logger.info(f"\t+ Iteration {k+1}/{self.config.iterations}")
             with self.energy_tracker.track(file_prefix="call"):
                 for inputs in tqdm(self.dataloader):
                     inputs = backend.prepare_inputs(inputs)
@@ -259,7 +240,7 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
             measures.append(self.energy_tracker.get_energy())
 
         call_energy = Energy.aggregate(measures)
-        call_volume = self.atomic_call_volume * self.config.num_samples
+        call_volume = self.atomic_call_volume
 
         self.report.call.energy = call_energy
         self.report.call.efficiency = Efficiency.from_energy(
@@ -268,12 +249,12 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
         self.report.call.measures = measures
 
     def run_inference_energy_tracking(self, backend: Backend[BackendConfigT]):
-        LOGGER.info(f"\t+ Running Inference energy tracking for {self.config.iterations} iterations")
+        self.logger.info(f"\t+ Running Inference energy tracking for {self.config.iterations} iterations")
 
         measures = []
 
         for k in range(self.config.iterations):
-            LOGGER.info(f"\t+ Iteration {k+1}/{self.config.iterations}")
+            self.logger.info(f"\t+ Iteration {k+1}/{self.config.iterations}")
             with self.energy_tracker.track(file_prefix="forward"):
                 for inputs in tqdm(self.dataloader):
                     inputs = backend.prepare_inputs(inputs)
@@ -281,7 +262,7 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
             measures.append(self.energy_tracker.get_energy())
 
         forward_energy = Energy.aggregate(measures)
-        forward_volume = self.atomic_forward_volume * self.config.num_samples
+        forward_volume = self.atomic_forward_volume
 
         self.report.forward.energy = forward_energy
         self.report.forward.efficiency = Efficiency.from_energy(
@@ -291,35 +272,19 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
 
     @property
     def atomic_forward_volume(self) -> int:  # in samples
-        return self.config.input_shapes["batch_size"]
+        return self.config.num_samples
 
     @property
     def atomic_call_volume(self) -> int:  # in images
         if "prompt" in self.sample_inputs:
-            return self.config.input_shapes["batch_size"] * self.config.call_kwargs["num_images_per_prompt"]
+            return self.config.num_samples * self.config.call_kwargs["num_images_per_prompt"]
         else:
-            return self.config.input_shapes["batch_size"]
-
-    @property
-    def atomic_prefill_volume(self) -> int:  # in tokens
-        if "input_ids" in self.sample_inputs:
-            # text conditioned generation (1 bos token or sequence_length tokens)
-            return self.config.input_shapes["batch_size"] * self.config.input_shapes.get("sequence_length", 1)
-        else:
-            # image/audio conditioned generation (1 bos token)
-            return self.config.input_shapes["batch_size"]
-
-    @property
-    def atomic_per_token_volume(self) -> int:  # in tokens
-        return (
-            self.config.input_shapes["batch_size"]
-            * self.config.generate_kwargs["num_beams"]  # at each beam stage there are num_beams tokens generated
-        )
+            return self.config.num_samples
 
     @property
     def atomic_decode_volume(self) -> int:  # in tokens
         return (
-            self.config.input_shapes["batch_size"]
+            self.config.num_samples
             * self.config.generate_kwargs["num_beams"]  # at each beam stage there are num_beams tokens generated
             * (self.config.generate_kwargs["max_new_tokens"] - 1)  # 1 token is generated during prefill
         )
