@@ -109,7 +109,7 @@ CANONICAL_PRETRAINED_OPEN_LLM_LIST = [
     "microsoft/rho-math-1b-v0.1",
     "mistralai/Mistral-7B-v0.1",
     "mistralai/Mixtral-8x7B-v0.1",
-    *"mistralai/Mixtral-8x22B-v0.1",
+    "mistralai/Mixtral-8x22B-v0.1",
     "openai-community/gpt2",
     "openai-community/gpt2-large",
     "stabilityai/stablelm-3b-4e1t",
