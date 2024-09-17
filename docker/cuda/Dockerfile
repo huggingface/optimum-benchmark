@@ -35,7 +35,7 @@ RUN if [ -n "${TORCH_VERSION}" ]; then \
     # Install specific torch version if TORCH_VERSION is provided
     pip install --no-cache-dir torch==${TORCH_VERSION} torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
 elif [ "${TORCH_RELEASE_TYPE}" = "stable" ]; then \
-    pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
+    pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/${TORCH_CUDA} ; \
 elif [ "${TORCH_RELEASE_TYPE}" = "nightly" ]; then \
     pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
 else \
