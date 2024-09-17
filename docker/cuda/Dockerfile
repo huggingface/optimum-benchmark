@@ -28,20 +28,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install PyTorch
 ARG TORCH_CUDA=cu124
-ARG TORCH_VERSION=stable
+ARG TORCH_RELEASE_TYPE=stable
 
-RUN if [ "${TORCH_VERSION}" = "stable" ]; then \
+RUN if [ "${TORCH_RELEASE_TYPE}" = "stable" ]; then \
     pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
-elif [ "${TORCH_VERSION}" = "nighly" ]; then \
+elif [ "${TORCH_RELEASE_TYPE}" = "nighly" ]; then \
     pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
 else \
-    pip install --no-cache-dir torch==${TORCH_VERSION} torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
+    echo "Error: Invalid TORCH_RELEASE_TYPE. Must be 'stable' or 'nightly'." && exit 1 ; \
 fi
 
 # Install quantization libraries from source
 ENV CUDA_VERSION=12.4
 ENV TORCH_CUDA_ARCH_LIST="6.0 7.0 7.5 8.0 8.6 9.0+PTX"
-ENV CUDA_HOME=/usr/local/cuda
 
 COPY scripts/install_quantization_libs.py /internal/install_quantization_libs.py
 RUN python internal/install_quantization_libs.py --install-autogptq-from-source --install-autoawq-from-source
