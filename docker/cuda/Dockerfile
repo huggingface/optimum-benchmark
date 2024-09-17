@@ -39,7 +39,7 @@ elif [ "${TORCH_RELEASE_TYPE}" = "stable" ]; then \
 elif [ "${TORCH_RELEASE_TYPE}" = "nightly" ]; then \
     pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
 else \
-    echo "Error: Invalid PYTORCH_RELEASE_TYPE. Must be 'stable', 'nightly', or specify a TORCH_VERSION." && exit 1 ; \
+    echo "Error: Invalid TORCH_RELEASE_TYPE. Must be 'stable', 'nightly', or specify a TORCH_VERSION." && exit 1 ; \
 fi
 
 # Install quantization libraries from source
