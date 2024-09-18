@@ -97,6 +97,7 @@ class TrainingScenario(Scenario[TrainingConfig]):
             self.report.overall.efficiency = Efficiency.from_energy(
                 self.report.overall.energy, volume=self.overall_volume, unit=TRAIN_EFFICIENCY_UNIT
             )
+            energy_tracker.stop()
 
         return self.report
 

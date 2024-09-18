@@ -187,6 +187,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
             self.report.load.memory = memory_tracker.get_max_memory()
         if self.config.energy:
             self.report.load.energy = energy_tracker.get_energy()
+            energy_tracker.stop()
 
     ## Memory tracking
     def run_text_generation_memory_tracking(self, backend: Backend[BackendConfigT]):
@@ -367,6 +368,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
         self.report.decode.efficiency = Efficiency.from_energy(
             decode_energy, decode_volume, unit=TEXT_GENERATION_EFFICIENCY_UNIT
         )
+        energy_tracker.stop()
 
     def run_image_diffusion_energy_tracking(self, backend: Backend[BackendConfigT]):
         self.logger.info("\t+ Running Image Diffusion energy tracking")
@@ -391,6 +393,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
         self.report.call.efficiency = Efficiency.from_energy(
             call_energy, call_volume, unit=IMAGE_DIFFUSION_EFFICIENCY_UNIT
         )
+        energy_tracker.stop()
 
     def run_inference_energy_tracking(self, backend: Backend[BackendConfigT]):
         self.logger.info("\t+ Running energy tracking")
@@ -415,6 +418,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
         self.report.forward.efficiency = Efficiency.from_energy(
             forward_energy, forward_volume, unit=INFERENCE_EFFICIENCY_UNIT
         )
+        energy_tracker.stop()
 
     @property
     def atomic_forward_volume(self) -> int:  # in samples
