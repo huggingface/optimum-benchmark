@@ -29,7 +29,6 @@ INSTALL_REQUIRES = [
     "flatten_dict",
     "colorlog",
     "pandas",
-    "huggingface_hub >= 0.25.0",
 ]
 
 try:
