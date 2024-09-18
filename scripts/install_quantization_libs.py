@@ -18,32 +18,14 @@ def clone_or_pull_repo(repo_url, repo_location_path):
 
 
 def install_autoawq_from_source():
-    """Install the AutoAWQ and AutoAWQ_kernels packages from GitHub."""
-    print("Installing AutoAWQ and AutoAWQ_kernels packages.")
-
-    autoawq_repo_name = "AutoAWQ"
-    autoawq_kernels_repo_name = "AutoAWQ_kernels"
-
-    autoawq_repo_path = os.path.join(EXTERNAL_REPOS_DIR, autoawq_repo_name)
-    kernels_repo_path = os.path.join(EXTERNAL_REPOS_DIR, autoawq_kernels_repo_name)
-
-    clone_or_pull_repo(f"https://github.com/casper-hansen/{autoawq_kernels_repo_name}", kernels_repo_path)
+    print("Installing AutoAWQ package.")
     subprocess.run(
-        f"cd {kernels_repo_path} && {sys.executable} -m pip install .",
+        "INSTALL_KERNELS=1 pip install git+https://github.com/casper-hansen/AutoAWQ.git",
         shell=True,
         check=True,
         env=os.environ,
     )
-
-    clone_or_pull_repo(f"https://github.com/casper-hansen/{autoawq_repo_name}", autoawq_repo_path)
-    subprocess.run(
-        f"cd {autoawq_repo_path} && {sys.executable} -m pip install .",
-        shell=True,
-        check=True,
-        env=os.environ,
-    )
-
-    print("AutoAWQ and AutoAWQ_kernels packages installed.")
+    print("AutoAWQ package installed.")
 
 
 def install_autogptq_from_source():
