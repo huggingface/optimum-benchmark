@@ -26,7 +26,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
     python3.10 python3-pip python3.10-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 && \
-    pip install --no-cache-dir --upgrade pip setuptools wheel requests && \
+    pip install --no-cache-dir --upgrade pip setuptools wheel requests pyrsmi && \
     cd /opt/rocm/share/amd_smi && pip install .
 
 # Install PyTorch
@@ -51,5 +51,4 @@ ARG IMAGE_FLAVOR
 ENV IMAGE_FLAVOR=${IMAGE_FLAVOR}
 
 COPY scripts/install_quantization_libs.py /internal/install_quantization_libs.py
-RUN 
-# RUN python internal/install_quantization_libs.py --install-autogptq-from-source --install-autoawq-from-source
+RUN python internal/install_quantization_libs.py --install-autogptq-from-source --install-autoawq-from-source
