@@ -49,7 +49,6 @@ def install_autoawq_from_source():
         env=os.environ,
     )
 
-
     clone_or_pull_repo(f"https://github.com/casper-hansen/{autoawq_repo_name}", autoawq_repo_path)
     if os.environ.get("IMAGE_FLAVOR") in ["cuda", "rocm"]:
         autoawq_setup_file_path = os.path.join(autoawq_repo_path, "setup.py")
