@@ -19,7 +19,7 @@ def clone_or_pull_repo(repo_url, repo_location_path):
 
 
 def process_setup_file_for_autoawq(setup_file_path):
-    print(f"Processing setup.py for AutoAWQ")
+    print("Processing setup.py for AutoAWQ")
 
     with open(setup_file_path, "r") as file:
         setup_content = file.read()
