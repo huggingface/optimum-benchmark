@@ -30,8 +30,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install PyTorch
 ARG TORCH_CUDA=cu118
 ARG TORCH_VERSION=stable
-ARG IMAGE_FLAVOR
-ENV IMAGE_FLAVOR=${IMAGE_FLAVOR}
 
 RUN if [ "${TORCH_VERSION}" = "stable" ]; then \
     pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
