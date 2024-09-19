@@ -35,13 +35,25 @@ def process_setup_file_for_autoawq(setup_file_path):
 def install_autoawq_from_source():
     """Install the AutoAWQ and AutoAWQ_kernels packages from GitHub."""
     print("Installing AutoAWQ and AutoAWQ_kernels packages.")
-    autoawq_repo_path = os.path.join(EXTERNAL_REPOS_DIR, "AutoAWQ")
+    autoawq_repo_name = "AutoAWQ"
+    autoawq_kernels_repo_name = "AutoAWQ_kernels"
 
-    clone_or_pull_repo("https://github.com/casper-hansen/AutoAWQ", autoawq_repo_path)
+    autoawq_repo_path = os.path.join(EXTERNAL_REPOS_DIR, autoawq_repo_name)
+    kernels_repo_path = os.path.join(EXTERNAL_REPOS_DIR, autoawq_kernels_repo_name)
+
+    clone_or_pull_repo(f"https://github.com/casper-hansen/{autoawq_kernels_repo_name}", kernels_repo_path)
+    subprocess.run(
+        f"cd {kernels_repo_path} && {sys.executable} -m pip install .",
+        shell=True,
+        check=True,
+        env=os.environ,
+    )
+
+
+    clone_or_pull_repo(f"https://github.com/casper-hansen/{autoawq_repo_name}", autoawq_repo_path)
     if os.environ.get("IMAGE_FLAVOR") in ["cuda", "rocm"]:
         autoawq_setup_file_path = os.path.join(autoawq_repo_path, "setup.py")
         process_setup_file_for_autoawq(autoawq_setup_file_path)
-
     subprocess.run(
         f"cd {autoawq_repo_path} && INSTALL_KERNELS=1 {sys.executable} -m pip install .",
         shell=True,
