@@ -35,9 +35,9 @@ RUN if [ -n "${TORCH_VERSION}" ]; then \
     # Install specific torch version if TORCH_VERSION is provided
     pip install --no-cache-dir torch==${TORCH_VERSION} torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
 elif [ "${TORCH_RELEASE_TYPE}" = "stable" ]; then \
-    pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/${TORCH_CUDA} ; \
+    pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
 elif [ "${TORCH_RELEASE_TYPE}" = "nightly" ]; then \
-    pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
+    pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/${TORCH_CUDA} ; \
 else \
     echo "Error: Invalid TORCH_RELEASE_TYPE. Must be 'stable', 'nightly', or specify a TORCH_VERSION." && exit 1 ; \
 fi
@@ -45,6 +45,8 @@ fi
 # Install quantization libraries from source
 ENV CUDA_VERSION=12.4
 ENV TORCH_CUDA_ARCH_LIST="6.0 7.0 7.5 8.0 8.6 9.0+PTX"
+ARG IMAGE_FLAVOR
+ENV IMAGE_FLAVOR=${IMAGE_FLAVOR}
 
 COPY scripts/install_quantization_libs.py /internal/install_quantization_libs.py
 RUN python internal/install_quantization_libs.py --install-autogptq-from-source --install-autoawq-from-source

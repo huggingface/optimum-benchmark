@@ -38,9 +38,9 @@ RUN if [ -n "${TORCH_VERSION}" ]; then \
     # Install specific torch version if TORCH_VERSION is provided
     pip install --no-cache-dir torch==${TORCH_VERSION} torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_ROCM} ; \
 elif [ "${TORCH_RELEASE_TYPE}" = "stable" ]; then \
-    pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/${TORCH_ROCM} ; \
+    pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_ROCM} ; \
 elif [ "${TORCH_RELEASE_TYPE}" = "nightly" ]; then \
-    pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_ROCM} ; \
+    pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/${TORCH_ROCM} ; \
 else \
     echo "Error: Invalid TORCH_RELEASE_TYPE. Must be 'stable', 'nightly', or specify a TORCH_VERSION." && exit 1 ; \
 fi
@@ -49,4 +49,5 @@ ENV ROCM_VERSION=5.7
 ENV PYTORCH_ROCM_ARCH="gfx900;gfx906;gfx908;gfx90a;gfx1030;gfx1100"
 
 COPY scripts/install_quantization_libs.py /internal/install_quantization_libs.py
-RUN python internal/install_quantization_libs.py --install-autogptq-from-source --install-autoawq-from-source
+RUN 
+# RUN python internal/install_quantization_libs.py --install-autogptq-from-source --install-autoawq-from-source
