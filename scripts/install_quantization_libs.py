@@ -41,9 +41,7 @@ def install_autoawq_from_source():
     if os.environ.get("IMAGE_FLAVOR") in ["cuda", "rocm", "cuda-ort"]:
         autoawq_setup_file_path = os.path.join(autoawq_repo_path, "setup.py")
         process_setup_file_for_autoawq(autoawq_setup_file_path)
-        raise Exception("Success")
 
-    raise Exception("Failure")
     subprocess.run(
         f"cd {autoawq_repo_path} && INSTALL_KERNELS=1 {sys.executable} -m pip install .",
         shell=True,
