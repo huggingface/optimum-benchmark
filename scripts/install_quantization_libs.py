@@ -37,7 +37,7 @@ def install_autoawq_from_source():
     print("Installing AutoAWQ and AutoAWQ_kernels packages.")
     autoawq_repo_path = os.path.join(EXTERNAL_REPOS_DIR, "AutoAWQ")
 
-    clone_or_pull_repo(f"https://github.com/casper-hansen/AutoAWQ", autoawq_repo_path)
+    clone_or_pull_repo("https://github.com/casper-hansen/AutoAWQ", autoawq_repo_path)
     if os.environ.get("IMAGE_FLAVOR") in ["cuda", "rocm", "cuda-ort"]:
         autoawq_setup_file_path = os.path.join(autoawq_repo_path, "setup.py")
         process_setup_file_for_autoawq(autoawq_setup_file_path)
