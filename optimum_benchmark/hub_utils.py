@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional
 import pandas as pd
 from flatten_dict import flatten, unflatten
 from huggingface_hub import create_repo, hf_hub_download, upload_file
-from huggingface_hub.utils._errors import HfHubHTTPError
+from huggingface_hub.utils import HfHubHTTPError
 from typing_extensions import Self
 
 LOGGER = getLogger("hub_utils")

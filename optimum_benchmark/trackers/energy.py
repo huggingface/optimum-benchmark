@@ -195,3 +195,6 @@ class EnergyTracker:
         return Energy(
             unit=ENERGY_UNIT, cpu=self.cpu_energy, gpu=self.gpu_energy, ram=self.ram_energy, total=self.total_energy
         )
+
+    def stop(self):
+        self.emission_tracker.stop()
