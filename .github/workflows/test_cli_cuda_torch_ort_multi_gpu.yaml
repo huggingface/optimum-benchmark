@@ -48,5 +48,5 @@ jobs:
             --volume ${{ github.workspace }}:/workspace
             --workdir /workspace
           run: |
-            pip install -e .[testing,torch-ort,peft]
+            pip install -e .[testing,torch-ort,peft] optimum@git+https://github.com/huggingface/optimum.git
             pytest -x -s -k "cli and cuda and torch_ort and (dp or ddp or device_map) and not peft"
