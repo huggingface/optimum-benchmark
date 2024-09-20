@@ -30,12 +30,11 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
     cd /opt/rocm/share/amd_smi && pip install .
 
 # Install PyTorch
+ARG TORCH_VERSION=""
 ARG TORCH_ROCM=rocm5.7
 ARG TORCH_RELEASE_TYPE=stable
-ARG TORCH_VERSION=""
 
 RUN if [ -n "${TORCH_VERSION}" ]; then \
-    # Install specific torch version if TORCH_VERSION is provided
     pip install --no-cache-dir torch==${TORCH_VERSION} torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_ROCM} ; \
 elif [ "${TORCH_RELEASE_TYPE}" = "stable" ]; then \
     pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_ROCM} ; \
@@ -44,6 +43,7 @@ elif [ "${TORCH_RELEASE_TYPE}" = "nightly" ]; then \
 else \
     echo "Error: Invalid TORCH_RELEASE_TYPE. Must be 'stable', 'nightly', or specify a TORCH_VERSION." && exit 1 ; \
 fi
+
 # Install quantization libraries from source
 ENV ROCM_VERSION=5.7
 ENV PYTORCH_ROCM_ARCH="gfx900;gfx906;gfx908;gfx90a;gfx1030;gfx1100"
