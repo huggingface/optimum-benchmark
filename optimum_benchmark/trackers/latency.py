@@ -121,7 +121,8 @@ class LatencyTracker:
         self.device = device
         self.backend = backend
         self.is_asynchronous = self.backend == "pytorch" and self.device == "cuda"
-        self.is_distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
+        self.is_distributed = (self.backend != "vllm" and
+                               is_torch_distributed_available() and torch.distributed.is_initialized())
 
         if self.is_asynchronous:
             LOGGER.info("\t+ Tracking latency using Pytorch CUDA events")
