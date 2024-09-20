@@ -32,7 +32,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
 # Install PyTorch
 ARG TORCH_ROCM=rocm5.7
 ARG TORCH_RELEASE_TYPE=stable
-ARG TORCH_VERSION
+ARG TORCH_VERSION=""
 
 RUN if [ -n "${TORCH_VERSION}" ]; then \
     # Install specific torch version if TORCH_VERSION is provided
