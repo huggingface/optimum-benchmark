@@ -34,8 +34,8 @@ jobs:
     runs-on: [single-gpu, nvidia-gpu, a10, ci]
 
     container:
-      image: ghcr.io/huggingface/optimum-benchmark:latest-cuda
-      options: --gpus all --volume /mnt/cache/.cache/huggingface:/mnt/cache/
+      image: vllm/vllm-openai:latest
+      options: --ipc host --gpus all --entrypoint /bin/bash
 
     steps:
       - name: Checkout
@@ -43,11 +43,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -e .[testing,vllm,flash-attn]
+          pip install -e .[testing]
 
       - name: Run tests
         run: |
-          FORCE_SERIAL=1 pytest -x -s -k "cli and cuda and vllm and not (tp)"
+          pytest -x -s -k "cli and cuda and vllm and not tp"
 
   run_cli_cuda_vllm_multi_gpu_tests:
     if: ${{
@@ -63,8 +63,8 @@ jobs:
     runs-on: [multi-gpu, nvidia-gpu, 4-a10, ci]
 
     container:
-      image: ghcr.io/huggingface/optimum-benchmark:latest-cuda
-      options: --gpus all --volume /mnt/cache/.cache/huggingface:/mnt/cache/
+      image: vllm/vllm-openai:latest
+      options: --ipc host --gpus all --entrypoint /bin/bash
 
     steps:
       - name: Checkout
@@ -72,8 +72,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -e .[testing,vllm,flash-attn]
+          pip install -e .[testing]
 
       - name: Run tests
         run: |
-          FORCE_SERIAL=1 pytest -x -s -k "cli and cuda and vllm and (tp)"
+          pytest -x -s -k "cli and cuda and vllm and tp"
