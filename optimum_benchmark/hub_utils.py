@@ -95,11 +95,9 @@ class PushToHubMixin:
         create_repo(repo_id, token=token, private=private, exist_ok=exist_ok, repo_type=repo_type)
 
         with TemporaryDirectory() as tmpdir:
+            path_in_repo = (Path(subfolder) / filename).as_posix()
             path_or_fileobj = Path(tmpdir) / filename
-
             self.save_json(path_or_fileobj)
-
-            path_in_repo = Path(subfolder) / filename
 
             try:
                 upload_file(
