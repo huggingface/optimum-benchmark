@@ -24,8 +24,10 @@ jobs:
     if: ${{
       (github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch') ||
+      contains( github.event.pull_request.labels.*.name, 'cli') ||
       contains( github.event.pull_request.labels.*.name, 'cpu') ||
-      contains( github.event.pull_request.labels.*.name, 'llama-cpp')
+      contains( github.event.pull_request.labels.*.name, 'llama_cpp') ||
+      contains( github.event.pull_request.labels.*.name, 'cli_cpu_llama_cpp')
       }}
 
     runs-on: ubuntu-latest

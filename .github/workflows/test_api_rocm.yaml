@@ -24,7 +24,9 @@ jobs:
     if: ${{
       (github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch') ||
-      contains( github.event.pull_request.labels.*.name, 'rocm')
+      contains( github.event.pull_request.labels.*.name, 'api') ||
+      contains( github.event.pull_request.labels.*.name, 'rocm') ||
+      contains( github.event.pull_request.labels.*.name, 'api_rocm')
       }}
 
     runs-on: [self-hosted, amd-gpu, single-gpu]

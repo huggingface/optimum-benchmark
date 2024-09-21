@@ -1,4 +1,4 @@
-name: CLI CUDA Pytorch Multi-GPU Tests
+name: CLI CUDA Py-TXI Tests
 
 on:
   workflow_dispatch:
@@ -20,28 +20,31 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
 jobs:
-  run_cli_cuda_pytorch_multi_gpu_tests:
+  run_cli_cuda_py_txi_tests:
     if: ${{
       (github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch') ||
+      contains( github.event.pull_request.labels.*.name, 'cli') ||
       contains( github.event.pull_request.labels.*.name, 'cuda') ||
-      contains( github.event.pull_request.labels.*.name, 'pytorch')
+      contains( github.event.pull_request.labels.*.name, 'py_txi') ||
+      contains( github.event.pull_request.labels.*.name, 'cli_cuda_py_txi')
       }}
 
-    runs-on: [multi-gpu, nvidia-gpu, 4-a10, ci]
-
-    container:
-      image: ghcr.io/huggingface/optimum-benchmark:latest-cuda
-      options: --gpus all --volume /mnt/cache/.cache/huggingface:/mnt/cache/
+    runs-on: [single-gpu, nvidia-gpu, a10, ci]
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install requirements
         run: |
-          pip install -e .[testing,diffusers,timm,peft,deepspeed]
+          pip install --upgrade pip
+          pip install -e .[testing,py-txi]
 
       - name: Run tests
-        run: |
-          pytest -x -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed)"
+        run: pytest -s -k "cli and cuda and py_txi"

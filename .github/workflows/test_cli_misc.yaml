@@ -24,7 +24,9 @@ jobs:
     if: ${{
       (github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch') ||
-      contains( github.event.pull_request.labels.*.name, 'misc')
+      contains( github.event.pull_request.labels.*.name, 'cli') ||
+      contains( github.event.pull_request.labels.*.name, 'misc') ||
+      contains( github.event.pull_request.labels.*.name, 'cli_misc')
       }}
 
     strategy:
