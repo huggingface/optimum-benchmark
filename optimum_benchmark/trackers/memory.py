@@ -101,6 +101,7 @@ class MemoryTracker:
         self.backend = backend
         self.device_ids = device_ids
         self.monitored_pid = os.getpid()
+        self.is_engine = self.backend in ["vllm", "tensorrt-llm"]
         self.uses_cuda_pytorch_allocator = self.device == "cuda" and self.backend == "pytorch"
         self.is_distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
@@ -137,7 +138,7 @@ class MemoryTracker:
 
     @contextmanager
     def track(self):
-        if self.is_distributed:
+        if not self.is_engine and self.is_distributed:
             torch.distributed.barrier()
 
         if self.uses_cuda_pytorch_allocator:
@@ -147,7 +148,7 @@ class MemoryTracker:
         else:
             yield from self._cpu_memory()
 
-        if self.is_distributed:
+        if not self.is_engine and self.is_distributed:
             torch.distributed.barrier()
 
     def _cuda_pytorch_memory(self):

@@ -120,10 +120,9 @@ class LatencyTracker:
     def __init__(self, device: str, backend: str):
         self.device = device
         self.backend = backend
+        self.is_engine = self.backend in ["vllm", "tensorrt-llm"]
         self.is_asynchronous = self.backend == "pytorch" and self.device == "cuda"
-        self.is_distributed = (
-            self.backend != "vllm" and is_torch_distributed_available() and torch.distributed.is_initialized()
-        )
+        self.is_distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
         if self.is_asynchronous:
             LOGGER.info("\t+ Tracking latency using Pytorch CUDA events")
@@ -141,7 +140,7 @@ class LatencyTracker:
 
     @contextmanager
     def track(self):
-        if self.is_distributed:
+        if not self.is_engine and self.is_distributed:
             torch.distributed.barrier()
 
         if self.is_asynchronous:
@@ -149,7 +148,7 @@ class LatencyTracker:
         else:
             yield from self._cpu_latency()
 
-        if self.is_distributed:
+        if not self.is_engine and self.is_distributed:
             torch.distributed.barrier()
 
     def _pytorch_cuda_latency(self):
@@ -252,6 +251,7 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
     def __init__(self, device: str, backend: str):
         self.device = device
         self.backend = backend
+        self.is_engine = self.backend in ["vllm", "tensorrt-llm"]
         self.is_asynchronous = self.backend == "pytorch" and self.device == "cuda"
         self.is_distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
@@ -284,7 +284,7 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         self.prefilled = False
         self.per_token_events.append([])
 
-        if self.is_distributed:
+        if not self.is_engine and self.is_distributed:
             torch.distributed.barrier()
 
         if self.is_asynchronous:
@@ -303,7 +303,7 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         else:
             self.decode_end_events.append(time.perf_counter())
 
-        if self.is_distributed:
+        if not self.is_engine and self.is_distributed:
             torch.distributed.barrier()
 
         self.prefilled = False
