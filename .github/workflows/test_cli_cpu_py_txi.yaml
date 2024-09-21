@@ -27,6 +27,8 @@ concurrency:
 
 jobs:
   run_cli_cpu_py_txi_tests:
+    if: ${{ (github.event_name == 'workflow_dispatch') || contains( github.event.pull_request.labels.*.name, 'cpu') }}
+
     runs-on: ubuntu-latest
 
     steps:

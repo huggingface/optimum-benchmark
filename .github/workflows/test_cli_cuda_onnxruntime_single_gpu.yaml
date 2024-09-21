@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - .github/workflows/test_cli_cuda_onnxruntime.yaml
+      - .github/workflows/test_cli_cuda_onnxruntime_single_gpu.yaml
       - "optimum_benchmark/**"
       - "docker/**"
       - "tests/**"
@@ -15,7 +15,7 @@ on:
     branches:
       - main
     paths:
-      - .github/workflows/test_cli_cuda_onnxruntime.yaml
+      - .github/workflows/test_cli_cuda_onnxruntime_single_gpu.yaml
       - "optimum_benchmark/**"
       - "docker/**"
       - "tests/**"
