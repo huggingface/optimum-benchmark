@@ -13,6 +13,7 @@ on:
       - reopened
       - synchronize
       - labeled
+      - unlabeled
 
 concurrency:
   cancel-in-progress: true
