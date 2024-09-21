@@ -114,6 +114,7 @@ class EnergyTracker:
         self.device = device
         self.backend = backend
         self.device_ids = device_ids
+        self.is_engine = self.backend in ["vllm", "tensorrt-llm"]
         self.is_asynchronous = backend == "pytorch" and device == "cuda"
         self.is_distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
@@ -164,7 +165,7 @@ class EnergyTracker:
 
     @contextmanager
     def track(self, file_prefix: str = "task"):
-        if self.is_distributed:
+        if not self.is_engine and self.is_distributed:
             torch.distributed.barrier()
 
         if self.is_asynchronous:
@@ -174,7 +175,7 @@ class EnergyTracker:
 
         yield
 
-        if self.is_distributed:
+        if not self.is_engine and self.is_distributed:
             torch.distributed.barrier()
 
         if self.is_asynchronous:
