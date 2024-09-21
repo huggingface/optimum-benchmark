@@ -3,7 +3,6 @@ defaults:
   - _base_ # inherits from base config
   - _cuda_ # inherits from cuda config
   - _inference_ # inherits from inference config
-  - _memory_utilization_ # inherits from memory utilization config
   - _serving_mode_ # inherits from serving_mode config
   - _no_weights_ # inherits from no weights config
   - _bloom_ # inherits from bloom config

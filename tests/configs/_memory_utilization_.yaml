@@ -1,3 +1,0 @@
-backend:
-  engine_args:
-    gpu_memory_utilization: 0.1
