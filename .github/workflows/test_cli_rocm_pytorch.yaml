@@ -1,4 +1,4 @@
-name: CLI ROCm Pytorch Single-GPU Tests
+name: CLI ROCm Pytorch Tests
 
 on:
   workflow_dispatch:
