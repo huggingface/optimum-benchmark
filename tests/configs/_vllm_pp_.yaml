@@ -1,12 +1,11 @@
 backend:
   device_ids: 0,1
+  serving_mode: online
   engine_args:
-    tensor_parallel_size: 2
+    pipeline_parallel_size: 2
     distributed_executor_backend: mp
 
-# hydra/cli specific settings
 hydra:
   job:
     env_set:
-      # set environment variable VLLM_WORKER_MULTIPROC_METHOD to spawn
       VLLM_WORKER_MULTIPROC_METHOD: spawn
