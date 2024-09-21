@@ -33,14 +33,13 @@ jobs:
 
     container:
       image: ghcr.io/huggingface/optimum-benchmark:latest-rocm
-      options: --ipc host
+      options: --ipc host 
         --shm-size "16gb"
         --group-add video
         --device /dev/kfd
         --device /dev/dri
         --env ROCR_VISIBLE_DEVICES
         --env HIP_VISIBLE_DEVICES=0
-        --volume /mnt/cache/.cache/huggingface:/mnt/cache/
 
     steps:
       - name: Checkout
