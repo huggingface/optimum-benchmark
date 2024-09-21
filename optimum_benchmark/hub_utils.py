@@ -1,10 +1,10 @@
-import os
-import tempfile
 import time
 from dataclasses import asdict, dataclass
 from json import dump, load
 from logging import getLogger
-from typing import Any, Dict, Optional
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from typing import Any, Dict, Optional, Union
 
 import pandas as pd
 from flatten_dict import flatten, unflatten
@@ -42,12 +42,12 @@ class PushToHubMixin:
     def from_dict(cls, data: Dict[str, Any]) -> "PushToHubMixin":
         return cls(**data)
 
-    def save_json(self, path: str, flat: bool = False) -> None:
+    def save_json(self, path: Union[str, Path], flat: bool = False) -> None:
         with open(path, "w") as f:
             dump(self.to_dict(flat=flat), f, indent=4)
 
     @classmethod
-    def from_json(cls, path: str) -> Self:
+    def from_json(cls, path: Union[str, Path]) -> Self:
         with open(path, "r") as f:
             data = load(f)
         return cls.from_dict(data)
@@ -73,11 +73,11 @@ class PushToHubMixin:
         data = unflatten(data, splitter="dot")
         return cls.from_dict(data)
 
-    def save_csv(self, path: str) -> None:
+    def save_csv(self, path: Union[str, Path]) -> None:
         self.to_dataframe().to_csv(path, index=False)
 
     @classmethod
-    def from_csv(cls, path: str) -> Self:
+    def from_csv(cls, path: Union[str, Path]) -> Self:
         return cls.from_dataframe(pd.read_csv(path))
 
     # HUGGING FACE HUB API
@@ -94,10 +94,12 @@ class PushToHubMixin:
 
         create_repo(repo_id, token=token, private=private, exist_ok=exist_ok, repo_type=repo_type)
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path_or_fileobj = os.path.join(tmpdir, filename)
-            path_in_repo = os.path.join(subfolder, filename)
+        with TemporaryDirectory() as tmpdir:
+            path_or_fileobj = Path(tmpdir) / filename
+
             self.save_json(path_or_fileobj)
+
+            path_in_repo = Path(subfolder) / filename
 
             try:
                 upload_file(
@@ -109,9 +111,9 @@ class PushToHubMixin:
                     **kwargs,
                 )
             except HfHubHTTPError as e:
-                LOGGER.warn("Error while uploading to Hugging Face Hub")
+                LOGGER.warning("Error while uploading to Hugging Face Hub")
                 if "Client Error: Too Many Requests for url" in str(e):
-                    LOGGER.warn("Client Error: Too Many Requests for url. Retrying in 15 seconds.")
+                    LOGGER.warning("Client Error: Too Many Requests for url. Retrying in 15 seconds.")
                     time.sleep(15)
                     upload_file(
                         repo_id=repo_id,
@@ -138,9 +140,9 @@ class PushToHubMixin:
                 repo_id=repo_id, filename=filename, subfolder=subfolder, repo_type=repo_type, **kwargs
             )
         except HfHubHTTPError as e:
-            LOGGER.warn("Error while downloading from Hugging Face Hub")
+            LOGGER.warning("Error while downloading from Hugging Face Hub")
             if "Client Error: Too Many Requests for url" in str(e):
-                LOGGER.warn("Client Error: Too Many Requests for url. Retrying in 15 seconds.")
+                LOGGER.warning("Client Error: Too Many Requests for url. Retrying in 15 seconds.")
                 time.sleep(15)
                 resolved_file = hf_hub_download(
                     repo_id=repo_id, filename=filename, subfolder=subfolder, repo_type=repo_type, **kwargs
