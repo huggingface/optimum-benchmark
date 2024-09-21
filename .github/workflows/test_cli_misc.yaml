@@ -8,6 +8,7 @@ on:
     paths:
       - .github/workflows/test_cli_misc.yaml
       - "optimum_benchmark/**"
+      - "docker/**"
       - "tests/**"
       - "setup.py"
   pull_request:
@@ -16,6 +17,7 @@ on:
     paths:
       - .github/workflows/test_cli_misc.yaml
       - "optimum_benchmark/**"
+      - "docker/**"
       - "tests/**"
       - "setup.py"
 

@@ -55,6 +55,6 @@ jobs:
       - name: Run tests
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          PUSH_REPO_ID: optimum-benchmark/misc
+          PUSH_REPO_ID: optimum-benchmark/misc-${{ matrix.os }}-${{ matrix.python }}
         run: |
           pytest -s -k "api and not (cpu or cuda or rocm or mps)"
