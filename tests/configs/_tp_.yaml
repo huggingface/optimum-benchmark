@@ -1,9 +1,10 @@
 backend:
   device_ids: 0,1
   engine_args:
+    enforce_eager: true
     tensor_parallel_size: 2
     disable_custom_all_reduce: true
-    distributed_executor_backend: ray
+    distributed_executor_backend: mp
 
 # hydra/cli specific settings
 hydra:
