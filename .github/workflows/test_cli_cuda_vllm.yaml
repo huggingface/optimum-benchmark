@@ -20,14 +20,15 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
 jobs:
-  run_cli_cuda_pytorch_tests:
+  run_cli_cuda_vllm_single_gpu_tests:
     if: ${{
       (github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch') ||
       contains( github.event.pull_request.labels.*.name, 'cli') ||
       contains( github.event.pull_request.labels.*.name, 'cuda') ||
       contains( github.event.pull_request.labels.*.name, 'vllm') ||
-      contains( github.event.pull_request.labels.*.name, 'cli_cuda_vllm')
+      contains( github.event.pull_request.labels.*.name, 'single_gpu') ||
+      contains( github.event.pull_request.labels.*.name, 'cli_cuda_vllm_single_gpu')
       }}
 
     runs-on: [single-gpu, nvidia-gpu, a10, ci]
@@ -45,7 +46,34 @@ jobs:
           pip install -e .[testing,vllm,flash-attn]
 
       - name: Run tests
-        env:
-          FORCE_SERIAL: 1
         run: |
-          pytest -x -s -k "cli and cuda and vllm"
+          FORCE_SERIAL=1 pytest -x -s -k "cli and cuda and vllm and not (tp)"
+
+  run_cli_cuda_vllm_multi_gpu_tests:
+    if: ${{
+      (github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch') ||
+      contains( github.event.pull_request.labels.*.name, 'cli') ||
+      contains( github.event.pull_request.labels.*.name, 'cuda') ||
+      contains( github.event.pull_request.labels.*.name, 'vllm') ||
+      contains( github.event.pull_request.labels.*.name, 'multi_gpu') ||
+      contains( github.event.pull_request.labels.*.name, 'cli_cuda_vllm_multi_gpu')
+      }}
+
+    runs-on: [multi-gpu, nvidia-gpu, a10, ci]
+
+    container:
+      image: ghcr.io/huggingface/optimum-benchmark:latest-cuda
+      options: --gpus all --volume /mnt/cache/.cache/huggingface:/mnt/cache/
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          pip install -e .[testing,vllm,flash-attn]
+
+      - name: Run tests
+        run: |
+          FORCE_SERIAL=1 pytest -x -s -k "cli and cuda and vllm and (tp)"

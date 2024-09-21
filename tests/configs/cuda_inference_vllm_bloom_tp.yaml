@@ -1,0 +1,13 @@
+defaults:
+  # order of inheritance, last one overrides previous ones
+  - _base_ # inherits from base config
+  - _cuda_ # inherits from cuda config
+  - _inference_ # inherits from inference config
+  - _serving_mode_ # inherits from serving_mode config
+  - _no_weights_ # inherits from no weights config
+  - _vllm_tp_ # inherits from vllm tp config
+  - _bloom_ # inherits from bloom config
+  - _self_ # hydra 1.1 compatibility
+  - override backend: vllm
+
+name: cuda_inference_vllm_bloom_tp
