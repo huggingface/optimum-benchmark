@@ -24,7 +24,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
 jobs:
-  run_misc_cli_tests:
+  run_cli_misc_tests:
     strategy:
       fail-fast: false
       matrix:
