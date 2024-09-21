@@ -1,0 +1,81 @@
+name: CLI CUDA Torch-ORT Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - labeled
+      - unlabeled
+
+concurrency:
+  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+
+jobs:
+  run_cli_cuda_torch_ort_single_gpu_tests:
+    if: ${{
+      (github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch') ||
+      contains( github.event.pull_request.labels.*.name, 'cli') ||
+      contains( github.event.pull_request.labels.*.name, 'cuda') ||
+      contains( github.event.pull_request.labels.*.name, 'torch_ort') ||
+      contains( github.event.pull_request.labels.*.name, 'single_gpu') ||
+      contains( github.event.pull_request.labels.*.name, 'cli_cuda_torch_or_single_gpu')
+      }}
+
+    runs-on: [single-gpu, nvidia-gpu, a10, ci]
+
+    container:
+      image: ghcr.io/huggingface/optimum-benchmark:latest-cuda-ort
+      options: --gpus all --volume /mnt/cache/.cache/huggingface:/mnt/cache/
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          pip install -e .[testing,torch-ort,peft]
+          pip install optimum@git+https://github.com/huggingface/optimum.git
+
+      - name: Run tests
+        run: |
+          pytest -x -s -k "cli and cuda and torch_ort and not (dp or ddp or device_map) and not (peft)"
+
+  run_cli_cuda_torch_ort_multi_gpu_tests:
+    if: ${{
+      (github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch') ||
+      contains( github.event.pull_request.labels.*.name, 'cli') ||
+      contains( github.event.pull_request.labels.*.name, 'cuda') ||
+      contains( github.event.pull_request.labels.*.name, 'torch_ort') ||
+      contains( github.event.pull_request.labels.*.name, 'multi_gpu') ||
+      contains( github.event.pull_request.labels.*.name, 'cli_cuda_torch_ort_multi_gpu')
+      }}
+
+    runs-on: [multi-gpu, nvidia-gpu, 4-a10, ci]
+
+    container:
+      image: ghcr.io/huggingface/optimum-benchmark:latest-cuda-ort
+      options: --gpus all --volume /mnt/cache/.cache/huggingface:/mnt/cache/
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          pip install -e .[testing,torch-ort,peft] 
+          pip install optimum@git+https://github.com/huggingface/optimum.git
+
+      - name: Run tests
+        run: |
+          pytest -x -s -k "cli and cuda and torch_ort and (dp or ddp or device_map) and not (peft)"

@@ -18,9 +18,8 @@ jobs:
       fail-fast: false
       matrix:
         subset: [unquantized]
-        machine: [
-          {name: 32vCPU-C7i, runs-on: {group: 'aws-c7i-8xlarge-plus'}}, 
-        ]
+        machine:
+          [{ name: 32vCPU-C7i, runs-on: { group: "aws-c7i-8xlarge-plus" } }]
 
     runs-on: ${{ matrix.machine.runs-on }}
 

@@ -1,4 +1,4 @@
-name: CLI CUDA Py-TXI Tests
+name: CLI CUDA TensorRT-LLM Tests
 
 on:
   workflow_dispatch:
@@ -20,31 +20,30 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
 jobs:
-  run_cli_cuda_py_txi_tests:
+  cli_cuda_tensorrt_llm_tests:
     if: ${{
       (github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch') ||
       contains( github.event.pull_request.labels.*.name, 'cli') ||
       contains( github.event.pull_request.labels.*.name, 'cuda') ||
-      contains( github.event.pull_request.labels.*.name, 'py_txi') ||
-      contains( github.event.pull_request.labels.*.name, 'cli_cuda_py_txi')
+      contains( github.event.pull_request.labels.*.name, 'tensorrt_llm') ||
+      contains( github.event.pull_request.labels.*.name, 'cli_cuda_tensorrt_llm')
       }}
 
     runs-on: [single-gpu, nvidia-gpu, a10, ci]
+
+    container:
+      image: huggingface/optimum-nvidia:latest
+      options: --gpus all --volume /mnt/cache/.cache/huggingface:/mnt/cache/
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Install requirements
+      - name: Install dependencies
         run: |
-          pip install --upgrade pip
-          pip install -e .[testing,py-txi]
+          pip install -e .[testing]
 
       - name: Run tests
-        run: pytest -s -k "cli and cuda and py_txi"
+        run: |
+          pytest -x -s -k "cli and cuda and tensorrt_llm"

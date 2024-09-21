@@ -5,21 +5,15 @@ on:
   push:
     branches:
       - main
-    paths:
-      - .github/workflows/test_api_rocm.yaml
-      - "optimum_benchmark/**"
-      - "docker/**"
-      - "tests/**"
-      - "setup.py"
   pull_request:
     branches:
       - main
-    paths:
-      - .github/workflows/test_api_rocm.yaml
-      - "optimum_benchmark/**"
-      - "docker/**"
-      - "tests/**"
-      - "setup.py"
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - labeled
+      - unlabeled
 
 concurrency:
   cancel-in-progress: true
@@ -27,6 +21,14 @@ concurrency:
 
 jobs:
   run_api_rocm_tests:
+    if: ${{
+      (github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch') ||
+      contains( github.event.pull_request.labels.*.name, 'api') ||
+      contains( github.event.pull_request.labels.*.name, 'rocm') ||
+      contains( github.event.pull_request.labels.*.name, 'api_rocm')
+      }}
+
     runs-on: [self-hosted, amd-gpu, single-gpu]
 
     container:
