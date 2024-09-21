@@ -7,7 +7,7 @@ import pytest
 
 from optimum_benchmark.logging_utils import run_subprocess_and_log_stream_output
 
-LOGGER = getLogger("test")
+LOGGER = getLogger("test-cli")
 
 
 FORCE_SERIAL = os.environ.get("FORCE_SERIAL", "0") == "1"

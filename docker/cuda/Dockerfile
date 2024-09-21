@@ -27,12 +27,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pip install --no-cache-dir --upgrade pip setuptools wheel requests
 
 # Install PyTorch
+ARG TORCH_VERSION=""
 ARG TORCH_CUDA=cu124
 ARG TORCH_RELEASE_TYPE=stable
-ARG TORCH_VERSION=""
 
 RUN if [ -n "${TORCH_VERSION}" ]; then \
-    # Install specific torch version if TORCH_VERSION is provided
     pip install --no-cache-dir torch==${TORCH_VERSION} torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
 elif [ "${TORCH_RELEASE_TYPE}" = "stable" ]; then \
     pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \

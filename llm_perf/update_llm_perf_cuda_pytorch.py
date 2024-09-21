@@ -19,7 +19,7 @@ MACHINE = os.getenv("MACHINE", None)
 
 if os.getenv("MACHINE", None) is None and os.getenv("SUBSET", None) is None:
     PUSH_REPO_ID = "optimum-benchmark/llm-perf-pytorch-cuda-debug"
-    CANONICAL_PRETRAINED_OPEN_LLM_LIST = ["gpt2"]
+    CANONICAL_PRETRAINED_OPEN_LLM_LIST = ["gpt2"]  # noqa: F811
     SUBSET = "unquantized"
 elif os.getenv("MACHINE", None) is not None and os.getenv("SUBSET", None) is not None:
     PUSH_REPO_ID = f"optimum-benchmark/llm-perf-pytorch-cuda-{SUBSET}-{MACHINE}"
