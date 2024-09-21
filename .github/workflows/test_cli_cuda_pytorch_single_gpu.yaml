@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   run_cli_cuda_pytorch_single_gpu_tests:
-    if: ${{ (github.event_name == 'workflow_dispatch') || contains( github.event.pull_request.labels.*.name, 'cuda') }}
+    if: ${{ (github.event_name == 'workflow_dispatch') || (github.event_name == 'push') || contains( github.event.pull_request.labels.*.name, 'cuda') }}
 
     runs-on: [single-gpu, nvidia-gpu, a10, ci]
 
