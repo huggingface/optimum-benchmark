@@ -47,7 +47,7 @@ jobs:
 
       - name: Run tests
         run: |
-          FORCE_SERIAL=1 pytest -x -s -k "cli and cuda and vllm and not tp"
+          FORCE_SERIAL=1 pytest -x -s -k "cli and cuda and vllm and not (tp or pp)"
 
   run_cli_cuda_vllm_multi_gpu_tests:
     if: ${{
@@ -76,4 +76,4 @@ jobs:
 
       - name: Run tests
         run: |
-          FORCE_SERIAL=1 pytest -x -s -k "cli and cuda and vllm and tp"
+          FORCE_SERIAL=1 pytest -x -s -k "cli and cuda and vllm and (tp or pp)"
