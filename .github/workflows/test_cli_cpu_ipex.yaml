@@ -20,7 +20,12 @@ concurrency:
 
 jobs:
   run_cli_cpu_ipex_tests:
-    if: ${{ (github.event_name == 'workflow_dispatch') || (github.event_name == 'push') || contains( github.event.pull_request.labels.*.name, 'cpu') }}
+    if: ${{
+      (github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch') ||
+      contains( github.event.pull_request.labels.*.name, 'cpu') ||
+      contains( github.event.pull_request.labels.*.name, 'ipex')
+      }}
 
     runs-on: ubuntu-latest
 
