@@ -5,21 +5,14 @@ on:
   push:
     branches:
       - main
-    paths:
-      - .github/workflows/test_cli_rocm_pytorch_multi_gpu.yaml
-      - "optimum_benchmark/**"
-      - "docker/**"
-      - "tests/**"
-      - "setup.py"
   pull_request:
     branches:
       - main
-    paths:
-      - .github/workflows/test_cli_rocm_pytorch_multi_gpu.yaml
-      - "optimum_benchmark/**"
-      - "docker/**"
-      - "tests/**"
-      - "setup.py"
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - labeled
 
 concurrency:
   cancel-in-progress: true
