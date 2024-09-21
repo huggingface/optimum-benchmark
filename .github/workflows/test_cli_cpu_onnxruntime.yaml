@@ -27,6 +27,8 @@ concurrency:
 
 jobs:
   run_cli_cpu_onnxruntime_tests:
+    name: CLI CPU OnnxRuntime Tests
+
     runs-on: ubuntu-latest
 
     steps:

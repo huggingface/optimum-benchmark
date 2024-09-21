@@ -25,28 +25,27 @@ concurrency:
   cancel-in-progress: true
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
-env:
-  IMAGE: ghcr.io/huggingface/optimum-benchmark:latest-cuda-ort
-
 jobs:
   run_cli_cuda_torch_ort_single_gpu_tests:
+    if: ${{ (github.event_name == 'workflow_dispatch') || contains( github.event.pull_request.labels.*.name, 'cuda') }}
+
+    name: CLI CUDA Torch-ORT Single-GPU Tests
+
     runs-on: [single-gpu, nvidia-gpu, a10, ci]
+
+    container:
+      image: ghcr.io/huggingface/optimum-benchmark:latest-cuda-ort
+      options: --gpus all --volume /mnt/cache/.cache/huggingface:/mnt/cache/
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install dependencies
+        run: |
+          pip install -e .[testing,torch-ort,peft]
+          pip install optimum@git+https://github.com/huggingface/optimum.git
+
       - name: Run tests
-        uses: addnab/docker-run-action@v3
-        with:
-          image: ${{ env.IMAGE }}
-          options: |
-            --rm
-            --gpus all
-            --shm-size 64G
-            --env MKL_THREADING_LAYER=GNU
-            --volume ${{ github.workspace }}:/workspace
-            --workdir /workspace
-          run: |
-            pip install -e .[testing,torch-ort,peft] optimum@git+https://github.com/huggingface/optimum.git
-            pytest -x -s -k "cli and cuda and torch_ort and not (dp or ddp or device_map) and not (peft)"
+        run: |
+          pytest -x -s -k "cli and cuda and torch_ort and not (dp or ddp or device_map) and not (peft)"

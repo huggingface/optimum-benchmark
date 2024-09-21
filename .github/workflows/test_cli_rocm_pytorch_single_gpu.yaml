@@ -27,12 +27,15 @@ concurrency:
 
 jobs:
   run_cli_rocm_pytorch_single_gpu_tests:
+    if: ${{ (github.event_name == 'workflow_dispatch') || contains( github.event.pull_request.labels.*.name, 'rocm') }}
+
     runs-on: [self-hosted, amd-gpu, single-gpu]
+
+    name: CLI ROCm Pytorch Single-GPU Tests
 
     container:
       image: ghcr.io/huggingface/optimum-benchmark:latest-rocm
       options: --ipc host
-        --shm-size "16gb"
         --group-add video
         --device /dev/kfd
         --device /dev/dri

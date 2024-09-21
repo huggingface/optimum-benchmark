@@ -27,6 +27,8 @@ concurrency:
 
 jobs:
   run_api_cpu_tests:
+    name: API CPU Tests
+
     runs-on: ubuntu-latest
 
     steps:

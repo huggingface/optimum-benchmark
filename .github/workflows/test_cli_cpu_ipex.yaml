@@ -27,6 +27,8 @@ concurrency:
 
 jobs:
   run_cli_cpu_ipex_tests:
+    name: CLI CPU IPEX Tests
+
     runs-on: ubuntu-latest
 
     steps:

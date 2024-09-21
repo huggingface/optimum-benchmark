@@ -27,6 +27,8 @@ concurrency:
 
 jobs:
   run_cli_cpu_neural_compressor_tests:
+    name: CLI CPU Neural Compressor Tests
+
     runs-on: ubuntu-latest
 
     steps:

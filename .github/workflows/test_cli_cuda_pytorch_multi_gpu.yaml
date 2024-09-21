@@ -25,28 +25,26 @@ concurrency:
   cancel-in-progress: true
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
-env:
-  IMAGE: ghcr.io/huggingface/optimum-benchmark:latest-cuda
-
 jobs:
   run_cli_cuda_pytorch_multi_gpu_tests:
+    if: ${{ (github.event_name == 'workflow_dispatch') || contains( github.event.pull_request.labels.*.name, 'cuda') }}
+
+    name: CLI CUDA Pytorch Multi-GPU Tests
+
     runs-on: [multi-gpu, nvidia-gpu, 4-a10, ci]
+
+    container:
+      image: ghcr.io/huggingface/optimum-benchmark:latest-cuda
+      options: --gpus all --volume /mnt/cache/.cache/huggingface:/mnt/cache/
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install dependencies
+        run: |
+          pip install -e .[testing,diffusers,timm,peft,deepspeed]
+
       - name: Run tests
-        uses: addnab/docker-run-action@v3
-        with:
-          image: ${{ env.IMAGE }}
-          options: |
-            --rm
-            --gpus all
-            --shm-size 64G
-            --env MKL_THREADING_LAYER=GNU
-            --volume ${{ github.workspace }}:/workspace
-            --workdir /workspace
-          run: |
-            pip install -e .[testing,diffusers,timm,peft,deepspeed]
-            pytest -x -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed)"
+        run: |
+          pytest -x -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed)"

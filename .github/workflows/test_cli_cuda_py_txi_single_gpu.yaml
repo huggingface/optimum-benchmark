@@ -1,4 +1,4 @@
-name: CLI CUDA Py-TXI Tests
+name: CLI CUDA Py-TXI Single-GPU Tests
 
 on:
   workflow_dispatch:
@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - .github/workflows/test_cli_cuda_py_txi.yaml
+      - .github/workflows/test_cli_cuda_py_txi_single_gpu.yaml
       - "optimum_benchmark/**"
       - "docker/**"
       - "tests/**"
@@ -15,7 +15,7 @@ on:
     branches:
       - main
     paths:
-      - .github/workflows/test_cli_cuda_py_txi.yaml
+      - .github/workflows/test_cli_cuda_py_txi_single_gpu.yaml
       - "optimum_benchmark/**"
       - "docker/**"
       - "tests/**"
@@ -26,7 +26,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
 jobs:
-  run_cli_cuda_py_txi_tests:
+  run_cli_cuda_py_txi_single_gpu_tests:
+    if: ${{ (github.event_name == 'workflow_dispatch') || contains( github.event.pull_request.labels.*.name, 'cuda') }}
+
+    name: CLI CUDA Py-TXI Single-GPU Tests
+
     runs-on: [single-gpu, nvidia-gpu, a10, ci]
 
     steps:

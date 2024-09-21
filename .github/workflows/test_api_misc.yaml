@@ -27,6 +27,8 @@ concurrency:
 
 jobs:
   run_api_misc_tests:
+    name: API Misc Tests
+
     runs-on: ubuntu-latest
 
     steps:

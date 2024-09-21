@@ -27,6 +27,8 @@ concurrency:
 
 jobs:
   run_cli_cpu_openvino_tests:
+    name: CLI CPU OpenVINO Tests
+
     runs-on: ubuntu-latest
 
     steps:
