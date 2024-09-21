@@ -27,6 +27,8 @@ concurrency:
 
 jobs:
   run_cli_misc_tests:
+    if: ${{ (github.event_name == 'workflow_dispatch') || (github.event_name == 'push') || contains( github.event.pull_request.labels.*.name, 'misc') }}
+
     strategy:
       fail-fast: false
       matrix:
