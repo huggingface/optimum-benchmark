@@ -40,7 +40,6 @@ jobs:
         --device /dev/dri
         --env ROCR_VISIBLE_DEVICES
         --env HIP_VISIBLE_DEVICES=0
-        --volume /mnt/cache/.cache/huggingface:/mnt/cache/
 
     steps:
       - name: Checkout

@@ -34,7 +34,7 @@ jobs:
 
     container:
       image: ghcr.io/huggingface/optimum-benchmark:latest-cuda
-      options: --gpus all --volume /mnt/cache/.cache/huggingface:/mnt/cache/
+      options: --ipc host --gpus all
 
     steps:
       - name: Checkout
