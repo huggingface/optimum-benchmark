@@ -29,8 +29,6 @@ jobs:
   run_api_rocm_tests:
     if: ${{ (github.event_name == 'workflow_dispatch') || contains( github.event.pull_request.labels.*.name, 'rocm') }}
 
-    name: API ROCm Tests
-
     runs-on: [self-hosted, amd-gpu, single-gpu]
 
     container:

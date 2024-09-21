@@ -29,8 +29,6 @@ jobs:
   cli_cuda_tensorrt_llm_single_gpu_tests:
     if: ${{ (github.event_name == 'workflow_dispatch') || contains( github.event.pull_request.labels.*.name, 'trt-llm') }}
 
-    name: CLI CUDA TensorRT-LLM Single-GPU Tests
-
     runs-on: [single-gpu, nvidia-gpu, a10, ci]
 
     container:

@@ -29,8 +29,6 @@ jobs:
   run_cli_cuda_pytorch_multi_gpu_tests:
     if: ${{ (github.event_name == 'workflow_dispatch') || contains( github.event.pull_request.labels.*.name, 'cuda') }}
 
-    name: CLI CUDA Pytorch Multi-GPU Tests
-
     runs-on: [multi-gpu, nvidia-gpu, 4-a10, ci]
 
     container:

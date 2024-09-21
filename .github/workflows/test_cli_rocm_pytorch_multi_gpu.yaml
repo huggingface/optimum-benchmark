@@ -31,8 +31,6 @@ jobs:
 
     runs-on: [self-hosted, amd-gpu, multi-gpu]
 
-    name: CLI ROCm Pytorch Multi-GPU Tests
-
     container:
       image: ghcr.io/huggingface/optimum-benchmark:latest-rocm
       options: --ipc host
