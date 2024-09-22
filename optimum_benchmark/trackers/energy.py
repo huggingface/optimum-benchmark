@@ -113,11 +113,15 @@ class EnergyTracker:
         self.device = device
         self.backend = backend
         self.device_ids = device_ids
+
+        self.is_gpu = self.device == "cuda"
         self.is_engine = self.backend in ["vllm", "tensorrt-llm"]
-        self.is_asynchronous = backend == "pytorch" and device == "cuda"
+        self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
         self.is_distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
-        if self.device == "cuda":
+        LOGGER.info("\t+ Tracking CPU and RAM energy")
+
+        if self.is_gpu:
             if isinstance(self.device_ids, str):
                 self.device_ids = list(map(int, self.device_ids.split(",")))
             elif isinstance(self.device_ids, int):
@@ -130,10 +134,6 @@ class EnergyTracker:
                 raise ValueError("GPU device IDs must be a string, an integer, or a list of integers")
 
             LOGGER.info(f"\t+ Tracking GPU energy on devices {self.device_ids}")
-        else:
-            self.device_ids = []
-
-            LOGGER.info("\t+ Tracking CPU and RAM energy")
 
         if not is_codecarbon_available():
             raise ValueError(
@@ -191,7 +191,7 @@ class EnergyTracker:
         if not self.is_engine and self.is_distributed:
             torch.distributed.barrier()
 
-        if self.is_asynchronous:
+        if self.is_pytorch_cuda:
             torch.cuda.synchronize()
 
         self.emission_tracker.start_task()
@@ -201,7 +201,7 @@ class EnergyTracker:
         if not self.is_engine and self.is_distributed:
             torch.distributed.barrier()
 
-        if self.is_asynchronous:
+        if self.is_pytorch_cuda:
             torch.cuda.synchronize()
 
         emission_data: EmissionsData = self.emission_tracker.stop_task()

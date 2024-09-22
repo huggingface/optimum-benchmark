@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from logging import getLogger
 from multiprocessing import Pipe, Process
 from multiprocessing.connection import Connection
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, Union
 
 from ..import_utils import (
     is_amdsmi_available,
@@ -66,7 +66,6 @@ class Memory:
         max_process_vram = (
             sum(memory.max_process_vram for memory in memories) if memories[0].max_process_vram is not None else None
         )
-
         # machine level measurements
         max_global_vram = (
             max(memory.max_global_vram for memory in memories) if memories[0].max_global_vram is not None else None
@@ -96,33 +95,41 @@ class Memory:
 
 
 class MemoryTracker:
-    def __init__(self, device: str, backend: str, device_ids: Optional[str] = None):
+    def __init__(self, device: str, backend: str, device_ids: Optional[Union[str, int, List[int]]] = None):
         self.device = device
         self.backend = backend
         self.device_ids = device_ids
         self.monitored_pid = os.getpid()
 
-        self.is_cuda = device == "cuda"
-        self.is_cuda_pytorch = device == "cuda" and backend == "pytorch"
-        self.is_distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
+        self.is_gpu = device == "cuda"
         self.is_engine = backend in ["vllm", "tensorrt-llm"]
+        self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
+        self.is_distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
         LOGGER.info(f"\t+ Tracking RAM memory of process [{self.monitored_pid}]")
 
-        if self.is_cuda:
-            if self.device_ids is None:
-                raise ValueError("The CUDA device IDs must be provided when tracking VRAM memory.")
+        if self.is_gpu:
+            if isinstance(self.device_ids, str):
+                self.device_ids = list(map(int, self.device_ids.split(",")))
+            elif isinstance(self.device_ids, int):
+                self.device_ids = [self.device_ids]
+            elif isinstance(self.device_ids, list):
+                self.device_ids = self.device_ids
+            elif self.device_ids is None:
+                raise ValueError("GPU device IDs must be provided for energy tracking on GPUs")
+            else:
+                raise ValueError("GPU device IDs must be a string, an integer, or a list of integers")
 
-            LOGGER.info(f"\t+ Tracking VRAM memory of CUDA devices [{self.device_ids}]")
-            self.device_ids = list(map(int, self.device_ids.split(",")))
+            LOGGER.info(f"\t+ Tracking GPU memory of devices {self.device_ids}")
 
-        if self.is_cuda_pytorch:
+        if self.is_pytorch_cuda:
             self.num_pytorch_devices = torch.cuda.device_count()
             if len(self.device_ids) != self.num_pytorch_devices:
                 raise ValueError(
-                    "The number of target CUDA devices and Pytorch's CUDA device count do not match. "
+                    "The number of target GPU devices and Pytorch's GPU device count do not match. "
                     f"Got {len(self.device_ids)} and {self.num_pytorch_devices} respectively."
                 )
+
             LOGGER.info(f"\t+ Tracking Allocated/Reserved memory of {self.num_pytorch_devices} Pytorch CUDA devices")
 
         self.max_ram_memory = None
@@ -143,10 +150,10 @@ class MemoryTracker:
         if not self.is_engine and self.is_distributed:
             torch.distributed.barrier()
 
-        if self.is_cuda_pytorch:
+        if self.is_pytorch_cuda:
             yield from self._cuda_pytorch_memory()
-        elif self.is_cuda:
-            yield from self._cuda_memory()
+        elif self.is_gpu:
+            yield from self._gpu_memory()
         else:
             yield from self._cpu_memory()
 
@@ -165,7 +172,7 @@ class MemoryTracker:
             except Exception as e:
                 LOGGER.warning(f"\t\t+ Could not reset max memory stats for device {device}: {e}")
 
-        yield from self._cuda_memory()
+        yield from self._gpu_memory()
 
         torch.cuda.synchronize()
 
@@ -176,7 +183,7 @@ class MemoryTracker:
             except Exception as e:
                 LOGGER.warning(f"\t\t+ Could not get max memory stats for device {device}: {e}")
 
-    def _cuda_memory(self):
+    def _gpu_memory(self):
         child_connection, parent_connection = Pipe()
 
         memory_process = Process(
@@ -187,14 +194,14 @@ class MemoryTracker:
         if memory_process.is_alive():
             _ = parent_connection.recv()  # wait for memory process to be ready
         else:
-            raise ValueError("Could not start memory tracking process for CUDA devices.")
+            raise ValueError("Could not start memory tracking process for GPU devices.")
 
         yield from self._cpu_memory()
 
         if memory_process.is_alive():
             parent_connection.send(True)
         else:
-            raise ValueError("Could not stop memory tracking process for CUDA devices.")
+            raise ValueError("Could not stop memory tracking process for GPU devices.")
 
         self.max_global_vram_memory = parent_connection.recv()
         self.max_process_vram_memory = parent_connection.recv()
@@ -237,7 +244,7 @@ def monitor_cpu_ram_memory(monitored_pid: int, connection: Connection, interval:
     monitored_process = psutil.Process(monitored_pid)
 
     if monitored_process.is_running():
-        connection.send(True)
+        connection.send(0)
 
     while monitored_process.is_running() and not stop:
         meminfo_attr = "memory_info" if hasattr(monitored_process, "memory_info") else "get_memory_info"
@@ -258,7 +265,7 @@ def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connectio
     monitored_process = psutil.Process(monitored_pid)
 
     if monitored_process.is_running():
-        connection.send(True)
+        connection.send(0)
 
     if is_nvidia_system():
         if not is_pynvml_available():
