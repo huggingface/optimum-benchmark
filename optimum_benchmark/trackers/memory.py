@@ -202,8 +202,13 @@ class MemoryTracker:
         else:
             raise ValueError("Could not stop memory tracking process for GPU devices.")
 
-        self.max_global_vram_memory = parent_connection.recv()
-        self.max_process_vram_memory = parent_connection.recv()
+        if memory_process.is_alive():
+            self.max_global_vram_memory = parent_connection.recv()
+            self.max_process_vram_memory = parent_connection.recv()
+        else:
+            raise ValueError("Could not get memory tracking results for GPU devices.")
+
+        parent_connection.close()
 
     def _cpu_memory(self):
         child_connection, parent_connection = Pipe()
@@ -224,7 +229,12 @@ class MemoryTracker:
         else:
             raise ValueError("Could not stop memory tracking process for CPU.")
 
-        self.max_ram_memory = parent_connection.recv()
+        if memory_process.is_alive():
+            self.max_ram_memory = parent_connection.recv()
+        else:
+            raise ValueError("Could not get memory tracking results for CPU.")
+
+        parent_connection.close()
 
     def get_max_memory(self):
         return Memory(
