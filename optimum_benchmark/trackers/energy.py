@@ -210,7 +210,7 @@ class EnergyTracker:
             LOGGER.info(f"\t+ Saving codecarbon emission data to {file_prefix}_codecarbon.json")
             dump(asdict(emission_data), f, indent=4)
 
-        self.total_energy = emission_data.total_energy
+        self.total_energy = emission_data.energy_consumed
         self.cpu_energy = emission_data.cpu_energy
         self.gpu_energy = emission_data.gpu_energy
         self.ram_energy = emission_data.ram_energy
