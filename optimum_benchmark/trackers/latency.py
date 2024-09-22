@@ -46,7 +46,9 @@ class Latency:
     def __sub__(self, latency: "Latency") -> "Latency":
         latencies = [lat - latency.mean for lat in self.values]
 
-        assert not any(latency < 0 for latency in latencies), "Negative latency detected"
+        assert not any(
+            latency < 0 for latency in latencies
+        ), "Negative latency detected. Please increase the dimensions of your benchmark (inputs/warmup/iterations)."
 
         return Latency.from_values(values=latencies, unit=self.unit)
 
@@ -120,11 +122,12 @@ class LatencyTracker:
     def __init__(self, device: str, backend: str):
         self.device = device
         self.backend = backend
+
         self.is_engine = self.backend in ["vllm", "tensorrt-llm"]
-        self.is_asynchronous = self.backend == "pytorch" and self.device == "cuda"
+        self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
         self.is_distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
-        if self.is_asynchronous:
+        if self.is_pytorch_cuda:
             LOGGER.info("\t+ Tracking latency using Pytorch CUDA events")
         else:
             LOGGER.info("\t+ Tracking latency using CPU performance counter")
@@ -143,7 +146,7 @@ class LatencyTracker:
         if not self.is_engine and self.is_distributed:
             torch.distributed.barrier()
 
-        if self.is_asynchronous:
+        if self.is_pytorch_cuda:
             yield from self._pytorch_cuda_latency()
         else:
             yield from self._cpu_latency()
@@ -168,7 +171,7 @@ class LatencyTracker:
         self.end_events.append(time.perf_counter())
 
     def get_latency(self) -> Latency:
-        if self.is_asynchronous:
+        if self.is_pytorch_cuda:
             torch.cuda.synchronize()
 
             latencies_list = [
@@ -177,7 +180,9 @@ class LatencyTracker:
         else:
             latencies_list = [(self.end_events[i] - self.start_events[i]) for i in range(len(self.start_events))]
 
-        assert not any(latency < 0 for latency in latencies_list), "Negative latency detected"
+        assert not any(
+            latency < 0 for latency in latencies_list
+        ), "Negative latency detected. Please increase the dimensions of your benchmark (inputs/warmup/iterations)."
 
         return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
 
@@ -203,10 +208,10 @@ class StepLatencyTrainerCallback(TrainerCallback):
     def __init__(self, device: str, backend: str) -> None:
         self.device = device
         self.backend = backend
-        self.is_asynchronous = self.backend == "pytorch" and self.device == "cuda"
-        self.is_distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
-        if self.is_asynchronous:
+        self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
+
+        if self.is_pytorch_cuda:
             LOGGER.info("\t+ Tracking latency using Pytorch CUDA events")
         else:
             LOGGER.info("\t+ Tracking latency using CPU performance counter")
@@ -219,21 +224,21 @@ class StepLatencyTrainerCallback(TrainerCallback):
         self.end_events = []
 
     def on_step_begin(self, *args, **kwargs):
-        if self.is_asynchronous:
+        if self.is_pytorch_cuda:
             self.start_events.append(torch.cuda.Event(enable_timing=True))
             self.start_events[-1].record()
         else:
             self.start_events.append(time.perf_counter())
 
     def on_step_end(self, *args, **kwargs):
-        if self.is_asynchronous:
+        if self.is_pytorch_cuda:
             self.end_events.append(torch.cuda.Event(enable_timing=True))
             self.end_events[-1].record()
         else:
             self.end_events.append(time.perf_counter())
 
     def get_latency(self) -> Latency:
-        if self.is_asynchronous:
+        if self.is_pytorch_cuda:
             torch.cuda.synchronize()
 
             latencies_list = [
@@ -242,7 +247,9 @@ class StepLatencyTrainerCallback(TrainerCallback):
         else:
             latencies_list = [(self.end_events[i] - self.start_events[i]) for i in range(len(self.start_events))]
 
-        assert not any(latency < 0 for latency in latencies_list), "Negative latency detected"
+        assert not any(
+            latency < 0 for latency in latencies_list
+        ), "Negative latency detected. Please increase the dimensions of your benchmark (inputs/warmup/iterations)."
 
         return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
 
@@ -251,11 +258,12 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
     def __init__(self, device: str, backend: str):
         self.device = device
         self.backend = backend
+
         self.is_engine = self.backend in ["vllm", "tensorrt-llm"]
-        self.is_asynchronous = self.backend == "pytorch" and self.device == "cuda"
+        self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
         self.is_distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
-        if self.is_asynchronous:
+        if self.is_pytorch_cuda:
             LOGGER.info("\t+ Tracking latency using Pytorch CUDA events")
         else:
             LOGGER.info("\t+ Tracking latency using CPU performance counter")
@@ -287,7 +295,7 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         if not self.is_engine and self.is_distributed:
             torch.distributed.barrier()
 
-        if self.is_asynchronous:
+        if self.is_pytorch_cuda:
             self.prefill_start_events.append(torch.cuda.Event(enable_timing=True))
             self.prefill_start_events[-1].record()
         else:
@@ -297,7 +305,7 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         # and for each decoded token, we record an event
         yield
 
-        if self.is_asynchronous:
+        if self.is_pytorch_cuda:
             self.decode_end_events.append(torch.cuda.Event(enable_timing=True))
             self.decode_end_events[-1].record()
         else:
@@ -313,7 +321,7 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
             self.prefilled is not None
         ), "PerTokenLatencyLogitsProcessor should only be called inside of track() context"
 
-        if self.is_asynchronous:
+        if self.is_pytorch_cuda:
             event = torch.cuda.Event(enable_timing=True)
             event.record()
         else:
@@ -329,7 +337,7 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         return scores
 
     def get_prefill_latency(self) -> Latency:
-        if self.is_asynchronous:
+        if self.is_pytorch_cuda:
             torch.cuda.synchronize()
 
             latencies_list = [
@@ -342,12 +350,14 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
                 for i in range(len(self.prefill_start_events))
             ]
 
-        assert not any(latency < 0 for latency in latencies_list), "Negative latency detected"
+        assert not any(
+            latency < 0 for latency in latencies_list
+        ), "Negative latency detected. Please increase the dimensions of your benchmark (inputs/warmup/iterations)."
 
         return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
 
     def get_decode_latency(self) -> Latency:
-        if self.is_asynchronous:
+        if self.is_pytorch_cuda:
             torch.cuda.synchronize()
 
             latencies_list = [
@@ -359,12 +369,14 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
                 (self.decode_end_events[i] - self.decode_start_events[i]) for i in range(len(self.decode_start_events))
             ]
 
-        assert not any(latency < 0 for latency in latencies_list), "Negative latency detected"
+        assert not any(
+            latency < 0 for latency in latencies_list
+        ), "Negative latency detected. Please increase the dimensions of your benchmark (inputs/warmup/iterations)."
 
         return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
 
     def get_per_token_latency(self) -> Latency:
-        if self.is_asynchronous:
+        if self.is_pytorch_cuda:
             torch.cuda.synchronize()
 
             latencies_list = [
@@ -379,7 +391,9 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
                 for j in range(0, len(self.per_token_events[i]) - 1)
             ]
 
-        assert not any(latency < 0 for latency in latencies_list), "Negative latency detected"
+        assert not any(
+            latency < 0 for latency in latencies_list
+        ), "Negative latency detected. Please increase the dimensions of your benchmark (inputs/warmup/iterations)."
 
         return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
 

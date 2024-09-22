@@ -58,7 +58,7 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-          pip install -e .[testing,timm,diffusers,codecarbon]
+          pip install -e .[testing]
 
       - name: Run tests
         run: pytest -s -k "cli and not (cpu or cuda or rocm or mps)"
