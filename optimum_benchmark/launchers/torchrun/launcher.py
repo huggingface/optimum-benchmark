@@ -63,20 +63,19 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
 
             isolated_process.start()
 
+            if isolated_process.is_alive():
+                sync_with_child(parent_connection)
+            else:
+                raise RuntimeError("Could not synchronize with isolated process")
+
         with ExitStack() as stack:
             if self.config.device_isolation:
                 stack.enter_context(self.device_isolation(isolated_process.pid))
 
-            # handshake with isolated process
             if isolated_process.is_alive():
-                _ = parent_connection.recv()
+                sync_with_child(child_connection)
             else:
-                raise RuntimeError("Could not initiate handshake with isolated process")
-
-            if isolated_process.is_alive():
-                _ = parent_connection.send(0)
-            else:
-                raise RuntimeError("Could not finalize handshake with isolated process")
+                raise RuntimeError("Could not synchronize with isolated process")
 
             isolated_process.join()
 
@@ -116,41 +115,52 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
 def target(
     worker: Callable[..., BenchmarkReport],
     worker_args: List[Any],
-    connection: Connection,
+    child_connection: Connection,
     main_process_pid: int,
     config: LaunchConfig,
     logger: Logger,
 ):
+    main_process = psutil.Process(main_process_pid)
+
+    if main_process.is_running():
+        sync_with_parent(child_connection)
+    else:
+        raise RuntimeError("Could not synchronize with main process")
+
     log_level = os.environ.get("LOG_LEVEL", "INFO")
     log_to_file = os.environ.get("LOG_TO_FILE", "1") == "1"
     setup_logging(level=log_level, to_file=log_to_file, prefix="ISOLATED-PROCESS")
 
-    # handshake with main process
-    main_process = psutil.Process(main_process_pid)
-
     if main_process.is_running():
-        connection.send(0)
+        sync_with_parent(child_connection)
     else:
-        raise RuntimeError("Could not initiate handshake with main process")
-
-    if main_process.is_running():
-        _ = connection.recv()
-    else:
-        raise RuntimeError("Could not finalize handshake with main process")
+        raise RuntimeError("Could not synchronize with main process")
 
     try:
         elastic_agent_launcher = elastic_launch(config=config, entrypoint=entrypoint)
         outputs = elastic_agent_launcher(worker, worker_args, logger)
     except Exception:
         logger.error("\t+ Sending traceback to main process")
-        connection.send([{"traceback": traceback.format_exc()}])
+        child_connection.send([{"traceback": traceback.format_exc()}])
     else:
         logger.info("\t+ Sending outputs to main process")
-        connection.send(list(outputs.values()))
+        child_connection.send(list(outputs.values()))
     finally:
         logger.info("\t+ Exiting isolated process")
-        connection.close()
+        child_connection.close()
         exit(0)
+
+
+def sync_with_parent(child_connection: Connection) -> None:
+    if child_connection.poll():
+        _ = child_connection.recv()
+    child_connection.send(0)
+
+
+def sync_with_child(parent_connection: Connection) -> None:
+    parent_connection.send(0)
+    if parent_connection.poll():
+        _ = parent_connection.recv()
 
 
 def entrypoint(worker: Callable[..., BenchmarkReport], worker_args: List[Any], logger: Logger):

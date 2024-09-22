@@ -43,20 +43,19 @@ class ProcessLauncher(Launcher[ProcessConfig]):
 
             isolated_process.start()
 
+            if isolated_process.is_alive():
+                sync_with_child(parent_connection)
+            else:
+                raise RuntimeError("Could not synchronize with isolated process")
+
         with ExitStack() as stack:
             if self.config.device_isolation:
                 stack.enter_context(self.device_isolation(isolated_process.pid))
 
-            # handshake with isolated process
             if isolated_process.is_alive():
-                _ = parent_connection.recv()
+                sync_with_child(child_connection)
             else:
-                raise RuntimeError("Could not initiate handshake with isolated process")
-
-            if isolated_process.is_alive():
-                _ = parent_connection.send(0)
-            else:
-                raise RuntimeError("Could not finalize handshake with isolated process")
+                raise RuntimeError("Could not synchronize with isolated process")
 
             isolated_process.join()
 
@@ -65,6 +64,8 @@ class ProcessLauncher(Launcher[ProcessConfig]):
 
         if parent_connection.poll():
             response = parent_connection.recv()
+        else:
+            raise RuntimeError("Received no response from isolated process")
 
         if "traceback" in response:
             self.logger.error("\t+ Received traceback from isolated process")
@@ -85,39 +86,50 @@ class ProcessLauncher(Launcher[ProcessConfig]):
 def target(
     worker: Callable[..., BenchmarkReport],
     worker_args: List[Any],
-    connection: Connection,
+    child_connection: Connection,
     main_process_pid: int,
     logger: Logger,
 ) -> None:
+    main_process = psutil.Process(main_process_pid)
+
+    if main_process.is_running():
+        sync_with_parent(child_connection)
+    else:
+        raise RuntimeError("Could not synchronize with main process")
+
     log_level = os.environ.get("LOG_LEVEL", "INFO")
     log_to_file = os.environ.get("LOG_TO_FILE", "1") == "1"
     setup_logging(level=log_level, to_file=log_to_file, prefix="ISOLATED-PROCESS")
 
-    # handshake with main process
-    main_process = psutil.Process(main_process_pid)
-
     if main_process.is_running():
-        connection.send(0)
+        sync_with_parent(child_connection)
     else:
-        raise RuntimeError("Could not initiate handshake with main process")
-
-    if main_process.is_running():
-        _ = connection.recv()
-    else:
-        raise RuntimeError("Could not finalize handshake with main process")
+        raise RuntimeError("Could not synchronize with main process")
 
     try:
         report = worker(*worker_args)
     except Exception:
         logger.error("\t+ Sending traceback to main process")
-        connection.send({"traceback": traceback.format_exc()})
+        child_connection.send({"traceback": traceback.format_exc()})
     else:
         logger.info("\t+ Sending report to main process")
-        connection.send({"report": report.to_dict()})
+        child_connection.send({"report": report.to_dict()})
     finally:
         logger.info("\t+ Exiting isolated process")
-        connection.close()
+        child_connection.close()
         exit(0)
+
+
+def sync_with_parent(child_connection: Connection) -> None:
+    if child_connection.poll():
+        _ = child_connection.recv()
+    child_connection.send(0)
+
+
+def sync_with_child(parent_connection: Connection) -> None:
+    parent_connection.send(0)
+    if parent_connection.poll():
+        _ = parent_connection.recv()
 
 
 def dummy_target() -> None:

@@ -93,7 +93,8 @@ def test_cli_exit_code_1(launcher):
     assert popen_1.returncode == 1
 
 
-def test_cli_numactl():
+@pytest.mark.parametrize("launcher", ["process", "torchrun"])
+def test_cli_numactl(launcher):
     if sys.platform != "linux":
         pytest.skip("numactl is only supported on Linux")
 
@@ -104,7 +105,7 @@ def test_cli_numactl():
         "--config-name",
         "_base_",
         "name=test",
-        "launcher=process",
+        f"launcher={launcher}",
         "launcher.numactl=True",
         "backend.task=text-classification",
         "backend.model=bert-base-uncased",
