@@ -57,17 +57,17 @@ class Memory:
 
         unit = memories[0].unit
 
+        # process specific measurements
         max_ram = sum(memory.max_ram for memory in memories)
-
-        max_process_vram = (
-            sum(memory.max_process_vram for memory in memories) if memories[0].max_process_vram is not None else None
-        )
-
         max_reserved = sum(memory.max_reserved for memory in memories) if memories[0].max_reserved is not None else None
         max_allocated = (
             sum(memory.max_allocated for memory in memories) if memories[0].max_allocated is not None else None
         )
+        max_process_vram = (
+            sum(memory.max_process_vram for memory in memories) if memories[0].max_process_vram is not None else None
+        )
 
+        # machine level measurements
         max_global_vram = (
             max(memory.max_global_vram for memory in memories) if memories[0].max_global_vram is not None else None
         )
@@ -101,20 +101,22 @@ class MemoryTracker:
         self.backend = backend
         self.device_ids = device_ids
         self.monitored_pid = os.getpid()
-        self.is_engine = self.backend in ["vllm", "tensorrt-llm"]
-        self.uses_cuda_pytorch_allocator = self.device == "cuda" and self.backend == "pytorch"
+
+        self.is_cuda = device == "cuda"
+        self.is_cuda_pytorch = device == "cuda" and backend == "pytorch"
         self.is_distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
+        self.is_engine = backend in ["vllm", "tensorrt-llm"]
 
         LOGGER.info(f"\t+ Tracking RAM memory of process [{self.monitored_pid}]")
 
-        if self.device == "cuda":
+        if self.is_cuda:
             if self.device_ids is None:
                 raise ValueError("The CUDA device IDs must be provided when tracking VRAM memory.")
 
             LOGGER.info(f"\t+ Tracking VRAM memory of CUDA devices [{self.device_ids}]")
             self.device_ids = list(map(int, self.device_ids.split(",")))
 
-        if self.uses_cuda_pytorch_allocator:
+        if self.is_cuda_pytorch:
             self.num_pytorch_devices = torch.cuda.device_count()
             if len(self.device_ids) != self.num_pytorch_devices:
                 raise ValueError(
@@ -141,9 +143,9 @@ class MemoryTracker:
         if not self.is_engine and self.is_distributed:
             torch.distributed.barrier()
 
-        if self.uses_cuda_pytorch_allocator:
+        if self.is_cuda_pytorch:
             yield from self._cuda_pytorch_memory()
-        elif self.device == "cuda":
+        elif self.is_cuda:
             yield from self._cuda_memory()
         else:
             yield from self._cpu_memory()
@@ -181,11 +183,19 @@ class MemoryTracker:
             target=monitor_gpu_vram_memory, args=(self.monitored_pid, self.device_ids, child_connection), daemon=True
         )
         memory_process.start()
-        parent_connection.recv()  # wait for memory process to be ready
+
+        if memory_process.is_alive():
+            _ = parent_connection.recv()  # wait for memory process to be ready
+        else:
+            raise ValueError("Could not start memory tracking process for CUDA devices.")
 
         yield from self._cpu_memory()
 
-        parent_connection.send(True)
+        if memory_process.is_alive():
+            parent_connection.send(True)
+        else:
+            raise ValueError("Could not stop memory tracking process for CUDA devices.")
+
         self.max_global_vram_memory = parent_connection.recv()
         self.max_process_vram_memory = parent_connection.recv()
 
@@ -195,11 +205,19 @@ class MemoryTracker:
             target=monitor_cpu_ram_memory, args=(self.monitored_pid, child_connection), daemon=True
         )
         memory_process.start()
-        parent_connection.recv()  # wait for memory process to be ready
+
+        if memory_process.is_alive():
+            _ = parent_connection.recv()  # wait for memory process to be ready
+        else:
+            raise ValueError("Could not start memory tracking process for CPU.")
 
         yield
 
-        parent_connection.send(True)
+        if memory_process.is_alive():
+            parent_connection.send(True)
+        else:
+            raise ValueError("Could not stop memory tracking process for CPU.")
+
         self.max_ram_memory = parent_connection.recv()
 
     def get_max_memory(self):
@@ -216,16 +234,20 @@ class MemoryTracker:
 def monitor_cpu_ram_memory(monitored_pid: int, connection: Connection, interval: float = 0.001):
     stop = False
     max_used_memory = 0
-    process = psutil.Process(monitored_pid)
-    connection.send(0)
+    monitored_process = psutil.Process(monitored_pid)
 
-    while not stop:
-        meminfo_attr = "memory_info" if hasattr(process, "memory_info") else "get_memory_info"
-        used_memory = getattr(process, meminfo_attr)()[0]
+    if monitored_process.is_running():
+        connection.send(True)
+
+    while monitored_process.is_running() and not stop:
+        meminfo_attr = "memory_info" if hasattr(monitored_process, "memory_info") else "get_memory_info"
+        used_memory = getattr(monitored_process, meminfo_attr)()[0]
         max_used_memory = max(max_used_memory, used_memory)
         stop = connection.poll(interval)
 
-    connection.send(max_used_memory / 1e6)  # convert to MB
+    if monitored_process.is_running():
+        connection.send(max_used_memory / 1e6)  # convert to MB
+
     connection.close()
 
 
@@ -234,7 +256,9 @@ def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connectio
     max_used_global_memory = 0
     max_used_process_memory = 0
     monitored_process = psutil.Process(monitored_pid)
-    connection.send(0)
+
+    if monitored_process.is_running():
+        connection.send(True)
 
     if is_nvidia_system():
         if not is_pynvml_available():
@@ -246,7 +270,7 @@ def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connectio
         pynvml.nvmlInit()
         devices_handles = [pynvml.nvmlDeviceGetHandleByIndex(device_id) for device_id in device_ids]
 
-        while not stop:
+        while monitored_process.is_running() and not stop:
             used_global_memory = 0
             used_process_memory = 0
 
@@ -294,7 +318,7 @@ def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connectio
         permission_denied = False
         devices_handles = amdsmi.amdsmi_get_processor_handles()
 
-        while not stop:
+        while monitored_process.is_running() and not stop:
             used_global_memory = 0
             used_process_memory = 0
 
@@ -344,6 +368,8 @@ def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connectio
     else:
         raise ValueError("Only NVIDIA and AMD ROCm GPUs are supported for VRAM tracking.")
 
-    connection.send(max_used_global_memory / 1e6)  # convert to MB
-    connection.send(max_used_process_memory / 1e6)  # convert to MB
+    if monitored_process.is_running():
+        connection.send(max_used_global_memory / 1e6)  # convert to MB
+        connection.send(max_used_process_memory / 1e6)  # convert to MB
+
     connection.close()
