@@ -6,6 +6,7 @@ from multiprocessing import Pipe, Process, get_start_method, set_start_method
 from multiprocessing.connection import Connection
 from typing import Any, Callable, List
 
+import psutil
 import torch.distributed
 from torch.distributed.launcher.api import LaunchConfig, elastic_launch
 
@@ -26,9 +27,10 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             set_start_method(self.config.start_method, force=True)
             self.logger.info("\t+ Warming up multiprocessing context")
             # creates the resource tracker with default executable
-            dummy_process = Process()
+            dummy_process = Process(target=dummy_target, daemon=False)
             dummy_process.start()
             dummy_process.join()
+            dummy_process.close()
 
         self.launch_config = LaunchConfig(
             min_nodes=self.config.min_nodes,
@@ -48,30 +50,34 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
 
     def launch(self, worker: Callable[..., BenchmarkReport], worker_args: List[Any]) -> BenchmarkReport:
         parent_connection, child_connection = Pipe()
+        main_process_pid = os.getpid()
         isolated_process = Process(
-            target=target, args=(worker, worker_args, child_connection, self.launch_config, self.logger), daemon=False
+            target=target,
+            args=(worker, worker_args, child_connection, main_process_pid, self.launch_config, self.logger),
+            daemon=False,
         )
 
         with ExitStack() as stack:
             if self.config.numactl:
                 stack.enter_context(self.numactl_executable())
 
-            self.logger.info("\t+ Starting isolated process")
             isolated_process.start()
-            while True:
-                if parent_connection.poll():
-                    message = parent_connection.recv()
-                    if message == "READY":
-                        self.logger.info("\t+ Isolated process is ready")
-                        break
-                    else:
-                        raise RuntimeError(f"Unexpected message from isolated process: {message}")
 
         with ExitStack() as stack:
             if self.config.device_isolation:
                 stack.enter_context(self.device_isolation(isolated_process.pid))
 
-            parent_connection.send("START")
+            # handshake with isolated process
+            if isolated_process.is_alive():
+                _ = parent_connection.recv()
+            else:
+                raise RuntimeError("Could not initiate handshake with isolated process")
+
+            if isolated_process.is_alive():
+                _ = parent_connection.send(0)
+            else:
+                raise RuntimeError("Could not finalize handshake with isolated process")
+
             isolated_process.join()
 
         if isolated_process.exitcode != 0:
@@ -111,6 +117,7 @@ def target(
     worker: Callable[..., BenchmarkReport],
     worker_args: List[Any],
     connection: Connection,
+    main_process_pid: int,
     config: LaunchConfig,
     logger: Logger,
 ):
@@ -118,16 +125,18 @@ def target(
     log_to_file = os.environ.get("LOG_TO_FILE", "1") == "1"
     setup_logging(level=log_level, to_file=log_to_file, prefix="ISOLATED-PROCESS")
 
-    connection.send("READY")
+    # handshake with main process
+    main_process = psutil.Process(main_process_pid)
 
-    while True:
-        if connection.poll():
-            message = connection.recv()
-            if message == "START":
-                logger.info("\t+ Starting benchmark in isolated process")
-                break
-            else:
-                raise RuntimeError(f"Unexpected message from main process: {message}")
+    if main_process.is_running():
+        connection.send(0)
+    else:
+        raise RuntimeError("Could not initiate handshake with main process")
+
+    if main_process.is_running():
+        _ = connection.recv()
+    else:
+        raise RuntimeError("Could not finalize handshake with main process")
 
     try:
         elastic_agent_launcher = elastic_launch(config=config, entrypoint=entrypoint)
@@ -176,3 +185,7 @@ def entrypoint(worker: Callable[..., BenchmarkReport], worker_args: List[Any], l
         torch.distributed.destroy_process_group()
         logger.info("\t+ Exiting rank process")
         return output
+
+
+def dummy_target() -> None:
+    exit(0)

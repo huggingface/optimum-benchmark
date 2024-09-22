@@ -192,14 +192,14 @@ class MemoryTracker:
         memory_process.start()
 
         if memory_process.is_alive():
-            _ = parent_connection.recv()  # wait for memory process to be ready
+            _ = parent_connection.recv()
         else:
             raise ValueError("Could not start memory tracking process for GPU devices.")
 
         yield from self._cpu_memory()
 
         if memory_process.is_alive():
-            parent_connection.send(True)
+            parent_connection.send(0)
         else:
             raise ValueError("Could not stop memory tracking process for GPU devices.")
 
@@ -214,14 +214,14 @@ class MemoryTracker:
         memory_process.start()
 
         if memory_process.is_alive():
-            _ = parent_connection.recv()  # wait for memory process to be ready
+            _ = parent_connection.recv()
         else:
             raise ValueError("Could not start memory tracking process for CPU.")
 
         yield
 
         if memory_process.is_alive():
-            parent_connection.send(True)
+            parent_connection.send(0)
         else:
             raise ValueError("Could not stop memory tracking process for CPU.")
 
