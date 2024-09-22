@@ -43,11 +43,11 @@ class Energy:
         elif any(energy is None for energy in energies):
             raise ValueError("Some energy measurements are missing")
 
-        # since measurements are machine-level, we just take the max
-        cpu = max(energy.cpu for energy in energies)
-        gpu = max(energy.gpu for energy in energies)
-        ram = max(energy.ram for energy in energies)
-        total = max(energy.total for energy in energies)
+        # since measurements are machine-level, we just take the average
+        cpu = sum(energy.cpu for energy in energies) / len(energies)
+        gpu = sum(energy.gpu for energy in energies) / len(energies)
+        ram = sum(energy.ram for energy in energies) / len(energies)
+        total = sum(energy.total for energy in energies) / len(energies)
 
         return Energy(cpu=cpu, gpu=gpu, ram=ram, total=total, unit=ENERGY_UNIT)
 
@@ -65,20 +65,20 @@ class Energy:
             raise ValueError("Energy units must match to perform subtraction")
 
         return Energy(
+            unit=self.unit,
             cpu=self.cpu - other.cpu,
             gpu=self.gpu - other.gpu,
             ram=self.ram - other.ram,
             total=self.total - other.total,
-            unit=self.unit,
         )
 
     def __truediv__(self, scalar: float) -> "Energy":
         return Energy(
+            unit=self.unit,
             cpu=self.cpu / scalar,
             gpu=self.gpu / scalar,
             ram=self.ram / scalar,
             total=self.total / scalar,
-            unit=self.unit,
         )
 
 
