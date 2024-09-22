@@ -112,7 +112,7 @@ class EnergyTracker:
     def __init__(self, backend: str, device: str, device_ids: Optional[Union[str, int, List[int]]] = None):
         self.device = device
         self.backend = backend
-
+        self.device_ids = device_ids
         self.is_engine = self.backend in ["vllm", "tensorrt-llm"]
         self.is_asynchronous = backend == "pytorch" and device == "cuda"
         self.is_distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
@@ -126,8 +126,14 @@ class EnergyTracker:
                 self.device_ids = self.device_ids
             elif self.device_ids is None:
                 raise ValueError("GPU device IDs must be provided for energy tracking on GPUs")
+            else:
+                raise ValueError("GPU device IDs must be a string, an integer, or a list of integers")
 
             LOGGER.info(f"\t+ Tracking GPU energy on devices {self.device_ids}")
+        else:
+            self.device_ids = []
+
+            LOGGER.info("\t+ Tracking CPU energy")
 
         if not is_codecarbon_available():
             raise ValueError(
