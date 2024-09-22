@@ -72,9 +72,6 @@ def test_cli_exit_code_0(launcher):
 
 @pytest.mark.parametrize("launcher", ["inline", "process", "torchrun"])
 def test_cli_exit_code_1(launcher):
-    if launcher == "torchrun" and sys.platform != "linux":
-        pytest.skip("torchrun is only supported on Linux")
-
     args_1 = [
         "optimum-benchmark",
         "--config-dir",
@@ -83,7 +80,7 @@ def test_cli_exit_code_1(launcher):
         "_base_",
         "name=test",
         f"launcher={launcher}",
-        # incompatible task and model to trigger error
+        # incompatible task and model to trigger an error
         "backend.task=image-classification",
         "backend.model=bert-base-uncased",
         "backend.device=cpu",

@@ -62,6 +62,12 @@ class Launcher(Generic[LauncherConfigT], ABC):
 
     @contextmanager
     def numactl_executable(self):
+        self.logger.info("\t+ Warming up multiprocessing context")
+        dummy_process = Process(target=dummy_target, daemon=False)
+        dummy_process.start()
+        dummy_process.join()
+        dummy_process.close()
+
         self.logger.info("\t+ Creating numactl wrapper executable for multiprocessing")
         python_path = sys.executable
         numactl_path = shutil.which("numactl")
@@ -84,3 +90,7 @@ class Launcher(Generic[LauncherConfigT], ABC):
         self.logger.info("\t+ Resetting default multiprocessing executable")
         os.unlink(numa_executable.name)
         set_executable(sys.executable)
+
+
+def dummy_target() -> None:
+    exit(0)

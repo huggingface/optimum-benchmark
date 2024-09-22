@@ -23,12 +23,6 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         if get_start_method(allow_none=True) != self.config.start_method:
             self.logger.info(f"\t+ Setting multiprocessing start method to {self.config.start_method}")
             set_start_method(self.config.start_method, force=True)
-            # creates the resource tracker with default executable
-            self.logger.info("\t+ Warming up multiprocessing context")
-            dummy_process = Process(target=dummy_target, daemon=False)
-            dummy_process.start()
-            dummy_process.join()
-            dummy_process.close()
 
     def launch(self, worker: Callable[..., BenchmarkReport], worker_args: List[Any]) -> BenchmarkReport:
         child_connection, parent_connection = Pipe()
@@ -48,7 +42,6 @@ class ProcessLauncher(Launcher[ProcessConfig]):
             else:
                 raise RuntimeError("Could not synchronize with isolated process")
 
-        with ExitStack() as stack:
             if self.config.device_isolation:
                 stack.enter_context(self.device_isolation(isolated_process.pid))
 
@@ -121,21 +114,10 @@ def target(
 
 
 def sync_with_parent(child_connection: Connection) -> None:
-    if child_connection.poll():
-        response = child_connection.recv()
-    else:
-        raise RuntimeError("Received no response from main process")
-
-    if response == "SYNC":
-        return
-    else:
-        raise RuntimeError(f"Received an unexpected response from main process: {response}")
+    child_connection.recv()
+    child_connection.send(0)
 
 
 def sync_with_child(parent_connection: Connection) -> None:
-    parent_connection.send("SYNC")
+    parent_connection.send(0)
     parent_connection.recv()
-
-
-def dummy_target() -> None:
-    exit(0)
