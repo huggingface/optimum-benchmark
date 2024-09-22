@@ -53,7 +53,7 @@ class ProcessLauncher(Launcher[ProcessConfig]):
                 stack.enter_context(self.device_isolation(isolated_process.pid))
 
             if isolated_process.is_alive():
-                sync_with_child(child_connection)
+                sync_with_child(parent_connection)
             else:
                 raise RuntimeError("Could not synchronize with isolated process")
 
