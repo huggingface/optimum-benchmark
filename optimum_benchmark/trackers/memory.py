@@ -185,7 +185,6 @@ class MemoryTracker:
 
     def _gpu_memory(self):
         child_connection, parent_connection = Pipe()
-
         memory_process = Process(
             target=monitor_gpu_vram_memory, args=(self.monitored_pid, self.device_ids, child_connection), daemon=True
         )

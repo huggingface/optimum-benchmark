@@ -10,6 +10,7 @@ import psutil
 
 from ...benchmark.report import BenchmarkReport
 from ...logging_utils import setup_logging
+from ...process_utils import sync_with_child, sync_with_parent
 from ..base import Launcher
 from .config import ProcessConfig
 
@@ -111,13 +112,3 @@ def target(
         logger.info("\t+ Exiting isolated process")
         child_connection.close()
         exit(0)
-
-
-def sync_with_parent(child_connection: Connection) -> None:
-    child_connection.recv()
-    child_connection.send(0)
-
-
-def sync_with_child(parent_connection: Connection) -> None:
-    parent_connection.send(0)
-    parent_connection.recv()
