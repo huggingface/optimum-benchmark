@@ -43,11 +43,11 @@ class Energy:
         elif any(energy is None for energy in energies):
             raise ValueError("Some energy measurements are missing")
 
-        # since measurements are machine-level, we just take the average
-        cpu = sum(energy.cpu for energy in energies) / len(energies)
-        gpu = sum(energy.gpu for energy in energies) / len(energies)
-        ram = sum(energy.ram for energy in energies) / len(energies)
-        total = sum(energy.total for energy in energies) / len(energies)
+        # since measurements are machine-level, we just take the max
+        cpu = max(energy.cpu for energy in energies)
+        gpu = max(energy.gpu for energy in energies)
+        ram = max(energy.ram for energy in energies)
+        total = max(energy.total for energy in energies)
 
         return Energy(cpu=cpu, gpu=gpu, ram=ram, total=total, unit=ENERGY_UNIT)
 
@@ -133,7 +133,7 @@ class EnergyTracker:
         else:
             self.device_ids = []
 
-            LOGGER.info("\t+ Tracking CPU energy")
+            LOGGER.info("\t+ Tracking CPU and RAM energy")
 
         if not is_codecarbon_available():
             raise ValueError(
@@ -143,13 +143,17 @@ class EnergyTracker:
 
         try:
             self.emission_tracker = EmissionsTracker(
-                log_level="warning",  # "info" for more verbosity
+                log_level="warning",
                 # tracking_mode="process" only tries to track memory consumption of current process
                 # but computes cpu and gpu energy consumption based on the machine-level tracking
-                tracking_mode="machine",  # "machine" for machine-level tracking
+                tracking_mode="machine",
                 gpu_ids=self.device_ids,
+                # allow multiple trackers to run in the same machine (e.g., for distributed inference/training)
+                # and also for testing purposes (we run many benchmarks in parallel)
+                # https://github.com/mlco2/codecarbon/pull/562 added this feature
+                # but it doesn't explain why one tracker is better than multiple
+                allow_multiple_runs=True,
                 output_file="codecarbon.csv",
-                allow_multiple_runs=self.is_distributed,
                 measure_power_secs=POWER_CONSUMPTION_SAMPLING_RATE,
             )
         except Exception:
@@ -162,21 +166,25 @@ class EnergyTracker:
                 )
 
             self.emission_tracker = OfflineEmissionsTracker(
-                log_level="warning",  # "info" for more verbosity
+                log_level="warning",
                 # tracking_mode="process" only tries to track memory consumption of current process
                 # but computes cpu and gpu energy consumption based on the machine-level tracking
-                tracking_mode="machine",  # "machine" for machine-level tracking
+                tracking_mode="machine",
                 gpu_ids=self.device_ids,
+                # allow multiple trackers to run in the same machine (e.g., for distributed inference/training)
+                # and also for testing purposes (we run many benchmarks in parallel)
+                # https://github.com/mlco2/codecarbon/pull/562 added this feature
+                # but it doesn't explain why one tracker is better than multiple
+                allow_multiple_runs=True,
                 output_file="codecarbon.csv",
-                allow_multiple_runs=self.is_distributed,
                 measure_power_secs=POWER_CONSUMPTION_SAMPLING_RATE,
                 country_iso_code=os.environ.get("COUNTRY_ISO_CODE", "USA"),
             )
 
-        self.cpu_energy = None
-        self.gpu_energy = None
-        self.ram_energy = None
-        self.total_energy = None
+        self.total_energy: Optional[float] = None
+        self.cpu_energy: Optional[float] = None
+        self.gpu_energy: Optional[float] = None
+        self.ram_energy: Optional[float] = None
 
     @contextmanager
     def track(self, file_prefix: str = "task"):
@@ -202,12 +210,10 @@ class EnergyTracker:
             LOGGER.info(f"\t+ Saving codecarbon emission data to {file_prefix}_codecarbon.json")
             dump(asdict(emission_data), f, indent=4)
 
+        self.total_energy = emission_data.total_energy
         self.cpu_energy = emission_data.cpu_energy
         self.gpu_energy = emission_data.gpu_energy
         self.ram_energy = emission_data.ram_energy
-        self.total_energy = emission_data.total_energy
-
-        self.emission_tracker.stop()
 
     def get_energy(self) -> Energy:
         return Energy(
