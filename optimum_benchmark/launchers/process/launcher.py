@@ -122,14 +122,19 @@ def target(
 
 def sync_with_parent(child_connection: Connection) -> None:
     if child_connection.poll():
-        _ = child_connection.recv()
-    child_connection.send(0)
+        response = child_connection.recv()
+    else:
+        raise RuntimeError("Received no response from main process")
+
+    if response == "SYNC":
+        return
+    else:
+        raise RuntimeError(f"Received an unexpected response from main process: {response}")
 
 
 def sync_with_child(parent_connection: Connection) -> None:
-    parent_connection.send(0)
-    if parent_connection.poll():
-        _ = parent_connection.recv()
+    parent_connection.send("SYNC")
+    parent_connection.recv()
 
 
 def dummy_target() -> None:
