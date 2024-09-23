@@ -1,7 +1,6 @@
 import os
 import traceback
 from abc import ABC, abstractmethod
-from itertools import product
 from logging import getLogger
 from typing import Any, Dict, List, Optional
 
@@ -14,27 +13,22 @@ from optimum_benchmark import Benchmark, BenchmarkConfig, BenchmarkReport
 from optimum_benchmark.logging_utils import setup_logging
 
 
-class BenchmarkRunner(ABC):
-    def __init__(self, backend: str, hardware: str, subset: Optional[str] = None, machine: Optional[str] = None):
+class LLMPerfBenchmarkManager(ABC):
+    def __init__(self, backend: str, device: str, subset: Optional[str] = None, machine: Optional[str] = None):
         self.backend = backend
-        self.hardware = hardware
+        self.device = device
         self.subset = subset or os.getenv("SUBSET", None)
         self.machine = machine or os.getenv("MACHINE", None)
         self.logger = getLogger("llm-perf-backend")
 
         if self.machine is None and self.subset is None:
-            self.push_repo_id = f"optimum-benchmark/llm-perf-{self.backend}-{self.hardware}-debug"
+            self.push_repo_id = f"optimum-benchmark/llm-perf-{self.backend}-{self.device}-debug"
             self.canonical_pretrained_open_llm_list = ["gpt2"]
             self.subset = "unquantized"
         elif self.machine is not None and self.subset is not None:
-            self.push_repo_id = (
-                f"optimum-benchmark/llm-perf-{self.backend}-{self.hardware}-{self.subset}-{self.machine}"
-            )
+            self.push_repo_id = f"optimum-benchmark/llm-perf-{self.backend}-{self.device}-{self.subset}-{self.machine}"
         else:
             raise ValueError("Either both MACHINE and SUBSET should be set for benchmarking or neither for debugging")
-
-        self.attention_configs = self._get_attention_configs()
-        self.weights_configs = self._get_weights_configs(self.subset)
 
         self.logger.info(f"len(OPEN_LLM_LIST): {len(OPEN_LLM_LIST)}")
         self.logger.info(f"len(PRETRAINED_OPEN_LLM_LIST): {len(PRETRAINED_OPEN_LLM_LIST)}")
@@ -48,27 +42,32 @@ class BenchmarkRunner(ABC):
     def _get_attention_configs(self) -> List[str]:
         raise NotImplementedError("This method should be implemented in the child class")
 
-    def is_benchmark_supported(self, weights_config: str, attn_implementation: str) -> bool:
+    def is_benchmark_supported(self, **kwargs) -> bool:
+        """
+        Can be overridden by child classes to exclude unsupported configurations
+        """
         return True
+
+    @abstractmethod
+    def get_list_of_benchmarks_to_run(self) -> List[Dict[str, Any]]:
+        raise NotImplementedError("This method should be implemented in the child class")
 
     def run_benchmarks(self):
         os.environ["LOG_TO_FILE"] = "0"
         os.environ["LOG_LEVEL"] = "INFO"
         setup_logging(level="INFO", prefix="MAIN-PROCESS")
 
-        models_attentions_weights = list(
-            product(CANONICAL_PRETRAINED_OPEN_LLM_LIST, self.attention_configs, self.weights_configs.keys())
-        )
+        benchmarks_to_run = self.get_list_of_benchmarks_to_run()
 
         self.logger.info(
-            f"Running a total of {len(models_attentions_weights)} benchmarks, "
-            f"with {len(CANONICAL_PRETRAINED_OPEN_LLM_LIST)} models, "
-            f"{len(self.attention_configs)} attentions implementations "
-            f"and {len(self.weights_configs)} weights configurations."
+            f"Running a total of {len(benchmarks_to_run)} benchmarks, "
+            f"with {len(CANONICAL_PRETRAINED_OPEN_LLM_LIST)} models"
         )
 
-        for model, attn_implementation, weights_config in models_attentions_weights:
-            self.run_benchmark(model, attn_implementation, weights_config)
+        for benchmark_name in benchmarks_to_run:
+            assert "model" in benchmark_name, "each benchmark should have a model"
+
+            self.run_benchmark(**benchmark_name)
 
     def is_benchmark_conducted(self, push_repo_id, subfolder):
         try:
@@ -80,11 +79,17 @@ class BenchmarkRunner(ABC):
         except Exception:
             return False
 
-    def run_benchmark(self, model: str, attn_implementation: str, weights_config: str):
-        benchmark_name = f"{weights_config}-{attn_implementation}"
+    @abstractmethod
+    def get_benchmark_name(self, model: str, **kwargs) -> str:
+        raise NotImplementedError("This method should be implemented in the child class")
+
+    def run_benchmark(self, **kwargs):
+        model = kwargs["model"]
+
+        benchmark_name = self.get_benchmark_name(model, **kwargs)
         subfolder = f"{benchmark_name}/{model.replace('/', '--')}"
 
-        if not self.is_benchmark_supported(weights_config, attn_implementation):
+        if not self.is_benchmark_supported(**kwargs):
             self.logger.info(f"Skipping benchmark {benchmark_name} with model {model} since it is not supported")
             return
 
@@ -92,12 +97,12 @@ class BenchmarkRunner(ABC):
             self.logger.info(f"Skipping benchmark {benchmark_name} with model {model} since it was already conducted")
             return
 
-        benchmark_config = self.get_benchmark_config(model, attn_implementation, weights_config)
+        benchmark_config = self.get_benchmark_config(model, **kwargs)
         benchmark_config.push_to_hub(repo_id=self.push_repo_id, subfolder=subfolder, private=True)
         self.execute_and_log_benchmark(benchmark_config, subfolder)
 
     @abstractmethod
-    def get_benchmark_config(self, model: str, attn_implementation: str, weights_config: str) -> BenchmarkConfig:
+    def get_benchmark_config(self, model: str, **kwargs) -> BenchmarkConfig:
         raise NotImplementedError("This method should be implemented in the child class")
 
     def execute_and_log_benchmark(self, benchmark_config: BenchmarkConfig, subfolder: str):
