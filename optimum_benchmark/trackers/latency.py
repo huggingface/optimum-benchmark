@@ -143,16 +143,16 @@ class LatencyTracker:
 
     @contextmanager
     def track(self):
-        if not self.is_engine and self.is_distributed:
-            torch.distributed.barrier()
+        # if not self.is_engine and self.is_distributed:
+        #     torch.distributed.barrier()
 
         if self.is_pytorch_cuda:
             yield from self._pytorch_cuda_latency()
         else:
             yield from self._cpu_latency()
 
-        if not self.is_engine and self.is_distributed:
-            torch.distributed.barrier()
+        # if not self.is_engine and self.is_distributed:
+        #     torch.distributed.barrier()
 
     def _pytorch_cuda_latency(self):
         self.start_events.append(torch.cuda.Event(enable_timing=True))
@@ -292,8 +292,8 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         self.prefilled = False
         self.per_token_events.append([])
 
-        if not self.is_engine and self.is_distributed:
-            torch.distributed.barrier()
+        # if not self.is_engine and self.is_distributed:
+        #     torch.distributed.barrier()
 
         if self.is_pytorch_cuda:
             self.prefill_start_events.append(torch.cuda.Event(enable_timing=True))
@@ -311,10 +311,10 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         else:
             self.decode_end_events.append(time.perf_counter())
 
-        if not self.is_engine and self.is_distributed:
-            torch.distributed.barrier()
-
         self.prefilled = False
+
+        # if not self.is_engine and self.is_distributed:
+        #     torch.distributed.barrier()
 
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor):
         assert (

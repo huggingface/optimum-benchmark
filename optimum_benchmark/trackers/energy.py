@@ -188,8 +188,8 @@ class EnergyTracker:
 
     @contextmanager
     def track(self, file_prefix: str = "task"):
-        if not self.is_engine and self.is_distributed:
-            torch.distributed.barrier()
+        # if not self.is_engine and self.is_distributed:
+        #     torch.distributed.barrier()
 
         if self.is_pytorch_cuda:
             torch.cuda.synchronize()
@@ -198,8 +198,8 @@ class EnergyTracker:
 
         yield
 
-        if not self.is_engine and self.is_distributed:
-            torch.distributed.barrier()
+        # if not self.is_engine and self.is_distributed:
+        #     torch.distributed.barrier()
 
         if self.is_pytorch_cuda:
             torch.cuda.synchronize()
