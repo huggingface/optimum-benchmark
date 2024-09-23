@@ -143,16 +143,10 @@ class LatencyTracker:
 
     @contextmanager
     def track(self):
-        # if not self.is_engine and self.is_distributed:
-        #     torch.distributed.barrier()
-
         if self.is_pytorch_cuda:
             yield from self._pytorch_cuda_latency()
         else:
             yield from self._cpu_latency()
-
-        # if not self.is_engine and self.is_distributed:
-        #     torch.distributed.barrier()
 
     def _pytorch_cuda_latency(self):
         self.start_events.append(torch.cuda.Event(enable_timing=True))
@@ -292,17 +286,12 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         self.prefilled = False
         self.per_token_events.append([])
 
-        # if not self.is_engine and self.is_distributed:
-        #     torch.distributed.barrier()
-
         if self.is_pytorch_cuda:
             self.prefill_start_events.append(torch.cuda.Event(enable_timing=True))
             self.prefill_start_events[-1].record()
         else:
             self.prefill_start_events.append(time.perf_counter())
 
-        # this is where generate is called,
-        # and for each decoded token, we record an event
         yield
 
         if self.is_pytorch_cuda:
@@ -312,9 +301,6 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
             self.decode_end_events.append(time.perf_counter())
 
         self.prefilled = False
-
-        # if not self.is_engine and self.is_distributed:
-        #     torch.distributed.barrier()
 
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor):
         assert (

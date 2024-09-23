@@ -147,18 +147,12 @@ class MemoryTracker:
 
     @contextmanager
     def track(self):
-        # if not self.is_engine and self.is_distributed:
-        #     torch.distributed.barrier()
-
         if self.is_pytorch_cuda:
             yield from self._cuda_pytorch_memory()
         elif self.is_gpu:
             yield from self._gpu_memory()
         else:
             yield from self._cpu_memory()
-
-        # if not self.is_engine and self.is_distributed:
-        #     torch.distributed.barrier()
 
     def _cuda_pytorch_memory(self):
         self.max_allocated_memory = 0

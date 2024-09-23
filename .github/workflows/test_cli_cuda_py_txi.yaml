@@ -47,4 +47,4 @@ jobs:
           pip install -e .[testing,py-txi]
 
       - name: Run tests
-        run: pytest -s -k "cli and cuda and py_txi"
+        run: pytest -x -s -k "cli and cuda and py_txi"

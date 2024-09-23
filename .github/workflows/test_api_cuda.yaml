@@ -48,4 +48,4 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PUSH_REPO_ID: optimum-benchmark/cuda
         run: |
-          pytest -s -x -k "api and cuda"
+          pytest -x -s -k "api and cuda"
