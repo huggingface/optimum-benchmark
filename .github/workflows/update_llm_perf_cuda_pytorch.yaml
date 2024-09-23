@@ -14,6 +14,11 @@ env:
 
 jobs:
   run_benchmarks:
+    if: ${{
+      (github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch') ||
+      contains( github.event.pull_request.labels.*.name, 'leaderboard')}}
+
     strategy:
       fail-fast: false
       matrix:
