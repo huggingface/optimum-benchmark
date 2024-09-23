@@ -11,6 +11,7 @@ LOGGER = getLogger("test-cli")
 
 
 FORCE_SEQUENTIAL = os.environ.get("FORCE_SEQUENTIAL", "0") == "1"
+
 TEST_CONFIG_DIR = Path(__file__).parent / "configs"
 TEST_CONFIG_NAMES = [
     config.split(".")[0]
@@ -59,7 +60,7 @@ def test_cli_exit_code_0(launcher):
         "--config-name",
         "_base_",
         "name=test",
-        f"launcher={launcher}",
+        "launcher=" + launcher,
         # compatible task and model
         "backend.task=text-classification",
         "backend.model=bert-base-uncased",
@@ -72,9 +73,6 @@ def test_cli_exit_code_0(launcher):
 
 @pytest.mark.parametrize("launcher", ["inline", "process", "torchrun"])
 def test_cli_exit_code_1(launcher):
-    if sys.platform == "win32":
-        os.environ["USE_LIBUV"] = "0"
-
     args_1 = [
         "optimum-benchmark",
         "--config-dir",
@@ -82,7 +80,7 @@ def test_cli_exit_code_1(launcher):
         "--config-name",
         "_base_",
         "name=test",
-        f"launcher={launcher}",
+        "launcher=" + launcher,
         # incompatible task and model to trigger an error
         "backend.task=image-classification",
         "backend.model=bert-base-uncased",
@@ -105,7 +103,7 @@ def test_cli_numactl(launcher):
         "--config-name",
         "_base_",
         "name=test",
-        f"launcher={launcher}",
+        "launcher=" + launcher,
         "launcher.numactl=True",
         "backend.task=text-classification",
         "backend.model=bert-base-uncased",
