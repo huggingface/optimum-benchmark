@@ -72,6 +72,9 @@ def test_cli_exit_code_0(launcher):
 
 @pytest.mark.parametrize("launcher", ["inline", "process", "torchrun"])
 def test_cli_exit_code_1(launcher):
+    if sys.platform == "win32":
+        os.environ["USE_LIBUV"] = "0"
+
     args_1 = [
         "optimum-benchmark",
         "--config-dir",
