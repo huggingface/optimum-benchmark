@@ -3,10 +3,9 @@ from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from json import dump
 from logging import getLogger
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, Union
 
 from ..import_utils import is_codecarbon_available, is_torch_available, is_torch_distributed_available
-from ..system_utils import get_gpu_device_ids
 
 if is_torch_available():
     import torch
@@ -66,20 +65,20 @@ class Energy:
             raise ValueError("Energy units must match to perform subtraction")
 
         return Energy(
+            unit=self.unit,
             cpu=self.cpu - other.cpu,
             gpu=self.gpu - other.gpu,
             ram=self.ram - other.ram,
             total=self.total - other.total,
-            unit=self.unit,
         )
 
     def __truediv__(self, scalar: float) -> "Energy":
         return Energy(
+            unit=self.unit,
             cpu=self.cpu / scalar,
             gpu=self.gpu / scalar,
             ram=self.ram / scalar,
             total=self.total / scalar,
-            unit=self.unit,
         )
 
 
@@ -110,19 +109,30 @@ class Efficiency:
 
 
 class EnergyTracker:
-    def __init__(self, backend: str, device: str, device_ids: Optional[str] = None):
+    def __init__(self, backend: str, device: str, device_ids: Optional[Union[str, int, List[int]]] = None):
         self.device = device
         self.backend = backend
         self.device_ids = device_ids
-        self.is_asynchronous = backend == "pytorch" and device == "cuda"
+
+        self.is_gpu = self.device == "cuda"
+        self.is_engine = self.backend in ["vllm", "tensorrt-llm"]
+        self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
         self.is_distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
-        if self.device == "cuda":
-            if self.device_ids is None:
-                LOGGER.warning("\t+ `device=cuda` but `device_ids` not provided. Using all available CUDA devices.")
-                self.device_ids = get_gpu_device_ids()
+        LOGGER.info("\t+ Tracking CPU and RAM energy")
 
-            self.device_ids = list(map(int, self.device_ids.split(",")))
+        if self.is_gpu:
+            if isinstance(self.device_ids, str):
+                self.device_ids = list(map(int, self.device_ids.split(",")))
+            elif isinstance(self.device_ids, int):
+                self.device_ids = [self.device_ids]
+            elif isinstance(self.device_ids, list):
+                self.device_ids = self.device_ids
+            elif self.device_ids is None:
+                raise ValueError("GPU device IDs must be provided for energy tracking on GPUs")
+            else:
+                raise ValueError("GPU device IDs must be a string, an integer, or a list of integers")
+
             LOGGER.info(f"\t+ Tracking GPU energy on devices {self.device_ids}")
 
         if not is_codecarbon_available():
@@ -132,17 +142,23 @@ class EnergyTracker:
             )
 
         try:
-            # TODO: use pynvml and amdsmi directly to get the GPU power consumption
             self.emission_tracker = EmissionsTracker(
-                log_level="warning",  # "info" for more verbosity
-                tracking_mode="machine",  # "machine" for machine-level tracking
+                log_level="warning",
+                # tracking_mode="process" only tries to track memory consumption of current process
+                # but computes cpu and gpu energy consumption based on the machine-level tracking
+                tracking_mode="machine",
                 gpu_ids=self.device_ids,
+                # allow multiple trackers to run in the same machine (e.g., for distributed inference/training)
+                # and also for testing purposes (we run many benchmarks in parallel)
+                # https://github.com/mlco2/codecarbon/pull/562 added this feature
+                # but it doesn't explain why one tracker is better than multiple
+                allow_multiple_runs=True,
                 output_file="codecarbon.csv",
                 measure_power_secs=POWER_CONSUMPTION_SAMPLING_RATE,
             )
-        except Exception as e:
-            LOGGER.warning("\t+ Failed to initialize Online Emissions Tracker:, %s", e)
+        except Exception:
             LOGGER.warning("\t+ Falling back to Offline Emissions Tracker")
+
             if os.environ.get("COUNTRY_ISO_CODE", None) is None:
                 LOGGER.warning(
                     "\t+ Offline Emissions Tracker requires COUNTRY_ISO_CODE to be set. "
@@ -150,34 +166,42 @@ class EnergyTracker:
                 )
 
             self.emission_tracker = OfflineEmissionsTracker(
-                log_level="warning",  # "info" for more verbosity
-                tracking_mode="machine",  # "machine" for machine-level tracking
+                log_level="warning",
+                # tracking_mode="process" only tries to track memory consumption of current process
+                # but computes cpu and gpu energy consumption based on the machine-level tracking
+                tracking_mode="machine",
                 gpu_ids=self.device_ids,
+                # allow multiple trackers to run in the same machine (e.g., for distributed inference/training)
+                # and also for testing purposes (we run many benchmarks in parallel)
+                # https://github.com/mlco2/codecarbon/pull/562 added this feature
+                # but it doesn't explain why one tracker is better than multiple
+                allow_multiple_runs=True,
+                output_file="codecarbon.csv",
                 measure_power_secs=POWER_CONSUMPTION_SAMPLING_RATE,
                 country_iso_code=os.environ.get("COUNTRY_ISO_CODE", "USA"),
             )
 
-        self.cpu_energy = None
-        self.gpu_energy = None
-        self.ram_energy = None
-        self.total_energy = None
+        self.total_energy: Optional[float] = None
+        self.cpu_energy: Optional[float] = None
+        self.gpu_energy: Optional[float] = None
+        self.ram_energy: Optional[float] = None
 
     @contextmanager
     def track(self, file_prefix: str = "task"):
-        if self.is_distributed:
+        if not self.is_engine and self.is_distributed:
             torch.distributed.barrier()
 
-        if self.is_asynchronous:
+        if self.is_pytorch_cuda:
             torch.cuda.synchronize()
 
         self.emission_tracker.start_task()
 
         yield
 
-        if self.is_distributed:
+        if not self.is_engine and self.is_distributed:
             torch.distributed.barrier()
 
-        if self.is_asynchronous:
+        if self.is_pytorch_cuda:
             torch.cuda.synchronize()
 
         emission_data: EmissionsData = self.emission_tracker.stop_task()
@@ -186,15 +210,12 @@ class EnergyTracker:
             LOGGER.info(f"\t+ Saving codecarbon emission data to {file_prefix}_codecarbon.json")
             dump(asdict(emission_data), f, indent=4)
 
+        self.total_energy = emission_data.energy_consumed
         self.cpu_energy = emission_data.cpu_energy
         self.gpu_energy = emission_data.gpu_energy
         self.ram_energy = emission_data.ram_energy
-        self.total_energy = emission_data.energy_consumed
 
     def get_energy(self) -> Energy:
         return Energy(
             unit=ENERGY_UNIT, cpu=self.cpu_energy, gpu=self.gpu_energy, ram=self.ram_energy, total=self.total_energy
         )
-
-    def stop(self):
-        self.emission_tracker.stop()

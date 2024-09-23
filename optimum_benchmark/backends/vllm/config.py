@@ -15,7 +15,7 @@ class VLLMConfig(BackendConfig):
     no_weights: bool = False
 
     # decides whether to use the offline or online llm engine
-    serving_mode: str = "online"
+    serving_mode: str = "offline"
 
     # passed to EngineArgs
     engine_args: Dict[str, Any] = field(default_factory=dict)

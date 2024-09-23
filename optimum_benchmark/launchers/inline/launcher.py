@@ -12,6 +12,6 @@ class InlineLauncher(Launcher[InlineConfig]):
         super().__init__(config)
 
     def launch(self, worker: Callable[..., BenchmarkReport], worker_args: List[Any]) -> BenchmarkReport:
-        self.logger.warn("The inline launcher is only recommended for debugging purposes and not for benchmarking")
+        self.logger.warning("The inline launcher is only recommended for debugging purposes and not for benchmarking")
         report = worker(*worker_args)
         return report

@@ -5,21 +5,15 @@ on:
   push:
     branches:
       - main
-    paths:
-      - .github/workflows/test_api_cpu.yaml
-      - "optimum_benchmark/**"
-      - "docker/**"
-      - "tests/**"
-      - "setup.py"
   pull_request:
     branches:
       - main
-    paths:
-      - .github/workflows/test_api_cpu.yaml
-      - "optimum_benchmark/**"
-      - "docker/**"
-      - "tests/**"
-      - "setup.py"
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - labeled
+      - unlabeled
 
 concurrency:
   cancel-in-progress: true
@@ -27,6 +21,14 @@ concurrency:
 
 jobs:
   run_api_cpu_tests:
+    if: ${{
+      (github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch') ||
+      contains( github.event.pull_request.labels.*.name, 'api') ||
+      contains( github.event.pull_request.labels.*.name, 'cpu') ||
+      contains( github.event.pull_request.labels.*.name, 'api_cpu')
+      }}
+
     runs-on: ubuntu-latest
 
     steps:
