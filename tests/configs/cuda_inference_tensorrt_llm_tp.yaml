@@ -8,6 +8,3 @@ defaults:
   - override backend: tensorrt-llm
 
 name: cuda_inference_tensorrt_llm_tp
-
-backend:
-  model: TinyLlama/TinyLlama-1.1B-Chat-v1.0
