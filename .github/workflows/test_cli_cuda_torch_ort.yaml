@@ -48,7 +48,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -x -s -k "cli and cuda and torch_ort and not (dp or ddp or device_map) and not (peft)"
+          pytest tests/test_cli.py -x -s -k "cli and cuda and torch_ort and not (dp or ddp or device_map) and not (peft)"
 
   run_cli_cuda_torch_ort_multi_gpu_tests:
     if: ${{
@@ -78,4 +78,4 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -x -s -k "cli and cuda and torch_ort and (dp or ddp or device_map) and not (peft)"
+          FORCE_SERIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and torch_ort and (dp or ddp or device_map) and not (peft)"

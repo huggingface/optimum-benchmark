@@ -61,4 +61,4 @@ jobs:
           pip install -e .[testing]
 
       - name: Run tests
-        run: pytest -s -k "cli and not (cpu or cuda or rocm or mps)"
+        run: pytest tests/test_cli.py -s -k "cli and not (cpu or cuda or rocm or mps)"

@@ -46,4 +46,4 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -x -s -k "cli and cuda and onnxruntime"
+          pytest tests/test_cli.py -x -s -k "cli and cuda and onnxruntime"

@@ -4,11 +4,6 @@ from dataclasses import dataclass
 from logging import getLogger
 from typing import List, Literal, Optional, Union
 
-from ..import_utils import is_torch_distributed_available
-
-if is_torch_distributed_available():
-    import torch.distributed
-
 import numpy as np
 import torch
 from transformers import LogitsProcessor, TrainerCallback
@@ -123,9 +118,7 @@ class LatencyTracker:
         self.device = device
         self.backend = backend
 
-        self.is_engine = self.backend in ["vllm", "tensorrt-llm"]
         self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
-        self.is_distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
         if self.is_pytorch_cuda:
             LOGGER.info("\t+ Tracking latency using Pytorch CUDA events")
@@ -143,16 +136,10 @@ class LatencyTracker:
 
     @contextmanager
     def track(self):
-        if not self.is_engine and self.is_distributed:
-            torch.distributed.barrier()
-
         if self.is_pytorch_cuda:
             yield from self._pytorch_cuda_latency()
         else:
             yield from self._cpu_latency()
-
-        if not self.is_engine and self.is_distributed:
-            torch.distributed.barrier()
 
     def _pytorch_cuda_latency(self):
         self.start_events.append(torch.cuda.Event(enable_timing=True))
@@ -259,9 +246,7 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         self.device = device
         self.backend = backend
 
-        self.is_engine = self.backend in ["vllm", "tensorrt-llm"]
         self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
-        self.is_distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
         if self.is_pytorch_cuda:
             LOGGER.info("\t+ Tracking latency using Pytorch CUDA events")
@@ -292,17 +277,12 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         self.prefilled = False
         self.per_token_events.append([])
 
-        if not self.is_engine and self.is_distributed:
-            torch.distributed.barrier()
-
         if self.is_pytorch_cuda:
             self.prefill_start_events.append(torch.cuda.Event(enable_timing=True))
             self.prefill_start_events[-1].record()
         else:
             self.prefill_start_events.append(time.perf_counter())
 
-        # this is where generate is called,
-        # and for each decoded token, we record an event
         yield
 
         if self.is_pytorch_cuda:
@@ -310,9 +290,6 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
             self.decode_end_events[-1].record()
         else:
             self.decode_end_events.append(time.perf_counter())
-
-        if not self.is_engine and self.is_distributed:
-            torch.distributed.barrier()
 
         self.prefilled = False
 

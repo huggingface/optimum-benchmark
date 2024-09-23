@@ -5,13 +5,10 @@ from json import dump
 from logging import getLogger
 from typing import List, Literal, Optional, Union
 
-from ..import_utils import is_codecarbon_available, is_torch_available, is_torch_distributed_available
+from ..import_utils import is_codecarbon_available, is_torch_available
 
 if is_torch_available():
     import torch
-
-if is_torch_distributed_available():
-    import torch.distributed
 
 if is_codecarbon_available():
     from codecarbon import EmissionsTracker, OfflineEmissionsTracker
@@ -115,9 +112,7 @@ class EnergyTracker:
         self.device_ids = device_ids
 
         self.is_gpu = self.device == "cuda"
-        self.is_engine = self.backend in ["vllm", "tensorrt-llm"]
         self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
-        self.is_distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
         LOGGER.info("\t+ Tracking CPU and RAM energy")
 
@@ -188,18 +183,12 @@ class EnergyTracker:
 
     @contextmanager
     def track(self, file_prefix: str = "task"):
-        if not self.is_engine and self.is_distributed:
-            torch.distributed.barrier()
-
         if self.is_pytorch_cuda:
             torch.cuda.synchronize()
 
         self.emission_tracker.start_task()
 
         yield
-
-        if not self.is_engine and self.is_distributed:
-            torch.distributed.barrier()
 
         if self.is_pytorch_cuda:
             torch.cuda.synchronize()

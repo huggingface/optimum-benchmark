@@ -48,4 +48,4 @@ jobs:
           pip install -e .[testing,llama-cpp]
 
       - name: Run tests
-        run: pytest -s -k "llama_cpp"
+        run: pytest tests/test_cli.py -s -k "llama_cpp"

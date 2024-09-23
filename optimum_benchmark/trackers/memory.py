@@ -11,15 +11,12 @@ from ..import_utils import (
     is_pynvml_available,
     is_pyrsmi_available,
     is_torch_available,
-    is_torch_distributed_available,
 )
 from ..system_utils import is_nvidia_system, is_rocm_system
 
 if is_rocm_system() and is_pyrsmi_available():
     from pyrsmi import rocml
 
-if is_torch_distributed_available():
-    import torch.distributed
 
 if is_nvidia_system() and is_pynvml_available():
     import pynvml
@@ -102,9 +99,7 @@ class MemoryTracker:
         self.monitored_pid = os.getpid()
 
         self.is_gpu = device == "cuda"
-        self.is_engine = backend in ["vllm", "tensorrt-llm"]
         self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
-        self.is_distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
         LOGGER.info(f"\t+ Tracking RAM memory of process [{self.monitored_pid}]")
 
@@ -147,9 +142,6 @@ class MemoryTracker:
 
     @contextmanager
     def track(self):
-        if not self.is_engine and self.is_distributed:
-            torch.distributed.barrier()
-
         if self.is_pytorch_cuda:
             yield from self._cuda_pytorch_memory()
         elif self.is_gpu:
@@ -157,20 +149,17 @@ class MemoryTracker:
         else:
             yield from self._cpu_memory()
 
-        if not self.is_engine and self.is_distributed:
-            torch.distributed.barrier()
-
     def _cuda_pytorch_memory(self):
         self.max_allocated_memory = 0
         self.max_reserved_memory = 0
-
-        torch.cuda.synchronize()
 
         for device in range(self.num_pytorch_devices):
             try:
                 torch.cuda.reset_peak_memory_stats(device=device)
             except Exception as e:
                 LOGGER.warning(f"\t\t+ Could not reset max memory stats for device {device}: {e}")
+
+        torch.cuda.synchronize()
 
         yield from self._gpu_memory()
 

@@ -47,7 +47,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed)"
+          pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed)"
 
   run_cli_cuda_pytorch_multi_gpu_tests:
     if: ${{
@@ -76,4 +76,4 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -x -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed)"
+          FORCE_SERIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed)"

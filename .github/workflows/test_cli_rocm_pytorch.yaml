@@ -40,7 +40,6 @@ jobs:
         --device /dev/kfd
         --device /dev/dri
         --env ROCR_VISIBLE_DEVICES
-        --env HIP_VISIBLE_DEVICES=0
 
     steps:
       - name: Checkout code
@@ -52,7 +51,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not bnb"
+          pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not bnb"
 
   run_cli_rocm_pytorch_multi_gpu_tests:
     if: ${{
@@ -74,7 +73,6 @@ jobs:
         --device /dev/kfd
         --device /dev/dri
         --env ROCR_VISIBLE_DEVICES
-        --env HIP_VISIBLE_DEVICES=0,1
 
     steps:
       - name: Checkout code
@@ -86,4 +84,4 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -x -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed) and not bnb"
+          FORCE_SERIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed) and not bnb"
