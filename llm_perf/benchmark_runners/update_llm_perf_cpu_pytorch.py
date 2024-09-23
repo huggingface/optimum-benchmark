@@ -86,6 +86,7 @@ class CPUPyTorchBenchmarkRunner(LLMPerfBenchmarkManager):
     def _get_attention_configs(self) -> List[str]:
         return ["eager", "sdpa"]
 
+
 if __name__ == "__main__":
     runner = CPUPyTorchBenchmarkRunner()
     runner.run_benchmarks()

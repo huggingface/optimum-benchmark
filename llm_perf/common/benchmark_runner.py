@@ -84,7 +84,7 @@ class LLMPerfBenchmarkManager(ABC):
         raise NotImplementedError("This method should be implemented in the child class")
 
     def run_benchmark(self, **kwargs):
-        model = kwargs["model"]
+        model = kwargs.pop("model")
 
         benchmark_name = self.get_benchmark_name(model, **kwargs)
         subfolder = f"{benchmark_name}/{model.replace('/', '--')}"
@@ -112,8 +112,10 @@ class LLMPerfBenchmarkManager(ABC):
             benchmark_report.push_to_hub(repo_id=self.push_repo_id, subfolder=subfolder, private=True)
             benchmark = Benchmark(config=benchmark_config, report=benchmark_report)
             benchmark.push_to_hub(repo_id=self.push_repo_id, subfolder=subfolder, private=True)
-        except Exception:
-            self.logger.error(f"Benchmark {benchmark_config.name} failed with model {benchmark_config.backend.model}")
+        except Exception as e:
+            self.logger.error(
+                f"Benchmark {benchmark_config.name} failed with model {benchmark_config.backend.model}, error:\n{e}"
+            )
             benchmark_report = BenchmarkReport.from_dict({"traceback": traceback.format_exc()})
             benchmark_report.push_to_hub(repo_id=self.push_repo_id, subfolder=subfolder, private=True)
             benchmark = Benchmark(config=benchmark_config, report=benchmark_report)
