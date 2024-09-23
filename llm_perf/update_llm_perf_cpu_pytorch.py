@@ -28,7 +28,7 @@ HARDWARE = "cpu"
 
 if os.getenv("MACHINE", None) is None and os.getenv("SUBSET", None) is None:
     PUSH_REPO_ID = f"optimum-benchmark/llm-perf-{BACKEND}-{HARDWARE}-debug"
-    CANONICAL_PRETRAINED_OPEN_LLM_LIST = ["gpt2"] # noqa: F811
+    CANONICAL_PRETRAINED_OPEN_LLM_LIST = ["gpt2"]  # noqa: F811
     SUBSET = "unquantized"
 elif os.getenv("MACHINE", None) is not None and os.getenv("SUBSET", None) is not None:
     PUSH_REPO_ID = f"optimum-benchmark/llm-perf-{BACKEND}-{HARDWARE}-{SUBSET}-{MACHINE}"
