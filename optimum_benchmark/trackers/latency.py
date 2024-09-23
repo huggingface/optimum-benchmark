@@ -4,11 +4,6 @@ from dataclasses import dataclass
 from logging import getLogger
 from typing import List, Literal, Optional, Union
 
-from ..import_utils import is_torch_distributed_available
-
-if is_torch_distributed_available():
-    import torch.distributed
-
 import numpy as np
 import torch
 from transformers import LogitsProcessor, TrainerCallback
@@ -123,9 +118,7 @@ class LatencyTracker:
         self.device = device
         self.backend = backend
 
-        self.is_engine = self.backend in ["vllm", "tensorrt-llm"]
         self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
-        self.is_distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
         if self.is_pytorch_cuda:
             LOGGER.info("\t+ Tracking latency using Pytorch CUDA events")
@@ -253,9 +246,7 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         self.device = device
         self.backend = backend
 
-        self.is_engine = self.backend in ["vllm", "tensorrt-llm"]
         self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
-        self.is_distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
         if self.is_pytorch_cuda:
             LOGGER.info("\t+ Tracking latency using Pytorch CUDA events")
