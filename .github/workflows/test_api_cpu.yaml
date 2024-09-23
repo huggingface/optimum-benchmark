@@ -51,4 +51,4 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PUSH_REPO_ID: optimum-benchmark/cpu
         run: |
-          pytest -s -k "api and cpu"
+          pytest tests/test_api.py -s -k "api and cpu"
