@@ -35,11 +35,12 @@ jobs:
 
     container:
       image: ghcr.io/huggingface/optimum-benchmark:latest-rocm
-      options: --ipc host
+      options: --ipc host --pid host
         --group-add video
         --device /dev/kfd
         --device /dev/dri
         --env ROCR_VISIBLE_DEVICES
+        --env HIP_VISIBLE_DEVICES=0
 
     steps:
       - name: Checkout code
@@ -68,11 +69,12 @@ jobs:
 
     container:
       image: ghcr.io/huggingface/optimum-benchmark:latest-rocm
-      options: --ipc host
+      options: --ipc host --pid host
         --group-add video
         --device /dev/kfd
         --device /dev/dri
         --env ROCR_VISIBLE_DEVICES
+        --env HIP_VISIBLE_DEVICES=0,1
 
     steps:
       - name: Checkout code

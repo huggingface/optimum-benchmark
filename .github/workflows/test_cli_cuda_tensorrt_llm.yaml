@@ -35,7 +35,7 @@ jobs:
 
     container:
       image: huggingface/optimum-nvidia:latest
-      options: --ipc host --gpus all
+      options: --ipc host --pid host --gpus all
 
     steps:
       - name: Checkout
@@ -64,7 +64,7 @@ jobs:
 
     container:
       image: huggingface/optimum-nvidia:latest
-      options: --ipc host --gpus all
+      options: --ipc host --pid host --gpus all
 
     steps:
       - name: Checkout

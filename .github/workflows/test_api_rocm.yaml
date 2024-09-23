@@ -33,8 +33,7 @@ jobs:
 
     container:
       image: ghcr.io/huggingface/optimum-benchmark:latest-rocm
-      options: --ipc host
-        --shm-size "16gb"
+      options: --ipc host --pid host
         --group-add video
         --device /dev/kfd
         --device /dev/dri

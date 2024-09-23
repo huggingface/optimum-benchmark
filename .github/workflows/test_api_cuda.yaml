@@ -33,7 +33,7 @@ jobs:
 
     container:
       image: ghcr.io/huggingface/optimum-benchmark:latest-cuda
-      options: --ipc host --gpus all
+      options: --ipc host --pid host --gpus all
 
     steps:
       - name: Checkout
