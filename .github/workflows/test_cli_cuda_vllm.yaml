@@ -74,6 +74,6 @@ jobs:
         run: |
           pip install -e .[testing]
 
-      - name: Run tests
+      - name: Run tests (sequential)
         run: |
-          FORCE_SERIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and vllm and (tp or pp)"
+          FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and vllm and (tp or pp)"

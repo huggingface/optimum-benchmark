@@ -78,4 +78,4 @@ jobs:
 
       - name: Run tests
         run: |
-          FORCE_SERIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and torch_ort and (dp or ddp or device_map) and not (peft)"
+          pytest tests/test_cli.py -x -s -k "cli and cuda and torch_ort and (dp or ddp or device_map)"
