@@ -33,17 +33,20 @@ jobs:
 
     container:
       image: ghcr.io/huggingface/optimum-benchmark:latest-rocm
-      options: --ipc host
-        --shm-size "16gb"
+      options:
+        $(ls /dev/dri/ | grep render | awk -v indices="$ROCR_VISIBLE_DEVICES" 'BEGIN{split(indices, idx, ",")} {for (i in idx) if (NR == idx[i] + 1) print "--device /dev/dri/" $0}')
         --group-add video
         --device /dev/kfd
-        --device /dev/dri
-        --env ROCR_VISIBLE_DEVICES
-        --env HIP_VISIBLE_DEVICES=0
+        --ipc host
+        --pid host
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Run ROCm-SMI
+        run: |
+          rocm-smi
 
       - name: Install dependencies
         run: |
