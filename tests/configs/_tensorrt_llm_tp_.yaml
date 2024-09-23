@@ -1,0 +1,6 @@
+backend:
+  model: TinyLlama/TinyLlama-1.1B-Chat-v1.0
+  gpus_per_node: 2
+  device_ids: 0,1
+  world_size: 2
+  tp: 2

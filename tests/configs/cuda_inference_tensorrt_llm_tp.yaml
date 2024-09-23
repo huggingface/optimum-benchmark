@@ -1,0 +1,10 @@
+defaults:
+  # order of inheritance, last one overrides previous ones
+  - _base_ # inherits from base config
+  - _cuda_ # inherits from cuda config
+  - _inference_ # inherits from inference config
+  - _tensorrt_llm_tp_ # inherits from tensorrt_llm_tp config
+  - _self_ # hydra 1.1 compatibility
+  - override backend: tensorrt-llm
+
+name: cuda_inference_tensorrt_llm_tp

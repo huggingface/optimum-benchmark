@@ -10,7 +10,8 @@ from optimum_benchmark.logging_utils import run_subprocess_and_log_stream_output
 LOGGER = getLogger("test-cli")
 
 
-FORCE_SERIAL = os.environ.get("FORCE_SERIAL", "0") == "1"
+FORCE_SEQUENTIAL = os.environ.get("FORCE_SEQUENTIAL", "0") == "1"
+
 TEST_CONFIG_DIR = Path(__file__).parent / "configs"
 TEST_CONFIG_NAMES = [
     config.split(".")[0]
@@ -30,16 +31,16 @@ def test_cli_configs(config_name):
         TEST_CONFIG_DIR,
         "--config-name",
         config_name,
-        # to run the tests faster
-        "hydra/launcher=joblib",
-        "hydra.launcher.batch_size=1",
-        "hydra.launcher.prefer=threads",
     ]
 
-    if FORCE_SERIAL:
-        args += ["hydra.launcher.n_jobs=1"]
-    else:
-        args += ["hydra.launcher.n_jobs=-1"]
+    if not FORCE_SEQUENTIAL:
+        args += [
+            # to run the tests faster
+            "hydra/launcher=joblib",
+            "hydra.launcher.n_jobs=-1",
+            "hydra.launcher.batch_size=1",
+            "hydra.launcher.prefer=threads",
+        ]
 
     if ROCR_VISIBLE_DEVICES is not None:
         args += [f'backend.device_ids="{ROCR_VISIBLE_DEVICES}"']
@@ -50,7 +51,7 @@ def test_cli_configs(config_name):
     assert popen.returncode == 0, f"Failed to run {config_name}"
 
 
-@pytest.mark.parametrize("launcher", ["inline", "process"])
+@pytest.mark.parametrize("launcher", ["inline", "process", "torchrun"])
 def test_cli_exit_code_0(launcher):
     args_0 = [
         "optimum-benchmark",
@@ -59,7 +60,7 @@ def test_cli_exit_code_0(launcher):
         "--config-name",
         "_base_",
         "name=test",
-        f"launcher={launcher}",
+        "launcher=" + launcher,
         # compatible task and model
         "backend.task=text-classification",
         "backend.model=bert-base-uncased",
@@ -79,7 +80,7 @@ def test_cli_exit_code_1(launcher):
         "--config-name",
         "_base_",
         "name=test",
-        f"launcher={launcher}",
+        "launcher=" + launcher,
         # incompatible task and model to trigger an error
         "backend.task=image-classification",
         "backend.model=bert-base-uncased",
@@ -102,7 +103,7 @@ def test_cli_numactl(launcher):
         "--config-name",
         "_base_",
         "name=test",
-        f"launcher={launcher}",
+        "launcher=" + launcher,
         "launcher.numactl=True",
         "backend.task=text-classification",
         "backend.model=bert-base-uncased",

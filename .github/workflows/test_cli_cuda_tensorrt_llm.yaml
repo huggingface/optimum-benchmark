@@ -20,13 +20,14 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
 jobs:
-  cli_cuda_tensorrt_llm_tests:
+  cli_cuda_tensorrt_llm_single_gpu_tests:
     if: ${{
       (github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch') ||
       contains( github.event.pull_request.labels.*.name, 'cli') ||
       contains( github.event.pull_request.labels.*.name, 'cuda') ||
       contains( github.event.pull_request.labels.*.name, 'tensorrt_llm') ||
+      contains( github.event.pull_request.labels.*.name, 'single_gpu') ||
       contains( github.event.pull_request.labels.*.name, 'cli_cuda_tensorrt_llm')
       }}
 
@@ -46,4 +47,33 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest tests/test_cli.py -x -s -k "cli and cuda and tensorrt_llm"
+          pytest tests/test_cli.py -x -s -k "cli and cuda and tensorrt_llm and not (tp or pp)"
+
+  cli_cuda_tensorrt_llm_multi_gpu_tests:
+    if: ${{
+      (github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch') ||
+      contains( github.event.pull_request.labels.*.name, 'cli') ||
+      contains( github.event.pull_request.labels.*.name, 'cuda') ||
+      contains( github.event.pull_request.labels.*.name, 'tensorrt_llm') ||
+      contains( github.event.pull_request.labels.*.name, 'multi_gpu') ||
+      contains( github.event.pull_request.labels.*.name, 'cli_cuda_tensorrt_llm_multi_gpu')
+      }}
+
+    runs-on: [multi-gpu, nvidia-gpu, 4-a10, ci]
+
+    container:
+      image: huggingface/optimum-nvidia:latest
+      options: --ipc host --gpus all
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          pip install -e .[testing]
+
+      - name: Run tests (sequential)
+        run: |
+          FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and tensorrt_llm and (tp or pp)"
