@@ -19,7 +19,7 @@ on:
 
 concurrency:
   cancel-in-progress: true
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
 env:
   IMAGE: ghcr.io/huggingface/optimum-benchmark:latest-cpu
