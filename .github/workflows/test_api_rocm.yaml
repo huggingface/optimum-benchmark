@@ -34,7 +34,7 @@ jobs:
     container:
       image: ghcr.io/huggingface/optimum-benchmark:latest-rocm
       options:
-        $(ls /dev/dri/ | grep render | awk -v indices="$ROCR_VISIBLE_DEVICES" 'BEGIN{split(indices, idx, ",")} {for (i in idx) if (NR == idx[i] + 1) print "--device /dev/dri/" $0}')
+        $(echo $(ls /dev/dri/ | grep render | awk -v indices="$ROCR_VISIBLE_DEVICES" 'BEGIN{split(indices, idx, ",")} {for (i in idx) if (NR == idx[i] + 1) print "--device /dev/dri/" $0}'))
         --group-add video
         --device /dev/kfd
         --ipc host
