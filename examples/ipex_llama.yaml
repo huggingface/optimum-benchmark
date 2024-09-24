@@ -32,6 +32,6 @@ scenario:
 backend:
   device: cpu
   export: true
-  no_weights: true
+  no_weights: false
   torch_dtype: bfloat16
   model: TinyLlama/TinyLlama-1.1B-Chat-v1.0
