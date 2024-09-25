@@ -54,7 +54,9 @@ class TrainingScenario(Scenario[TrainingConfig]):
 
         if self.config.energy:
             self.logger.info("\t+ Creating energy tracking context manager")
-            energy_tracker = EnergyTracker(device=backend.config.device, device_ids=backend.config.device_ids)
+            energy_tracker = EnergyTracker(
+                device=backend.config.device, backend=backend.config.name, device_ids=backend.config.device_ids
+            )
 
         if self.config.memory:
             self.logger.info("\t+ Entering memory tracking context manager")
