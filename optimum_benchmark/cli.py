@@ -16,6 +16,7 @@ from . import (
     IPEXConfig,
     LlamaCppConfig,
     LLMSwarmConfig,
+    MPIrunConfig,
     ORTConfig,
     OVConfig,
     ProcessConfig,
@@ -56,6 +57,7 @@ cs.store(group="scenario", name=EnergyStarConfig.name, node=EnergyStarConfig)
 cs.store(group="launcher", name=InlineConfig.name, node=InlineConfig)
 cs.store(group="launcher", name=ProcessConfig.name, node=ProcessConfig)
 cs.store(group="launcher", name=TorchrunConfig.name, node=TorchrunConfig)
+cs.store(group="launcher", name=MPIrunConfig.name, node=MPIrunConfig)
 
 
 # optimum-benchmark

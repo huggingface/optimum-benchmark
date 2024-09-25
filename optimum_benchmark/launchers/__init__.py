@@ -1,11 +1,13 @@
-from .config import LauncherConfig  # noqa: F401
-from .inline.config import InlineConfig  # noqa: F401
-from .process.config import ProcessConfig  # noqa: F401
-from .torchrun.config import TorchrunConfig  # noqa: F401
+from .config import LauncherConfig
+from .inline.config import InlineConfig
+from .mpirun.config import MPIrunConfig
+from .process.config import ProcessConfig
+from .torchrun.config import TorchrunConfig
 
 __all__ = [
     "InlineConfig",
     "ProcessConfig",
     "TorchrunConfig",
     "LauncherConfig",
+    "MPIrunConfig",
 ]
