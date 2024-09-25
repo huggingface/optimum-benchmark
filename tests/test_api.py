@@ -64,7 +64,13 @@ def test_api_launch(device, scenario, library, task, model):
 
     if scenario == "training":
         if library == "transformers":
-            scenario_config = TrainingConfig(memory=True, latency=True, warmup_steps=2, max_steps=5)
+            scenario_config = TrainingConfig(
+                memory=True,
+                latency=True,
+                energy=not is_rocm_system(),
+                warmup_steps=2,
+                max_steps=5,
+            )
         else:
             pytest.skip("Training scenario is only available for Transformers library")
 
