@@ -168,7 +168,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
             if self.config.latency:
                 context_stack.enter_context(latency_tracker.track())
             if self.config.energy:
-                context_stack.enter_context(energy_tracker.track(task="load"))
+                context_stack.enter_context(energy_tracker.track(file_prefix="load"))
 
             backend.load()
 

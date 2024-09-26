@@ -38,33 +38,19 @@ class TrainingScenario(Scenario[TrainingConfig]):
 
         training_callbackes = []
 
-        if self.config.latency:
-            self.logger.info("\t+ Creating latency tracking callback")
-            latency_callback = StepLatencyTrainerCallback(device=backend.config.device, backend=backend.config.name)
-            self.logger.info("\t+ Adding latency measuring callback")
-            training_callbackes.append(latency_callback)
+        with ExitStack() as context_stack:
+            if self.config.latency:
+                latency_callback = StepLatencyTrainerCallback(device=backend.config.device, backend=backend.config.name)
+                training_callbackes.append(latency_callback)
+            if self.config.memory:
+                memory_tracker = MemoryTracker(
+                    device=backend.config.device, backend=backend.config.name, device_ids=backend.config.device_ids
+                )
+                context_stack.enter_context(memory_tracker.track())
+            if self.config.energy:
+                energy_tracker = EnergyTracker(device=backend.config.device, device_ids=backend.config.device_ids)
+                context_stack.enter_context(energy_tracker.track(file_prefix="train"))
 
-        context_stack = ExitStack()
-
-        if self.config.memory:
-            self.logger.info("\t+ Creating memory tracking context manager")
-            memory_tracker = MemoryTracker(
-                device=backend.config.device, backend=backend.config.name, device_ids=backend.config.device_ids
-            )
-
-        if self.config.energy:
-            self.logger.info("\t+ Creating energy tracking context manager")
-            energy_tracker = EnergyTracker(device=backend.config.device, device_ids=backend.config.device_ids)
-
-        if self.config.memory:
-            self.logger.info("\t+ Entering memory tracking context manager")
-            context_stack.enter_context(memory_tracker.track())
-
-        if self.config.energy:
-            self.logger.info("\t+ Entering energy tracking context manager")
-            context_stack.enter_context(energy_tracker.track())
-
-        with context_stack:
             backend.train(
                 training_dataset=training_dataset,
                 training_callbacks=training_callbackes,
@@ -87,12 +73,13 @@ class TrainingScenario(Scenario[TrainingConfig]):
             )
 
         if self.config.memory:
+            # we're supposing that it's the same memory usage for all steps
             self.report.overall.memory = memory_tracker.get_max_memory()
             self.report.warmup.memory = memory_tracker.get_max_memory()
             self.report.train.memory = memory_tracker.get_max_memory()
 
         if self.config.energy:
-            # can only get overall energy consumption
+            # we can only get overall energy consumption
             self.report.overall.energy = energy_tracker.get_energy()
             self.report.overall.efficiency = Efficiency.from_energy(
                 self.report.overall.energy, volume=self.overall_volume, unit=TRAIN_EFFICIENCY_UNIT
@@ -118,4 +105,8 @@ class TrainingScenario(Scenario[TrainingConfig]):
 
     @property
     def train_volume(self) -> int:
-        return self.overall_volume - self.warmup_volume
+        return (
+            (self.config.max_steps - self.config.warmup_steps)
+            * self.config.training_arguments["per_device_train_batch_size"]
+            * self.config.training_arguments["gradient_accumulation_steps"]
+        )
