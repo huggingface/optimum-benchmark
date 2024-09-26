@@ -181,11 +181,11 @@ class EnergyTracker:
                 measure_power_secs=POWER_CONSUMPTION_SAMPLING_RATE,
             )
         except Exception:
-            LOGGER.warning("\t+ Falling back to Offline Emissions Tracker")
+            LOGGER.warning("\t\t+ Falling back to Offline Emissions Tracker")
 
             if os.environ.get("COUNTRY_ISO_CODE", None) is None:
                 LOGGER.warning(
-                    "\t+ Offline Emissions Tracker requires COUNTRY_ISO_CODE to be set. "
+                    "\t\t+ Offline Emissions Tracker requires COUNTRY_ISO_CODE to be set. "
                     "We will set it to USA but the carbon footprint might be inaccurate."
                 )
 
@@ -225,7 +225,7 @@ class EnergyTracker:
         emission_data: EmissionsData = self.emission_tracker.stop_task()
 
         with open(f"{file_prefix}_codecarbon.json", "w") as f:
-            LOGGER.info(f"\t+ Saving codecarbon emission data to {file_prefix}_codecarbon.json")
+            LOGGER.info(f"\t\t+ Saving codecarbon emission data to {file_prefix}_codecarbon.json")
             dump(asdict(emission_data), f, indent=4)
 
         self.total_energy = emission_data.energy_consumed

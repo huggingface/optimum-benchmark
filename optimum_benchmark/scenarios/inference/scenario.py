@@ -151,12 +151,12 @@ class InferenceScenario(Scenario[InferenceConfig]):
     def run_model_loading_tracking(self, backend: Backend[BackendConfigT]):
         self.logger.info("\t+ Running model loading tracking")
 
-        if self.config.latency:
-            latency_tracker = LatencyTracker(backend=backend.config.name, device=backend.config.device)
         if self.config.memory:
             memory_tracker = MemoryTracker(
                 backend=backend.config.name, device=backend.config.device, device_ids=backend.config.device_ids
             )
+        if self.config.latency:
+            latency_tracker = LatencyTracker(backend=backend.config.name, device=backend.config.device)
         if self.config.energy:
             energy_tracker = EnergyTracker(
                 backend=backend.config.name, device=backend.config.device, device_ids=backend.config.device_ids
@@ -172,10 +172,10 @@ class InferenceScenario(Scenario[InferenceConfig]):
 
             backend.load()
 
-        if self.config.latency:
-            self.report.load.latency = latency_tracker.get_latency()
         if self.config.memory:
             self.report.load.memory = memory_tracker.get_max_memory()
+        if self.config.latency:
+            self.report.load.latency = latency_tracker.get_latency()
         if self.config.energy:
             self.report.load.energy = energy_tracker.get_energy()
 
