@@ -125,7 +125,7 @@ class Efficiency:
 
     def to_plain_text(self) -> str:
         plain_text = "\t+ efficiency:\n"
-        plain_text += "\t\t+ efficiency: {self.value:f} ({self.unit})\n"
+        plain_text += "\t\t+ efficiency: {value:f} ({unit})\n"
         return plain_text.format(**asdict(self))
 
     def log(self):
