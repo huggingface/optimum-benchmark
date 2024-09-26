@@ -6,6 +6,9 @@ from multiprocessing import Pipe, Process
 from multiprocessing.connection import Connection
 from typing import List, Literal, Optional, Union
 
+from rich.console import Console
+from rich.markdown import Markdown
+
 from ..import_utils import (
     is_amdsmi_available,
     is_pynvml_available,
@@ -29,6 +32,7 @@ if is_torch_available():
 
 import psutil
 
+CONSOLE = Console()
 LOGGER = getLogger("memory")
 
 MEMORY_UNIT = "MB"
@@ -77,39 +81,43 @@ class Memory:
             max_allocated=max_allocated,
         )
 
-    def log(self, prefix: str = ""):
-        LOGGER.info(f"\t\t+ {prefix} memory:")
+    def to_plain_text(self) -> str:
+        plain_text = "\t +memory:\n"
         if self.max_ram is not None:
-            LOGGER.info(f"\t\t\t- max RAM: {self.max_ram:f} ({self.unit})")
+            plain_text += "\t\t+ max_ram: {max_ram:.2f} ({unit})\n"
         if self.max_global_vram is not None:
-            LOGGER.info(f"\t\t\t- max global VRAM: {self.max_global_vram:f} ({self.unit})")
+            plain_text += "\t\t+ max_global_vram: {max_global_vram:.2f} ({unit})\n"
         if self.max_process_vram is not None:
-            LOGGER.info(f"\t\t\t- max process VRAM: {self.max_process_vram:f} ({self.unit})")
+            plain_text += "\t\t+ max_process_vram: {max_process_vram:.2f} ({unit})\n"
         if self.max_reserved is not None:
-            LOGGER.info(f"\t\t\t- max reserved memory: {self.max_reserved:f} ({self.unit})")
+            plain_text += "\t\t+ max_reserved: {max_reserved:.2f} ({unit})\n"
         if self.max_allocated is not None:
-            LOGGER.info(f"\t\t\t- max allocated memory: {self.max_allocated:f} ({self.unit})")
+            plain_text += "\t\t+ max_allocated: {max_allocated:.2f} ({unit})\n"
+        return plain_text.format(**asdict(self))
 
-    def markdown(self, prefix: str = "") -> str:
-        markdown = ""
-        markdown += "| ----------------------------------------------------- |\n"
-        markdown += "| {prefix} memory:                                      |\n"
-        markdown += "| ----------------------------------------------------- |\n"
-        markdown += "| metric | value (unit)                                 |\n"
-        markdown += "| ------ | -------------------------------------------- |\n"
+    def log(self):
+        for line in self.to_plain_text().split("\n"):
+            if line:
+                LOGGER.info(line)
+
+    def to_markdown_text(self) -> str:
+        markdown_text = "## memory\n"
+        markdown_text += "| metric | value | unit |\n"
+        markdown_text += "| ------ | ----: | ---: |\n"
         if self.max_ram is not None:
-            markdown += "| max RAM | {max_ram:f} ({unit})                    |\n"
+            markdown_text += "| max_ram          |          {max_ram:.2f} | {unit} |\n"
         if self.max_global_vram is not None:
-            markdown += "| max global VRAM | {max_global_vram:f} ({unit})    |\n"
+            markdown_text += "| max_global_vram  |  {max_global_vram:.2f} | {unit} |\n"
         if self.max_process_vram is not None:
-            markdown += "| max process VRAM | {max_process_vram:f} ({unit})  |\n"
+            markdown_text += "| max_process_vram | {max_process_vram:.2f} | {unit} |\n"
         if self.max_reserved is not None:
-            markdown += "| max reserved memory | {max_reserved:f} ({unit})   |\n"
+            markdown_text += "| max_reserved     |     {max_reserved:.2f} | {unit} |\n"
         if self.max_allocated is not None:
-            markdown += "| max allocated memory | {max_allocated:f} ({unit}) |\n"
-        markdown += "| ----------------------------------------------------- |\n"
+            markdown_text += "| max_allocated    |    {max_allocated:.2f} | {unit} |\n"
+        return markdown_text.format(**asdict(self))
 
-        return markdown.format(prefix=prefix, **asdict(self))
+    def print(self):
+        CONSOLE.print(Markdown(self.to_markdown_text()))
 
 
 class MemoryTracker:

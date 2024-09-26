@@ -70,7 +70,6 @@ class ProcessLauncher(Launcher[ProcessConfig]):
         elif "report" in response:
             self.logger.info("\t+ Received report from isolated process")
             report = BenchmarkReport.from_dict(response["report"])
-            report.log()
         else:
             raise RuntimeError(f"Received an unexpected response from isolated process: {response}")
 

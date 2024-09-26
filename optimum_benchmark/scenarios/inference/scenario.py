@@ -86,27 +86,20 @@ class InferenceScenario(Scenario[InferenceConfig]):
         self.logger.info("\t+ Preparing input shapes for Inference")
         self.config.input_shapes = backend.prepare_input_shapes(input_shapes=self.config.input_shapes)
 
-        self.run_model_loading_tracking(backend)
-
         self.logger.info("\t+ Preparing inputs for Inference")
         self.inputs = backend.prepare_inputs(inputs=self.inputs)
 
-        if self.config.memory:
-            if backend.config.task in TEXT_GENERATION_TASKS:
-                self.run_text_generation_memory_tracking(backend)
-            elif backend.config.task in IMAGE_DIFFUSION_TASKS:
-                self.run_image_diffusion_memory_tracking(backend)
-            else:
-                self.run_inference_memory_tracking(backend)
+        self.run_model_loading_tracking(backend)
 
         if self.config.latency or self.config.energy:
             # latency and energy are metrics that require some warmup
-            if backend.config.task in TEXT_GENERATION_TASKS:
-                self.warmup_text_generation(backend)
-            elif backend.config.task in IMAGE_DIFFUSION_TASKS:
-                self.warmup_image_diffusion(backend)
-            else:
-                self.warmup_inference(backend)
+            if self.config.warmup_runs > 0:
+                if backend.config.task in TEXT_GENERATION_TASKS:
+                    self.warmup_text_generation(backend)
+                elif backend.config.task in IMAGE_DIFFUSION_TASKS:
+                    self.warmup_image_diffusion(backend)
+                else:
+                    self.warmup_inference(backend)
 
         if self.config.latency:
             if backend.config.task in TEXT_GENERATION_TASKS:
@@ -118,6 +111,14 @@ class InferenceScenario(Scenario[InferenceConfig]):
                 self.run_image_diffusion_latency_tracking(backend)
             else:
                 self.run_latency_inference_tracking(backend)
+
+        if self.config.memory:
+            if backend.config.task in TEXT_GENERATION_TASKS:
+                self.run_text_generation_memory_tracking(backend)
+            elif backend.config.task in IMAGE_DIFFUSION_TASKS:
+                self.run_image_diffusion_memory_tracking(backend)
+            else:
+                self.run_inference_memory_tracking(backend)
 
         if self.config.energy:
             if backend.config.task in TEXT_GENERATION_TASKS:
@@ -163,19 +164,19 @@ class InferenceScenario(Scenario[InferenceConfig]):
             )
 
         with ExitStack() as context_stack:
-            if self.config.memory:
-                context_stack.enter_context(memory_tracker.track())
             if self.config.latency:
                 context_stack.enter_context(latency_tracker.track())
+            if self.config.memory:
+                context_stack.enter_context(memory_tracker.track())
             if self.config.energy:
                 context_stack.enter_context(energy_tracker.track(file_prefix="load"))
 
             backend.load()
 
-        if self.config.memory:
-            self.report.load.memory = memory_tracker.get_max_memory()
         if self.config.latency:
             self.report.load.latency = latency_tracker.get_latency()
+        if self.config.memory:
+            self.report.load.memory = memory_tracker.get_max_memory()
         if self.config.energy:
             self.report.load.energy = energy_tracker.get_energy()
 

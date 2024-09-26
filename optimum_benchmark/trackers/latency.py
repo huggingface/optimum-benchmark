@@ -6,8 +6,11 @@ from typing import List, Literal, Optional, Union
 
 import numpy as np
 import torch
+from rich.console import Console
+from rich.markdown import Markdown
 from transformers import LogitsProcessor, TrainerCallback
 
+CONSOLE = Console()
 LOGGER = getLogger("latency")
 
 LATENCY_UNIT = "s"
@@ -19,16 +22,17 @@ Throughput_Unit_Literal = Literal["samples/s", "tokens/s", "images/s", "steps/s"
 class Latency:
     unit: Latency_Unit_Literal
 
+    values: List[float]
+
     count: int
     total: float
     mean: float
-    stdev: float
     p50: float
     p90: float
     p95: float
     p99: float
-
-    values: List[float]
+    stdev: float
+    stdev_: float
 
     def __getitem__(self, index) -> float:
         if isinstance(index, slice):
@@ -62,52 +66,50 @@ class Latency:
     def from_values(values: List[float], unit: str) -> "Latency":
         return Latency(
             unit=unit,
+            values=values,
             count=len(values),
             total=sum(values),
             mean=np.mean(values),
-            stdev=np.std(values),
             p50=np.percentile(values, 50),
             p90=np.percentile(values, 90),
             p95=np.percentile(values, 95),
             p99=np.percentile(values, 99),
-            values=values,
+            stdev=np.std(values) if len(values) > 1 else 0,
+            stdev_=(np.std(values) / np.abs(np.mean(values))) * 100 if len(values) > 1 else 0,
         )
 
-    def log(self, prefix: str = ""):
-        LOGGER.info(f"\t\t+ {prefix} latency:")
-        LOGGER.info(f"\t\t\t- count: {self.count}")
-        LOGGER.info(f"\t\t\t- total: {self.total:f} ({self.unit})")
-        LOGGER.info(f"\t\t\t- mean: {self.mean:f} ({self.unit})")
-        LOGGER.info(f"\t\t\t- p50: {self.p50:f} ({self.unit})")
-        LOGGER.info(f"\t\t\t- p90: {self.p90:f} ({self.unit})")
-        LOGGER.info(f"\t\t\t- p95: {self.p95:f} ({self.unit})")
-        LOGGER.info(f"\t\t\t- p99: {self.p99:f} ({self.unit})")
-        LOGGER.info(f"\t\t\t- stdev: {self.stdev:f} ({self.unit})")
-        LOGGER.info(f"\t\t\t- stdev_: {self.stdev_percentage:.2f} (%)")
+    def to_plain_text(self) -> str:
+        plain_text = "\t+ latency:\n"
+        plain_text += "\t\t+ count: {count}\n"
+        plain_text += "\t\t+ total: {total:.6f} ({unit})\n"
+        plain_text += "\t\t+ mean: {mean:.6f} ({unit})\n"
+        plain_text += "\t\t+ p50: {p50:.6f} ({unit})\n"
+        plain_text += "\t\t+ p90: {p90:.6f} ({unit})\n"
+        plain_text += "\t\t+ p95: {p95:.6f} ({unit})\n"
+        plain_text += "\t\t+ p99: {p99:.6f} ({unit})\n"
+        plain_text += "\t\t+ stdev: {stdev:.6f} ({unit})\n"
+        plain_text += "\t\t+ stdev_: {stdev_:.2f} (%)\n"
+        return plain_text.format(**asdict(self))
 
-    def markdown(self, prefix: str = "") -> str:
-        markdown = ""
-        markdown += "| -------------------------------------- |\n"
-        markdown += "| {prefix} latency                       |\n"
-        markdown += "| -------------------------------------- |\n"
-        markdown += "| metric    | value (unit)               |\n"
-        markdown += "| :-------- | -------------------------: |\n"
-        markdown += "| count     | {count}                    |\n"
-        markdown += "| total     | {total:f} ({unit})         |\n"
-        markdown += "| mean      | {mean:f} ({unit})          |\n"
-        markdown += "| p50       | {p50:f} ({unit})           |\n"
-        markdown += "| p90       | {p90:f} ({unit})           |\n"
-        markdown += "| p95       | {p95:f} ({unit})           |\n"
-        markdown += "| p99       | {p99:f} ({unit})           |\n"
-        markdown += "| stdev     | {stdev:f} ({unit})         |\n"
-        markdown += "| stdev_    | {stdev_percentage:.2f} (%) |\n"
-        markdown += "| -------------------------------------- |\n"
+    def log(self):
+        for line in self.to_plain_text().split("\n"):
+            if line:
+                LOGGER.info(line)
 
-        return markdown.format(prefix=prefix, stdev_percentage=self.stdev_percentage, **asdict(self))
-
-    @property
-    def stdev_percentage(self) -> float:
-        return 100 * self.stdev / self.mean if self.mean > 0 else 0
+    def to_markdown_text(self) -> str:
+        markdown_text = "## latency\n"
+        markdown_text += "| metric | value        | unit   |\n"
+        markdown_text += "| :----- | -----------: |------: |\n"
+        markdown_text += "| count  |      {count} |      - |\n"
+        markdown_text += "| total  |    {total:f} | {unit} |\n"
+        markdown_text += "| mean   |     {mean:f} | {unit} |\n"
+        markdown_text += "| p50    |      {p50:f} | {unit} |\n"
+        markdown_text += "| p90    |      {p90:f} | {unit} |\n"
+        markdown_text += "| p95    |      {p95:f} | {unit} |\n"
+        markdown_text += "| p99    |      {p99:f} | {unit} |\n"
+        markdown_text += "| stdev  |    {stdev:f} | {unit} |\n"
+        markdown_text += "| stdev_ | {stdev_:.2f} |      % |\n"
+        return markdown_text.format(**asdict(self))
 
 
 @dataclass
@@ -133,21 +135,25 @@ class Throughput:
         value = volume / latency.mean if latency.mean > 0 else 0
         return Throughput(value=value, unit=unit)
 
-    def log(self, prefix: str = ""):
-        LOGGER.info(f"\t\t+ {prefix} throughput:")
-        LOGGER.info(f"\t\t\t- throughput: {self.value:f} ({self.unit})")
+    def to_plain_text(self) -> str:
+        plain_text = "\t+ throughput:\n"
+        plain_text += "\t\t+ throughput: {value:.2f} ({unit})\n"
+        return plain_text.format(**asdict(self))
 
-    def markdown(self, prefix: str = "") -> str:
-        markdown = ""
-        markdown += "| ------------------------------- |\n"
-        markdown += "| {prefix} throughput             |\n"
-        markdown += "| ------------------------------- |\n"
-        markdown += "| metric     | value (unit)       |\n"
-        markdown += "| :--------- | -----------------: |\n"
-        markdown += "| throughput | {value:f} ({unit}) |\n"
-        markdown += "| ------------------------------- |\n"
+    def log(self):
+        for line in self.to_plain_text().split("\n"):
+            if line:
+                LOGGER.info(line)
 
-        return markdown.format(prefix=prefix, **asdict(self))
+    def to_markdown_text(self) -> str:
+        markdown_text = "## throughput\n"
+        markdown_text += "| metric     |     value   |   unit |\n"
+        markdown_text += "| :--------- | --------:   | -----: |\n"
+        markdown_text += "| throughput | {value:.2f} | {unit} |\n"
+        return markdown_text.format(**asdict(self))
+
+    def print(self):
+        CONSOLE.print(Markdown(self.to_markdown_text()))
 
 
 class LatencyTracker:

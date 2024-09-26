@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from logging import getLogger
 from typing import TYPE_CHECKING, Type
 
 from hydra.utils import get_class
@@ -14,6 +15,9 @@ if TYPE_CHECKING:
     from ..backends.base import Backend
     from ..launchers.base import Launcher
     from ..scenarios.base import Scenario
+
+
+LOGGER = getLogger("benchmark")
 
 
 @dataclass
@@ -45,6 +49,11 @@ class Benchmark(PushToHubMixin):
 
         # Launch the benchmark using the launcher
         report = launcher.launch(worker=cls.run, worker_args=[config])
+
+        # Print the report
+        report.print()
+        # Log the report
+        report.log()
 
         return report
 

@@ -19,6 +19,7 @@ INSTALL_REQUIRES = [
     "transformers",
     "accelerate",
     "datasets",
+    "optimum",
     # Hydra
     "hydra-core",
     "omegaconf",
@@ -29,6 +30,7 @@ INSTALL_REQUIRES = [
     "flatten_dict",
     "colorlog",
     "pandas",
+    "rich",
 ]
 
 try:

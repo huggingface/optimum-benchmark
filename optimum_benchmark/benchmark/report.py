@@ -1,14 +1,21 @@
 from dataclasses import dataclass, make_dataclass
+from logging import getLogger
 from typing import Any, Dict, List, Optional
+
+from rich.console import Console
+from rich.markdown import Markdown
 
 from ..hub_utils import PushToHubMixin, classproperty
 from ..trackers.energy import Efficiency, Energy
 from ..trackers.latency import Latency, Throughput
 from ..trackers.memory import Memory
 
+CONSOLE = Console()
+LOGGER = getLogger("benchmark")
+
 
 @dataclass
-class BenchmarkMeasurements:
+class Measurements:
     memory: Optional[Memory] = None
     latency: Optional[Latency] = None
     throughput: Optional[Throughput] = None
@@ -28,7 +35,7 @@ class BenchmarkMeasurements:
             self.efficiency = Efficiency(**self.efficiency)
 
     @staticmethod
-    def aggregate(measurements: List["BenchmarkMeasurements"]) -> "BenchmarkMeasurements":
+    def aggregate(measurements: List["Measurements"]) -> "Measurements":
         assert len(measurements) > 0, "No measurements to aggregate"
 
         m0 = measurements[0]
@@ -39,37 +46,33 @@ class BenchmarkMeasurements:
         energy = Energy.aggregate([m.energy for m in measurements]) if m0.energy is not None else None
         efficiency = Efficiency.aggregate([m.efficiency for m in measurements]) if m0.efficiency is not None else None
 
-        return BenchmarkMeasurements(
-            memory=memory, latency=latency, throughput=throughput, energy=energy, efficiency=efficiency
-        )
+        return Measurements(memory=memory, latency=latency, throughput=throughput, energy=energy, efficiency=efficiency)
 
-    def log(self, prefix: str = ""):
-        if self.memory is not None:
-            self.memory.log(prefix=prefix)
-        if self.latency is not None:
-            self.latency.log(prefix=prefix)
-        if self.throughput is not None:
-            self.throughput.log(prefix=prefix)
-        if self.energy is not None:
-            self.energy.log(prefix=prefix)
-        if self.efficiency is not None:
-            self.efficiency.log(prefix=prefix)
+    def to_plain_text(self) -> str:
+        plain_text = ""
 
-    def markdown(self, prefix: str = "") -> str:
-        markdown = ""
+        for measurement_name in self.__annotations__.keys():
+            measurement = getattr(self, measurement_name)
+            if measurement is not None:
+                plain_text += measurement.to_plain_text()
 
-        if self.memory is not None:
-            markdown += self.memory.markdown(prefix=prefix)
-        if self.latency is not None:
-            markdown += self.latency.markdown(prefix=prefix)
-        if self.throughput is not None:
-            markdown += self.throughput.markdown(prefix=prefix)
-        if self.energy is not None:
-            markdown += self.energy.markdown(prefix=prefix)
-        if self.efficiency is not None:
-            markdown += self.efficiency.markdown(prefix=prefix)
+        return plain_text
 
-        return markdown
+    def log(self):
+        for measurement_name in self.__annotations__.keys():
+            measurement = getattr(self, measurement_name)
+            if measurement is not None:
+                measurement.log()
+
+    def to_markdown_text(self) -> str:
+        markdown_text = ""
+
+        for measurement_name in self.__annotations__.keys():
+            measurement = getattr(self, measurement_name)
+            if measurement is not None:
+                markdown_text += measurement.to_markdown_text()
+
+        return markdown_text
 
 
 @dataclass
@@ -85,32 +88,42 @@ class BenchmarkReport(PushToHubMixin):
     def __post_init__(self):
         for target in self.to_dict().keys():
             if getattr(self, target) is None:
-                setattr(self, target, BenchmarkMeasurements())
+                setattr(self, target, Measurements())
             elif isinstance(getattr(self, target), dict):
-                setattr(self, target, BenchmarkMeasurements(**getattr(self, target)))
+                setattr(self, target, Measurements(**getattr(self, target)))
 
     @classmethod
     def aggregate(cls, reports: List["BenchmarkReport"]) -> "BenchmarkReport":
         aggregated_measurements = {}
         for target in reports[0].to_dict().keys():
             measurements = [getattr(report, target) for report in reports]
-            aggregated_measurements[target] = BenchmarkMeasurements.aggregate(measurements)
+            aggregated_measurements[target] = Measurements.aggregate(measurements)
 
         return cls.from_dict(aggregated_measurements)
 
+    def to_plain_text(self) -> str:
+        plain_text = ""
+
+        for target in self.to_dict().keys():
+            plain_text += f"{target}:\n" + getattr(self, target).to_plain_text()
+
+        return plain_text
+
     def log(self):
+        for line in self.to_plain_text().split("\n"):
+            if line:
+                LOGGER.info(line)
+
+    def to_markdown_text(self) -> str:
+        markdown_text = ""
+
         for target in self.to_dict().keys():
-            measurements: BenchmarkMeasurements = getattr(self, target)
-            measurements.log(prefix=target)
+            markdown_text += f"# {target}\n" + getattr(self, target).to_markdown_text()
 
-    def markdown(self):
-        markdown = ""
+        return markdown_text
 
-        for target in self.to_dict().keys():
-            measurements: BenchmarkMeasurements = getattr(self, target)
-            markdown += measurements.markdown(prefix=target)
-
-        return markdown
+    def print(self):
+        CONSOLE.print(Markdown(self.to_markdown_text()))
 
     @classproperty
     def default_filename(self) -> str:

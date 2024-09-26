@@ -15,6 +15,5 @@ class InlineLauncher(Launcher[InlineConfig]):
         self.logger.warning("The inline launcher is only recommended for debugging purposes and not for benchmarking")
 
         report = worker(*worker_args)
-        report.log()
 
         return report

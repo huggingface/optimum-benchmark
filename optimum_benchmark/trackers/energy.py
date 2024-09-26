@@ -5,6 +5,9 @@ from json import dump
 from logging import getLogger
 from typing import List, Literal, Optional, Union
 
+from rich.console import Console
+from rich.markdown import Markdown
+
 from ..import_utils import is_codecarbon_available, is_torch_available
 
 if is_torch_available():
@@ -14,14 +17,14 @@ if is_codecarbon_available():
     from codecarbon import EmissionsTracker, OfflineEmissionsTracker
     from codecarbon.output import EmissionsData
 
+CONSOLE = Console()
 LOGGER = getLogger("energy")
 
 POWER_UNIT = "W"
 ENERGY_UNIT = "kWh"
+POWER_CONSUMPTION_SAMPLING_RATE = 1
 Energy_Unit_Literal = Literal["kWh"]
 Efficiency_Unit_Literal = Literal["samples/kWh", "tokens/kWh", "images/kWh"]
-
-POWER_CONSUMPTION_SAMPLING_RATE = 1  # in seconds
 
 
 @dataclass
@@ -32,43 +35,6 @@ class Energy:
     ram: float
     gpu: float
     total: float
-
-    @staticmethod
-    def aggregate(energies: List["Energy"]) -> "Energy":
-        if len(energies) == 0 or all(energy is None for energy in energies):
-            return None
-        elif any(energy is None for energy in energies):
-            raise ValueError("Some energy measurements are missing")
-
-        # since measurements are machine-level, we just take the average
-        cpu = sum(energy.cpu for energy in energies) / len(energies)
-        gpu = sum(energy.gpu for energy in energies) / len(energies)
-        ram = sum(energy.ram for energy in energies) / len(energies)
-        total = sum(energy.total for energy in energies) / len(energies)
-
-        return Energy(cpu=cpu, gpu=gpu, ram=ram, total=total, unit=ENERGY_UNIT)
-
-    def log(self, prefix: str = ""):
-        LOGGER.info(f"\t\t+ {prefix} energy:")
-        LOGGER.info(f"\t\t\t- cpu: {self.cpu:f} ({self.unit})")
-        LOGGER.info(f"\t\t\t- gpu: {self.gpu:f} ({self.unit})")
-        LOGGER.info(f"\t\t\t- ram: {self.ram:f} ({self.unit})")
-        LOGGER.info(f"\t\t\t- total: {self.total:f} ({self.unit})")
-
-    def markdown(self, prefix: str = "") -> str:
-        markdown = ""
-        markdown += "| ---------------------------------------- |\n"
-        markdown += "| {prefix} energy                          |\n"
-        markdown += "| ---------------------------------------- |\n"
-        markdown += "| metric    | value (unit)                 |\n"
-        markdown += "| :-------- | ---------------------------: |\n"
-        markdown += "| cpu       | {self.cpu:f} ({self.unit})   |\n"
-        markdown += "| gpu       | {self.gpu:f} ({self.unit})   |\n"
-        markdown += "| ram       | {self.ram:f} ({self.unit})   |\n"
-        markdown += "| total     | {self.total:f} ({self.unit}) |\n"
-        markdown += "| ---------------------------------------- |\n"
-
-        return markdown.format(prefix=prefix, **asdict(self))
 
     def __sub__(self, other: "Energy") -> "Energy":
         """Enables subtraction of two Energy instances using the '-' operator."""
@@ -93,6 +59,47 @@ class Energy:
             total=self.total / scalar,
         )
 
+    @staticmethod
+    def aggregate(energies: List["Energy"]) -> "Energy":
+        if len(energies) == 0 or all(energy is None for energy in energies):
+            return None
+        elif any(energy is None for energy in energies):
+            raise ValueError("Some energy measurements are missing")
+
+        # since measurements are machine-level, we just take the average
+        cpu = sum(energy.cpu for energy in energies) / len(energies)
+        gpu = sum(energy.gpu for energy in energies) / len(energies)
+        ram = sum(energy.ram for energy in energies) / len(energies)
+        total = sum(energy.total for energy in energies) / len(energies)
+
+        return Energy(cpu=cpu, gpu=gpu, ram=ram, total=total, unit=ENERGY_UNIT)
+
+    def to_plain_text(self) -> str:
+        plain_text = "\t+ energy:\n"
+        plain_text += "\t\t+ cpu: {cpu:f} ({unit})\n"
+        plain_text += "\t\t+ gpu: {gpu:f} ({unit})\n"
+        plain_text += "\t\t+ ram: {ram:f} ({unit})\n"
+        plain_text += "\t\t+ total: {total:f} ({unit})\n"
+        return plain_text.format(**asdict(self))
+
+    def log(self):
+        for line in self.to_plain_text().split("\n"):
+            if line:
+                LOGGER.info(line)
+
+    def to_markdown_text(self) -> str:
+        markdown_text = "## energy\n"
+        markdown_text += "| metric     |     value |   unit |\n"
+        markdown_text += "| :--------- | --------: | -----: |\n"
+        markdown_text += "| cpu        |   {cpu:f} | {unit} |\n"
+        markdown_text += "| gpu        |   {gpu:f} | {unit} |\n"
+        markdown_text += "| ram        |   {ram:f} | {unit} |\n"
+        markdown_text += "| total      | {total:f} | {unit} |\n"
+        return markdown_text.format(**asdict(self))
+
+    def print(self):
+        CONSOLE.print(Markdown(self.to_markdown_text()))
+
 
 @dataclass
 class Efficiency:
@@ -116,22 +123,25 @@ class Efficiency:
     def from_energy(energy: "Energy", volume: int, unit: str) -> "Efficiency":
         return Efficiency(value=volume / energy.total if energy.total > 0 else 0, unit=unit)
 
-    def log(self, prefix: str = ""):
-        LOGGER.info(f"\t\t+ {prefix} efficiency:")
-        LOGGER.info(f"\t\t\t- efficiency: {self.value:f} ({self.unit})")
+    def to_plain_text(self) -> str:
+        plain_text = "\t+ efficiency:\n"
+        plain_text += "\t\t+ efficiency: {self.value:f} ({self.unit})\n"
+        return plain_text.format(**asdict(self))
 
-    def markdown(self, prefix: str = "") -> str:
-        markdown = ""
+    def log(self):
+        for line in self.to_plain_text().split("\n"):
+            if line:
+                LOGGER.info(line)
 
-        markdown += "| ------------------------------- |\n"
-        markdown += "| {prefix} efficiency             |\n"
-        markdown += "| ------------------------------- |\n"
-        markdown += "| metric     | value (unit)       |\n"
-        markdown += "| :--------- | -----------------: |\n"
-        markdown += "| efficiency | {value:f} ({unit}) |\n"
-        markdown += "| ------------------------------- |\n"
+    def to_markdown_text(self) -> str:
+        markdown_text = "## efficiency\n"
+        markdown_text += "| metric     |     value |   unit |\n"
+        markdown_text += "| :--------- | --------: | -----: |\n"
+        markdown_text += "| efficiency | {value:f} | {unit} |\n"
+        return markdown_text.format(**asdict(self))
 
-        return markdown.format(prefix=prefix, **asdict(self))
+    def print(self):
+        CONSOLE.print(Markdown(self.to_markdown_text()))
 
 
 class EnergyTracker:
