@@ -1,6 +1,6 @@
 import os
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from logging import getLogger
 from multiprocessing import Pipe, Process
 from multiprocessing.connection import Connection
@@ -89,6 +89,27 @@ class Memory:
             LOGGER.info(f"\t\t\t- max reserved memory: {self.max_reserved:f} ({self.unit})")
         if self.max_allocated is not None:
             LOGGER.info(f"\t\t\t- max allocated memory: {self.max_allocated:f} ({self.unit})")
+
+    def markdown(self, prefix: str = "") -> str:
+        markdown = ""
+        markdown += "| ----------------------------------------------------- |\n"
+        markdown += "| {prefix} memory:                                      |\n"
+        markdown += "| ----------------------------------------------------- |\n"
+        markdown += "| metric | value (unit)                                 |\n"
+        markdown += "| ------ | -------------------------------------------- |\n"
+        if self.max_ram is not None:
+            markdown += "| max RAM | {max_ram:f} ({unit})                    |\n"
+        if self.max_global_vram is not None:
+            markdown += "| max global VRAM | {max_global_vram:f} ({unit})    |\n"
+        if self.max_process_vram is not None:
+            markdown += "| max process VRAM | {max_process_vram:f} ({unit})  |\n"
+        if self.max_reserved is not None:
+            markdown += "| max reserved memory | {max_reserved:f} ({unit})   |\n"
+        if self.max_allocated is not None:
+            markdown += "| max allocated memory | {max_allocated:f} ({unit}) |\n"
+        markdown += "| ----------------------------------------------------- |\n"
+
+        return markdown.format(prefix=prefix, **asdict(self))
 
 
 class MemoryTracker:

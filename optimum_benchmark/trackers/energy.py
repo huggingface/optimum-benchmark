@@ -48,12 +48,27 @@ class Energy:
 
         return Energy(cpu=cpu, gpu=gpu, ram=ram, total=total, unit=ENERGY_UNIT)
 
-    def log(self, prefix: str = "forward"):
-        LOGGER.info(f"\t\t+ {prefix} energy consumption:")
-        LOGGER.info(f"\t\t\t+ CPU: {self.cpu:f} ({self.unit})")
-        LOGGER.info(f"\t\t\t+ GPU: {self.gpu:f} ({self.unit})")
-        LOGGER.info(f"\t\t\t+ RAM: {self.ram:f} ({self.unit})")
-        LOGGER.info(f"\t\t\t+ total: {self.total:f} ({self.unit})")
+    def log(self, prefix: str = ""):
+        LOGGER.info(f"\t\t+ {prefix} energy:")
+        LOGGER.info(f"\t\t\t- cpu: {self.cpu:f} ({self.unit})")
+        LOGGER.info(f"\t\t\t- gpu: {self.gpu:f} ({self.unit})")
+        LOGGER.info(f"\t\t\t- ram: {self.ram:f} ({self.unit})")
+        LOGGER.info(f"\t\t\t- total: {self.total:f} ({self.unit})")
+
+    def markdown(self, prefix: str = "") -> str:
+        markdown = ""
+        markdown += "| ---------------------------------------- |\n"
+        markdown += "| {prefix} energy                          |\n"
+        markdown += "| ---------------------------------------- |\n"
+        markdown += "| metric    | value (unit)                 |\n"
+        markdown += "| :-------- | ---------------------------: |\n"
+        markdown += "| cpu       | {self.cpu:f} ({self.unit})   |\n"
+        markdown += "| gpu       | {self.gpu:f} ({self.unit})   |\n"
+        markdown += "| ram       | {self.ram:f} ({self.unit})   |\n"
+        markdown += "| total     | {self.total:f} ({self.unit}) |\n"
+        markdown += "| ---------------------------------------- |\n"
+
+        return markdown.format(prefix=prefix, **asdict(self))
 
     def __sub__(self, other: "Energy") -> "Energy":
         """Enables subtraction of two Energy instances using the '-' operator."""
@@ -102,7 +117,20 @@ class Efficiency:
         return Efficiency(value=volume / energy.total if energy.total > 0 else 0, unit=unit)
 
     def log(self, prefix: str = ""):
-        LOGGER.info(f"\t\t+ {prefix} energy efficiency: {self.value:f} ({self.unit})")
+        LOGGER.info(f"\t\t+ {prefix} efficiency: {self.value:f} ({self.unit})")
+
+    def markdown(self, prefix: str = "") -> str:
+        markdown = ""
+
+        markdown += "| ------------------------------- |\n"
+        markdown += "| {prefix} efficiency             |\n"
+        markdown += "| ------------------------------- |\n"
+        markdown += "| metric     | value (unit)       |\n"
+        markdown += "| :--------- | -----------------: |\n"
+        markdown += "| efficiency | {value:f} ({unit}) |\n"
+        markdown += "| ------------------------------- |\n"
+
+        return markdown.format(prefix=prefix, **asdict(self))
 
 
 class EnergyTracker:

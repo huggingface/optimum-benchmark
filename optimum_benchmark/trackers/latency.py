@@ -1,6 +1,6 @@
 import time
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from logging import getLogger
 from typing import List, Literal, Optional, Union
 
@@ -74,16 +74,40 @@ class Latency:
         )
 
     def log(self, prefix: str = ""):
-        stdev_percentage = 100 * self.stdev / self.mean if self.mean > 0 else 0
         LOGGER.info(f"\t\t+ {prefix} latency:")
         LOGGER.info(f"\t\t\t- count: {self.count}")
-        LOGGER.info(f"\t\t\t- total: {self.total:f} {self.unit}")
-        LOGGER.info(f"\t\t\t- mean: {self.mean:f} {self.unit}")
-        LOGGER.info(f"\t\t\t- stdev: {self.stdev:f} {self.unit} ({stdev_percentage:.2f}%)")
-        LOGGER.info(f"\t\t\t- p50: {self.p50:f} {self.unit}")
-        LOGGER.info(f"\t\t\t- p90: {self.p90:f} {self.unit}")
-        LOGGER.info(f"\t\t\t- p95: {self.p95:f} {self.unit}")
-        LOGGER.info(f"\t\t\t- p99: {self.p99:f} {self.unit}")
+        LOGGER.info(f"\t\t\t- total: {self.total:f} ({self.unit})")
+        LOGGER.info(f"\t\t\t- mean: {self.mean:f} ({self.unit})")
+        LOGGER.info(f"\t\t\t- p50: {self.p50:f} ({self.unit})")
+        LOGGER.info(f"\t\t\t- p90: {self.p90:f} ({self.unit})")
+        LOGGER.info(f"\t\t\t- p95: {self.p95:f} ({self.unit})")
+        LOGGER.info(f"\t\t\t- p99: {self.p99:f} ({self.unit})")
+        LOGGER.info(f"\t\t\t- stdev: {self.stdev:f} ({self.unit})")
+        LOGGER.info(f"\t\t\t- stdev_: {self.stdev_percentage:.2f} (%)")
+
+    def markdown(self, prefix: str = "") -> str:
+        markdown = ""
+        markdown += "| -------------------------------------- |\n"
+        markdown += "| {prefix} latency                       |\n"
+        markdown += "| -------------------------------------- |\n"
+        markdown += "| metric    | value (unit)               |\n"
+        markdown += "| :-------- | -------------------------: |\n"
+        markdown += "| count     | {count}                    |\n"
+        markdown += "| total     | {total:f} ({unit})         |\n"
+        markdown += "| mean      | {mean:f} ({unit})          |\n"
+        markdown += "| p50       | {p50:f} ({unit})           |\n"
+        markdown += "| p90       | {p90:f} ({unit})           |\n"
+        markdown += "| p95       | {p95:f} ({unit})           |\n"
+        markdown += "| p99       | {p99:f} ({unit})           |\n"
+        markdown += "| stdev     | {stdev:f} ({unit})         |\n"
+        markdown += "| stdev_    | {stdev_percentage:.2f} (%) |\n"
+        markdown += "| -------------------------------------- |\n"
+
+        return markdown.format(prefix=prefix, stdev_percentage=self.stdev_percentage, **asdict(self))
+
+    @property
+    def stdev_percentage(self) -> float:
+        return 100 * self.stdev / self.mean if self.mean > 0 else 0
 
 
 @dataclass
@@ -109,8 +133,20 @@ class Throughput:
         value = volume / latency.mean if latency.mean > 0 else 0
         return Throughput(value=value, unit=unit)
 
-    def log(self, prefix: str = "method"):
+    def log(self, prefix: str = ""):
         LOGGER.info(f"\t\t+ {prefix} throughput: {self.value:f} {self.unit}")
+
+    def markdown(self, prefix: str = "") -> str:
+        markdown = ""
+        markdown += "| ------------------------------- |\n"
+        markdown += "| {prefix} throughput             |\n"
+        markdown += "| ------------------------------- |\n"
+        markdown += "| metric     | value (unit)       |\n"
+        markdown += "| :--------- | -----------------: |\n"
+        markdown += "| throughput | {value:f} ({unit}) |\n"
+        markdown += "| ------------------------------- |\n"
+
+        return markdown.format(prefix=prefix, **asdict(self))
 
 
 class LatencyTracker:

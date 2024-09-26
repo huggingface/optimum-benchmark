@@ -13,7 +13,7 @@ from ...trackers.memory import MemoryTracker
 from ..base import Scenario
 from .config import InferenceConfig
 
-PER_TOKEN_BACKENDS = ["pytorch", "onnxruntime", "openvino", "neural-compressor"]
+PER_TOKEN_BACKENDS = ["pytorch", "onnxruntime", "openvino", "neural-compressor", "ipex"]
 
 TEXT_GENERATION_DEFAULT_KWARGS = {
     "num_return_sequences": 1,
@@ -99,8 +99,6 @@ class InferenceScenario(Scenario[InferenceConfig]):
             else:
                 self.run_inference_memory_tracking(backend)
 
-            self.report.log_memory()
-
         if self.config.latency or self.config.energy:
             # latency and energy are metrics that require some warmup
             if backend.config.task in TEXT_GENERATION_TASKS:
@@ -121,9 +119,6 @@ class InferenceScenario(Scenario[InferenceConfig]):
             else:
                 self.run_latency_inference_tracking(backend)
 
-            self.report.log_latency()
-            self.report.log_throughput()
-
         if self.config.energy:
             if backend.config.task in TEXT_GENERATION_TASKS:
                 self.run_text_generation_energy_tracking(backend)
@@ -132,11 +127,9 @@ class InferenceScenario(Scenario[InferenceConfig]):
             else:
                 self.run_inference_energy_tracking(backend)
 
-            self.report.log_energy()
-            self.report.log_efficiency()
-
         return self.report
 
+    # Warmup
     def warmup_text_generation(self, backend: Backend[BackendConfigT]):
         self.logger.info("\t+ Warming up backend for Text Generation")
         _ = backend.generate(self.inputs, self.config.generate_kwargs)
@@ -169,16 +162,14 @@ class InferenceScenario(Scenario[InferenceConfig]):
                 backend=backend.config.name, device=backend.config.device, device_ids=backend.config.device_ids
             )
 
-        context_stack = ExitStack()
-        if self.config.latency:
-            context_stack.enter_context(latency_tracker.track())
-        if self.config.memory:
-            context_stack.enter_context(memory_tracker.track())
-        if self.config.energy:
-            context_stack.enter_context(energy_tracker.track())
+        with ExitStack() as context_stack:
+            if self.config.latency:
+                context_stack.enter_context(latency_tracker.track())
+            if self.config.memory:
+                context_stack.enter_context(memory_tracker.track())
+            if self.config.energy:
+                context_stack.enter_context(energy_tracker.track())
 
-        with context_stack:
-            self.logger.info("\t+ Loading model for Inference")
             backend.load()
 
         if self.config.latency:

@@ -39,7 +39,37 @@ class BenchmarkMeasurements:
         energy = Energy.aggregate([m.energy for m in measurements]) if m0.energy is not None else None
         efficiency = Efficiency.aggregate([m.efficiency for m in measurements]) if m0.efficiency is not None else None
 
-        return BenchmarkMeasurements(memory, latency, throughput, energy, efficiency)
+        return BenchmarkMeasurements(
+            memory=memory, latency=latency, throughput=throughput, energy=energy, efficiency=efficiency
+        )
+
+    def log(self, prefix: str = ""):
+        if self.memory is not None:
+            self.memory.log(prefix=prefix)
+        if self.latency is not None:
+            self.latency.log(prefix=prefix)
+        if self.throughput is not None:
+            self.throughput.log(prefix=prefix)
+        if self.energy is not None:
+            self.energy.log(prefix=prefix)
+        if self.efficiency is not None:
+            self.efficiency.log(prefix=prefix)
+
+    def markdown(self, prefix: str = "") -> str:
+        markdown = ""
+
+        if self.memory is not None:
+            markdown += self.memory.markdown(prefix=prefix)
+        if self.latency is not None:
+            markdown += self.latency.markdown(prefix=prefix)
+        if self.throughput is not None:
+            markdown += self.throughput.markdown(prefix=prefix)
+        if self.energy is not None:
+            markdown += self.energy.markdown(prefix=prefix)
+        if self.efficiency is not None:
+            markdown += self.efficiency.markdown(prefix=prefix)
+
+        return markdown
 
 
 @dataclass
@@ -59,50 +89,6 @@ class BenchmarkReport(PushToHubMixin):
             elif isinstance(getattr(self, target), dict):
                 setattr(self, target, BenchmarkMeasurements(**getattr(self, target)))
 
-    def log_memory(self):
-        for target in self.to_dict().keys():
-            measurements: BenchmarkMeasurements = getattr(self, target)
-            if measurements.memory is not None:
-                measurements.memory.log(prefix=target)
-
-    def log_latency(self):
-        for target in self.to_dict().keys():
-            measurements: BenchmarkMeasurements = getattr(self, target)
-            if measurements.latency is not None:
-                measurements.latency.log(prefix=target)
-
-    def log_throughput(self):
-        for target in self.to_dict().keys():
-            measurements: BenchmarkMeasurements = getattr(self, target)
-            if measurements.throughput is not None:
-                measurements.throughput.log(prefix=target)
-
-    def log_energy(self):
-        for target in self.to_dict().keys():
-            measurements: BenchmarkMeasurements = getattr(self, target)
-            if measurements.energy is not None:
-                measurements.energy.log(prefix=target)
-
-    def log_efficiency(self):
-        for target in self.to_dict().keys():
-            measurements: BenchmarkMeasurements = getattr(self, target)
-            if measurements.efficiency is not None:
-                measurements.efficiency.log(prefix=target)
-
-    def log(self):
-        for target in self.to_dict().keys():
-            measurements: BenchmarkMeasurements = getattr(self, target)
-            if measurements.memory is not None:
-                measurements.memory.log(prefix=target)
-            if measurements.latency is not None:
-                measurements.latency.log(prefix=target)
-            if measurements.throughput is not None:
-                measurements.throughput.log(prefix=target)
-            if measurements.energy is not None:
-                measurements.energy.log(prefix=target)
-            if measurements.efficiency is not None:
-                measurements.efficiency.log(prefix=target)
-
     @classmethod
     def aggregate(cls, reports: List["BenchmarkReport"]) -> "BenchmarkReport":
         aggregated_measurements = {}
@@ -111,6 +97,20 @@ class BenchmarkReport(PushToHubMixin):
             aggregated_measurements[target] = BenchmarkMeasurements.aggregate(measurements)
 
         return cls.from_dict(aggregated_measurements)
+
+    def log(self):
+        for target in self.to_dict().keys():
+            measurements: BenchmarkMeasurements = getattr(self, target)
+            measurements.log(prefix=target)
+
+    def markdown(self):
+        markdown = ""
+
+        for target in self.to_dict().keys():
+            measurements: BenchmarkMeasurements = getattr(self, target)
+            markdown += measurements.markdown(prefix=target)
+
+        return markdown
 
     @classproperty
     def default_filename(self) -> str:
