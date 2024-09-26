@@ -134,7 +134,7 @@ class Throughput:
         return Throughput(value=value, unit=unit)
 
     def log(self, prefix: str = ""):
-        LOGGER.info(f"\t\t+ {prefix} throughput")
+        LOGGER.info(f"\t\t+ {prefix} throughput:")
         LOGGER.info(f"\t\t\t- throughput: {self.value:f} ({self.unit})")
 
     def markdown(self, prefix: str = "") -> str:

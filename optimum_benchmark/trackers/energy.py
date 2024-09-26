@@ -117,7 +117,7 @@ class Efficiency:
         return Efficiency(value=volume / energy.total if energy.total > 0 else 0, unit=unit)
 
     def log(self, prefix: str = ""):
-        LOGGER.info(f"\t\t+ {prefix} efficiency")
+        LOGGER.info(f"\t\t+ {prefix} efficiency:")
         LOGGER.info(f"\t\t\t- efficiency: {self.value:f} ({self.unit})")
 
     def markdown(self, prefix: str = "") -> str:
