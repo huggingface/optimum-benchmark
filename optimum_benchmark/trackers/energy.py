@@ -117,7 +117,8 @@ class Efficiency:
         return Efficiency(value=volume / energy.total if energy.total > 0 else 0, unit=unit)
 
     def log(self, prefix: str = ""):
-        LOGGER.info(f"\t\t+ {prefix} efficiency: {self.value:f} ({self.unit})")
+        LOGGER.info(f"\t\t+ {prefix} efficiency")
+        LOGGER.info(f"\t\t\t- efficiency: {self.value:f} ({self.unit})")
 
     def markdown(self, prefix: str = "") -> str:
         markdown = ""
@@ -142,7 +143,7 @@ class EnergyTracker:
         self.is_gpu = self.device == "cuda"
         self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
 
-        LOGGER.info("\t+ Tracking CPU and RAM energy")
+        LOGGER.info("\t\t+ Tracking RAM and CPU energy consumption")
 
         if self.is_gpu:
             if isinstance(self.device_ids, str):
@@ -156,7 +157,7 @@ class EnergyTracker:
             else:
                 raise ValueError("GPU device IDs must be a string, an integer, or a list of integers")
 
-            LOGGER.info(f"\t+ Tracking GPU energy on devices {self.device_ids}")
+            LOGGER.info(f"\t\t+ Tracking GPU energy consumption on devices {self.device_ids}")
 
         if not is_codecarbon_available():
             raise ValueError(

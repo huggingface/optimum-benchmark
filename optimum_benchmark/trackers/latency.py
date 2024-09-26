@@ -134,7 +134,8 @@ class Throughput:
         return Throughput(value=value, unit=unit)
 
     def log(self, prefix: str = ""):
-        LOGGER.info(f"\t\t+ {prefix} throughput: {self.value:f} {self.unit}")
+        LOGGER.info(f"\t\t+ {prefix} throughput")
+        LOGGER.info(f"\t\t\t- throughput: {self.value:f} ({self.unit})")
 
     def markdown(self, prefix: str = "") -> str:
         markdown = ""
@@ -157,9 +158,9 @@ class LatencyTracker:
         self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
 
         if self.is_pytorch_cuda:
-            LOGGER.info("\t+ Tracking latency using Pytorch CUDA events")
+            LOGGER.info("\t\t+ Tracking latency using Pytorch CUDA events")
         else:
-            LOGGER.info("\t+ Tracking latency using CPU performance counter")
+            LOGGER.info("\t\t+ Tracking latency using CPU performance counter")
 
         self.start_time: Optional[float] = None
         self.start_events: List[Union[float, torch.cuda.Event]] = []
@@ -235,9 +236,9 @@ class StepLatencyTrainerCallback(TrainerCallback):
         self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
 
         if self.is_pytorch_cuda:
-            LOGGER.info("\t+ Tracking latency using Pytorch CUDA events")
+            LOGGER.info("\t\t+ Tracking latency using Pytorch CUDA events")
         else:
-            LOGGER.info("\t+ Tracking latency using CPU performance counter")
+            LOGGER.info("\t\t+ Tracking latency using CPU performance counter")
 
         self.start_events: List[Union[float, torch.cuda.Event]] = []
         self.end_events: List[Union[float, torch.cuda.Event]] = []
@@ -285,9 +286,9 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
 
         if self.is_pytorch_cuda:
-            LOGGER.info("\t+ Tracking latency using Pytorch CUDA events")
+            LOGGER.info("\t\t+ Tracking latency using Pytorch CUDA events")
         else:
-            LOGGER.info("\t+ Tracking latency using CPU performance counter")
+            LOGGER.info("\t\t+ Tracking latency using CPU performance counter")
 
         self.start_time: Optional[float] = None
         self.prefilled: Optional[bool] = None

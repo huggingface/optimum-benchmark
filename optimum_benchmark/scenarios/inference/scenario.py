@@ -163,12 +163,12 @@ class InferenceScenario(Scenario[InferenceConfig]):
             )
 
         with ExitStack() as context_stack:
-            if self.config.latency:
-                context_stack.enter_context(latency_tracker.track())
             if self.config.memory:
                 context_stack.enter_context(memory_tracker.track())
+            if self.config.latency:
+                context_stack.enter_context(latency_tracker.track())
             if self.config.energy:
-                context_stack.enter_context(energy_tracker.track())
+                context_stack.enter_context(energy_tracker.track(task="load"))
 
             backend.load()
 
