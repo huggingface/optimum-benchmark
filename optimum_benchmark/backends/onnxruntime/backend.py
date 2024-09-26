@@ -6,6 +6,7 @@ from typing import Any, Dict
 import torch
 from hydra.utils import get_class
 from onnxruntime import SessionOptions
+from optimum.exporters.onnx.utils import MODEL_TYPES_REQUIRING_POSITION_IDS
 from optimum.onnxruntime import (
     ONNX_DECODER_NAME,
     ONNX_DECODER_WITH_PAST_NAME,
@@ -299,9 +300,8 @@ class ORTBackend(Backend[ORTConfig]):
 
         if self.config.library == "transformers":
             for key, value in list(inputs.items()):
-                if key in ["position_ids", "token_type_ids"]:
-                    if key not in self.pretrained_model.input_names:
-                        inputs.pop(key)
+                if key == "position_ids" and self.model_type not in MODEL_TYPES_REQUIRING_POSITION_IDS:
+                    inputs.pop(key)
 
         for key, value in inputs.items():
             if isinstance(value, torch.Tensor):
