@@ -75,7 +75,7 @@ class Energy:
         return Energy(cpu=cpu, gpu=gpu, ram=ram, total=total, unit=ENERGY_UNIT)
 
     def to_plain_text(self) -> str:
-        plain_text = "\t+ energy:\n"
+        plain_text = ""
         plain_text += "\t\t+ cpu: {cpu:f} ({unit})\n"
         plain_text += "\t\t+ gpu: {gpu:f} ({unit})\n"
         plain_text += "\t\t+ ram: {ram:f} ({unit})\n"
@@ -88,7 +88,7 @@ class Energy:
                 LOGGER.info(line)
 
     def to_markdown_text(self) -> str:
-        markdown_text = "## energy\n"
+        markdown_text = ""
         markdown_text += "| metric     |     value |   unit |\n"
         markdown_text += "| :--------- | --------: | -----: |\n"
         markdown_text += "| cpu        |   {cpu:f} | {unit} |\n"
@@ -124,7 +124,7 @@ class Efficiency:
         return Efficiency(value=volume / energy.total if energy.total > 0 else 0, unit=unit)
 
     def to_plain_text(self) -> str:
-        plain_text = "\t+ efficiency:\n"
+        plain_text = ""
         plain_text += "\t\t+ efficiency: {value:f} ({unit})\n"
         return plain_text.format(**asdict(self))
 
@@ -134,7 +134,7 @@ class Efficiency:
                 LOGGER.info(line)
 
     def to_markdown_text(self) -> str:
-        markdown_text = "## efficiency\n"
+        markdown_text = ""
         markdown_text += "| metric     |     value |   unit |\n"
         markdown_text += "| :--------- | --------: | -----: |\n"
         markdown_text += "| efficiency | {value:f} | {unit} |\n"

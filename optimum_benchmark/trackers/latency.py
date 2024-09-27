@@ -79,7 +79,7 @@ class Latency:
         )
 
     def to_plain_text(self) -> str:
-        plain_text = "\t+ latency:\n"
+        plain_text = ""
         plain_text += "\t\t+ count: {count}\n"
         plain_text += "\t\t+ total: {total:.6f} ({unit})\n"
         plain_text += "\t\t+ mean: {mean:.6f} ({unit})\n"
@@ -97,7 +97,7 @@ class Latency:
                 LOGGER.info(line)
 
     def to_markdown_text(self) -> str:
-        markdown_text = "## latency\n"
+        markdown_text = ""
         markdown_text += "| metric | value        | unit   |\n"
         markdown_text += "| :----- | -----------: |------: |\n"
         markdown_text += "| count  |      {count} |      - |\n"
@@ -136,7 +136,7 @@ class Throughput:
         return Throughput(value=value, unit=unit)
 
     def to_plain_text(self) -> str:
-        plain_text = "\t+ throughput:\n"
+        plain_text = ""
         plain_text += "\t\t+ throughput: {value:.2f} ({unit})\n"
         return plain_text.format(**asdict(self))
 
@@ -146,7 +146,7 @@ class Throughput:
                 LOGGER.info(line)
 
     def to_markdown_text(self) -> str:
-        markdown_text = "## throughput\n"
+        markdown_text = ""
         markdown_text += "| metric     |     value   |   unit |\n"
         markdown_text += "| :--------- | --------:   | -----: |\n"
         markdown_text += "| throughput | {value:.2f} | {unit} |\n"

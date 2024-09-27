@@ -51,26 +51,29 @@ class Measurements:
     def to_plain_text(self) -> str:
         plain_text = ""
 
-        for measurement_name in self.__annotations__.keys():
-            measurement = getattr(self, measurement_name)
+        for key in self.__annotations__.keys():
+            measurement = getattr(self, key)
             if measurement is not None:
+                plain_text += f"\t+ {key}:\n"
                 plain_text += measurement.to_plain_text()
 
         return plain_text
 
     def log(self):
-        for measurement_name in self.__annotations__.keys():
-            measurement = getattr(self, measurement_name)
-            if measurement is not None:
-                measurement.log()
+        for line in self.to_plain_text().split("\n"):
+            if line:
+                LOGGER.info(line)
 
     def to_markdown_text(self) -> str:
+        i = 1
         markdown_text = ""
 
-        for measurement_name in self.__annotations__.keys():
-            measurement = getattr(self, measurement_name)
+        for key in self.__annotations__.keys():
+            measurement = getattr(self, key)
             if measurement is not None:
+                markdown_text += f"{i}. {key}:\n\n"
                 markdown_text += measurement.to_markdown_text()
+                i += 1
 
         return markdown_text
 
@@ -118,7 +121,7 @@ class BenchmarkReport(PushToHubMixin):
         markdown_text = ""
 
         for target in self.to_dict().keys():
-            markdown_text += f"# {target}\n" + getattr(self, target).to_markdown_text()
+            markdown_text += f"# {target}:\n" + getattr(self, target).to_markdown_text()
 
         return markdown_text
 

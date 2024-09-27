@@ -82,7 +82,7 @@ class Memory:
         )
 
     def to_plain_text(self) -> str:
-        plain_text = "\t +memory:\n"
+        plain_text = ""
         if self.max_ram is not None:
             plain_text += "\t\t+ max_ram: {max_ram:.2f} ({unit})\n"
         if self.max_global_vram is not None:
@@ -101,7 +101,7 @@ class Memory:
                 LOGGER.info(line)
 
     def to_markdown_text(self) -> str:
-        markdown_text = "## memory\n"
+        markdown_text = ""
         markdown_text += "| metric | value | unit |\n"
         markdown_text += "| ------ | ----: | ---: |\n"
         if self.max_ram is not None:
