@@ -1,0 +1,34 @@
+defaults:
+  - benchmark
+  - backend: pytorch
+  - launcher: process
+  - scenario: energy_star
+  - _base_
+  - _self_
+
+name: text2text_generation_aya
+
+launcher:
+  device_isolation: true
+  device_isolation_action: warn
+
+backend:
+  device: cuda
+  device_ids: 0
+  no_weights: true
+  model: CohereForAI/aya-101
+  task: text2text-generation
+
+scenario:
+  dataset_name: EnergyStarAI/text_generation
+  num_samples: 1000
+  text_column_name: text
+  truncation: True
+  input_shapes:
+    batch_size: 1
+  dataset_prefix1: ""
+  t5_task: text_generation
+
+  generate_kwargs:
+    max_new_tokens: 10
+    min_new_tokens: 10
