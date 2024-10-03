@@ -86,10 +86,10 @@ class InferenceScenario(Scenario[InferenceConfig]):
         self.logger.info("\t+ Preparing input shapes for Inference")
         self.config.input_shapes = backend.prepare_input_shapes(input_shapes=self.config.input_shapes)
 
+        self.run_model_loading_tracking(backend)
+
         self.logger.info("\t+ Preparing inputs for Inference")
         self.inputs = backend.prepare_inputs(inputs=self.inputs)
-
-        self.run_model_loading_tracking(backend)
 
         if self.config.latency or self.config.energy:
             # latency and energy are metrics that require some warmup
@@ -158,18 +158,12 @@ class InferenceScenario(Scenario[InferenceConfig]):
             )
         if self.config.latency:
             latency_tracker = LatencyTracker(backend=backend.config.name, device=backend.config.device)
-        if self.config.energy:
-            energy_tracker = EnergyTracker(
-                backend=backend.config.name, device=backend.config.device, device_ids=backend.config.device_ids
-            )
 
         with ExitStack() as context_stack:
-            if self.config.latency:
-                context_stack.enter_context(latency_tracker.track())
             if self.config.memory:
                 context_stack.enter_context(memory_tracker.track())
-            if self.config.energy:
-                context_stack.enter_context(energy_tracker.track(file_prefix="load"))
+            if self.config.latency:
+                context_stack.enter_context(latency_tracker.track())
 
             backend.load()
 
@@ -177,8 +171,6 @@ class InferenceScenario(Scenario[InferenceConfig]):
             self.report.load.latency = latency_tracker.get_latency()
         if self.config.memory:
             self.report.load.memory = memory_tracker.get_max_memory()
-        if self.config.energy:
-            self.report.load.energy = energy_tracker.get_energy()
 
     ## Memory tracking
     def run_text_generation_memory_tracking(self, backend: Backend[BackendConfigT]):

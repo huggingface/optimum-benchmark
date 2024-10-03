@@ -19,7 +19,6 @@ INSTALL_REQUIRES = [
     "transformers",
     "accelerate",
     "datasets",
-    "optimum",
     # Hydra
     "hydra-core",
     "omegaconf",

@@ -201,6 +201,10 @@ class OVBackend(Backend[OVConfig]):
             with Accelerator().split_between_processes(inputs=inputs, apply_padding=False) as process_inputs:
                 inputs = process_inputs
 
+        for key in list(inputs.keys()):
+            if key not in self.pretrained_model.input_names:
+                inputs.pop(key)
+
         return inputs
 
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
