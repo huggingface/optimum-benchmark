@@ -50,13 +50,11 @@ class Measurements:
 
     def to_plain_text(self) -> str:
         plain_text = ""
-        i = 0
 
         for key in ["memory", "latency", "throughput", "energy", "efficiency"]:
             measurement = getattr(self, key)
             if measurement is not None:
-                i += 1
-                plain_text += f"\t+ {i}. {key}:\n"
+                plain_text += f"\t+ {key}:\n"
                 plain_text += measurement.to_plain_text()
 
         return plain_text
@@ -68,13 +66,11 @@ class Measurements:
 
     def to_markdown_text(self) -> str:
         markdown_text = ""
-        i = 0
 
         for key in ["memory", "latency", "throughput", "energy", "efficiency"]:
             measurement = getattr(self, key)
             if measurement is not None:
-                i += 1
-                markdown_text += f"{i}. {key}:\n\n"
+                markdown_text += f"## {key}:\n\n"
                 markdown_text += measurement.to_markdown_text()
 
         return markdown_text
