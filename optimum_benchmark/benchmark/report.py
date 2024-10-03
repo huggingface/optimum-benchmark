@@ -50,11 +50,13 @@ class Measurements:
 
     def to_plain_text(self) -> str:
         plain_text = ""
+        i = 0
 
-        for key in self.__annotations__.keys():
+        for key in ["memory", "latency", "throughput", "energy", "efficiency"]:
             measurement = getattr(self, key)
             if measurement is not None:
-                plain_text += f"\t+ {key}:\n"
+                i += 1
+                plain_text += f"\t+ {i}. {key}:\n"
                 plain_text += measurement.to_plain_text()
 
         return plain_text
@@ -65,17 +67,20 @@ class Measurements:
                 LOGGER.info(line)
 
     def to_markdown_text(self) -> str:
-        i = 1
         markdown_text = ""
+        i = 0
 
-        for key in self.__annotations__.keys():
+        for key in ["memory", "latency", "throughput", "energy", "efficiency"]:
             measurement = getattr(self, key)
             if measurement is not None:
+                i += 1
                 markdown_text += f"{i}. {key}:\n\n"
                 markdown_text += measurement.to_markdown_text()
-                i += 1
 
         return markdown_text
+
+    def print(self):
+        CONSOLE.print(Markdown(self.to_markdown_text()))
 
 
 @dataclass
@@ -104,11 +109,16 @@ class BenchmarkReport(PushToHubMixin):
 
         return cls.from_dict(aggregated_measurements)
 
+    @classproperty
+    def default_filename(self) -> str:
+        return "benchmark_report.json"
+
     def to_plain_text(self) -> str:
         plain_text = ""
 
         for target in self.to_dict().keys():
-            plain_text += f"{target}:\n" + getattr(self, target).to_plain_text()
+            plain_text += f"{target}:\n"
+            plain_text += getattr(self, target).to_plain_text()
 
         return plain_text
 
@@ -121,13 +131,10 @@ class BenchmarkReport(PushToHubMixin):
         markdown_text = ""
 
         for target in self.to_dict().keys():
-            markdown_text += f"# {target}:\n" + getattr(self, target).to_markdown_text()
+            markdown_text += f"# {target}:\n\n"
+            markdown_text += getattr(self, target).to_markdown_text()
 
         return markdown_text
 
     def print(self):
         CONSOLE.print(Markdown(self.to_markdown_text()))
-
-    @classproperty
-    def default_filename(self) -> str:
-        return "benchmark_report.json"
