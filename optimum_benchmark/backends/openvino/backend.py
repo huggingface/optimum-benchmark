@@ -202,7 +202,7 @@ class OVBackend(Backend[OVConfig]):
                 inputs = process_inputs
 
         for key in list(inputs.keys()):
-            if key not in self.pretrained_model.input_names:
+            if hasattr(self.pretrained_model, "input_names") and key not in self.pretrained_model.input_names:
                 inputs.pop(key)
 
         return inputs
