@@ -113,7 +113,7 @@ class BenchmarkReport(PushToHubMixin):
         plain_text = ""
 
         for target in self.to_dict().keys():
-            plain_text += f"{target}:\n"
+            plain_text += f"+ {target}:\n"
             plain_text += getattr(self, target).to_plain_text()
 
         return plain_text
