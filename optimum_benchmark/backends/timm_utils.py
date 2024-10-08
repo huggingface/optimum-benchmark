@@ -10,6 +10,9 @@ if is_timm_available():
 
 
 def get_timm_pretrained_config(model_name: str) -> PretrainedConfig:
+    if not is_timm_available():
+        raise ImportError("timm is not available. Please, pip install timm.")
+
     model_source, model_name = parse_model_name(model_name)
     if model_source == "hf-hub":
         # For model names specified in the form `hf-hub:path/architecture_name@revision`,
@@ -21,6 +24,9 @@ def get_timm_pretrained_config(model_name: str) -> PretrainedConfig:
 
 
 def extract_timm_shapes_from_config(config: PretrainedConfig) -> Dict[str, Any]:
+    if not is_timm_available():
+        raise ImportError("timm is not available. Please, pip install timm.")
+
     artifacts_dict = {}
 
     config_dict = {k: v for k, v in config.to_dict().items() if v is not None}
@@ -74,4 +80,7 @@ def extract_timm_shapes_from_config(config: PretrainedConfig) -> Dict[str, Any]:
 
 
 def get_timm_automodel_loader():
+    if not is_timm_available():
+        raise ImportError("timm is not available. Please, pip install timm.")
+
     return create_model

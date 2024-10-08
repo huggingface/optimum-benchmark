@@ -22,7 +22,8 @@ LOGGER = getLogger("energy")
 
 POWER_UNIT = "W"
 ENERGY_UNIT = "kWh"
-POWER_CONSUMPTION_SAMPLING_RATE = 1
+POWER_CONSUMPTION_SAMPLING_RATE = 1  # in seconds
+
 Energy_Unit_Literal = Literal["kWh"]
 Efficiency_Unit_Literal = Literal["samples/kWh", "tokens/kWh", "images/kWh"]
 

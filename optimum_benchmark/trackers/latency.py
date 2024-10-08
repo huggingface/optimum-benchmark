@@ -14,6 +14,7 @@ CONSOLE = Console()
 LOGGER = getLogger("latency")
 
 LATENCY_UNIT = "s"
+
 Latency_Unit_Literal = Literal["s"]
 Throughput_Unit_Literal = Literal["samples/s", "tokens/s", "images/s", "steps/s"]
 
@@ -110,6 +111,9 @@ class Latency:
         markdown_text += "| stdev  |    {stdev:f} | {unit} |\n"
         markdown_text += "| stdev_ | {stdev_:.2f} |      % |\n"
         return markdown_text.format(**asdict(self))
+
+    def print(self):
+        CONSOLE.print(Markdown(self.to_markdown_text()))
 
 
 @dataclass

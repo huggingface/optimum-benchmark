@@ -36,6 +36,8 @@ CONSOLE = Console()
 LOGGER = getLogger("memory")
 
 MEMORY_UNIT = "MB"
+MEMORY_CONSUMPTION_SAMPLING_RATE = 0.01  # in seconds
+
 Memory_Unit_Literal = Literal["MB"]
 
 
@@ -265,7 +267,7 @@ class MemoryTracker:
         )
 
 
-def monitor_cpu_ram_memory(monitored_pid: int, connection: Connection, interval: float = 0.001):
+def monitor_cpu_ram_memory(monitored_pid: int, connection: Connection):
     stop = False
     max_used_memory = 0
     monitored_process = psutil.Process(monitored_pid)
@@ -277,7 +279,7 @@ def monitor_cpu_ram_memory(monitored_pid: int, connection: Connection, interval:
         meminfo_attr = "memory_info" if hasattr(monitored_process, "memory_info") else "get_memory_info"
         used_memory = getattr(monitored_process, meminfo_attr)()[0]
         max_used_memory = max(max_used_memory, used_memory)
-        stop = connection.poll(interval)
+        stop = connection.poll(MEMORY_CONSUMPTION_SAMPLING_RATE)
 
     if monitored_process.is_running():
         connection.send(max_used_memory / 1e6)  # convert to MB
@@ -285,7 +287,7 @@ def monitor_cpu_ram_memory(monitored_pid: int, connection: Connection, interval:
     connection.close()
 
 
-def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connection: Connection, interval: float = 0.01):
+def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connection: Connection):
     stop = False
     max_used_global_memory = 0
     max_used_process_memory = 0
@@ -331,7 +333,7 @@ def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connectio
 
             max_used_global_memory = max(max_used_global_memory, used_global_memory)
             max_used_process_memory = max(max_used_process_memory, used_process_memory)
-            stop = connection.poll(interval)
+            stop = connection.poll(MEMORY_CONSUMPTION_SAMPLING_RATE)
 
         pynvml.nvmlShutdown()
 
@@ -394,7 +396,7 @@ def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connectio
 
             max_used_global_memory = max(max_used_global_memory, used_global_memory)
             max_used_process_memory = max(max_used_process_memory, used_process_memory)
-            stop = connection.poll(interval)
+            stop = connection.poll(MEMORY_CONSUMPTION_SAMPLING_RATE)
 
         amdsmi.amdsmi_shut_down()
         rocml.smi_shutdown()

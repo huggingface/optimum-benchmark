@@ -11,11 +11,11 @@ from ..trackers.latency import Latency, Throughput
 from ..trackers.memory import Memory
 
 CONSOLE = Console()
-LOGGER = getLogger("benchmark")
+LOGGER = getLogger("report")
 
 
 @dataclass
-class Measurements:
+class TargetMeasurements:
     memory: Optional[Memory] = None
     latency: Optional[Latency] = None
     throughput: Optional[Throughput] = None
@@ -35,7 +35,7 @@ class Measurements:
             self.efficiency = Efficiency(**self.efficiency)
 
     @staticmethod
-    def aggregate(measurements: List["Measurements"]) -> "Measurements":
+    def aggregate(measurements: List["TargetMeasurements"]) -> "TargetMeasurements":
         assert len(measurements) > 0, "No measurements to aggregate"
 
         m0 = measurements[0]
@@ -46,7 +46,9 @@ class Measurements:
         energy = Energy.aggregate([m.energy for m in measurements]) if m0.energy is not None else None
         efficiency = Efficiency.aggregate([m.efficiency for m in measurements]) if m0.efficiency is not None else None
 
-        return Measurements(memory=memory, latency=latency, throughput=throughput, energy=energy, efficiency=efficiency)
+        return TargetMeasurements(
+            memory=memory, latency=latency, throughput=throughput, energy=energy, efficiency=efficiency
+        )
 
     def to_plain_text(self) -> str:
         plain_text = ""
@@ -92,22 +94,18 @@ class BenchmarkReport(PushToHubMixin):
     def __post_init__(self):
         for target in self.to_dict().keys():
             if getattr(self, target) is None:
-                setattr(self, target, Measurements())
+                setattr(self, target, TargetMeasurements())
             elif isinstance(getattr(self, target), dict):
-                setattr(self, target, Measurements(**getattr(self, target)))
+                setattr(self, target, TargetMeasurements(**getattr(self, target)))
 
     @classmethod
     def aggregate(cls, reports: List["BenchmarkReport"]) -> "BenchmarkReport":
         aggregated_measurements = {}
         for target in reports[0].to_dict().keys():
             measurements = [getattr(report, target) for report in reports]
-            aggregated_measurements[target] = Measurements.aggregate(measurements)
+            aggregated_measurements[target] = TargetMeasurements.aggregate(measurements)
 
         return cls.from_dict(aggregated_measurements)
-
-    @classproperty
-    def default_filename(self) -> str:
-        return "benchmark_report.json"
 
     def to_plain_text(self) -> str:
         plain_text = ""
@@ -118,11 +116,6 @@ class BenchmarkReport(PushToHubMixin):
 
         return plain_text
 
-    def log(self):
-        for line in self.to_plain_text().split("\n"):
-            if line:
-                LOGGER.info(line)
-
     def to_markdown_text(self) -> str:
         markdown_text = ""
 
@@ -132,5 +125,22 @@ class BenchmarkReport(PushToHubMixin):
 
         return markdown_text
 
+    def save_text(self, filename: str):
+        with open(filename, mode="w") as f:
+            f.write(self.to_plain_text())
+
+    def save_markdown(self, filename: str):
+        with open(filename, mode="w") as f:
+            f.write(self.to_markdown_text())
+
+    def log(self):
+        for line in self.to_plain_text().split("\n"):
+            if line:
+                LOGGER.info(line)
+
     def print(self):
         CONSOLE.print(Markdown(self.to_markdown_text()))
+
+    @classproperty
+    def default_filename(self) -> str:
+        return "benchmark_report.json"

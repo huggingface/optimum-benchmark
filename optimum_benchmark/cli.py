@@ -78,7 +78,9 @@ def main(config: DictConfig) -> None:
     benchmark_config.save_json("benchmark_config.json")
 
     benchmark_report = Benchmark.launch(benchmark_config)
+    benchmark_report.save_markdown("benchmark_report.md")
     benchmark_report.save_json("benchmark_report.json")
+    benchmark_report.save_text("benchmark_report.txt")
 
     benchmark = Benchmark(config=benchmark_config, report=benchmark_report)
     benchmark.save_json("benchmark.json")

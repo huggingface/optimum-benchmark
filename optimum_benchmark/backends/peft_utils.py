@@ -9,5 +9,8 @@ if is_peft_available():
 
 
 def apply_peft(model: PreTrainedModel, peft_type: str, peft_config: Dict[str, Any]) -> PreTrainedModel:
+    if not is_peft_available():
+        raise ImportError("peft is not available. Please, pip install peft.")
+
     peft_config = PEFT_TYPE_TO_CONFIG_MAPPING[peft_type](**peft_config)
     return get_peft_model(model=model, peft_config=peft_config)
