@@ -5,6 +5,9 @@ from json import dump
 from logging import getLogger
 from typing import List, Literal, Optional, Union
 
+from rich.console import Console
+from rich.markdown import Markdown
+
 from ..import_utils import is_codecarbon_available, is_torch_available
 
 if is_torch_available():
@@ -14,14 +17,15 @@ if is_codecarbon_available():
     from codecarbon import EmissionsTracker, OfflineEmissionsTracker
     from codecarbon.output import EmissionsData
 
+CONSOLE = Console()
 LOGGER = getLogger("energy")
 
 POWER_UNIT = "W"
 ENERGY_UNIT = "kWh"
+POWER_CONSUMPTION_SAMPLING_RATE = 1  # in seconds
+
 Energy_Unit_Literal = Literal["kWh"]
 Efficiency_Unit_Literal = Literal["samples/kWh", "tokens/kWh", "images/kWh"]
-
-POWER_CONSUMPTION_SAMPLING_RATE = 1  # in seconds
 
 
 @dataclass
@@ -32,28 +36,6 @@ class Energy:
     ram: float
     gpu: float
     total: float
-
-    @staticmethod
-    def aggregate(energies: List["Energy"]) -> "Energy":
-        if len(energies) == 0 or all(energy is None for energy in energies):
-            return None
-        elif any(energy is None for energy in energies):
-            raise ValueError("Some energy measurements are missing")
-
-        # since measurements are machine-level, we just take the average
-        cpu = sum(energy.cpu for energy in energies) / len(energies)
-        gpu = sum(energy.gpu for energy in energies) / len(energies)
-        ram = sum(energy.ram for energy in energies) / len(energies)
-        total = sum(energy.total for energy in energies) / len(energies)
-
-        return Energy(cpu=cpu, gpu=gpu, ram=ram, total=total, unit=ENERGY_UNIT)
-
-    def log(self, prefix: str = "forward"):
-        LOGGER.info(f"\t\t+ {prefix} energy consumption:")
-        LOGGER.info(f"\t\t\t+ CPU: {self.cpu:f} ({self.unit})")
-        LOGGER.info(f"\t\t\t+ GPU: {self.gpu:f} ({self.unit})")
-        LOGGER.info(f"\t\t\t+ RAM: {self.ram:f} ({self.unit})")
-        LOGGER.info(f"\t\t\t+ total: {self.total:f} ({self.unit})")
 
     def __sub__(self, other: "Energy") -> "Energy":
         """Enables subtraction of two Energy instances using the '-' operator."""
@@ -78,6 +60,47 @@ class Energy:
             total=self.total / scalar,
         )
 
+    @staticmethod
+    def aggregate(energies: List["Energy"]) -> "Energy":
+        if len(energies) == 0 or all(energy is None for energy in energies):
+            return None
+        elif any(energy is None for energy in energies):
+            raise ValueError("Some energy measurements are missing")
+
+        # since measurements are machine-level, we just take the average
+        cpu = sum(energy.cpu for energy in energies) / len(energies)
+        gpu = sum(energy.gpu for energy in energies) / len(energies)
+        ram = sum(energy.ram for energy in energies) / len(energies)
+        total = sum(energy.total for energy in energies) / len(energies)
+
+        return Energy(cpu=cpu, gpu=gpu, ram=ram, total=total, unit=ENERGY_UNIT)
+
+    def to_plain_text(self) -> str:
+        plain_text = ""
+        plain_text += "\t\t+ cpu: {cpu:f} ({unit})\n"
+        plain_text += "\t\t+ gpu: {gpu:f} ({unit})\n"
+        plain_text += "\t\t+ ram: {ram:f} ({unit})\n"
+        plain_text += "\t\t+ total: {total:f} ({unit})\n"
+        return plain_text.format(**asdict(self))
+
+    def log(self):
+        for line in self.to_plain_text().split("\n"):
+            if line:
+                LOGGER.info(line)
+
+    def to_markdown_text(self) -> str:
+        markdown_text = ""
+        markdown_text += "| metric     |     value |   unit |\n"
+        markdown_text += "| :--------- | --------: | -----: |\n"
+        markdown_text += "| cpu        |   {cpu:f} | {unit} |\n"
+        markdown_text += "| gpu        |   {gpu:f} | {unit} |\n"
+        markdown_text += "| ram        |   {ram:f} | {unit} |\n"
+        markdown_text += "| total      | {total:f} | {unit} |\n"
+        return markdown_text.format(**asdict(self))
+
+    def print(self):
+        CONSOLE.print(Markdown(self.to_markdown_text()))
+
 
 @dataclass
 class Efficiency:
@@ -101,8 +124,25 @@ class Efficiency:
     def from_energy(energy: "Energy", volume: int, unit: str) -> "Efficiency":
         return Efficiency(value=volume / energy.total if energy.total > 0 else 0, unit=unit)
 
-    def log(self, prefix: str = ""):
-        LOGGER.info(f"\t\t+ {prefix} energy efficiency: {self.value:f} ({self.unit})")
+    def to_plain_text(self) -> str:
+        plain_text = ""
+        plain_text += "\t\t+ efficiency: {value:f} ({unit})\n"
+        return plain_text.format(**asdict(self))
+
+    def log(self):
+        for line in self.to_plain_text().split("\n"):
+            if line:
+                LOGGER.info(line)
+
+    def to_markdown_text(self) -> str:
+        markdown_text = ""
+        markdown_text += "| metric     |     value |   unit |\n"
+        markdown_text += "| :--------- | --------: | -----: |\n"
+        markdown_text += "| efficiency | {value:f} | {unit} |\n"
+        return markdown_text.format(**asdict(self))
+
+    def print(self):
+        CONSOLE.print(Markdown(self.to_markdown_text()))
 
 
 class EnergyTracker:
@@ -114,7 +154,7 @@ class EnergyTracker:
         self.is_gpu = self.device == "cuda"
         self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
 
-        LOGGER.info("\t+ Tracking CPU and RAM energy")
+        LOGGER.info("\t\t+ Tracking RAM and CPU energy consumption")
 
         if self.is_gpu:
             if isinstance(self.device_ids, str):
@@ -128,7 +168,7 @@ class EnergyTracker:
             else:
                 raise ValueError("GPU device IDs must be a string, an integer, or a list of integers")
 
-            LOGGER.info(f"\t+ Tracking GPU energy on devices {self.device_ids}")
+            LOGGER.info(f"\t\t+ Tracking GPU energy consumption on devices {self.device_ids}")
 
         if not is_codecarbon_available():
             raise ValueError(
@@ -152,11 +192,11 @@ class EnergyTracker:
                 measure_power_secs=POWER_CONSUMPTION_SAMPLING_RATE,
             )
         except Exception:
-            LOGGER.warning("\t+ Falling back to Offline Emissions Tracker")
+            LOGGER.warning("\t\t+ Falling back to Offline Emissions Tracker")
 
             if os.environ.get("COUNTRY_ISO_CODE", None) is None:
                 LOGGER.warning(
-                    "\t+ Offline Emissions Tracker requires COUNTRY_ISO_CODE to be set. "
+                    "\t\t+ Offline Emissions Tracker requires COUNTRY_ISO_CODE to be set. "
                     "We will set it to USA but the carbon footprint might be inaccurate."
                 )
 
@@ -196,7 +236,7 @@ class EnergyTracker:
         emission_data: EmissionsData = self.emission_tracker.stop_task()
 
         with open(f"{file_prefix}_codecarbon.json", "w") as f:
-            LOGGER.info(f"\t+ Saving codecarbon emission data to {file_prefix}_codecarbon.json")
+            LOGGER.info(f"\t\t+ Saving codecarbon emission data to {file_prefix}_codecarbon.json")
             dump(asdict(emission_data), f, indent=4)
 
         self.total_energy = emission_data.energy_consumed

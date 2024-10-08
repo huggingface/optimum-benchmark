@@ -1,10 +1,13 @@
 import os
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from logging import getLogger
 from multiprocessing import Pipe, Process
 from multiprocessing.connection import Connection
 from typing import List, Literal, Optional, Union
+
+from rich.console import Console
+from rich.markdown import Markdown
 
 from ..import_utils import (
     is_amdsmi_available,
@@ -29,9 +32,12 @@ if is_torch_available():
 
 import psutil
 
+CONSOLE = Console()
 LOGGER = getLogger("memory")
 
 MEMORY_UNIT = "MB"
+MEMORY_CONSUMPTION_SAMPLING_RATE = 0.01  # in seconds
+
 Memory_Unit_Literal = Literal["MB"]
 
 
@@ -77,18 +83,43 @@ class Memory:
             max_allocated=max_allocated,
         )
 
-    def log(self, prefix: str = ""):
-        LOGGER.info(f"\t\t+ {prefix} memory:")
+    def to_plain_text(self) -> str:
+        plain_text = ""
         if self.max_ram is not None:
-            LOGGER.info(f"\t\t\t- max RAM: {self.max_ram:f} ({self.unit})")
+            plain_text += "\t\t+ max_ram: {max_ram:.2f} ({unit})\n"
         if self.max_global_vram is not None:
-            LOGGER.info(f"\t\t\t- max global VRAM: {self.max_global_vram:f} ({self.unit})")
+            plain_text += "\t\t+ max_global_vram: {max_global_vram:.2f} ({unit})\n"
         if self.max_process_vram is not None:
-            LOGGER.info(f"\t\t\t- max process VRAM: {self.max_process_vram:f} ({self.unit})")
+            plain_text += "\t\t+ max_process_vram: {max_process_vram:.2f} ({unit})\n"
         if self.max_reserved is not None:
-            LOGGER.info(f"\t\t\t- max reserved memory: {self.max_reserved:f} ({self.unit})")
+            plain_text += "\t\t+ max_reserved: {max_reserved:.2f} ({unit})\n"
         if self.max_allocated is not None:
-            LOGGER.info(f"\t\t\t- max allocated memory: {self.max_allocated:f} ({self.unit})")
+            plain_text += "\t\t+ max_allocated: {max_allocated:.2f} ({unit})\n"
+        return plain_text.format(**asdict(self))
+
+    def log(self):
+        for line in self.to_plain_text().split("\n"):
+            if line:
+                LOGGER.info(line)
+
+    def to_markdown_text(self) -> str:
+        markdown_text = ""
+        markdown_text += "| metric | value | unit |\n"
+        markdown_text += "| ------ | ----: | ---: |\n"
+        if self.max_ram is not None:
+            markdown_text += "| max_ram          |          {max_ram:.2f} | {unit} |\n"
+        if self.max_global_vram is not None:
+            markdown_text += "| max_global_vram  |  {max_global_vram:.2f} | {unit} |\n"
+        if self.max_process_vram is not None:
+            markdown_text += "| max_process_vram | {max_process_vram:.2f} | {unit} |\n"
+        if self.max_reserved is not None:
+            markdown_text += "| max_reserved     |     {max_reserved:.2f} | {unit} |\n"
+        if self.max_allocated is not None:
+            markdown_text += "| max_allocated    |    {max_allocated:.2f} | {unit} |\n"
+        return markdown_text.format(**asdict(self))
+
+    def print(self):
+        CONSOLE.print(Markdown(self.to_markdown_text()))
 
 
 class MemoryTracker:
@@ -101,7 +132,7 @@ class MemoryTracker:
         self.is_gpu = device == "cuda"
         self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
 
-        LOGGER.info(f"\t+ Tracking RAM memory of process [{self.monitored_pid}]")
+        LOGGER.info(f"\t\t+ Tracking RAM memory of process {self.monitored_pid}")
 
         if self.is_gpu:
             if isinstance(self.device_ids, str):
@@ -115,7 +146,7 @@ class MemoryTracker:
             else:
                 raise ValueError("GPU device IDs must be a string, an integer, or a list of integers")
 
-            LOGGER.info(f"\t+ Tracking GPU memory of devices {self.device_ids}")
+            LOGGER.info(f"\t\t+ Tracking GPU memory of devices {self.device_ids}")
 
         if self.is_pytorch_cuda:
             self.num_pytorch_devices = torch.cuda.device_count()
@@ -125,7 +156,7 @@ class MemoryTracker:
                     f"Got {len(self.device_ids)} and {self.num_pytorch_devices} respectively."
                 )
 
-            LOGGER.info(f"\t+ Tracking Allocated/Reserved memory of {self.num_pytorch_devices} Pytorch CUDA devices")
+            LOGGER.info(f"\t\t+ Tracking Allocated/Reserved memory of {self.num_pytorch_devices} Pytorch CUDA devices")
 
         self.max_ram_memory = None
         self.max_global_vram_memory = None
@@ -236,7 +267,7 @@ class MemoryTracker:
         )
 
 
-def monitor_cpu_ram_memory(monitored_pid: int, connection: Connection, interval: float = 0.001):
+def monitor_cpu_ram_memory(monitored_pid: int, connection: Connection):
     stop = False
     max_used_memory = 0
     monitored_process = psutil.Process(monitored_pid)
@@ -248,7 +279,7 @@ def monitor_cpu_ram_memory(monitored_pid: int, connection: Connection, interval:
         meminfo_attr = "memory_info" if hasattr(monitored_process, "memory_info") else "get_memory_info"
         used_memory = getattr(monitored_process, meminfo_attr)()[0]
         max_used_memory = max(max_used_memory, used_memory)
-        stop = connection.poll(interval)
+        stop = connection.poll(MEMORY_CONSUMPTION_SAMPLING_RATE)
 
     if monitored_process.is_running():
         connection.send(max_used_memory / 1e6)  # convert to MB
@@ -256,7 +287,7 @@ def monitor_cpu_ram_memory(monitored_pid: int, connection: Connection, interval:
     connection.close()
 
 
-def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connection: Connection, interval: float = 0.01):
+def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connection: Connection):
     stop = False
     max_used_global_memory = 0
     max_used_process_memory = 0
@@ -302,7 +333,7 @@ def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connectio
 
             max_used_global_memory = max(max_used_global_memory, used_global_memory)
             max_used_process_memory = max(max_used_process_memory, used_process_memory)
-            stop = connection.poll(interval)
+            stop = connection.poll(MEMORY_CONSUMPTION_SAMPLING_RATE)
 
         pynvml.nvmlShutdown()
 
@@ -365,7 +396,7 @@ def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connectio
 
             max_used_global_memory = max(max_used_global_memory, used_global_memory)
             max_used_process_memory = max(max_used_process_memory, used_process_memory)
-            stop = connection.poll(interval)
+            stop = connection.poll(MEMORY_CONSUMPTION_SAMPLING_RATE)
 
         amdsmi.amdsmi_shut_down()
         rocml.smi_shutdown()

@@ -1,14 +1,21 @@
 from dataclasses import dataclass, make_dataclass
+from logging import getLogger
 from typing import Any, Dict, List, Optional
+
+from rich.console import Console
+from rich.markdown import Markdown
 
 from ..hub_utils import PushToHubMixin, classproperty
 from ..trackers.energy import Efficiency, Energy
 from ..trackers.latency import Latency, Throughput
 from ..trackers.memory import Memory
 
+CONSOLE = Console()
+LOGGER = getLogger("report")
+
 
 @dataclass
-class BenchmarkMeasurements:
+class TargetMeasurements:
     memory: Optional[Memory] = None
     latency: Optional[Latency] = None
     throughput: Optional[Throughput] = None
@@ -28,7 +35,7 @@ class BenchmarkMeasurements:
             self.efficiency = Efficiency(**self.efficiency)
 
     @staticmethod
-    def aggregate(measurements: List["BenchmarkMeasurements"]) -> "BenchmarkMeasurements":
+    def aggregate(measurements: List["TargetMeasurements"]) -> "TargetMeasurements":
         assert len(measurements) > 0, "No measurements to aggregate"
 
         m0 = measurements[0]
@@ -39,7 +46,39 @@ class BenchmarkMeasurements:
         energy = Energy.aggregate([m.energy for m in measurements]) if m0.energy is not None else None
         efficiency = Efficiency.aggregate([m.efficiency for m in measurements]) if m0.efficiency is not None else None
 
-        return BenchmarkMeasurements(memory, latency, throughput, energy, efficiency)
+        return TargetMeasurements(
+            memory=memory, latency=latency, throughput=throughput, energy=energy, efficiency=efficiency
+        )
+
+    def to_plain_text(self) -> str:
+        plain_text = ""
+
+        for key in ["memory", "latency", "throughput", "energy", "efficiency"]:
+            measurement = getattr(self, key)
+            if measurement is not None:
+                plain_text += f"\t+ {key}:\n"
+                plain_text += measurement.to_plain_text()
+
+        return plain_text
+
+    def log(self):
+        for line in self.to_plain_text().split("\n"):
+            if line:
+                LOGGER.info(line)
+
+    def to_markdown_text(self) -> str:
+        markdown_text = ""
+
+        for key in ["memory", "latency", "throughput", "energy", "efficiency"]:
+            measurement = getattr(self, key)
+            if measurement is not None:
+                markdown_text += f"## {key}:\n\n"
+                markdown_text += measurement.to_markdown_text()
+
+        return markdown_text
+
+    def print(self):
+        CONSOLE.print(Markdown(self.to_markdown_text()))
 
 
 @dataclass
@@ -55,62 +94,52 @@ class BenchmarkReport(PushToHubMixin):
     def __post_init__(self):
         for target in self.to_dict().keys():
             if getattr(self, target) is None:
-                setattr(self, target, BenchmarkMeasurements())
+                setattr(self, target, TargetMeasurements())
             elif isinstance(getattr(self, target), dict):
-                setattr(self, target, BenchmarkMeasurements(**getattr(self, target)))
-
-    def log_memory(self):
-        for target in self.to_dict().keys():
-            measurements: BenchmarkMeasurements = getattr(self, target)
-            if measurements.memory is not None:
-                measurements.memory.log(prefix=target)
-
-    def log_latency(self):
-        for target in self.to_dict().keys():
-            measurements: BenchmarkMeasurements = getattr(self, target)
-            if measurements.latency is not None:
-                measurements.latency.log(prefix=target)
-
-    def log_throughput(self):
-        for target in self.to_dict().keys():
-            measurements: BenchmarkMeasurements = getattr(self, target)
-            if measurements.throughput is not None:
-                measurements.throughput.log(prefix=target)
-
-    def log_energy(self):
-        for target in self.to_dict().keys():
-            measurements: BenchmarkMeasurements = getattr(self, target)
-            if measurements.energy is not None:
-                measurements.energy.log(prefix=target)
-
-    def log_efficiency(self):
-        for target in self.to_dict().keys():
-            measurements: BenchmarkMeasurements = getattr(self, target)
-            if measurements.efficiency is not None:
-                measurements.efficiency.log(prefix=target)
-
-    def log(self):
-        for target in self.to_dict().keys():
-            measurements: BenchmarkMeasurements = getattr(self, target)
-            if measurements.memory is not None:
-                measurements.memory.log(prefix=target)
-            if measurements.latency is not None:
-                measurements.latency.log(prefix=target)
-            if measurements.throughput is not None:
-                measurements.throughput.log(prefix=target)
-            if measurements.energy is not None:
-                measurements.energy.log(prefix=target)
-            if measurements.efficiency is not None:
-                measurements.efficiency.log(prefix=target)
+                setattr(self, target, TargetMeasurements(**getattr(self, target)))
 
     @classmethod
     def aggregate(cls, reports: List["BenchmarkReport"]) -> "BenchmarkReport":
         aggregated_measurements = {}
         for target in reports[0].to_dict().keys():
             measurements = [getattr(report, target) for report in reports]
-            aggregated_measurements[target] = BenchmarkMeasurements.aggregate(measurements)
+            aggregated_measurements[target] = TargetMeasurements.aggregate(measurements)
 
         return cls.from_dict(aggregated_measurements)
+
+    def to_plain_text(self) -> str:
+        plain_text = ""
+
+        for target in self.to_dict().keys():
+            plain_text += f"+ {target}:\n"
+            plain_text += getattr(self, target).to_plain_text()
+
+        return plain_text
+
+    def to_markdown_text(self) -> str:
+        markdown_text = ""
+
+        for target in self.to_dict().keys():
+            markdown_text += f"# {target}:\n\n"
+            markdown_text += getattr(self, target).to_markdown_text()
+
+        return markdown_text
+
+    def save_text(self, filename: str):
+        with open(filename, mode="w") as f:
+            f.write(self.to_plain_text())
+
+    def save_markdown(self, filename: str):
+        with open(filename, mode="w") as f:
+            f.write(self.to_markdown_text())
+
+    def log(self):
+        for line in self.to_plain_text().split("\n"):
+            if line:
+                LOGGER.info(line)
+
+    def print(self):
+        CONSOLE.print(Markdown(self.to_markdown_text()))
 
     @classproperty
     def default_filename(self) -> str:

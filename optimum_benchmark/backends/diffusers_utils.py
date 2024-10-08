@@ -39,12 +39,18 @@ TASKS_TO_MODEL_LOADERS = {
 
 
 def get_diffusers_pretrained_config(model: str, **kwargs) -> Dict[str, int]:
+    if not is_diffusers_available():
+        raise ImportError("diffusers is not available. Please, pip install diffusers.")
+
     config = DiffusionPipeline.load_config(model, **kwargs)
     pipeline_config = config[0] if isinstance(config, tuple) else config
     return pipeline_config
 
 
 def extract_diffusers_shapes_from_model(model: str, **kwargs) -> Dict[str, int]:
+    if not is_diffusers_available():
+        raise ImportError("diffusers is not available. Please, pip install diffusers.")
+
     model_config = get_diffusers_pretrained_config(model, **kwargs)
 
     shapes = {}
@@ -52,6 +58,14 @@ def extract_diffusers_shapes_from_model(model: str, **kwargs) -> Dict[str, int]:
         vae_import_path = model_config["vae"]
         vae_class = get_class(f"{vae_import_path[0]}.{vae_import_path[1]}")
         vae_config = vae_class.load_config(model, subfolder="vae", **kwargs)
+        shapes["num_channels"] = vae_config["out_channels"]
+        shapes["height"] = vae_config["sample_size"]
+        shapes["width"] = vae_config["sample_size"]
+
+    elif "vae_decoder" in model_config:
+        vae_import_path = model_config["vae_decoder"]
+        vae_class = get_class(f"{vae_import_path[0]}.{vae_import_path[1]}")
+        vae_config = vae_class.load_config(model, subfolder="vae_decoder", **kwargs)
         shapes["num_channels"] = vae_config["out_channels"]
         shapes["height"] = vae_config["sample_size"]
         shapes["width"] = vae_config["sample_size"]
@@ -74,6 +88,9 @@ def extract_diffusers_shapes_from_model(model: str, **kwargs) -> Dict[str, int]:
 
 
 def get_diffusers_automodel_loader_for_task(task: str):
+    if not is_diffusers_available():
+        raise ImportError("diffusers is not available. Please, pip install diffusers.")
+
     model_loader_name = TASKS_TO_MODEL_LOADERS[task]
     model_loader_class = getattr(diffusers, model_loader_name)
     return model_loader_class

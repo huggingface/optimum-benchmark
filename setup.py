@@ -29,6 +29,7 @@ INSTALL_REQUIRES = [
     "flatten_dict",
     "colorlog",
     "pandas",
+    "rich",
 ]
 
 try:

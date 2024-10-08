@@ -1,3 +1,6 @@
+log_report: true
+print_report: true
+
 # hydra/cli specific settings
 hydra:
   run:

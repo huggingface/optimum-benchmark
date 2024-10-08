@@ -297,11 +297,9 @@ class ORTBackend(Backend[ORTConfig]):
             with Accelerator().split_between_processes(inputs=inputs, apply_padding=False) as process_inputs:
                 inputs = process_inputs
 
-        if self.config.library == "transformers":
-            for key, value in list(inputs.items()):
-                if key in ["position_ids", "token_type_ids"]:
-                    if key not in self.pretrained_model.input_names:
-                        inputs.pop(key)
+        for key in list(inputs.keys()):
+            if hasattr(self.pretrained_model, "input_names") and key not in self.pretrained_model.input_names:
+                inputs.pop(key)
 
         for key, value in inputs.items():
             if isinstance(value, torch.Tensor):

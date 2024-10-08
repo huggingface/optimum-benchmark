@@ -102,8 +102,6 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
 
         self.logger.info("\t+ Aggregating reports from all rank processes")
         report = BenchmarkReport.aggregate(reports)
-        report.log()
-
         return report
 
 
