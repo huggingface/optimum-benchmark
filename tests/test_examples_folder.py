@@ -88,12 +88,12 @@ ALL_CONFIGS = (
     + CUDA_VLLM_EXAMPLE_CONFIGS
 )
 
-assert (
-    set(ALL_CONFIGS) == set(EXAMPLE_CONFIGS)
-), f"Please add your new example config to the list of configs in test_example.py for it to be integrated in the CI/CD pipeline.\n" \
-   f"Difference between ALL_CONFIGS and EXAMPLE_CONFIGS:\n" \
-   f"In ALL_CONFIGS but not in EXAMPLE_CONFIGS: {set(ALL_CONFIGS) - set(EXAMPLE_CONFIGS)}\n" \
-   f"In EXAMPLE_CONFIGS but not in ALL_CONFIGS: {set(EXAMPLE_CONFIGS) - set(ALL_CONFIGS)}"
+assert set(ALL_CONFIGS) == set(EXAMPLE_CONFIGS), (
+    f"Please add your new example config to the list of configs in test_example.py for it to be integrated in the CI/CD pipeline.\n"
+    f"Difference between ALL_CONFIGS and EXAMPLE_CONFIGS:\n"
+    f"In ALL_CONFIGS but not in EXAMPLE_CONFIGS: {set(ALL_CONFIGS) - set(EXAMPLE_CONFIGS)}\n"
+    f"In EXAMPLE_CONFIGS but not in ALL_CONFIGS: {set(EXAMPLE_CONFIGS) - set(ALL_CONFIGS)}"
+)
 
 
 def test_example_configs(config_name):
