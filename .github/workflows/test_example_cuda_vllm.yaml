@@ -1,0 +1,50 @@
+name: Examples Folder CUDA vLLM Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - labeled
+      - unlabeled
+
+concurrency:
+  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+
+jobs:
+  run_examples_cuda_vllm_tests:
+    if: ${{
+      (github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch') ||
+      contains( github.event.pull_request.labels.*.name, 'examples') ||
+      contains( github.event.pull_request.labels.*.name, 'cuda') ||
+      contains( github.event.pull_request.labels.*.name, 'vllm') ||
+      contains( github.event.pull_request.labels.*.name, 'examples_cuda_vllm')
+      }}
+
+    runs-on:
+      group: aws-g5-4xlarge-plus
+
+    container:
+      image: ghcr.io/huggingface/optimum-benchmark:latest-cuda
+      options: --ipc host --gpus all
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          pip install -e .[testing,vllm]
+
+      - name: Run tests
+        run: |
+          pytest tests/test_examples_folder.py -x -s -k "cuda and vllm"

@@ -1,4 +1,4 @@
-name: Examples Folder CUDA Pytorch Tests
+name: Examples Folder CPU TXI Tests
 
 on:
   workflow_dispatch:
@@ -20,32 +20,33 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
 jobs:
-  run_examples_cuda_pytorch_single_gpu_tests:
+  run_examples_cpu_txi_tests:
     if: ${{
       (github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch') ||
       contains( github.event.pull_request.labels.*.name, 'examples') ||
-      contains( github.event.pull_request.labels.*.name, 'cuda') ||
-      contains( github.event.pull_request.labels.*.name, 'pytorch') ||
-      contains( github.event.pull_request.labels.*.name, 'single_gpu') ||
-      contains( github.event.pull_request.labels.*.name, 'examples_cuda_pytorch_single_gpu')
+      contains( github.event.pull_request.labels.*.name, 'cpu') ||
+      contains( github.event.pull_request.labels.*.name, 'txi') ||
+      contains( github.event.pull_request.labels.*.name, 'examples_cpu_txi')
       }}
 
-    runs-on:
-      group: aws-g5-4xlarge-plus
-
-    container:
-      image: ghcr.io/huggingface/optimum-benchmark:latest-cuda
-      options: --ipc host --gpus all
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
       - name: Install dependencies
         run: |
-          pip install -e .[testing]
+          pip install --upgrade pip
+          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+          pip install -e .[testing,py-txi]
 
       - name: Run tests
         run: |
-          pytest tests/test_examples_folder.py -x -s -k "cuda and pytorch"
+          pytest tests/test_examples_folder.py -x -s -k "cpu and txi"

@@ -1,4 +1,6 @@
 import os
+import subprocess
+import sys
 from logging import getLogger
 from pathlib import Path
 
@@ -41,9 +43,9 @@ CPU_OPENVINO_EXAMPLE_CONFIGS = [
     "openvino_static_quant_bert.yaml",
 ]
 
-# can be run with pytest tests/test_example.py -s -k "cpu and tei"
-CPU_TEI_EXAMPLE_CONFIGS = [
-    "tei_bge.yaml",
+# can be run with pytest tests/test_example.py -s -k "cpu and txi"
+CPU_TXI_EXAMPLE_CONFIGS = [
+    "txi_bge.yaml",
 ]
 
 # can be run with pytest tests/test_example.py -s -k "cuda and pytorch"
@@ -53,9 +55,9 @@ CUDA_PYTORCH_EXAMPLE_CONFIGS = [
     "pytorch_llama.yaml",
 ]
 
-# can be run with pytest tests/test_example.py -s -k "cuda and tgi"
-CUDA_TGI_EXAMPLE_CONFIGS = [
-    "tgi_llama.yaml",
+# can be run with pytest tests/test_example.py -s -k "cuda and txi"
+CUDA_TXI_EXAMPLE_CONFIGS = [
+    "txi_llama.yaml",
 ]
 
 # can be run with pytest tests/test_example.py -s -k "cuda and trt"
@@ -82,8 +84,8 @@ ALL_CONFIGS = (
     + CPU_NEURAL_COMPRESSOR_EXAMPLE_CONFIGS
     + CPU_ONNXRUNTIME_EXAMPLE_CONFIGS
     + CPU_OPENVINO_EXAMPLE_CONFIGS
-    + CPU_TEI_EXAMPLE_CONFIGS
-    + CUDA_TGI_EXAMPLE_CONFIGS
+    + CPU_TXI_EXAMPLE_CONFIGS
+    + CUDA_TXI_EXAMPLE_CONFIGS
     + CUDA_TRT_EXAMPLE_CONFIGS
     + CUDA_VLLM_EXAMPLE_CONFIGS
 )
@@ -167,21 +169,21 @@ def test_cpu_openvino_examples(config_name):
 
 
 @pytest.mark.cpu
-@pytest.mark.tei
-@pytest.mark.parametrize("config_name", CPU_TEI_EXAMPLE_CONFIGS)
-def test_cpu_tei_examples(config_name):
+@pytest.mark.txi
+@pytest.mark.parametrize("config_name", CPU_TXI_EXAMPLE_CONFIGS)
+def test_cpu_txi_examples(config_name):
     test_example_configs(config_name)
 
 
 @pytest.mark.cuda
-@pytest.mark.tgi
-@pytest.mark.parametrize("config_name", CUDA_TGI_EXAMPLE_CONFIGS)
-def test_cuda_tgi_examples(config_name):
+@pytest.mark.txi
+@pytest.mark.parametrize("config_name", CUDA_TXI_EXAMPLE_CONFIGS)
+def test_cuda_txi_examples(config_name):
     test_example_configs(config_name)
 
 
 @pytest.mark.cuda
-@pytest.mark.trt
+@pytest.mark.tensorrt_llm
 @pytest.mark.parametrize("config_name", CUDA_TRT_EXAMPLE_CONFIGS)
 def test_cuda_trt_examples(config_name):
     test_example_configs(config_name)
@@ -194,5 +196,21 @@ def test_cuda_vllm_examples(config_name):
     test_example_configs(config_name)
 
 
-if __name__ == "__main__":
-    pytest.main([__file__])
+@pytest.mark.cuda
+@pytest.mark.pytorch
+@pytest.mark.parametrize(
+    "example_file",
+    [
+        "examples/pytorch_bert.py",
+        "examples/pytorch_llama.py",
+    ],
+)
+def test_example_file_execution(example_file):
+    # Run the example file as a separate process
+    result = subprocess.run([sys.executable, example_file], capture_output=True, text=True)
+
+    # Check that the process completed successfully (return code 0)
+    assert result.returncode == 0, f"Example {example_file} failed with error:\n{result.stderr}"
+
+    # Check that there's no error output
+    assert not result.stderr, f"Example {example_file} produced error output:\n{result.stderr}"
