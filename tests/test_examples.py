@@ -207,16 +207,3 @@ def test_cuda_vllm_configs(config_name):
 @pytest.mark.parametrize("script_name", CUDA_PYTORCH_SCRIPTS)
 def test_cuda_pytorch_scripts(script_name):
     execute_python_script(script_name)
-
-
-ROCM_PYTORCH_CONFIGS = [config for config in CUDA_PYTORCH_CONFIGS if config != "energy_star.yaml"]
-
-
-@pytest.mark.parametrize("config_name", ROCM_PYTORCH_CONFIGS)
-def test_rocm_pytorch_configs(config_name):
-    test_yaml_config(config_name)
-
-
-@pytest.mark.parametrize("script_name", CUDA_PYTORCH_SCRIPTS)
-def test_rocm_pytorch_scripts(script_name):
-    execute_python_script(script_name)

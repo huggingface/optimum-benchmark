@@ -1,0 +1,24 @@
++ load:
+	+ latency:
+		+ count: 1
+		+ total: 15.598862 (s)
+		+ mean: 15.598862 (s)
+		+ p50: 15.598862 (s)
+		+ p90: 15.598862 (s)
+		+ p95: 15.598862 (s)
+		+ p99: 15.598862 (s)
+		+ stdev: 0.000000 (s)
+		+ stdev_: 0.00 (%)
++ forward:
+	+ latency:
+		+ count: 10
+		+ total: 113.295710 (s)
+		+ mean: 11.329571 (s)
+		+ p50: 11.300767 (s)
+		+ p90: 11.485429 (s)
+		+ p95: 11.520021 (s)
+		+ p99: 11.547694 (s)
+		+ stdev: 0.125010 (s)
+		+ stdev_: 1.10 (%)
+	+ throughput:
+		+ throughput: 5.65 (samples/s)

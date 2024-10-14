@@ -1,0 +1,108 @@
+{
+    "name": "tei_bert",
+    "backend": {
+        "name": "py-txi",
+        "version": "0.10.0",
+        "_target_": "optimum_benchmark.backends.py_txi.backend.PyTXIBackend",
+        "task": "feature-extraction",
+        "library": "transformers",
+        "model_type": "bert",
+        "model": "BAAI/bge-base-en-v1.5",
+        "processor": "BAAI/bge-base-en-v1.5",
+        "device": "cpu",
+        "device_ids": null,
+        "seed": 42,
+        "inter_op_num_threads": null,
+        "intra_op_num_threads": null,
+        "model_kwargs": {},
+        "processor_kwargs": {},
+        "no_weights": false,
+        "image": null,
+        "shm_size": "1g",
+        "devices": null,
+        "gpus": null,
+        "ports": {
+            "80/tcp": [
+                "127.0.0.1",
+                0
+            ]
+        },
+        "volumes": {
+            "/home/ubuntu/.cache/huggingface/hub": {
+                "bind": "/data",
+                "mode": "rw"
+            }
+        },
+        "environment": [
+            "HUGGING_FACE_HUB_TOKEN"
+        ],
+        "dtype": null,
+        "max_concurrent_requests": 512,
+        "sharded": null,
+        "quantize": null,
+        "num_shard": null,
+        "speculate": null,
+        "cuda_graphs": null,
+        "disable_custom_kernels": null,
+        "trust_remote_code": null,
+        "pooling": null
+    },
+    "scenario": {
+        "name": "inference",
+        "_target_": "optimum_benchmark.scenarios.inference.scenario.InferenceScenario",
+        "iterations": 10,
+        "duration": 10,
+        "warmup_runs": 10,
+        "input_shapes": {
+            "batch_size": 64,
+            "num_choices": 2,
+            "sequence_length": 128
+        },
+        "new_tokens": null,
+        "memory": false,
+        "latency": true,
+        "energy": false,
+        "forward_kwargs": {},
+        "generate_kwargs": {},
+        "call_kwargs": {}
+    },
+    "launcher": {
+        "name": "inline",
+        "_target_": "optimum_benchmark.launchers.inline.launcher.InlineLauncher",
+        "device_isolation": false,
+        "device_isolation_action": null,
+        "numactl": false,
+        "numactl_kwargs": {}
+    },
+    "environment": {
+        "cpu": " Intel(R) Xeon(R) Platinum 8259CL CPU @ 2.50GHz",
+        "cpu_count": 8,
+        "cpu_ram_mb": 33164.890112,
+        "system": "Linux",
+        "machine": "x86_64",
+        "platform": "Linux-5.15.0-1064-aws-x86_64-with-glibc2.31",
+        "processor": "x86_64",
+        "python_version": "3.10.14",
+        "gpu": [
+            "Tesla T4"
+        ],
+        "gpu_count": 1,
+        "gpu_vram_mb": 16106127360,
+        "optimum_benchmark_version": "0.5.0.dev0",
+        "optimum_benchmark_commit": "ebdc70a40b3eba1fc5d3c3a469f1884f8f1ffc1c",
+        "transformers_version": "4.45.2",
+        "transformers_commit": "ebdc70a40b3eba1fc5d3c3a469f1884f8f1ffc1c",
+        "accelerate_version": "1.0.0",
+        "accelerate_commit": "ebdc70a40b3eba1fc5d3c3a469f1884f8f1ffc1c",
+        "diffusers_version": null,
+        "diffusers_commit": null,
+        "optimum_version": null,
+        "optimum_commit": null,
+        "timm_version": null,
+        "timm_commit": null,
+        "peft_version": null,
+        "peft_commit": null
+    },
+    "print_report": false,
+    "log_report": true
+}

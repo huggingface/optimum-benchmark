@@ -3,6 +3,7 @@ defaults:
   - scenario: inference
   - launcher: inline
   - backend: py-txi
+  - _base_
   - _self_
 
 name: tei_bert

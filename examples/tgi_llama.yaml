@@ -14,7 +14,7 @@ launcher:
 
 backend:
   device: cuda
-  device_ids: 4
+  device_ids: all
   # no_weights: true
   model: TinyLlama/TinyLlama-1.1B-Chat-v1.0
 
