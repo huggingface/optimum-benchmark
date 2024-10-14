@@ -13,17 +13,17 @@ jobs:
       - shell: bash
         run: |
           if [ "$EVENT_NAME" == "push" ]; then
-            echo "depth=$($(jq length <<< $COMMITS) + 2)" >> $GITHUB_ENV
-            echo "branch=$REF_NAME" >> $GITHUB_ENV
+            echo "depth=$($COMMITS+2)" >> $GITHUB_ENV
+            echo "branch=$REF" >> $GITHUB_ENV
           fi
           if [ "$EVENT_NAME" == "pull_request" ]; then
             echo "depth=$($PR_COMMITS+2)" >> $GITHUB_ENV
             echo "branch=$PR_REF" >> $GITHUB_ENV
           fi
         env:
-          REF_NAME: ${{ github.ref_name }}
+          REF: ${{ github.ref_name }}
+          COMMITS: ${{ github.event.commits }}
           EVENT_NAME: ${{ github.event_name }}
-          COMMITS: ${{ toJson(github.event.commits) }}
           PR_REF: ${{ github.event.pull_request.head.ref }}
           PR_COMMITS: ${{ github.event.pull_request.commits }}
 
@@ -32,5 +32,6 @@ jobs:
         with:
           ref: ${{env.branch}}
           fetch-depth: ${{env.depth}}
+
       - name: Scan for secrets
         uses: trufflesecurity/trufflehog@main
