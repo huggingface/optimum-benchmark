@@ -46,9 +46,13 @@ jobs:
         run: |
           pip install -e .[testing]
 
-      - name: Run tests
+      # - name: Run cli tests
+      #   run: |
+      #     pytest tests/test_cli.py -x -s -k "cli and cuda and tensorrt_llm and not (tp or pp)"
+
+      - name: Run tests from example folder
         run: |
-          pytest tests/test_cli.py -x -s -k "cli and cuda and tensorrt_llm and not (tp or pp)"
+          pytest tests/test_examples.py -x -s -k "cuda and tensorrt_llm"
 
   cli_cuda_tensorrt_llm_multi_gpu_tests:
     if: ${{
@@ -77,10 +81,7 @@ jobs:
         run: |
           pip install -e .[testing]
 
-      # - name: Run cli tests (sequential)
-      #   run: |
-      #     FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and tensorrt_llm and (tp or pp)"
-
-      - name: Run tests from example folder
+      - name: Run cli tests (sequential)
         run: |
-          pytest tests/test_examples.py -x -s -k "cuda and tensorrt_llm"
+          FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and tensorrt_llm and (tp or pp)"
+
