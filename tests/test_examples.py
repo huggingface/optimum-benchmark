@@ -73,8 +73,8 @@ MPS_LLAMA_CPP_CONFIGS = [
 ]
 
 CUDA_PYTORCH_SCRIPTS = [
-    "examples/pytorch_bert.py",
-    "examples/pytorch_llama.py",
+    "pytorch_bert.py",
+    "pytorch_llama.py",
 ]
 
 ALL_YAML_CONFIGS = (
@@ -128,9 +128,10 @@ def test_yaml_config(config_name):
     assert len(output_files) > 0, f"No output files found for {config_name}"
 
 
-def execute_python_script(script_path):
+def execute_python_script(script_name):
+    script_path = EXAMPLES_DIR / script_name
     # Run the example file as a separate process
-    result = subprocess.run([sys.executable, script_path], capture_output=True, text=True)
+    result = subprocess.run([sys.executable, str(script_path)], capture_output=True, text=True)
 
     # Check that the process completed successfully (return code 0)
     assert result.returncode == 0, f"Script {script_path} failed with error:\n{result.stderr}"
@@ -189,6 +190,6 @@ def test_cuda_vllm_configs(config_name):
     test_yaml_config(config_name)
 
 
-@pytest.mark.parametrize("script_path", CUDA_PYTORCH_SCRIPTS)
-def test_cuda_pytorch_scripts(script_path):
-    execute_python_script(script_path)
+@pytest.mark.parametrize("script_name", CUDA_PYTORCH_SCRIPTS)
+def test_cuda_pytorch_scripts(script_name):
+    execute_python_script(script_name)

@@ -55,5 +55,10 @@ jobs:
       - name: Run tests from example folder
         run: |
           pytest tests/test_examples.py -x -s -k "cuda and py_txi"
-        continue-on-error: ${{ failure() && steps.run.outcome == 'failure' && steps.run.exit_code == 5 }}
-
+          EXIT_CODE=$?
+          if [ $EXIT_CODE -eq 5 ]; then
+            echo "No tests were collected. Skipping failure..."
+            exit 0
+          else
+            exit $EXIT_CODE
+          fi
