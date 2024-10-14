@@ -1,4 +1,5 @@
 import os
+import warnings
 
 from huggingface_hub import whoami
 
@@ -11,7 +12,7 @@ except Exception as e:
     print(f"Failed to get username from Hugging Face Hub: {e}")
     USERNAME = None
 
-BENCHMARK_NAME = "pytorch-llama"
+BENCHMARK_NAME = "pytorch-gpt2"
 
 WEIGHTS_CONFIGS = {
     "float16": {
@@ -27,7 +28,7 @@ WEIGHTS_CONFIGS = {
     "4bit-gptq-exllama-v2": {
         "torch_dtype": "float16",
         "quantization_scheme": "gptq",
-        "quantization_config": {"bits": 4, "use_exllama ": True, "version": 2, "model_seqlen": 256},
+        "quantization_config": {"bits": 4, "use_exllama": True, "version": 2, "model_seqlen": 256},
     },
 }
 

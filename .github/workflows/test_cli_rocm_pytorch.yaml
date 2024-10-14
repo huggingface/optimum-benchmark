@@ -50,13 +50,9 @@ jobs:
         run: |
           pip install -e .[testing,diffusers,timm,peft,autoawq,auto-gptq]
 
-      # - name: Run cli tests
-      #   run: |
-      #     pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not bnb"
-
-      - name: Run tests from example folder
+      - name: Run cli tests
         run: |
-          pytest tests/test_examples.py -x -s -k "cuda and pytorch"
+          pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not bnb"
 
   run_cli_rocm_pytorch_multi_gpu_tests:
     if: ${{
