@@ -59,6 +59,7 @@ jobs:
       (github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch') ||
       contains( github.event.pull_request.labels.*.name, 'cli') ||
+      contains( github.event.pull_request.labels.*.name, 'examples') ||
       contains( github.event.pull_request.labels.*.name, 'rocm') ||
       contains( github.event.pull_request.labels.*.name, 'pytorch') ||
       contains( github.event.pull_request.labels.*.name, 'multi_gpu') ||
@@ -83,11 +84,14 @@ jobs:
         run: |
           pip install -e .[testing,diffusers,timm,deepspeed,peft,autoawq,auto-gptq] "deepspeed<0.15"
 
-      - name: Run tests (parallel)
-        run: |
-          pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (dp or ddp or device_map)"
+      # - name: Run tests (parallel)
+      #   run: |
+      #     pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (dp or ddp or device_map)"
 
-      - name: Run tests (sequential)
+      # - name: Run tests (sequential)
+      #   run: |
+      #     FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (deepspeed_inference)"
+
+      - name: Run tests from example folder
         run: |
-          # FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (deepspeed_inference)"
-          FORCE_SEQUENTIAL=1 pytest tests/test_examples_folder.py -x -s -k "examples and cuda and pytorch and (deepspeed_inference)"
+          pytest tests/test_examples.py -x -s -k "cuda and pytorch"

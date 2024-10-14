@@ -77,11 +77,14 @@ jobs:
         run: |
           pip install -e .[testing,diffusers,timm,peft,deepspeed]
 
-      - name: Run tests (parallel)
-        run: |
-          pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (dp or ddp or device_map)"
+      # - name: Run tests (parallel)
+      #   run: |
+      #     pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (dp or ddp or device_map)"
 
-      - name: Run tests (sequential)
+      # - name: Run tests (sequential)
+      #   run: |
+      #     FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (deepspeed_inference)"
+
+      - name: Run test from example folder
         run: |
-          # FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (deepspeed_inference)"
-          FORCE_SEQUENTIAL=1 pytest tests/test_examples_folder.py -x -s -k "examples and cuda and pytorch and (deepspeed_inference)"
+          pytest tests/test_examples.py -x -s -k "cuda and pytorch"

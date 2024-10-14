@@ -56,6 +56,7 @@ jobs:
       (github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch') ||
       contains( github.event.pull_request.labels.*.name, 'cli') ||
+      contains( github.event.pull_request.labels.*.name, 'examples') ||
       contains( github.event.pull_request.labels.*.name, 'cuda') ||
       contains( github.event.pull_request.labels.*.name, 'vllm') ||
       contains( github.event.pull_request.labels.*.name, 'multi_gpu') ||
@@ -77,7 +78,10 @@ jobs:
         run: |
           pip install -e .[testing]
 
-      - name: Run tests (sequential)
+      # - name: Run tests (sequential)
+      #   run: |
+      #     FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and vllm and (tp or pp)"
+
+      - name: Run tests from example folder
         run: |
-          # FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and vllm and (tp or pp)"
-          FORCE_SEQUENTIAL=1 pytest tests/test_examples_folder.py -x -s -k "examples and cuda and vllm and (tp or pp)"
+          pytest tests/test_examples.py -x -s -k "cuda and vllm"

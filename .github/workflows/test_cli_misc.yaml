@@ -61,7 +61,9 @@ jobs:
           pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
           pip install -e .[testing]
 
-      - name: Run tests
-        run: |
-          # pytest tests/test_cli.py -s -k "cli and not (cpu or cuda or rocm or mps)"
+      # - name: Run tests
+      #   run: |
+      #     pytest tests/test_cli.py -s -k "cli and not (cpu or cuda or rocm or mps)"
+
+      - name: Run tests from example folder
           pytest tests/test_examples_folder.py -s -k "examples and not (cpu or cuda or rocm or mps)"

@@ -77,7 +77,10 @@ jobs:
         run: |
           pip install -e .[testing]
 
-      - name: Run tests (sequential)
+      # - name: Run tests (sequential)
+      #   run: |
+      #     FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and tensorrt_llm and (tp or pp)"
+
+      - name: Run tests from example folder
         run: |
-          # FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and tensorrt_llm and (tp or pp)"
-          FORCE_SEQUENTIAL=1 pytest tests/test_examples_folder.py -x -s -k "examples and cuda and tensorrt_llm and (tp or pp)"
+          pytest tests/test_examples.py -x -s -k "cuda and tensorrt_llm"

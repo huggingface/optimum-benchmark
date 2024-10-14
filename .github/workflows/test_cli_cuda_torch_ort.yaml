@@ -79,7 +79,10 @@ jobs:
           pip install -e .[testing,torch-ort,peft] 
           pip install optimum@git+https://github.com/huggingface/optimum.git
 
-      - name: Run tests
+      # - name: Run tests
+      #   run: |
+      #     pytest tests/test_cli.py -x -s -k "cli and cuda and torch_ort and (dp or ddp or device_map)"
+
+      - name: Run tests from example folder
         run: |
-          # pytest tests/test_cli.py -x -s -k "cli and cuda and torch_ort and (dp or ddp or device_map)"
-          pytest tests/test_examples_folder.py -x -s -k "examples and cuda and torch_ort and (dp or ddp or device_map)"
+          pytest tests/test_examples.py -x -s -k "cuda and torch_ort"

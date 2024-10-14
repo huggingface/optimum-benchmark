@@ -39,7 +39,7 @@ CPU_OPENVINO_EXAMPLE_CONFIGS = [
 ]
 
 # can be run with pytest tests/test_example.py -s -k "cpu and txi"
-CPU_TXI_EXAMPLE_CONFIGS = [
+CPU_PY_TXI_EXAMPLE_CONFIGS = [
     "tei_bge.yaml",
 ]
 
@@ -51,7 +51,7 @@ CUDA_PYTORCH_EXAMPLE_CONFIGS = [
 ]
 
 # can be run with pytest tests/test_example.py -s -k "cuda and txi"
-CUDA_TXI_EXAMPLE_CONFIGS = [
+CUDA_PY_TXI_EXAMPLE_CONFIGS = [
     "tgi_llama.yaml",
 ]
 
@@ -78,8 +78,8 @@ ALL_CONFIGS = (
     + CPU_NEURAL_COMPRESSOR_EXAMPLE_CONFIGS
     + CPU_ONNXRUNTIME_EXAMPLE_CONFIGS
     + CPU_OPENVINO_EXAMPLE_CONFIGS
-    + CPU_TXI_EXAMPLE_CONFIGS
-    + CUDA_TXI_EXAMPLE_CONFIGS
+    + CPU_PY_TXI_EXAMPLE_CONFIGS
+    + CUDA_PY_TXI_EXAMPLE_CONFIGS
     + CUDA_TRT_EXAMPLE_CONFIGS
     + CUDA_VLLM_EXAMPLE_CONFIGS
 )
@@ -143,13 +143,13 @@ def test_cpu_openvino_examples(config_name):
     test_example_configs(config_name)
 
 
-@pytest.mark.parametrize("config_name", CPU_TXI_EXAMPLE_CONFIGS)
-def test_cpu_txi_examples(config_name):
+@pytest.mark.parametrize("config_name", CPU_PY_TXI_EXAMPLE_CONFIGS)
+def test_cpu_py_txi_examples(config_name):
     test_example_configs(config_name)
 
 
-@pytest.mark.parametrize("config_name", CUDA_TXI_EXAMPLE_CONFIGS)
-def test_cuda_txi_examples(config_name):
+@pytest.mark.parametrize("config_name", CUDA_PY_TXI_EXAMPLE_CONFIGS)
+def test_cuda_py_txi_examples(config_name):
     test_example_configs(config_name)
 
 
