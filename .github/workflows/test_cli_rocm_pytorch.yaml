@@ -50,9 +50,13 @@ jobs:
         run: |
           pip install -e .[testing,diffusers,timm,peft,autoawq,auto-gptq]
 
-      - name: Run tests
+      # - name: Run cli tests
+      #   run: |
+      #     pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not bnb"
+
+      - name: Run tests from example folder
         run: |
-          pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not bnb"
+          pytest tests/test_examples.py -x -s -k "rocm and pytorch"
 
   run_cli_rocm_pytorch_multi_gpu_tests:
     if: ${{
@@ -84,14 +88,11 @@ jobs:
         run: |
           pip install -e .[testing,diffusers,timm,deepspeed,peft,autoawq,auto-gptq] "deepspeed<0.15"
 
-      # - name: Run cli tests (parallel)
-      #   run: |
-      #     pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (dp or ddp or device_map)"
-
-      # - name: Run cli tests (sequential)
-      #   run: |
-      #     FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (deepspeed_inference)"
-
-      - name: Run tests from example folder
+      - name: Run cli tests (parallel)
         run: |
-          pytest tests/test_examples.py -x -s -k "cuda and pytorch"
+          pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (dp or ddp or device_map)"
+
+      - name: Run cli tests (sequential)
+        run: |
+          FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (deepspeed_inference)"
+

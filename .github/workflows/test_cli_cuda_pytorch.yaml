@@ -47,9 +47,13 @@ jobs:
         run: |
           pip install -e .[testing,diffusers,timm,peft,bitsandbytes,autoawq,auto-gptq]
 
-      - name: Run tests
+      - name: Run cli tests
         run: |
           pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed)"
+
+      - name: Run tests from example folder
+        run: |
+          pytest tests/test_examples.py -x -s -k "cuda and pytorch"
 
   run_cli_cuda_pytorch_multi_gpu_tests:
     if: ${{
@@ -77,14 +81,11 @@ jobs:
         run: |
           pip install -e .[testing,diffusers,timm,peft,deepspeed]
 
-      # - name: Run cli tests (parallel)
-      #   run: |
-      #     pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (dp or ddp or device_map)"
-
-      # - name: Run cli tests (sequential)
-      #   run: |
-      #     FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (deepspeed_inference)"
-
-      - name: Run test from example folder
+      - name: Run cli tests (parallel)
         run: |
-          pytest tests/test_examples.py -x -s -k "cuda and pytorch"
+          pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (dp or ddp or device_map)"
+
+      - name: Run cli tests (sequential)
+        run: |
+          FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (deepspeed_inference)"
+
