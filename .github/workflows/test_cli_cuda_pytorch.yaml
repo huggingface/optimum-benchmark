@@ -90,4 +90,3 @@ jobs:
       - name: Run cli tests (sequential)
         run: |
           FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (deepspeed_inference)"
-
