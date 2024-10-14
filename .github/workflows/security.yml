@@ -2,34 +2,30 @@ name: Security Checks
 
 on:
   push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-
-concurrency:
-  cancel-in-progress: true
-  group: ${{ github.workflow }}-${{ github.ref }}
 
 permissions:
   contents: read
 
 jobs:
-  secrets:
+  trufflehog:
     runs-on: ubuntu-latest
     steps:
-      - name: Set up environment variables
-        shell: bash
+      - shell: bash
         run: |
-          if [ "${{ github.event_name }}" == "push" ]; then
-            echo "depth=$(($(jq length <<< '${{ toJson(github.event.commits) }}') + 2))" >> $GITHUB_ENV
-            echo "branch=${{ github.ref_name }}" >> $GITHUB_ENV
+          if [ "$EVENT_NAME" == "push" ]; then
+            echo "depth=$(($(jq length <<< $COMMITS)+2))" >> $GITHUB_ENV
+            echo "branch=$REF" >> $GITHUB_ENV
           fi
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo "depth=$((${{ github.event.pull_request.commits }}+2))" >> $GITHUB_ENV
-            echo "branch=${{ github.event.pull_request.head.ref }}" >> $GITHUB_ENV
+          if [ "$EVENT_NAME" == "pull_request" ]; then
+            echo "depth=$(($PR_COMMITS+2))" >> $GITHUB_ENV
+            echo "branch=$PR_REF" >> $GITHUB_ENV
           fi
+        env:
+          REF: ${{ github.ref_name }}
+          COMMITS: ${{ tojson(github.event.commits) }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_REF: ${{ github.event.pull_request.head.ref }}
+          PR_COMMITS: ${{ github.event.pull_request.commits }}
 
       - name: Checkout code
         uses: actions/checkout@v4
