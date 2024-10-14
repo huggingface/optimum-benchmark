@@ -45,7 +45,7 @@ CPU_OPENVINO_EXAMPLE_CONFIGS = [
 
 # can be run with pytest tests/test_example.py -s -k "cpu and txi"
 CPU_TXI_EXAMPLE_CONFIGS = [
-    "txi_bge.yaml",
+    "tei_bge.yaml",
 ]
 
 # can be run with pytest tests/test_example.py -s -k "cuda and pytorch"
@@ -57,7 +57,7 @@ CUDA_PYTORCH_EXAMPLE_CONFIGS = [
 
 # can be run with pytest tests/test_example.py -s -k "cuda and txi"
 CUDA_TXI_EXAMPLE_CONFIGS = [
-    "txi_llama.yaml",
+    "tgi_llama.yaml",
 ]
 
 # can be run with pytest tests/test_example.py -s -k "cuda and trt"
