@@ -57,8 +57,8 @@ CUDA_PY_TXI_CONFIGS = [
     "tgi_llama.yaml",
 ]
 
-# can be run with pytest tests/test_example.py -s -k "cuda and trt"
-CUDA_TRT_CONFIGS = [
+# can be run with pytest tests/test_example.py -s -k "cuda and tensorrt_llm"
+CUDA_TENSORRT_LLM_CONFIGS = [
     "trt_llama.yaml",
 ]
 
@@ -194,8 +194,8 @@ def test_cuda_py_txi_configs(config_name):
     test_yaml_config(config_name)
 
 
-@pytest.mark.parametrize("config_name", CUDA_TRT_CONFIGS)
-def test_cuda_trt_configs(config_name):
+@pytest.mark.parametrize("config_name", CUDA_TENSORRT_LLM_CONFIGS)
+def test_cuda_tensorrt_llm_configs(config_name):
     test_yaml_config(config_name)
 
 

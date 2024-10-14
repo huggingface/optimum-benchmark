@@ -84,15 +84,3 @@ jobs:
       - name: Run tests from example folder
         run: |
           pytest tests/test_examples.py -x -s -k "cuda and tensorrt_llm"
-        continue-on-error: true  # Continue even if tests fail or no tests are collected
-
-      - name: Check test result
-        if: steps.run_tests.outcome == 'failure' && steps.run_tests.conclusion == 'failure'
-        run: |
-          if [ "${{ steps.run_tests.outputs.exit_code }}" -eq 5 ]; then
-            echo "No tests were collected. Skipping failure..."
-            exit 0
-          else
-            echo "Tests failed for another reason."
-            exit 1
-          fi
