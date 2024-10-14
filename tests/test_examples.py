@@ -3,6 +3,7 @@ import subprocess
 import sys
 from logging import getLogger
 from pathlib import Path
+import yaml
 
 import pytest
 
@@ -106,8 +107,19 @@ assert set(PYTHON_SCRIPTS) == set(ALL_PYTHON_SCRIPTS), (
     f"In ALL_PYTHON_SCRIPTS but not in PYTHON_SCRIPTS: {set(ALL_PYTHON_SCRIPTS) - set(PYTHON_SCRIPTS)}"
 )
 
+def extract_name_from_yaml(config_name):
+    config_path = EXAMPLES_DIR / config_name
+
+    with open(config_path, "r") as f:
+        yaml_content = f.read()
+
+    data = yaml.safe_load(yaml_content)
+
+    return data.get('name')
 
 def test_yaml_config(config_name):
+    name = extract_name_from_yaml(config_name)
+
     args = [
         "optimum-benchmark",
         "--config-dir",
@@ -120,7 +132,7 @@ def test_yaml_config(config_name):
     assert popen.returncode == 0, f"Failed to run {config_name}"
 
     # Check if the benchmark produced any output
-    output_dir = Path(OUTPUT_DIR) / config_name.split(".")[0]
+    output_dir = Path(OUTPUT_DIR) / name
     assert output_dir.exists(), f"No output directory found for {config_name}"
 
     # Check if there's at least one file in the output directory
