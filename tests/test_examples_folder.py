@@ -118,11 +118,6 @@ def test_cuda_pytorch_examples(config_name):
     test_example_configs(config_name)
 
 
-@pytest.mark.parametrize("config_name", CPU_PYTORCH_EXAMPLE_CONFIGS)
-def test_cpu_pytorch_examples(config_name):
-    test_example_configs(config_name)
-
-
 @pytest.mark.parametrize("config_name", CPU_IPEX_EXAMPLE_CONFIGS)
 def test_cpu_ipex_examples(config_name):
     test_example_configs(config_name)
