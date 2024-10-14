@@ -52,6 +52,8 @@ jobs:
       #     pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed)"
 
       - name: Run tests from example folder
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           pytest tests/test_examples.py -x -s -k "cuda and pytorch"
 
