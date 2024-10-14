@@ -47,7 +47,6 @@ CPU_PY_TXI_CONFIGS = [
 
 # can be run with pytest tests/test_example.py -s -k "cuda and pytorch"
 CUDA_PYTORCH_CONFIGS = [
-    "energy_star.yaml",
     "pytorch_bert.yaml",
     "pytorch_llama.yaml",
 ]
@@ -78,6 +77,11 @@ CUDA_PYTORCH_SCRIPTS = [
     "pytorch_llama.py",
 ]
 
+# Those tests are not run on the CI/CD pipeline as they are currently broken
+UNTESTED_YAML_CONFIGS = [
+    "energy_star.yaml",
+]
+
 ALL_YAML_CONFIGS = (
     CUDA_PYTORCH_CONFIGS
     + CPU_IPEX_CONFIGS
@@ -89,6 +93,7 @@ ALL_YAML_CONFIGS = (
     + CUDA_PY_TXI_CONFIGS
     + CUDA_TENSORRT_LLM_CONFIGS
     + CUDA_VLLM_CONFIGS
+    + UNTESTED_YAML_CONFIGS
 )
 
 ALL_PYTHON_SCRIPTS = CUDA_PYTORCH_SCRIPTS

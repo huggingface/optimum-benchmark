@@ -143,16 +143,6 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
             self.report.preprocess.energy, self.inference_volume, unit=INFERENCE_EFFICIENCY_UNIT
         )
 
-        LOGGER.info("\t+ Preparing backend for Inference")
-        backend.prepare_for_inference(
-            input_shapes=self.config.input_shapes,
-            inference_kwargs={
-                **self.config.generate_kwargs,
-                **self.config.forward_kwargs,
-                **self.config.call_kwargs,
-            },
-        )
-
         LOGGER.info("\t+ Warming up backend for Inference")
         warmup_inputs = backend.prepare_inputs(next(iter(self.dataloader)))
         for _ in range(self.config.warmup_runs):
