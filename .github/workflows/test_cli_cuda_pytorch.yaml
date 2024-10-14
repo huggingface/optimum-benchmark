@@ -44,6 +44,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install dependencies
+        env:
+          LOG_LEVEL: ERROR
         run: |
           pip install -e .[testing,diffusers,timm,peft,bitsandbytes,autoawq,auto-gptq,codecarbon]
 
