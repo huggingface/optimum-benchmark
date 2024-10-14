@@ -3,9 +3,9 @@ import subprocess
 import sys
 from logging import getLogger
 from pathlib import Path
-import yaml
 
 import pytest
+import yaml
 
 from optimum_benchmark.logging_utils import run_subprocess_and_log_stream_output
 
@@ -107,6 +107,7 @@ assert set(PYTHON_SCRIPTS) == set(ALL_PYTHON_SCRIPTS), (
     f"In ALL_PYTHON_SCRIPTS but not in PYTHON_SCRIPTS: {set(ALL_PYTHON_SCRIPTS) - set(PYTHON_SCRIPTS)}"
 )
 
+
 def extract_name_from_yaml(config_name):
     config_path = EXAMPLES_DIR / config_name
 
@@ -115,7 +116,8 @@ def extract_name_from_yaml(config_name):
 
     data = yaml.safe_load(yaml_content)
 
-    return data.get('name')
+    return data.get("name")
+
 
 def test_yaml_config(config_name):
     name = extract_name_from_yaml(config_name)
