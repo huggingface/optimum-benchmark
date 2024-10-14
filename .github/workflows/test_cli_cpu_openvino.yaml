@@ -25,6 +25,7 @@ jobs:
       (github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch') ||
       contains( github.event.pull_request.labels.*.name, 'cli') ||
+      contains( github.event.pull_request.labels.*.name, 'examples') ||
       contains( github.event.pull_request.labels.*.name, 'cpu') ||
       contains( github.event.pull_request.labels.*.name, 'openvino') ||
       contains( github.event.pull_request.labels.*.name, 'cli_cpu_openvino')
@@ -48,4 +49,6 @@ jobs:
           pip install -e .[testing,openvino,diffusers,timm]
 
       - name: Run tests
-        run: pytest tests/test_cli.py -s -k "cli and cpu and openvino"
+        run: |
+          # pytest tests/test_cli.py -s -k "cli and cpu and openvino"
+          pytest tests/test_examples.py -s -k "examples and cpu and openvino"

@@ -56,6 +56,7 @@ jobs:
       (github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch') ||
       contains( github.event.pull_request.labels.*.name, 'cli') ||
+      contains( github.event.pull_request.labels.*.name, 'examples') ||
       contains( github.event.pull_request.labels.*.name, 'cuda') ||
       contains( github.event.pull_request.labels.*.name, 'torch_ort') ||
       contains( github.event.pull_request.labels.*.name, 'multi_gpu') ||
@@ -80,4 +81,5 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest tests/test_cli.py -x -s -k "cli and cuda and torch_ort and (dp or ddp or device_map)"
+          # pytest tests/test_cli.py -x -s -k "cli and cuda and torch_ort and (dp or ddp or device_map)"
+          pytest tests/test_examples_folder.py -x -s -k "examples and cuda and torch_ort and (dp or ddp or device_map)"

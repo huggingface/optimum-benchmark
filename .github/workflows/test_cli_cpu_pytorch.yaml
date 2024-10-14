@@ -25,6 +25,7 @@ jobs:
       (github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch') ||
       contains( github.event.pull_request.labels.*.name, 'cli') ||
+      contains( github.event.pull_request.labels.*.name, 'examples') ||
       contains( github.event.pull_request.labels.*.name, 'cpu') ||
       contains( github.event.pull_request.labels.*.name, 'pytorch') ||
       contains( github.event.pull_request.labels.*.name, 'cli_cpu_pytorch')
@@ -48,4 +49,7 @@ jobs:
           pip install -e .[testing,diffusers,timm,peft]
 
       - name: Run tests
-        run: pytest tests/test_cli.py -s -k "cli and cpu and pytorch"
+        run: |
+          # pytest tests/test_cli.py -s -k "cli and cpu and pytorch"
+          pytest tests/test_examples.py -s -k "examples and cpu and pytorch"
+

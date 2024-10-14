@@ -14,11 +14,6 @@ EXAMPLES_DIR = Path(__file__).parent.parent / "examples"
 OUTPUT_DIR = Path(__file__).parent.parent / "runs"
 EXAMPLE_CONFIGS = [f for f in os.listdir(EXAMPLES_DIR) if f.endswith(".yaml") and f != "_base_.yaml"]
 
-# can be run with pytest tests/test_example.py -s -k "cpu and pytorch"
-CPU_PYTORCH_EXAMPLE_CONFIGS = [
-    "pytorch_bert.yaml",
-]
-
 # can be run with pytest tests/test_example.py -s -k "cpu and ipex"
 CPU_IPEX_EXAMPLE_CONFIGS = [
     "ipex_bert.yaml",
@@ -78,7 +73,6 @@ MPS_LLAMA_CPP_EXAMPLE_CONFIGS = [
 
 ALL_CONFIGS = (
     CUDA_PYTORCH_EXAMPLE_CONFIGS
-    + CPU_PYTORCH_EXAMPLE_CONFIGS
     + CPU_IPEX_EXAMPLE_CONFIGS
     + MPS_LLAMA_CPP_EXAMPLE_CONFIGS
     + CPU_NEURAL_COMPRESSOR_EXAMPLE_CONFIGS
@@ -119,85 +113,61 @@ def test_example_configs(config_name):
     assert len(output_files) > 0, f"No output files found for {config_name}"
 
 
-@pytest.mark.cuda
-@pytest.mark.pytorch
 @pytest.mark.parametrize("config_name", CUDA_PYTORCH_EXAMPLE_CONFIGS)
 def test_cuda_pytorch_examples(config_name):
     test_example_configs(config_name)
 
 
-@pytest.mark.cpu
-@pytest.mark.pytorch
 @pytest.mark.parametrize("config_name", CPU_PYTORCH_EXAMPLE_CONFIGS)
 def test_cpu_pytorch_examples(config_name):
     test_example_configs(config_name)
 
 
-@pytest.mark.cpu
-@pytest.mark.ipex
 @pytest.mark.parametrize("config_name", CPU_IPEX_EXAMPLE_CONFIGS)
 def test_cpu_ipex_examples(config_name):
     test_example_configs(config_name)
 
 
-@pytest.mark.mps
-@pytest.mark.llama_cpp
 @pytest.mark.parametrize("config_name", MPS_LLAMA_CPP_EXAMPLE_CONFIGS)
 def test_mps_llama_cpp_examples(config_name):
     test_example_configs(config_name)
 
 
-@pytest.mark.cpu
-@pytest.mark.neural_compressor
 @pytest.mark.parametrize("config_name", CPU_NEURAL_COMPRESSOR_EXAMPLE_CONFIGS)
 def test_cpu_neural_compressor_examples(config_name):
     test_example_configs(config_name)
 
 
-@pytest.mark.cpu
-@pytest.mark.onnxruntime
 @pytest.mark.parametrize("config_name", CPU_ONNXRUNTIME_EXAMPLE_CONFIGS)
 def test_cpu_onnxruntime_examples(config_name):
     test_example_configs(config_name)
 
 
-@pytest.mark.cpu
-@pytest.mark.openvino
 @pytest.mark.parametrize("config_name", CPU_OPENVINO_EXAMPLE_CONFIGS)
 def test_cpu_openvino_examples(config_name):
     test_example_configs(config_name)
 
 
-@pytest.mark.cpu
-@pytest.mark.txi
 @pytest.mark.parametrize("config_name", CPU_TXI_EXAMPLE_CONFIGS)
 def test_cpu_txi_examples(config_name):
     test_example_configs(config_name)
 
 
-@pytest.mark.cuda
-@pytest.mark.txi
 @pytest.mark.parametrize("config_name", CUDA_TXI_EXAMPLE_CONFIGS)
 def test_cuda_txi_examples(config_name):
     test_example_configs(config_name)
 
 
-@pytest.mark.cuda
-@pytest.mark.tensorrt_llm
 @pytest.mark.parametrize("config_name", CUDA_TRT_EXAMPLE_CONFIGS)
 def test_cuda_trt_examples(config_name):
     test_example_configs(config_name)
 
 
-@pytest.mark.cuda
-@pytest.mark.vllm
 @pytest.mark.parametrize("config_name", CUDA_VLLM_EXAMPLE_CONFIGS)
 def test_cuda_vllm_examples(config_name):
     test_example_configs(config_name)
 
 
-@pytest.mark.cuda
-@pytest.mark.pytorch
 @pytest.mark.parametrize(
     "example_file",
     [
