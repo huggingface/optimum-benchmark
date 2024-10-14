@@ -20,7 +20,7 @@ backend:
 scenario:
   input_shapes:
     batch_size: 4
-    sequence_length: 256
+    sequence_length: 128
   generate_kwargs:
     max_new_tokens: 100
     min_new_tokens: 100
