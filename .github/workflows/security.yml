@@ -13,7 +13,7 @@ jobs:
       - shell: bash
         run: |
           if [ "$EVENT_NAME" == "push" ]; then
-            echo "depth=$($COMMITS+2)" >> $GITHUB_ENV
+            echo "depth=$($(jq length <<< $COMMITS)+2)" >> $GITHUB_ENV
             echo "branch=$REF" >> $GITHUB_ENV
           fi
           if [ "$EVENT_NAME" == "pull_request" ]; then
@@ -22,7 +22,7 @@ jobs:
           fi
         env:
           REF: ${{ github.ref_name }}
-          COMMITS: ${{ github.event.commits }}
+          COMMITS: ${{ tojson(github.event.commits) }}
           EVENT_NAME: ${{ github.event_name }}
           PR_REF: ${{ github.event.pull_request.head.ref }}
           PR_COMMITS: ${{ github.event.pull_request.commits }}
