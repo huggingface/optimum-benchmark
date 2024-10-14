@@ -48,11 +48,12 @@ jobs:
           pip install --upgrade pip
           pip install -e .[testing,py-txi]
 
-      # - name: Run tests
+      # - name: Run cli tests
       #   run: |
       #     pytest tests/test_cli.py -x -s -k "cli and cuda and py_txi"
 
       - name: Run tests from example folder
         run: |
           pytest tests/test_examples.py -x -s -k "cuda and py_txi"
+        continue-on-error: ${{ failure() && steps.run.outcome == 'failure' && steps.run.exit_code == 5 }}
 

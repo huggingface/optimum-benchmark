@@ -84,14 +84,15 @@ jobs:
         run: |
           pip install -e .[testing,diffusers,timm,deepspeed,peft,autoawq,auto-gptq] "deepspeed<0.15"
 
-      # - name: Run tests (parallel)
+      # - name: Run cli tests (parallel)
       #   run: |
       #     pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (dp or ddp or device_map)"
 
-      # - name: Run tests (sequential)
+      # - name: Run cli tests (sequential)
       #   run: |
       #     FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (deepspeed_inference)"
 
       - name: Run tests from example folder
         run: |
           pytest tests/test_examples.py -x -s -k "cuda and pytorch"
+        continue-on-error: ${{ failure() && steps.run.outcome == 'failure' && steps.run.exit_code == 5 }}

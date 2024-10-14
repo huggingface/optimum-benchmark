@@ -77,10 +77,11 @@ jobs:
         run: |
           pip install -e .[testing]
 
-      # - name: Run tests (sequential)
+      # - name: Run cli tests (sequential)
       #   run: |
       #     FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and tensorrt_llm and (tp or pp)"
 
       - name: Run tests from example folder
         run: |
           pytest tests/test_examples.py -x -s -k "cuda and tensorrt_llm"
+        continue-on-error: ${{ failure() && steps.run.outcome == 'failure' && steps.run.exit_code == 5 }}

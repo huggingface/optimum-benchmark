@@ -12,87 +12,102 @@ LOGGER = getLogger("test-example")
 
 EXAMPLES_DIR = Path(__file__).parent.parent / "examples"
 OUTPUT_DIR = Path(__file__).parent.parent / "runs"
-EXAMPLE_CONFIGS = [f for f in os.listdir(EXAMPLES_DIR) if f.endswith(".yaml") and f != "_base_.yaml"]
+YAML_CONFIGS = [f for f in os.listdir(EXAMPLES_DIR) if f.endswith(".yaml") and f != "_base_.yaml"]
+PYTHON_SCRIPTS = [f for f in os.listdir(EXAMPLES_DIR) if f.endswith(".py")]
 
 # can be run with pytest tests/test_example.py -s -k "cpu and ipex"
-CPU_IPEX_EXAMPLE_CONFIGS = [
+CPU_IPEX_CONFIGS = [
     "ipex_bert.yaml",
     "ipex_llama.yaml",
 ]
 
 # can be run with pytest tests/test_example.py -s -k "cpu and neural-compressor"
-CPU_NEURAL_COMPRESSOR_EXAMPLE_CONFIGS = [
+CPU_NEURAL_COMPRESSOR_CONFIGS = [
     "neural_compressor_ptq_bert.yaml",
     "numactl_bert.yaml",
 ]
 
 # can be run with pytest tests/test_example.py -s -k "cpu and onnxruntime"
-CPU_ONNXRUNTIME_EXAMPLE_CONFIGS = [
+CPU_ONNXRUNTIME_CONFIGS = [
     "onnxruntime_static_quant_vit.yaml",
     "onnxruntime_timm.yaml",
 ]
 
 # can be run with pytest tests/test_example.py -s -k "cpu and openvino"
-CPU_OPENVINO_EXAMPLE_CONFIGS = [
+CPU_OPENVINO_CONFIGS = [
     "openvino_diffusion.yaml",
     "openvino_static_quant_bert.yaml",
 ]
 
 # can be run with pytest tests/test_example.py -s -k "cpu and txi"
-CPU_PY_TXI_EXAMPLE_CONFIGS = [
+CPU_PY_TXI_CONFIGS = [
     "tei_bge.yaml",
 ]
 
 # can be run with pytest tests/test_example.py -s -k "cuda and pytorch"
-CUDA_PYTORCH_EXAMPLE_CONFIGS = [
+CUDA_PYTORCH_CONFIGS = [
     "energy_star.yaml",
     "pytorch_bert.yaml",
     "pytorch_llama.yaml",
 ]
 
 # can be run with pytest tests/test_example.py -s -k "cuda and txi"
-CUDA_PY_TXI_EXAMPLE_CONFIGS = [
+CUDA_PY_TXI_CONFIGS = [
     "tgi_llama.yaml",
 ]
 
 # can be run with pytest tests/test_example.py -s -k "cuda and trt"
-CUDA_TRT_EXAMPLE_CONFIGS = [
+CUDA_TRT_CONFIGS = [
     "trt_llama.yaml",
 ]
 
 # can be run with pytest tests/test_example.py -s -k "cuda and vllm"
-CUDA_VLLM_EXAMPLE_CONFIGS = [
+CUDA_VLLM_CONFIGS = [
     "vllm_llama.yaml",
 ]
 
 # can be run with pytest tests/test_example.py -s -k "mps and llama_cpp"
-MPS_LLAMA_CPP_EXAMPLE_CONFIGS = [
+MPS_LLAMA_CPP_CONFIGS = [
     "llama_cpp_embedding.yaml",
     "llama_cpp_text_generation.yaml",
 ]
 
-ALL_CONFIGS = (
-    CUDA_PYTORCH_EXAMPLE_CONFIGS
-    + CPU_IPEX_EXAMPLE_CONFIGS
-    + MPS_LLAMA_CPP_EXAMPLE_CONFIGS
-    + CPU_NEURAL_COMPRESSOR_EXAMPLE_CONFIGS
-    + CPU_ONNXRUNTIME_EXAMPLE_CONFIGS
-    + CPU_OPENVINO_EXAMPLE_CONFIGS
-    + CPU_PY_TXI_EXAMPLE_CONFIGS
-    + CUDA_PY_TXI_EXAMPLE_CONFIGS
-    + CUDA_TRT_EXAMPLE_CONFIGS
-    + CUDA_VLLM_EXAMPLE_CONFIGS
+CUDA_PYTORCH_SCRIPTS = [
+    "examples/pytorch_bert.py",
+    "examples/pytorch_llama.py",
+]
+
+ALL_YAML_CONFIGS = (
+    CUDA_PYTORCH_CONFIGS
+    + CPU_IPEX_CONFIGS
+    + MPS_LLAMA_CPP_CONFIGS
+    + CPU_NEURAL_COMPRESSOR_CONFIGS
+    + CPU_ONNXRUNTIME_CONFIGS
+    + CPU_OPENVINO_CONFIGS
+    + CPU_PY_TXI_CONFIGS
+    + CUDA_PY_TXI_CONFIGS
+    + CUDA_TRT_CONFIGS
+    + CUDA_VLLM_CONFIGS
 )
 
-assert set(ALL_CONFIGS) == set(EXAMPLE_CONFIGS), (
+ALL_PYTHON_SCRIPTS = CUDA_PYTORCH_SCRIPTS
+
+assert set(ALL_YAML_CONFIGS) == set(YAML_CONFIGS), (
     f"Please add your new example config to the list of configs in test_example.py for it to be integrated in the CI/CD pipeline.\n"
-    f"Difference between ALL_CONFIGS and EXAMPLE_CONFIGS:\n"
-    f"In ALL_CONFIGS but not in EXAMPLE_CONFIGS: {set(ALL_CONFIGS) - set(EXAMPLE_CONFIGS)}\n"
-    f"In EXAMPLE_CONFIGS but not in ALL_CONFIGS: {set(EXAMPLE_CONFIGS) - set(ALL_CONFIGS)}"
+    f"Difference between ALL_YAML_CONFIGS and YAML_CONFIGS:\n"
+    f"In ALL_YAML_CONFIGS but not in YAML_CONFIGS: {set(ALL_YAML_CONFIGS) - set(YAML_CONFIGS)}\n"
+    f"In YAML_CONFIGS but not in ALL_YAML_CONFIGS: {set(YAML_CONFIGS) - set(ALL_YAML_CONFIGS)}"
+)
+
+assert set(PYTHON_SCRIPTS) == set(ALL_PYTHON_SCRIPTS), (
+    f"Please add your new example script to the list of scripts in test_example.py for it to be integrated in the CI/CD pipeline.\n"
+    f"Difference between PYTHON_SCRIPTS and ALL_PYTHON_SCRIPTS:\n"
+    f"In PYTHON_SCRIPTS but not in ALL_PYTHON_SCRIPTS: {set(PYTHON_SCRIPTS) - set(ALL_PYTHON_SCRIPTS)}\n"
+    f"In ALL_PYTHON_SCRIPTS but not in PYTHON_SCRIPTS: {set(ALL_PYTHON_SCRIPTS) - set(PYTHON_SCRIPTS)}"
 )
 
 
-def test_example_configs(config_name):
+def test_yaml_config(config_name):
     args = [
         "optimum-benchmark",
         "--config-dir",
@@ -113,69 +128,67 @@ def test_example_configs(config_name):
     assert len(output_files) > 0, f"No output files found for {config_name}"
 
 
-@pytest.mark.parametrize("config_name", CUDA_PYTORCH_EXAMPLE_CONFIGS)
-def test_cuda_pytorch_examples(config_name):
-    test_example_configs(config_name)
-
-
-@pytest.mark.parametrize("config_name", CPU_IPEX_EXAMPLE_CONFIGS)
-def test_cpu_ipex_examples(config_name):
-    test_example_configs(config_name)
-
-
-@pytest.mark.parametrize("config_name", MPS_LLAMA_CPP_EXAMPLE_CONFIGS)
-def test_mps_llama_cpp_examples(config_name):
-    test_example_configs(config_name)
-
-
-@pytest.mark.parametrize("config_name", CPU_NEURAL_COMPRESSOR_EXAMPLE_CONFIGS)
-def test_cpu_neural_compressor_examples(config_name):
-    test_example_configs(config_name)
-
-
-@pytest.mark.parametrize("config_name", CPU_ONNXRUNTIME_EXAMPLE_CONFIGS)
-def test_cpu_onnxruntime_examples(config_name):
-    test_example_configs(config_name)
-
-
-@pytest.mark.parametrize("config_name", CPU_OPENVINO_EXAMPLE_CONFIGS)
-def test_cpu_openvino_examples(config_name):
-    test_example_configs(config_name)
-
-
-@pytest.mark.parametrize("config_name", CPU_PY_TXI_EXAMPLE_CONFIGS)
-def test_cpu_py_txi_examples(config_name):
-    test_example_configs(config_name)
-
-
-@pytest.mark.parametrize("config_name", CUDA_PY_TXI_EXAMPLE_CONFIGS)
-def test_cuda_py_txi_examples(config_name):
-    test_example_configs(config_name)
-
-
-@pytest.mark.parametrize("config_name", CUDA_TRT_EXAMPLE_CONFIGS)
-def test_cuda_trt_examples(config_name):
-    test_example_configs(config_name)
-
-
-@pytest.mark.parametrize("config_name", CUDA_VLLM_EXAMPLE_CONFIGS)
-def test_cuda_vllm_examples(config_name):
-    test_example_configs(config_name)
-
-
-@pytest.mark.parametrize(
-    "example_file",
-    [
-        "examples/pytorch_bert.py",
-        "examples/pytorch_llama.py",
-    ],
-)
-def test_example_file_execution(example_file):
+def execute_python_script(script_path):
     # Run the example file as a separate process
-    result = subprocess.run([sys.executable, example_file], capture_output=True, text=True)
+    result = subprocess.run([sys.executable, script_path], capture_output=True, text=True)
 
     # Check that the process completed successfully (return code 0)
-    assert result.returncode == 0, f"Example {example_file} failed with error:\n{result.stderr}"
+    assert result.returncode == 0, f"Script {script_path} failed with error:\n{result.stderr}"
 
     # Check that there's no error output
-    assert not result.stderr, f"Example {example_file} produced error output:\n{result.stderr}"
+    assert not result.stderr, f"Script {script_path} produced error output:\n{result.stderr}"
+
+
+@pytest.mark.parametrize("config_name", CUDA_PYTORCH_CONFIGS)
+def test_cuda_pytorch_configs(config_name):
+    test_yaml_config(config_name)
+
+
+@pytest.mark.parametrize("config_name", CPU_IPEX_CONFIGS)
+def test_cpu_ipex_configs(config_name):
+    test_yaml_config(config_name)
+
+
+@pytest.mark.parametrize("config_name", MPS_LLAMA_CPP_CONFIGS)
+def test_mps_llama_cpp_configs(config_name):
+    test_yaml_config(config_name)
+
+
+@pytest.mark.parametrize("config_name", CPU_NEURAL_COMPRESSOR_CONFIGS)
+def test_cpu_neural_compressor_configs(config_name):
+    test_yaml_config(config_name)
+
+
+@pytest.mark.parametrize("config_name", CPU_ONNXRUNTIME_CONFIGS)
+def test_cpu_onnxruntime_configs(config_name):
+    test_yaml_config(config_name)
+
+
+@pytest.mark.parametrize("config_name", CPU_OPENVINO_CONFIGS)
+def test_cpu_openvino_configs(config_name):
+    test_yaml_config(config_name)
+
+
+@pytest.mark.parametrize("config_name", CPU_PY_TXI_CONFIGS)
+def test_cpu_py_txi_configs(config_name):
+    test_yaml_config(config_name)
+
+
+@pytest.mark.parametrize("config_name", CUDA_PY_TXI_CONFIGS)
+def test_cuda_py_txi_configs(config_name):
+    test_yaml_config(config_name)
+
+
+@pytest.mark.parametrize("config_name", CUDA_TRT_CONFIGS)
+def test_cuda_trt_configs(config_name):
+    test_yaml_config(config_name)
+
+
+@pytest.mark.parametrize("config_name", CUDA_VLLM_CONFIGS)
+def test_cuda_vllm_configs(config_name):
+    test_yaml_config(config_name)
+
+
+@pytest.mark.parametrize("script_path", CUDA_PYTORCH_SCRIPTS)
+def test_cuda_pytorch_scripts(script_path):
+    execute_python_script(script_path)

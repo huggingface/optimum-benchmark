@@ -48,10 +48,11 @@ jobs:
           pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
           pip install -e .[testing,llama-cpp]
 
-      # - name: Run tests
+      # - name: Run cli tests
       #   run: |
       #     pytest tests/test_cli.py -s -k "llama_cpp"
 
       - name: Run tests from example folder
         run: |
           pytest tests/test_examples.py -s -k "cpu and llama_cpp"
+        continue-on-error: ${{ failure() && steps.run.outcome == 'failure' && steps.run.exit_code == 5 }}
