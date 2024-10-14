@@ -94,7 +94,9 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
                 )
             self.config.input_shapes["batch_size"] //= torch.distributed.get_world_size()
 
-        self.energy_tracker = EnergyTracker(device=backend.config.device, device_ids=backend.config.device_ids, backend=backend.NAME)
+        self.energy_tracker = EnergyTracker(
+            device=backend.config.device, device_ids=backend.config.device_ids, backend=backend.NAME
+        )
 
         LOGGER.info("\t+ Loading dataset")
         raw_dataset = load_dataset(
