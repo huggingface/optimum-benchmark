@@ -13,11 +13,11 @@ jobs:
       - shell: bash
         run: |
           if [ "$EVENT_NAME" == "push" ]; then
-            echo "depth=$(($(jq length <<< '$COMMITS') + 2))" >> $GITHUB_ENV
+            echo "depth=$($(jq length <<< $COMMITS) + 2)" >> $GITHUB_ENV
             echo "branch=$REF_NAME" >> $GITHUB_ENV
           fi
           if [ "$EVENT_NAME" == "pull_request" ]; then
-            echo "depth=$(($PR_COMMITS+2))" >> $GITHUB_ENV
+            echo "depth=$($PR_COMMITS+2)" >> $GITHUB_ENV
             echo "branch=$PR_REF" >> $GITHUB_ENV
           fi
         env:
