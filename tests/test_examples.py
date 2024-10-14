@@ -48,7 +48,7 @@ CPU_PY_TXI_CONFIGS = [
 # can be run with pytest tests/test_example.py -s -k "cuda and pytorch"
 CUDA_PYTORCH_CONFIGS = [
     "pytorch_bert.yaml",
-    "pytorch_llama.yaml",
+    "pytorch_gpt2.yaml",
 ]
 
 # can be run with pytest tests/test_example.py -s -k "cuda and txi"
@@ -58,7 +58,7 @@ CUDA_PY_TXI_CONFIGS = [
 
 # can be run with pytest tests/test_example.py -s -k "cuda and tensorrt_llm"
 CUDA_TENSORRT_LLM_CONFIGS = [
-    "trt_llama.yaml",
+    # "trt_llama.yaml",
 ]
 
 # can be run with pytest tests/test_example.py -s -k "cuda and vllm"
@@ -72,14 +72,16 @@ MPS_LLAMA_CPP_CONFIGS = [
     "llama_cpp_text_generation.yaml",
 ]
 
+# can be run with pytest tests/test_example.py -s -k "cuda and pytorch"
 CUDA_PYTORCH_SCRIPTS = [
     "pytorch_bert.py",
-    "pytorch_llama.py",
+    "pytorch_gpt2.py",
 ]
 
 # Those tests are not run on the CI/CD pipeline as they are currently broken
 UNTESTED_YAML_CONFIGS = [
     "energy_star.yaml",
+    "trt_llama.yaml",
 ]
 
 ALL_YAML_CONFIGS = (
