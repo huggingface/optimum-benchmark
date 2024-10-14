@@ -114,7 +114,6 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
                 preprocessor=backend.pretrained_processor,
             )
         self.preprocessing_energy = self.energy_tracker.get_energy()
-        self.energy_tracker.reset()
 
         LOGGER.info("\t+ Initialising dataloader")
         self.dataloader = DataLoader(self.dataset, batch_size=self.config.input_shapes["batch_size"])
@@ -197,7 +196,6 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
         self.report.prefill.efficiency = Efficiency.from_energy(
             self.report.prefill.energy, self.text_generation_prefill_volume, unit=TEXT_GENERATION_EFFICIENCY_UNIT
         )
-        self.energy_tracker.reset()
 
         with self.energy_tracker.track():
             for inputs in tqdm(self.dataloader):
@@ -207,7 +205,6 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
         self.report.decode.efficiency = Efficiency.from_energy(
             self.report.decode.energy, self.text_generation_decode_volume, unit=TEXT_GENERATION_EFFICIENCY_UNIT
         )
-        self.energy_tracker.reset()
 
     def run_image_diffusion_energy_tracking(self, backend: Backend[BackendConfigT]):
         LOGGER.info("\t+ Running energy tracking")
@@ -221,7 +218,6 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
         self.report.call.efficiency = Efficiency.from_energy(
             self.report.call.energy, self.image_diffusion_volume, unit=IMAGE_DIFFUSION_EFFICIENCY_UNIT
         )
-        self.energy_tracker.reset()
 
     def run_inference_energy_tracking(self, backend: Backend[BackendConfigT]):
         LOGGER.info("\t+ Running energy tracking")
@@ -235,7 +231,6 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
         self.report.forward.efficiency = Efficiency.from_energy(
             self.report.forward.energy, self.inference_volume, unit=INFERENCE_EFFICIENCY_UNIT
         )
-        self.energy_tracker.reset()
 
     @property
     def inference_volume(self) -> int:  # in samples
