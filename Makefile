@@ -90,6 +90,17 @@ run_trt_container:
 	--workdir /optimum-benchmark \
 	huggingface/optimum-nvidia:latest
 
+run_cloud_cuda_container:
+	docker run \
+	-it \
+	--rm \
+	--pid host \
+	--gpus all \
+	--shm-size 64G \
+	--volume $(PWD):/optimum-benchmark \
+	--workdir /optimum-benchmark \
+	ghcr.io/huggingface/optimum-benchmark:latest-cuda
+
 ## Install extras
 
 install_api_misc:

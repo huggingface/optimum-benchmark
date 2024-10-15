@@ -1,9 +1,13 @@
 import os
+import warnings
 
 from huggingface_hub import whoami
 
 from optimum_benchmark import Benchmark, BenchmarkConfig, InferenceConfig, ProcessConfig, PyTorchConfig
 from optimum_benchmark.logging_utils import setup_logging
+
+if os.environ.get("LOG_LEVEL", "INFO") == "ERROR":
+    warnings.filterwarnings("ignore")  # This disables all warnings
 
 try:
     USERNAME = whoami()["name"]
@@ -65,8 +69,6 @@ def run_benchmark(weight_config: str):
 
 if __name__ == "__main__":
     level = os.environ.get("LOG_LEVEL", "INFO")
-    print("level", level)
-    raise Exception("This is a test exception")
     to_file = os.environ.get("LOG_TO_FILE", "0") == "1"
     setup_logging(level=level, to_file=to_file, prefix="MAIN-PROCESS")
 

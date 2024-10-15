@@ -152,26 +152,25 @@ def test_yaml_config(config_name):
 def execute_python_script(script_name):
     script_path = EXAMPLES_DIR / script_name
     # Run the example file as a separate process
-    process = subprocess.Popen([sys.executable, str(script_path)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    
+    process = subprocess.Popen(
+        [sys.executable, str(script_path)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+    )
+
     # Capture and display output in real-time
     while True:
         output = process.stdout.readline()
-        if output == '' and process.poll() is not None:
+        if output == "" and process.poll() is not None:
             break
         if output:
             print(output.strip())
             sys.stdout.flush()
-    
+
     # Capture any remaining output
     stdout, stderr = process.communicate()
-    
+
     # Create a result object similar to subprocess.run
     result = subprocess.CompletedProcess(
-        args=[sys.executable, str(script_path)],
-        returncode=process.returncode,
-        stdout=stdout,
-        stderr=stderr
+        args=[sys.executable, str(script_path)], returncode=process.returncode, stdout=stdout, stderr=stderr
     )
 
     # Check that the process completed successfully (return code 0)
