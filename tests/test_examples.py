@@ -82,6 +82,7 @@ CUDA_PYTORCH_SCRIPTS = [
 UNTESTED_YAML_CONFIGS = [
     "energy_star.yaml",
     "trt_llama.yaml",
+    "pytorch_bert_mps.yaml",
 ]
 
 ALL_YAML_CONFIGS = (

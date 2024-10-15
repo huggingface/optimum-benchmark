@@ -36,8 +36,7 @@ def run_benchmark():
 
 
 if __name__ == "__main__":
-    # level = os.environ.get("LOG_LEVEL", "INFO")
-    level = "INFO"
+    level = os.environ.get("LOG_LEVEL", "INFO")
     to_file = os.environ.get("LOG_TO_FILE", "0") == "1"
     setup_logging(level=level, to_file=to_file, prefix="MAIN-PROCESS")
 
