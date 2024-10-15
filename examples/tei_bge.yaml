@@ -3,13 +3,10 @@ defaults:
   - scenario: inference
   - launcher: inline
   - backend: py-txi
+  - _base_
   - _self_
 
 name: tei_bert
-
-launcher:
-  device_isolation: true
-  device_isolation_action: warn
 
 backend:
   device: cpu

@@ -25,6 +25,7 @@ jobs:
       (github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch') ||
       contains( github.event.pull_request.labels.*.name, 'cli') ||
+      contains( github.event.pull_request.labels.*.name, 'examples') ||
       contains( github.event.pull_request.labels.*.name, 'rocm') ||
       contains( github.event.pull_request.labels.*.name, 'pytorch') ||
       contains( github.event.pull_request.labels.*.name, 'single_gpu') ||
@@ -49,7 +50,7 @@ jobs:
         run: |
           pip install -e .[testing,diffusers,timm,peft,autoawq,auto-gptq]
 
-      - name: Run tests
+      - name: Run cli tests
         run: |
           pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not bnb"
 
@@ -58,6 +59,7 @@ jobs:
       (github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch') ||
       contains( github.event.pull_request.labels.*.name, 'cli') ||
+      contains( github.event.pull_request.labels.*.name, 'examples') ||
       contains( github.event.pull_request.labels.*.name, 'rocm') ||
       contains( github.event.pull_request.labels.*.name, 'pytorch') ||
       contains( github.event.pull_request.labels.*.name, 'multi_gpu') ||
@@ -82,10 +84,10 @@ jobs:
         run: |
           pip install -e .[testing,diffusers,timm,deepspeed,peft,autoawq,auto-gptq] "deepspeed<0.15"
 
-      - name: Run tests (parallel)
+      - name: Run cli tests (parallel)
         run: |
           pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (dp or ddp or device_map)"
 
-      - name: Run tests (sequential)
+      - name: Run cli tests (sequential)
         run: |
           FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (deepspeed_inference)"

@@ -25,5 +25,4 @@ backend:
   device: cpu
   no_weights: false
   export: true
-  torch_dtype: bfloat16
   model: bert-base-uncased

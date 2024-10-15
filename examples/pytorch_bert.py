@@ -1,9 +1,13 @@
 import os
+import warnings
 
 from huggingface_hub import whoami
 
 from optimum_benchmark import Benchmark, BenchmarkConfig, InferenceConfig, ProcessConfig, PyTorchConfig
 from optimum_benchmark.logging_utils import setup_logging
+
+if os.environ.get("LOG_LEVEL", "INFO") == "ERROR":
+    warnings.filterwarnings("ignore")  # This disables all warnings
 
 try:
     USERNAME = whoami()["name"]

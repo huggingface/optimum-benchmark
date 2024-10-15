@@ -25,6 +25,7 @@ jobs:
       (github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch') ||
       contains( github.event.pull_request.labels.*.name, 'cli') ||
+      contains( github.event.pull_request.labels.*.name, 'examples') ||
       contains( github.event.pull_request.labels.*.name, 'cuda') ||
       contains( github.event.pull_request.labels.*.name, 'pytorch') ||
       contains( github.event.pull_request.labels.*.name, 'single_gpu') ||
@@ -43,12 +44,20 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install dependencies
+        env:
+          LOG_LEVEL: ERROR
         run: |
-          pip install -e .[testing,diffusers,timm,peft,bitsandbytes,autoawq,auto-gptq]
+          pip install -e .[testing,diffusers,timm,peft,bitsandbytes,autoawq,auto-gptq,codecarbon]
 
-      - name: Run tests
+      - name: Run cli tests
         run: |
           pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed)"
+
+      - name: Run tests from example folder
+        env:
+          LOG_LEVEL: ERROR
+        run: |
+          pytest tests/test_examples.py -x -s -k "cuda and pytorch"
 
   run_cli_cuda_pytorch_multi_gpu_tests:
     if: ${{
@@ -76,10 +85,16 @@ jobs:
         run: |
           pip install -e .[testing,diffusers,timm,peft,deepspeed]
 
-      - name: Run tests (parallel)
+      - name: Run cli tests (parallel)
         run: |
           pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (dp or ddp or device_map)"
 
-      - name: Run tests (sequential)
+      - name: Run cli tests (sequential)
         run: |
           FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (deepspeed_inference)"
+
+      - name: Run tests from example folder
+        env:
+          LOG_LEVEL: ERROR
+        run: |
+          FORCE_SEQUENTIAL=1 pytest tests/test_examples.py -x -s -k "cuda and pytorch"

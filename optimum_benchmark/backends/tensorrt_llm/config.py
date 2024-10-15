@@ -24,7 +24,7 @@ class TRTLLMConfig(BackendConfig):
     world_size: int = 1
     gpus_per_node: int = 1
 
-    max_prompt_length: int = 128
+    max_prompt_length: int = 256
     max_new_tokens: int = -1
     max_batch_size: int = 1
     max_beam_width: int = 1

@@ -25,6 +25,7 @@ jobs:
       (github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch') ||
       contains( github.event.pull_request.labels.*.name, 'cli') ||
+      contains( github.event.pull_request.labels.*.name, 'examples') ||
       contains( github.event.pull_request.labels.*.name, 'cuda') ||
       contains( github.event.pull_request.labels.*.name, 'vllm') ||
       contains( github.event.pull_request.labels.*.name, 'single_gpu') ||
@@ -49,12 +50,17 @@ jobs:
       - name: Run tests (sequential)
         run: |
           FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and vllm and not (tp or pp)"
+      
+      - name: Run tests from example folder
+        run: |
+          pytest tests/test_examples.py -x -s -k "cuda and vllm"
 
   run_cli_cuda_vllm_multi_gpu_tests:
     if: ${{
       (github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch') ||
       contains( github.event.pull_request.labels.*.name, 'cli') ||
+      contains( github.event.pull_request.labels.*.name, 'examples') ||
       contains( github.event.pull_request.labels.*.name, 'cuda') ||
       contains( github.event.pull_request.labels.*.name, 'vllm') ||
       contains( github.event.pull_request.labels.*.name, 'multi_gpu') ||
@@ -76,6 +82,10 @@ jobs:
         run: |
           pip install -e .[testing]
 
-      - name: Run tests (sequential)
+      - name: Run cli tests (sequential)
         run: |
           FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and vllm and (tp or pp)"
+
+      - name: Run tests from example folder
+        run: |
+          FORCE_SEQUENTIAL=1 pytest tests/test_examples.py -x -s -k "cuda and vllm"
