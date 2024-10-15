@@ -36,8 +36,8 @@ CPU_ONNXRUNTIME_CONFIGS = [
 
 # can be run with pytest tests/test_example.py -s -k "cpu and openvino"
 CPU_OPENVINO_CONFIGS = [
-    "openvino_diffusion.yaml",
     "openvino_static_quant_bert.yaml",
+    "openvino_diffusion.yaml",
 ]
 
 # can be run with pytest tests/test_example.py -s -k "cpu and txi"
