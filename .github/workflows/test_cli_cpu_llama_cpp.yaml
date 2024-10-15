@@ -48,6 +48,6 @@ jobs:
           pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
           pip install -e .[testing,llama-cpp]
 
-      # - name: Run cli tests
-      #   run: |
-      #     pytest tests/test_cli.py -s -k "llama_cpp"
+      - name: Run cli tests
+        run: |
+          pytest tests/test_cli.py -s -k "llama_cpp"

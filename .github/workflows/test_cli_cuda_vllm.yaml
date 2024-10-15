@@ -50,6 +50,10 @@ jobs:
       - name: Run tests (sequential)
         run: |
           FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and vllm and not (tp or pp)"
+      
+      - name: Run tests from example folder
+        run: |
+          pytest tests/test_examples.py -x -s -k "cuda and vllm"
 
   run_cli_cuda_vllm_multi_gpu_tests:
     if: ${{
@@ -78,10 +82,10 @@ jobs:
         run: |
           pip install -e .[testing]
 
-      # - name: Run cli tests (sequential)
-      #   run: |
-      #     FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and vllm and (tp or pp)"
+      - name: Run cli tests (sequential)
+        run: |
+          FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and vllm and (tp or pp)"
 
       - name: Run tests from example folder
         run: |
-          pytest tests/test_examples.py -x -s -k "cuda and vllm"
+          FORCE_SEQUENTIAL=1 pytest tests/test_examples.py -x -s -k "cuda and vllm"

@@ -124,7 +124,6 @@ class VLLMBackend(Backend[VLLMConfig]):
                     n=kwargs.get("num_return_sequences"),
                     max_tokens=kwargs.get("max_new_tokens"),
                     min_tokens=kwargs.get("min_new_tokens"),
-                    use_beam_search=kwargs.get("num_beams") > 1,
                     logits_processors=kwargs.get("logits_processors", None),
                 ),
             )
@@ -143,7 +142,6 @@ class VLLMBackend(Backend[VLLMConfig]):
                 n=kwargs.get("num_return_sequences"),
                 max_tokens=kwargs.get("max_new_tokens"),
                 min_tokens=kwargs.get("min_new_tokens"),
-                use_beam_search=kwargs.get("num_beams") > 1,
                 logits_processors=kwargs.get("logits_processors", None),
             ),
         )

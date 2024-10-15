@@ -49,11 +49,13 @@ jobs:
         run: |
           pip install -e .[testing,diffusers,timm,peft,bitsandbytes,autoawq,auto-gptq,codecarbon]
 
-      # - name: Run cli tests
-      #   run: |
-      #     pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed)"
+      - name: Run cli tests
+        run: |
+          pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed)"
 
       - name: Run tests from example folder
+        env:
+          LOG_LEVEL: ERROR
         run: |
           pytest tests/test_examples.py -x -s -k "cuda and pytorch"
 
@@ -90,3 +92,9 @@ jobs:
       - name: Run cli tests (sequential)
         run: |
           FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (deepspeed_inference)"
+
+      - name: Run tests from example folder
+        env:
+          LOG_LEVEL: ERROR
+        run: |
+          FORCE_SEQUENTIAL=1 pytest tests/test_examples.py -x -s -k "cuda and pytorch"

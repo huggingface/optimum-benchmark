@@ -48,9 +48,9 @@ jobs:
           pip install --upgrade pip
           pip install -e .[testing,py-txi]
 
-      # - name: Run cli tests
-      #   run: |
-      #     pytest tests/test_cli.py -x -s -k "cli and cuda and py_txi"
+      - name: Run cli tests
+        run: |
+          pytest tests/test_cli.py -x -s -k "cli and cuda and py_txi"
 
       - name: Run tests from example folder
         run: |
