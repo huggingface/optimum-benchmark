@@ -58,7 +58,6 @@ if USE_ROCM:
             "Please install amdsmi from https://github.com/ROCm/amdsmi to enable this feature."
         )
 
-
 EXTRAS_REQUIRE = {
     "quality": ["ruff"],
     "testing": ["pytest", "hydra-joblib-launcher"],
