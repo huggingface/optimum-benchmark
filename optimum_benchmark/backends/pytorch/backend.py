@@ -224,10 +224,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 self.pretrained_model.vae.decode, **self.config.torch_compile_config
             )
 
-        # See https://github.com/huggingface/diffusers/issues/4649
-        if "xl" in self.config.model:
-            self.pretrained_model.unet.config.addition_embed_type = None
-
     def load_timm_model_form_pretrained(self) -> None:
         self.pretrained_model = self.automodel_loader(model_name=self.config.model)
         if self.config.device != "cpu":
