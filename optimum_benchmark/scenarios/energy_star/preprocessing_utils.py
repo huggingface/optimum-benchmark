@@ -90,7 +90,7 @@ def summarization_preprocessing(
     if getattr(tokenizer, "pad_token", None) is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    padding = False if config.input_shapes["batch_size"] == 1 else True
+    padding = config.input_shapes["batch_size"] != 1
 
     def tokenize_function(examples):
         return tokenizer(
