@@ -5,21 +5,15 @@ on:
   push:
     branches:
       - main
-    paths:
-      - .github/workflows/test_cli_cuda_py_txi.yaml
-      - "optimum_benchmark/**"
-      - "docker/**"
-      - "tests/**"
-      - "setup.py"
   pull_request:
     branches:
       - main
-    paths:
-      - .github/workflows/test_cli_cuda_py_txi.yaml
-      - "optimum_benchmark/**"
-      - "docker/**"
-      - "tests/**"
-      - "setup.py"
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - labeled
+      - unlabeled
 
 concurrency:
   cancel-in-progress: true
@@ -27,7 +21,17 @@ concurrency:
 
 jobs:
   run_cli_cuda_py_txi_tests:
-    runs-on: [single-gpu, nvidia-gpu, a10, ci]
+    if: ${{
+      (github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch') ||
+      contains( github.event.pull_request.labels.*.name, 'cli') ||
+      contains( github.event.pull_request.labels.*.name, 'cuda') ||
+      contains( github.event.pull_request.labels.*.name, 'py_txi') ||
+      contains( github.event.pull_request.labels.*.name, 'cli_cuda_py_txi')
+      }}
+
+    runs-on:
+      group: aws-g5-4xlarge-plus
 
     steps:
       - name: Checkout
@@ -44,4 +48,4 @@ jobs:
           pip install -e .[testing,py-txi]
 
       - name: Run tests
-        run: pytest -s -k "cli and cuda and py_txi"
+        run: pytest tests/test_cli.py -x -s -k "cli and cuda and py_txi"

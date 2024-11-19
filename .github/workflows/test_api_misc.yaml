@@ -5,21 +5,15 @@ on:
   push:
     branches:
       - main
-    paths:
-      - .github/workflows/test_api_misc.yaml
-      - "optimum_benchmark/**"
-      - "docker/**"
-      - "tests/**"
-      - "setup.py"
   pull_request:
     branches:
       - main
-    paths:
-      - .github/workflows/test_api_misc.yaml
-      - "optimum_benchmark/**"
-      - "docker/**"
-      - "tests/**"
-      - "setup.py"
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - labeled
+      - unlabeled
 
 concurrency:
   cancel-in-progress: true
@@ -27,16 +21,32 @@ concurrency:
 
 jobs:
   run_api_misc_tests:
-    runs-on: ubuntu-latest
+    if: ${{
+      (github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch') ||
+      contains( github.event.pull_request.labels.*.name, 'api') ||
+      contains( github.event.pull_request.labels.*.name, 'misc') ||
+      contains( github.event.pull_request.labels.*.name, 'api_misc')
+      }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, "macos-latest", windows-latest]
+        python: ["3.8", "3.12"]
+
+    name: OS ${{ matrix.os }} - Python ${{ matrix.python }}
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.10
+      - name: Set up Python ${{ matrix.python }}
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: ${{ matrix.python }}
 
       - name: Install requirements
         run: |
@@ -47,6 +57,6 @@ jobs:
       - name: Run tests
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          PUSH_REPO_ID: optimum-benchmark/misc
+          PUSH_REPO_ID: optimum-benchmark/misc-${{ matrix.os }}-${{ matrix.python }}
         run: |
-          pytest -s -k "api and not (cpu or cuda or rocm or mps)"
+          pytest tests/test_api.py -s -k "api and not (cpu or cuda or rocm or mps)"

@@ -64,7 +64,13 @@ def test_api_launch(device, scenario, library, task, model):
 
     if scenario == "training":
         if library == "transformers":
-            scenario_config = TrainingConfig(memory=True, latency=True, warmup_steps=2, max_steps=5)
+            scenario_config = TrainingConfig(
+                memory=True,
+                latency=True,
+                energy=not is_rocm_system(),
+                warmup_steps=2,
+                max_steps=5,
+            )
         else:
             pytest.skip("Training scenario is only available for Transformers library")
 
@@ -96,6 +102,8 @@ def test_api_launch(device, scenario, library, task, model):
         scenario=scenario_config,
         launcher=launcher_config,
         backend=backend_config,
+        print_report=True,
+        log_report=True,
     )
     benchmark_report = Benchmark.launch(benchmark_config)
 
@@ -117,6 +125,8 @@ def test_api_push_to_hub_mixin():
         scenario=scenario_config,
         launcher=launcher_config,
         backend=backend_config,
+        print_report=True,
+        log_report=True,
     )
     benchmark_report = Benchmark.launch(benchmark_config)
     benchmark = Benchmark(config=benchmark_config, report=benchmark_report)

@@ -5,21 +5,15 @@ on:
   push:
     branches:
       - main
-    paths:
-      - .github/workflows/test_api_rocm.yaml
-      - "optimum_benchmark/**"
-      - "docker/**"
-      - "tests/**"
-      - "setup.py"
   pull_request:
     branches:
       - main
-    paths:
-      - .github/workflows/test_api_rocm.yaml
-      - "optimum_benchmark/**"
-      - "docker/**"
-      - "tests/**"
-      - "setup.py"
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - labeled
+      - unlabeled
 
 concurrency:
   cancel-in-progress: true
@@ -27,6 +21,14 @@ concurrency:
 
 jobs:
   run_api_rocm_tests:
+    if: ${{
+      (github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch') ||
+      contains( github.event.pull_request.labels.*.name, 'api') ||
+      contains( github.event.pull_request.labels.*.name, 'rocm') ||
+      contains( github.event.pull_request.labels.*.name, 'api_rocm')
+      }}
+
     runs-on: [self-hosted, amd-gpu, single-gpu]
 
     container:
@@ -38,7 +40,6 @@ jobs:
         --device /dev/dri
         --env ROCR_VISIBLE_DEVICES
         --env HIP_VISIBLE_DEVICES=0
-        --volume /mnt/cache/.cache/huggingface:/mnt/cache/
 
     steps:
       - name: Checkout
@@ -53,4 +54,4 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PUSH_REPO_ID: optimum-benchmark/rocm
         run: |
-          pytest -s -x -k "api and cuda"
+          pytest tests/test_api.py -x -s -k "api and cuda"

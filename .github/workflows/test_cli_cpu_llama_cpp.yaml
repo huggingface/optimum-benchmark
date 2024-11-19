@@ -5,21 +5,15 @@ on:
   push:
     branches:
       - main
-    paths:
-      - .github/workflows/test_cli_llama_cpp.yaml
-      - "optimum_benchmark/**"
-      - "docker/**"
-      - "tests/**"
-      - "setup.py"
   pull_request:
     branches:
       - main
-    paths:
-      - .github/workflows/test_cli_llama_cpp.yaml
-      - "optimum_benchmark/**"
-      - "docker/**"
-      - "tests/**"
-      - "setup.py"
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - labeled
+      - unlabeled
 
 concurrency:
   cancel-in-progress: true
@@ -27,6 +21,15 @@ concurrency:
 
 jobs:
   run_cli_cpu_llama_cpp_tests:
+    if: ${{
+      (github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch') ||
+      contains( github.event.pull_request.labels.*.name, 'cli') ||
+      contains( github.event.pull_request.labels.*.name, 'cpu') ||
+      contains( github.event.pull_request.labels.*.name, 'llama_cpp') ||
+      contains( github.event.pull_request.labels.*.name, 'cli_cpu_llama_cpp')
+      }}
+
     runs-on: ubuntu-latest
 
     steps:
@@ -45,4 +48,4 @@ jobs:
           pip install -e .[testing,llama-cpp]
 
       - name: Run tests
-        run: pytest -s -k "llama_cpp"
+        run: pytest tests/test_cli.py -s -k "llama_cpp"

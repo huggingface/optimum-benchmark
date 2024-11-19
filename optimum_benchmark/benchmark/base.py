@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from logging import getLogger
 from typing import TYPE_CHECKING, Type
 
 from hydra.utils import get_class
@@ -14,6 +15,9 @@ if TYPE_CHECKING:
     from ..backends.base import Backend
     from ..launchers.base import Launcher
     from ..scenarios.base import Scenario
+
+
+LOGGER = getLogger("benchmark")
 
 
 @dataclass
@@ -32,8 +36,8 @@ class Benchmark(PushToHubMixin):
         elif not isinstance(self.report, BenchmarkReport):
             raise ValueError("report must be either a dict or a BenchmarkReport instance")
 
-    @classmethod
-    def launch(cls, config: BenchmarkConfig):
+    @staticmethod
+    def launch(config: BenchmarkConfig):
         """
         Runs an benchmark using specified launcher configuration/logic
         """
@@ -44,12 +48,18 @@ class Benchmark(PushToHubMixin):
         launcher: Launcher = launcher_factory(launcher_config)
 
         # Launch the benchmark using the launcher
-        report = launcher.launch(worker=cls.run, worker_args=[config])
+        report = launcher.launch(worker=Benchmark.run, worker_args=[config])
+
+        if config.log_report:
+            report.log()
+
+        if config.print_report:
+            report.print()
 
         return report
 
-    @classmethod
-    def run(cls, config: BenchmarkConfig):
+    @staticmethod
+    def run(config: BenchmarkConfig):
         """
         Runs a scenario using specified backend configuration/logic
         """

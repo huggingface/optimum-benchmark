@@ -27,15 +27,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pip install --no-cache-dir --upgrade pip setuptools wheel requests
 
 # Install PyTorch
+ARG TORCH_VERSION=""
 ARG TORCH_CUDA=cu124
-ARG TORCH_VERSION=stable
+ARG TORCH_RELEASE_TYPE=stable
 
-RUN if [ "${TORCH_VERSION}" = "stable" ]; then \
-    pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
-elif [ "${TORCH_VERSION}" = "nighly" ]; then \
-    pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
-else \
+RUN if [ -n "${TORCH_VERSION}" ]; then \
     pip install --no-cache-dir torch==${TORCH_VERSION} torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
+elif [ "${TORCH_RELEASE_TYPE}" = "stable" ]; then \
+    pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
+elif [ "${TORCH_RELEASE_TYPE}" = "nightly" ]; then \
+    pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/${TORCH_CUDA} ; \
+else \
+    echo "Error: Invalid TORCH_RELEASE_TYPE. Must be 'stable', 'nightly', or specify a TORCH_VERSION." && exit 1 ; \
 fi
 
 # Install quantization libraries from source

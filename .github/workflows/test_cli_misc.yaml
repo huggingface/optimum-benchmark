@@ -5,31 +5,37 @@ on:
   push:
     branches:
       - main
-    paths:
-      - .github/workflows/test_cli_misc.yaml
-      - "optimum_benchmark/**"
-      - "tests/**"
-      - "setup.py"
   pull_request:
     branches:
       - main
-    paths:
-      - .github/workflows/test_cli_misc.yaml
-      - "optimum_benchmark/**"
-      - "tests/**"
-      - "setup.py"
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - labeled
+      - unlabeled
 
 concurrency:
   cancel-in-progress: true
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
 jobs:
-  run_misc_cli_tests:
+  run_cli_misc_tests:
+    if: ${{
+      (github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch') ||
+      contains( github.event.pull_request.labels.*.name, 'cli') ||
+      contains( github.event.pull_request.labels.*.name, 'misc') ||
+      contains( github.event.pull_request.labels.*.name, 'cli_misc')
+      }}
+
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, "macos-latest", windows-latest]
         python: ["3.8", "3.12"]
+
+    name: OS ${{ matrix.os }} - Python ${{ matrix.python }}
 
     runs-on: ${{ matrix.os }}
 
@@ -52,7 +58,8 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-          pip install -e .[testing,timm,diffusers,codecarbon]
+          pip install -e .[testing]
 
       - name: Run tests
-        run: pytest -s -k "cli and not (cpu or cuda or rocm or mps)"
+        run: |
+          pytest tests/test_cli.py -s -k "cli and not (cpu or cuda or rocm or mps)"

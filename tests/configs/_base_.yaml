@@ -5,6 +5,9 @@ defaults:
   - scenario: inference # default scenario
   - _self_
 
+print_report: true
+log_report: true
+
 # hydra/cli specific settings
 hydra:
   run:

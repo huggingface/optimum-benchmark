@@ -1,21 +1,20 @@
 import time
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from logging import getLogger
 from typing import List, Literal, Optional, Union
 
-from ..import_utils import is_torch_distributed_available
-
-if is_torch_distributed_available():
-    import torch.distributed
-
 import numpy as np
 import torch
+from rich.console import Console
+from rich.markdown import Markdown
 from transformers import LogitsProcessor, TrainerCallback
 
+CONSOLE = Console()
 LOGGER = getLogger("latency")
 
 LATENCY_UNIT = "s"
+
 Latency_Unit_Literal = Literal["s"]
 Throughput_Unit_Literal = Literal["samples/s", "tokens/s", "images/s", "steps/s"]
 
@@ -24,16 +23,17 @@ Throughput_Unit_Literal = Literal["samples/s", "tokens/s", "images/s", "steps/s"
 class Latency:
     unit: Latency_Unit_Literal
 
+    values: List[float]
+
     count: int
     total: float
     mean: float
-    stdev: float
     p50: float
     p90: float
     p95: float
     p99: float
-
-    values: List[float]
+    stdev: float
+    stdev_: float
 
     def __getitem__(self, index) -> float:
         if isinstance(index, slice):
@@ -46,7 +46,9 @@ class Latency:
     def __sub__(self, latency: "Latency") -> "Latency":
         latencies = [lat - latency.mean for lat in self.values]
 
-        assert not any(latency < 0 for latency in latencies), "Negative latency detected"
+        assert not any(
+            latency < 0 for latency in latencies
+        ), "Negative latency detected. Please increase the dimensions of your benchmark (inputs/warmup/iterations)."
 
         return Latency.from_values(values=latencies, unit=self.unit)
 
@@ -65,28 +67,53 @@ class Latency:
     def from_values(values: List[float], unit: str) -> "Latency":
         return Latency(
             unit=unit,
+            values=values,
             count=len(values),
             total=sum(values),
             mean=np.mean(values),
-            stdev=np.std(values),
             p50=np.percentile(values, 50),
             p90=np.percentile(values, 90),
             p95=np.percentile(values, 95),
             p99=np.percentile(values, 99),
-            values=values,
+            stdev=np.std(values) if len(values) > 1 else 0,
+            stdev_=(np.std(values) / np.abs(np.mean(values))) * 100 if len(values) > 1 else 0,
         )
 
-    def log(self, prefix: str = ""):
-        stdev_percentage = 100 * self.stdev / self.mean if self.mean > 0 else 0
-        LOGGER.info(f"\t\t+ {prefix} latency:")
-        LOGGER.info(f"\t\t\t- count: {self.count}")
-        LOGGER.info(f"\t\t\t- total: {self.total:f} {self.unit}")
-        LOGGER.info(f"\t\t\t- mean: {self.mean:f} {self.unit}")
-        LOGGER.info(f"\t\t\t- stdev: {self.stdev:f} {self.unit} ({stdev_percentage:.2f}%)")
-        LOGGER.info(f"\t\t\t- p50: {self.p50:f} {self.unit}")
-        LOGGER.info(f"\t\t\t- p90: {self.p90:f} {self.unit}")
-        LOGGER.info(f"\t\t\t- p95: {self.p95:f} {self.unit}")
-        LOGGER.info(f"\t\t\t- p99: {self.p99:f} {self.unit}")
+    def to_plain_text(self) -> str:
+        plain_text = ""
+        plain_text += "\t\t+ count: {count}\n"
+        plain_text += "\t\t+ total: {total:.6f} ({unit})\n"
+        plain_text += "\t\t+ mean: {mean:.6f} ({unit})\n"
+        plain_text += "\t\t+ p50: {p50:.6f} ({unit})\n"
+        plain_text += "\t\t+ p90: {p90:.6f} ({unit})\n"
+        plain_text += "\t\t+ p95: {p95:.6f} ({unit})\n"
+        plain_text += "\t\t+ p99: {p99:.6f} ({unit})\n"
+        plain_text += "\t\t+ stdev: {stdev:.6f} ({unit})\n"
+        plain_text += "\t\t+ stdev_: {stdev_:.2f} (%)\n"
+        return plain_text.format(**asdict(self))
+
+    def log(self):
+        for line in self.to_plain_text().split("\n"):
+            if line:
+                LOGGER.info(line)
+
+    def to_markdown_text(self) -> str:
+        markdown_text = ""
+        markdown_text += "| metric | value        | unit   |\n"
+        markdown_text += "| :----- | -----------: |------: |\n"
+        markdown_text += "| count  |      {count} |      - |\n"
+        markdown_text += "| total  |    {total:f} | {unit} |\n"
+        markdown_text += "| mean   |     {mean:f} | {unit} |\n"
+        markdown_text += "| p50    |      {p50:f} | {unit} |\n"
+        markdown_text += "| p90    |      {p90:f} | {unit} |\n"
+        markdown_text += "| p95    |      {p95:f} | {unit} |\n"
+        markdown_text += "| p99    |      {p99:f} | {unit} |\n"
+        markdown_text += "| stdev  |    {stdev:f} | {unit} |\n"
+        markdown_text += "| stdev_ | {stdev_:.2f} |      % |\n"
+        return markdown_text.format(**asdict(self))
+
+    def print(self):
+        CONSOLE.print(Markdown(self.to_markdown_text()))
 
 
 @dataclass
@@ -112,21 +139,38 @@ class Throughput:
         value = volume / latency.mean if latency.mean > 0 else 0
         return Throughput(value=value, unit=unit)
 
-    def log(self, prefix: str = "method"):
-        LOGGER.info(f"\t\t+ {prefix} throughput: {self.value:f} {self.unit}")
+    def to_plain_text(self) -> str:
+        plain_text = ""
+        plain_text += "\t\t+ throughput: {value:.2f} ({unit})\n"
+        return plain_text.format(**asdict(self))
+
+    def log(self):
+        for line in self.to_plain_text().split("\n"):
+            if line:
+                LOGGER.info(line)
+
+    def to_markdown_text(self) -> str:
+        markdown_text = ""
+        markdown_text += "| metric     |     value   |   unit |\n"
+        markdown_text += "| :--------- | --------:   | -----: |\n"
+        markdown_text += "| throughput | {value:.2f} | {unit} |\n"
+        return markdown_text.format(**asdict(self))
+
+    def print(self):
+        CONSOLE.print(Markdown(self.to_markdown_text()))
 
 
 class LatencyTracker:
     def __init__(self, device: str, backend: str):
         self.device = device
         self.backend = backend
-        self.is_asynchronous = self.backend == "pytorch" and self.device == "cuda"
-        self.is_distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
-        if self.is_asynchronous:
-            LOGGER.info("\t+ Tracking latency using Pytorch CUDA events")
+        self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
+
+        if self.is_pytorch_cuda:
+            LOGGER.info("\t\t+ Tracking latency using Pytorch CUDA events")
         else:
-            LOGGER.info("\t+ Tracking latency using CPU performance counter")
+            LOGGER.info("\t\t+ Tracking latency using CPU performance counter")
 
         self.start_time: Optional[float] = None
         self.start_events: List[Union[float, torch.cuda.Event]] = []
@@ -139,16 +183,10 @@ class LatencyTracker:
 
     @contextmanager
     def track(self):
-        if self.is_distributed:
-            torch.distributed.barrier()
-
-        if self.is_asynchronous:
+        if self.is_pytorch_cuda:
             yield from self._pytorch_cuda_latency()
         else:
             yield from self._cpu_latency()
-
-        if self.is_distributed:
-            torch.distributed.barrier()
 
     def _pytorch_cuda_latency(self):
         self.start_events.append(torch.cuda.Event(enable_timing=True))
@@ -167,7 +205,7 @@ class LatencyTracker:
         self.end_events.append(time.perf_counter())
 
     def get_latency(self) -> Latency:
-        if self.is_asynchronous:
+        if self.is_pytorch_cuda:
             torch.cuda.synchronize()
 
             latencies_list = [
@@ -176,7 +214,9 @@ class LatencyTracker:
         else:
             latencies_list = [(self.end_events[i] - self.start_events[i]) for i in range(len(self.start_events))]
 
-        assert not any(latency < 0 for latency in latencies_list), "Negative latency detected"
+        assert not any(
+            latency < 0 for latency in latencies_list
+        ), "Negative latency detected. Please increase the dimensions of your benchmark (inputs/warmup/iterations)."
 
         return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
 
@@ -202,13 +242,13 @@ class StepLatencyTrainerCallback(TrainerCallback):
     def __init__(self, device: str, backend: str) -> None:
         self.device = device
         self.backend = backend
-        self.is_asynchronous = self.backend == "pytorch" and self.device == "cuda"
-        self.is_distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
-        if self.is_asynchronous:
-            LOGGER.info("\t+ Tracking latency using Pytorch CUDA events")
+        self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
+
+        if self.is_pytorch_cuda:
+            LOGGER.info("\t\t+ Tracking latency using Pytorch CUDA events")
         else:
-            LOGGER.info("\t+ Tracking latency using CPU performance counter")
+            LOGGER.info("\t\t+ Tracking latency using CPU performance counter")
 
         self.start_events: List[Union[float, torch.cuda.Event]] = []
         self.end_events: List[Union[float, torch.cuda.Event]] = []
@@ -218,21 +258,21 @@ class StepLatencyTrainerCallback(TrainerCallback):
         self.end_events = []
 
     def on_step_begin(self, *args, **kwargs):
-        if self.is_asynchronous:
+        if self.is_pytorch_cuda:
             self.start_events.append(torch.cuda.Event(enable_timing=True))
             self.start_events[-1].record()
         else:
             self.start_events.append(time.perf_counter())
 
     def on_step_end(self, *args, **kwargs):
-        if self.is_asynchronous:
+        if self.is_pytorch_cuda:
             self.end_events.append(torch.cuda.Event(enable_timing=True))
             self.end_events[-1].record()
         else:
             self.end_events.append(time.perf_counter())
 
     def get_latency(self) -> Latency:
-        if self.is_asynchronous:
+        if self.is_pytorch_cuda:
             torch.cuda.synchronize()
 
             latencies_list = [
@@ -241,7 +281,9 @@ class StepLatencyTrainerCallback(TrainerCallback):
         else:
             latencies_list = [(self.end_events[i] - self.start_events[i]) for i in range(len(self.start_events))]
 
-        assert not any(latency < 0 for latency in latencies_list), "Negative latency detected"
+        assert not any(
+            latency < 0 for latency in latencies_list
+        ), "Negative latency detected. Please increase the dimensions of your benchmark (inputs/warmup/iterations)."
 
         return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
 
@@ -250,13 +292,13 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
     def __init__(self, device: str, backend: str):
         self.device = device
         self.backend = backend
-        self.is_asynchronous = self.backend == "pytorch" and self.device == "cuda"
-        self.is_distributed = is_torch_distributed_available() and torch.distributed.is_initialized()
 
-        if self.is_asynchronous:
-            LOGGER.info("\t+ Tracking latency using Pytorch CUDA events")
+        self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
+
+        if self.is_pytorch_cuda:
+            LOGGER.info("\t\t+ Tracking latency using Pytorch CUDA events")
         else:
-            LOGGER.info("\t+ Tracking latency using CPU performance counter")
+            LOGGER.info("\t\t+ Tracking latency using CPU performance counter")
 
         self.start_time: Optional[float] = None
         self.prefilled: Optional[bool] = None
@@ -282,27 +324,19 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         self.prefilled = False
         self.per_token_events.append([])
 
-        if self.is_distributed:
-            torch.distributed.barrier()
-
-        if self.is_asynchronous:
+        if self.is_pytorch_cuda:
             self.prefill_start_events.append(torch.cuda.Event(enable_timing=True))
             self.prefill_start_events[-1].record()
         else:
             self.prefill_start_events.append(time.perf_counter())
 
-        # this is where generate is called,
-        # and for each decoded token, we record an event
         yield
 
-        if self.is_asynchronous:
+        if self.is_pytorch_cuda:
             self.decode_end_events.append(torch.cuda.Event(enable_timing=True))
             self.decode_end_events[-1].record()
         else:
             self.decode_end_events.append(time.perf_counter())
-
-        if self.is_distributed:
-            torch.distributed.barrier()
 
         self.prefilled = False
 
@@ -311,7 +345,7 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
             self.prefilled is not None
         ), "PerTokenLatencyLogitsProcessor should only be called inside of track() context"
 
-        if self.is_asynchronous:
+        if self.is_pytorch_cuda:
             event = torch.cuda.Event(enable_timing=True)
             event.record()
         else:
@@ -327,7 +361,7 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         return scores
 
     def get_prefill_latency(self) -> Latency:
-        if self.is_asynchronous:
+        if self.is_pytorch_cuda:
             torch.cuda.synchronize()
 
             latencies_list = [
@@ -340,12 +374,14 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
                 for i in range(len(self.prefill_start_events))
             ]
 
-        assert not any(latency < 0 for latency in latencies_list), "Negative latency detected"
+        assert not any(
+            latency < 0 for latency in latencies_list
+        ), "Negative latency detected. Please increase the dimensions of your benchmark (inputs/warmup/iterations)."
 
         return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
 
     def get_decode_latency(self) -> Latency:
-        if self.is_asynchronous:
+        if self.is_pytorch_cuda:
             torch.cuda.synchronize()
 
             latencies_list = [
@@ -357,12 +393,14 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
                 (self.decode_end_events[i] - self.decode_start_events[i]) for i in range(len(self.decode_start_events))
             ]
 
-        assert not any(latency < 0 for latency in latencies_list), "Negative latency detected"
+        assert not any(
+            latency < 0 for latency in latencies_list
+        ), "Negative latency detected. Please increase the dimensions of your benchmark (inputs/warmup/iterations)."
 
         return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
 
     def get_per_token_latency(self) -> Latency:
-        if self.is_asynchronous:
+        if self.is_pytorch_cuda:
             torch.cuda.synchronize()
 
             latencies_list = [
@@ -377,7 +415,9 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
                 for j in range(0, len(self.per_token_events[i]) - 1)
             ]
 
-        assert not any(latency < 0 for latency in latencies_list), "Negative latency detected"
+        assert not any(
+            latency < 0 for latency in latencies_list
+        ), "Negative latency detected. Please increase the dimensions of your benchmark (inputs/warmup/iterations)."
 
         return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
 
