@@ -1,25 +1,16 @@
-import os
 from contextlib import ExitStack
 
-import torch
 from datasets import load_dataset
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from ...backends.base import Backend, BackendConfigT
 from ...benchmark.report import BenchmarkReport
-from ...import_utils import is_torch_distributed_available
+from ...preprocessors.dataset_preprocessor import TASKS_TO_PREPROCESSORS
 from ...task_utils import IMAGE_DIFFUSION_TASKS, TEXT_GENERATION_TASKS
 from ...trackers.energy import Efficiency, Energy, EnergyTracker
 from ..base import Scenario
 from .config import EnergyStarConfig
-from .preprocessing_utils import preprocess
-
-if is_torch_distributed_available():
-    import torch.distributed
-
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
-
 
 PER_TOKEN_BACKENDS = ["pytorch", "onnxruntime", "openvino", "neural-compressor"]
 
@@ -30,6 +21,8 @@ TEXT_GENERATION_DEFAULT_KWARGS = {
     "temperature": 1.0,
     "do_sample": False,
     "use_cache": True,
+    "pad_token_id": 0,
+    "eos_token_id": 0,
     "num_beams": 1,
 }
 TEXT_GENERATION_PREFILL_OVERRIDES = {
@@ -61,20 +54,12 @@ INFERENCE_EFFICIENCY_UNIT = "samples/kWh"
 
 
 class EnergyStarScenario(Scenario[EnergyStarConfig]):
-    NAME = "energy_star"
+    NAME = "energy-star"
 
     def __init__(self, config: EnergyStarConfig) -> None:
         super().__init__(config)
 
     def run(self, backend: Backend[BackendConfigT]) -> BenchmarkReport:
-        if is_torch_distributed_available() and torch.distributed.is_initialized():
-            self.logger.info("\t+ Distributing batch size across processes")
-            if self.config.input_shapes["batch_size"] % torch.distributed.get_world_size() != 0:
-                raise ValueError(
-                    "The batch size must be divisible by the number of processes in a distributed environment"
-                )
-            self.config.input_shapes["batch_size"] //= torch.distributed.get_world_size()
-
         self.logger.info("\t+ Loading raw dataset")
         raw_dataset = load_dataset(
             self.config.dataset_name,
@@ -82,11 +67,11 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
             split=self.config.dataset_split,
         )
 
-        if backend.config.task in TEXT_GENERATION_TASKS and backend.pretrained_model.can_generate():
+        if backend.config.task in TEXT_GENERATION_TASKS:
             self.logger.info("\t+ Updating Text Generation kwargs with default values")
             self.config.generate_kwargs = {**TEXT_GENERATION_DEFAULT_KWARGS, **self.config.generate_kwargs}
             self.logger.info("\t+ Initializing Text Generation report")
-            BenchmarkReport.from_list(targets=["preprocess", "load", "prefill", "decode", "per_token"])
+            self.report = BenchmarkReport.from_list(targets=["preprocess", "load", "prefill", "decode", "per_token"])
         elif backend.config.task in IMAGE_DIFFUSION_TASKS:
             self.logger.info("\t+ Updating Image Diffusion kwargs with default values")
             self.config.call_kwargs = {**IMAGE_DIFFUSION_DEFAULT_KWARGS, **self.config.call_kwargs}
@@ -100,14 +85,13 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
             backend=backend.config.name, device=backend.config.device, device_ids=backend.config.device_ids
         )
 
-        self.logger.info("\t+ Preprocessing dataset")
+        self.logger.info("\t+ Preprocessing raw dataset")
         with self.energy_tracker.track(file_prefix="preprocess"):
-            self.dataset = preprocess(
+            self.dataset = TASKS_TO_PREPROCESSORS[backend.config.task](
                 dataset=raw_dataset,
-                task=backend.config.task,
-                config=self.config,
-                preprocessor=backend.pretrained_processor,
+                scenario_config=self.config,
                 pretrained_config=backend.pretrained_config,
+                pretrained_processor=backend.pretrained_processor,
             )
 
         self.report.preprocess.energy = self.energy_tracker.get_energy()
@@ -117,7 +101,10 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
             unit=PREPROCESSING_EFFICIENCY_UNIT,
         )
 
-        self.run_model_loading_tracking(backend)
+        with self.energy_tracker.track(file_prefix="load"):
+            self.run_model_loading_tracking(backend)
+
+        self.report.load.energy = self.energy_tracker.get_energy()
 
         self.logger.info("\t+ Initialising dataloader")
         self.dataloader = DataLoader(self.dataset, batch_size=self.config.input_shapes["batch_size"])
