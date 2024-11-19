@@ -47,6 +47,7 @@ TEXT_GENERATION_TASKS = [
     "image-to-text",
     "conversational",
     "text-generation",
+    "image-text-to-text",
     "text2text-generation",
     "automatic-speech-recognition",
 ]

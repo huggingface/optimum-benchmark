@@ -47,6 +47,7 @@ TASKS_TO_MODEL_LOADERS = {
     "image-to-text": "AutoModelForVision2Seq",
     "text-generation": "AutoModelForCausalLM",
     "text2text-generation": "AutoModelForSeq2SeqLM",
+    "image-text-to-text": "AutoModelForImageTextToText",
     "visual-question-answering": "AutoModelForVisualQuestionAnswering",
     "automatic-speech-recognition": ("AutoModelForSpeechSeq2Seq", "AutoModelForCTC"),
 }
@@ -125,22 +126,27 @@ def extract_transformers_shapes_from_artifacts(
     shapes = {}
 
     # text input
-    shapes["vocab_size"] = artifacts_dict.get("vocab_size", None)
-    shapes["type_vocab_size"] = artifacts_dict.get("type_vocab_size", None)
-    shapes["max_position_embeddings"] = artifacts_dict.get("max_position_embeddings", None)
-    if shapes["max_position_embeddings"] is None:
-        shapes["max_position_embeddings"] = artifacts_dict.get("n_positions", None)
+    if "vocab_size" in artifacts_dict:
+        shapes["vocab_size"] = artifacts_dict["vocab_size"]
+
+    if "type_vocab_size" in artifacts_dict:
+        shapes["type_vocab_size"] = artifacts_dict["type_vocab_size"]
+
+    if "max_position_embeddings" in artifacts_dict:
+        shapes["max_position_embeddings"] = artifacts_dict["max_position_embeddings"]
+    elif "n_positions" in artifacts_dict:
+        shapes["max_position_embeddings"] = artifacts_dict["n_positions"]
 
     # image input
-    shapes["num_channels"] = artifacts_dict.get("num_channels", None)
-    if shapes["num_channels"] is None:
-        # processors have different names for the number of channels
+    if "num_channels" in artifacts_dict:
         shapes["num_channels"] = artifacts_dict.get("channels", None)
 
-    image_size = artifacts_dict.get("image_size", None)
-    if image_size is None:
-        # processors have different names for the image size
-        image_size = artifacts_dict.get("size", None)
+    if "image_size" in artifacts_dict:
+        image_size = artifacts_dict["image_size"]
+    elif "size" in artifacts_dict:
+        image_size = artifacts_dict["size"]
+    else:
+        image_size = None
 
     if isinstance(image_size, (int, float)):
         shapes["height"] = image_size
@@ -154,29 +160,37 @@ def extract_transformers_shapes_from_artifacts(
     elif isinstance(image_size, dict) and len(image_size) == 1:
         shapes["height"] = list(image_size.values())[0]
         shapes["width"] = list(image_size.values())[0]
-    else:
-        shapes["height"] = None
-        shapes["width"] = None
 
-    input_size = artifacts_dict.get("input_size", None)
-    if input_size is not None:
+    if "input_size" in artifacts_dict:
+        input_size = artifacts_dict["input_size"]
         shapes["num_channels"] = input_size[0]
         shapes["height"] = input_size[1]
         shapes["width"] = input_size[2]
 
     # classification labels
-    id2label = artifacts_dict.get("id2label", None)
-    if id2label is not None:
+    if "id2label" in artifacts_dict:
+        id2label = artifacts_dict["id2label"]
         shapes["num_labels"] = len(id2label)
-
-    num_classes = artifacts_dict.get("num_classes", None)
-    if num_classes is not None:
-        shapes["num_labels"] = num_classes
+    elif "num_classes" in artifacts_dict:
+        shapes["num_labels"] = artifacts_dict["num_classes"]
 
     # object detection labels
-    shapes["num_queries"] = artifacts_dict.get("num_queries", None)
-    if shapes["num_queries"] == 0:
-        shapes["num_queries"] = 2
+    if "num_queries" in artifacts_dict:
+        shapes["num_queries"] = artifacts_dict["num_queries"]
+
+    # image-text input
+    if "image_token_id" in artifacts_dict:
+        shapes["image_token_id"] = artifacts_dict["image_token_id"]
+
+    if "vision_config" in artifacts_dict:
+        if "in_chans" in artifacts_dict["vision_config"]:
+            shapes["num_channels"] = artifacts_dict["vision_config"]["in_chans"]
+        if "patch_size" in artifacts_dict["vision_config"]:
+            shapes["patch_size"] = artifacts_dict["vision_config"]["patch_size"]
+        if "temporal_patch_size" in artifacts_dict["vision_config"]:
+            shapes["temporal_patch_size"] = artifacts_dict["vision_config"]["temporal_patch_size"]
+        if "spatial_merge_size" in artifacts_dict["vision_config"]:
+            shapes["spatial_merge_size"] = artifacts_dict["vision_config"]["spatial_merge_size"]
 
     return shapes
 

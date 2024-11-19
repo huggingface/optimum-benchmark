@@ -35,15 +35,17 @@ def extract_timm_shapes_from_config(config: PretrainedConfig) -> Dict[str, Any]:
     shapes = {}
 
     # image input
-    shapes["num_channels"] = artifacts_dict.get("num_channels", None)
-    if shapes["num_channels"] is None:
-        # processors have different names for the number of channels
+    if "num_channels" in artifacts_dict:
+        shapes["num_channels"] = artifacts_dict.get("num_channels", None)
+    elif "channels" in artifacts_dict:
         shapes["num_channels"] = artifacts_dict.get("channels", None)
 
-    image_size = artifacts_dict.get("image_size", None)
-    if image_size is None:
-        # processors have different names for the image size
-        image_size = artifacts_dict.get("size", None)
+    if "image_size" in artifacts_dict:
+        image_size = artifacts_dict["image_size"]
+    elif "size" in artifacts_dict:
+        image_size = artifacts_dict["size"]
+    else:
+        image_size = None
 
     if isinstance(image_size, (int, float)):
         shapes["height"] = image_size
@@ -57,24 +59,19 @@ def extract_timm_shapes_from_config(config: PretrainedConfig) -> Dict[str, Any]:
     elif isinstance(image_size, dict) and len(image_size) == 1:
         shapes["height"] = list(image_size.values())[0]
         shapes["width"] = list(image_size.values())[0]
-    else:
-        shapes["height"] = None
-        shapes["width"] = None
 
-    input_size = artifacts_dict.get("input_size", None)
-    if input_size is not None:
+    if "input_size" in artifacts_dict:
+        input_size = artifacts_dict.get("input_size", None)
         shapes["num_channels"] = input_size[0]
         shapes["height"] = input_size[1]
         shapes["width"] = input_size[2]
 
     # classification labels
-    id2label = artifacts_dict.get("id2label", None)
-    if id2label is not None:
+    if "id2label" in artifacts_dict:
+        id2label = artifacts_dict["id2label"]
         shapes["num_labels"] = len(id2label)
-
-    num_classes = artifacts_dict.get("num_classes", None)
-    if num_classes is not None:
-        shapes["num_labels"] = num_classes
+    elif "num_classes" in artifacts_dict:
+        shapes["num_labels"] = artifacts_dict["num_classes"]
 
     return shapes
 
