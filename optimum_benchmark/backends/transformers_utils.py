@@ -111,19 +111,22 @@ def get_flat_dict(d: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def get_flat_artifact_dict(artifact: Union[PretrainedConfig, PretrainedProcessor]) -> Dict[str, Any]:
-    if isinstance(artifact, ProcessorMixin):
-        artifact_dict = {}
+    artifact_dict = {}
 
+    if isinstance(artifact, ProcessorMixin):
+        artifact_dict.update(
+            {k: v for k, v in artifact.__dict__.items() if isinstance(v, (int, str, float, bool, list, tuple, dict))}
+        )
         for attribute in artifact.attributes:
-            artifact_dict.update(get_flat_artifact_dict(attribute))
+            artifact_dict.update(get_flat_artifact_dict(getattr(artifact, attribute)))
+    elif hasattr(artifact, "to_dict"):
+        artifact_dict.update(
+            {k: v for k, v in artifact.to_dict().items() if isinstance(v, (int, str, float, bool, list, tuple, dict))}
+        )
     else:
-        if hasattr(artifact, "to_dict"):
-            artifact_dict = {k: v for k, v in artifact.to_dict().items() if v is not None}
-        else:
-            try:
-                artifact_dict = {k: getattr(artifact, k) for k in dir(artifact) if getattr(artifact, k) is not None}
-            except Exception:
-                pass
+        artifact_dict.update(
+            {k: v for k, v in artifact.__dict__.items() if isinstance(v, (int, str, float, bool, list, tuple, dict))}
+        )
 
     artifact_dict = get_flat_dict(artifact_dict)
 
@@ -198,16 +201,22 @@ def extract_transformers_shapes_from_artifacts(
         shapes["num_queries"] = flat_artifacts_dict["num_queries"]
 
     # image-text input
-    if "image_token_id" in flat_artifacts_dict:
-        shapes["image_token_id"] = flat_artifacts_dict["image_token_id"]
-    if "in_chans" in flat_artifacts_dict:
-        shapes["num_channels"] = flat_artifacts_dict["in_chans"]
+
     if "patch_size" in flat_artifacts_dict:
         shapes["patch_size"] = flat_artifacts_dict["patch_size"]
-    if "temporal_patch_size" in flat_artifacts_dict:
-        shapes["temporal_patch_size"] = flat_artifacts_dict["temporal_patch_size"]
+    if "in_chans" in flat_artifacts_dict:
+        shapes["num_channels"] = flat_artifacts_dict["in_chans"]
+    if "image_seq_len" in flat_artifacts_dict:
+        shapes["image_seq_len"] = flat_artifacts_dict["image_seq_len"]
+    if "image_token_id" in flat_artifacts_dict:
+        shapes["image_token_id"] = flat_artifacts_dict["image_token_id"]
     if "spatial_merge_size" in flat_artifacts_dict:
         shapes["spatial_merge_size"] = flat_artifacts_dict["spatial_merge_size"]
+    if "do_image_splitting" in flat_artifacts_dict:
+        shapes["do_image_splitting"] = flat_artifacts_dict["do_image_splitting"]
+
+    if "temporal_patch_size" in flat_artifacts_dict:
+        shapes["temporal_patch_size"] = flat_artifacts_dict["temporal_patch_size"]
 
     return shapes
 

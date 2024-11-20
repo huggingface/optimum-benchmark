@@ -60,7 +60,10 @@ class InferenceScenario(Scenario[InferenceConfig]):
     def run(self, backend: Backend[BackendConfigT]) -> BenchmarkReport:
         self.logger.info("\t+ Creating input generator")
         self.input_generator = InputGenerator(
-            task=backend.config.task, model_shapes=backend.model_shapes, input_shapes=self.config.input_shapes
+            task=backend.config.task,
+            input_shapes=self.config.input_shapes,
+            model_shapes=backend.model_shapes,
+            model_type=backend.config.model_type,
         )
 
         if backend.config.task in TEXT_GENERATION_TASKS:

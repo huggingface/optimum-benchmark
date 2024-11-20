@@ -17,7 +17,7 @@ backend:
   device_ids: 0
   no_weights: true
   torch_dtype: float16
-  model: Qwen/Qwen2-VL-7B-Instruct
+  model: HuggingFaceM4/idefics2-8b
 
 scenario:
   memory: true
@@ -32,7 +32,7 @@ scenario:
     batch_size: 1
     sequence_length: 256
     # image
-    num_images: 1
+    num_images: 2
     num_channels: 3
     height: 224
     width: 224

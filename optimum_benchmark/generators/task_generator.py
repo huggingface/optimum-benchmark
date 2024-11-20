@@ -1,11 +1,6 @@
 import logging
-import random
-import string
-from abc import ABC
-from typing import Dict, List, Tuple
 
-# TODO: drop torch dependency and use numpy instead
-import torch
+from .base import BaseGenerator
 
 LOGGER = logging.getLogger("generators")
 
@@ -14,56 +9,13 @@ DEFAULT_VOCAB_SIZE = 2
 DEFAULT_TYPE_VOCAB_SIZE = 2
 
 
-class TaskGenerator(ABC):
-    def __init__(self, shapes: Dict[str, int], with_labels: bool):
-        self.shapes = shapes
-        self.with_labels = with_labels
-
-    def assert_not_missing_shapes(self, required_shapes: List[str]):
-        for shape in required_shapes:
-            assert self.shapes.get(shape, None) is not None, (
-                f"{shape} either couldn't be inferred automatically from model artifacts or should be provided by the user. "
-                f"Please provide it under `scenario.input_shapes.{shape}` or open an issue/PR in optimum-benchmark repository. "
-            )
-
-    @staticmethod
-    def generate_constant_integers(value: int, shape: Tuple[int]):
-        return torch.full(shape, value, dtype=torch.int64)
-
-    @staticmethod
-    def generate_constant_floats(value: float, shape: Tuple[int]):
-        return torch.full(shape, value, dtype=torch.float32)
-
-    @staticmethod
-    def generate_random_integers(min_value: int, max_value: int, shape: Tuple[int]):
-        return torch.randint(min_value, max_value, shape)
-
-    @staticmethod
-    def generate_random_floats(min_value: float, max_value: float, shape: Tuple[int]):
-        return torch.rand(shape) * (max_value - min_value) + min_value
-
-    @staticmethod
-    def generate_ranges(start: int, stop: int, shape: Tuple[int]):
-        return torch.arange(start, stop).repeat(shape[0], 1)
-
-    @staticmethod
-    def generate_random_strings(num_seq: int) -> List[str]:
-        return [
-            "".join(random.choice(string.ascii_letters + string.digits) for _ in range(random.randint(10, 100)))
-            for _ in range(num_seq)
-        ]
-
-    def __call__(self):
-        raise NotImplementedError("Generator must implement __call__ method")
-
-
-class TextGenerator(TaskGenerator):
+class TextGenerator(BaseGenerator):
     def input_ids(self):
         self.assert_not_missing_shapes(["batch_size", "sequence_length"])
 
         return self.generate_random_integers(
             min_value=0,
-            max_value=self.shapes.get("vocab_size", None) or DEFAULT_VOCAB_SIZE,
+            max_value=self.shapes.get("vocab_size", DEFAULT_VOCAB_SIZE),
             shape=(self.shapes["batch_size"], self.shapes["sequence_length"]),
         )
 
@@ -80,7 +32,7 @@ class TextGenerator(TaskGenerator):
 
         return self.generate_random_integers(
             min_value=0,
-            max_value=self.shapes.get("type_vocab_size", None) or DEFAULT_TYPE_VOCAB_SIZE,
+            max_value=self.shapes.get("type_vocab_size", DEFAULT_TYPE_VOCAB_SIZE),
             shape=(self.shapes["batch_size"], self.shapes["sequence_length"]),
         )
 
@@ -102,7 +54,7 @@ class TextGenerator(TaskGenerator):
         )
 
 
-class ImageGenerator(TaskGenerator):
+class ImageGenerator(BaseGenerator):
     def pixel_values(self):
         self.assert_not_missing_shapes(["batch_size", "num_channels", "height", "width"])
 
@@ -118,7 +70,7 @@ class ImageGenerator(TaskGenerator):
         )
 
 
-class AudioGenerator(TaskGenerator):
+class AudioGenerator(BaseGenerator):
     def input_values(self):
         self.assert_not_missing_shapes(["batch_size", "sequence_length"])
 
@@ -151,7 +103,7 @@ class TextClassificationGenerator(TextGenerator):
 
         return self.generate_random_integers(
             min_value=0,
-            max_value=self.shapes["num_labels"] or DEFAULT_NUM_LABELS,
+            max_value=self.shapes.get("num_labels", DEFAULT_NUM_LABELS),
             shape=(self.shapes["batch_size"],),
         )
 
@@ -179,7 +131,7 @@ class TokenClassificationGenerator(TextGenerator):
 
         return self.generate_random_integers(
             min_value=0,
-            max_value=self.shapes["num_labels"] or DEFAULT_NUM_LABELS,
+            max_value=self.shapes.get("num_labels", DEFAULT_NUM_LABELS),
             shape=(self.shapes["batch_size"], self.shapes["sequence_length"]),
         )
 
@@ -319,7 +271,7 @@ class ImageClassificationGenerator(ImageGenerator):
 
         return self.generate_random_integers(
             min_value=0,
-            max_value=self.shapes["num_labels"] or DEFAULT_NUM_LABELS,
+            max_value=self.shapes.get("num_labels", DEFAULT_NUM_LABELS),
             shape=(self.shapes["batch_size"],),
         )
 
@@ -341,7 +293,7 @@ class ObjectDetectionGenerator(ImageGenerator):
             {
                 "class_labels": self.generate_random_integers(
                     min_value=0,
-                    max_value=self.shapes["num_labels"] or DEFAULT_NUM_LABELS,
+                    max_value=self.shapes.get("num_labels", DEFAULT_NUM_LABELS),
                     shape=(self.shapes["num_queries"],),
                 ),
                 "boxes": self.generate_random_floats(min_value=-1, max_value=1, shape=(self.shapes["num_queries"], 4)),
@@ -365,7 +317,7 @@ class SemanticSegmentationGenerator(ImageGenerator):
 
         return self.generate_random_integers(
             min_value=0,
-            max_value=self.shapes["num_labels"] or DEFAULT_NUM_LABELS,
+            max_value=self.shapes.get("num_labels", DEFAULT_NUM_LABELS),
             shape=(self.shapes["batch_size"], self.shapes["height"], self.shapes["width"]),
         )
 
@@ -384,7 +336,7 @@ class AudioClassificationGenerator(AudioGenerator):
         self.assert_not_missing_shapes(["batch_size"])
 
         return self.generate_random_integers(
-            min_value=0, max_value=self.shapes["num_labels"] or DEFAULT_NUM_LABELS, shape=(self.shapes["batch_size"],)
+            min_value=0, max_value=self.shapes.get("num_labels", DEFAULT_NUM_LABELS), shape=(self.shapes["batch_size"],)
         )
 
     def __call__(self):
@@ -417,7 +369,7 @@ class AutomaticSpeechRecognitionGenerator(AudioGenerator):
         return dummy
 
 
-class PromptGenerator(TaskGenerator):
+class PromptGenerator(BaseGenerator):
     def prompt(self):
         self.assert_not_missing_shapes(["batch_size"])
 
@@ -434,9 +386,7 @@ class FeatureExtractionGenerator(TextGenerator, ImageGenerator):
     def __call__(self):
         dummy = {}
 
-        if self.shapes.get("num_channels", None) is not None and self.shapes.get("height", None) is not None:
-            dummy["pixel_values"] = self.pixel_values()
-        else:
+        if self.shapes.get("sequence_length", None) is not None:
             dummy["input_ids"] = self.input_ids()
             dummy["attention_mask"] = self.attention_mask()
 
@@ -446,92 +396,8 @@ class FeatureExtractionGenerator(TextGenerator, ImageGenerator):
             if self.requires_position_ids():
                 dummy["position_ids"] = self.position_ids()
 
-        return dummy
-
-
-class ImageTextToTextGenerationGenerator(TaskGenerator):
-    def input_ids(self):
-        self.assert_not_missing_shapes(
-            [
-                "batch_size",
-                "sequence_length",
-                "num_images",
-                "num_channels",
-                "height",
-                "width",
-                "patch_size",
-                "temporal_patch_size",
-                "spatial_merge_size",
-                "image_token_id",
-            ]
-        )
-
-        text_tokens = self.generate_random_integers(
-            min_value=0,
-            max_value=self.shapes.get("vocab_size", None) or DEFAULT_VOCAB_SIZE,
-            shape=(
-                self.shapes["batch_size"],
-                self.shapes["sequence_length"],
-            ),
-        )
-        image_tokens = self.generate_constant_integers(
-            value=self.shapes["image_token_id"],
-            shape=(
-                self.shapes["batch_size"],
-                int(
-                    self.shapes["num_images"]
-                    * self.shapes["height"]
-                    * self.shapes["width"]
-                    / self.shapes["temporal_patch_size"]
-                    / self.shapes["spatial_merge_size"]
-                    / self.shapes["patch_size"] ** 2
-                ),
-            ),
-        )
-
-        return torch.cat((text_tokens, image_tokens), dim=1)
-
-    def pixel_values(self):
-        self.assert_not_missing_shapes(
-            ["num_images", "num_channels", "height", "width", "patch_size", "temporal_patch_size"]
-        )
-
-        return self.generate_random_floats(
-            min_value=0,
-            max_value=1,
-            shape=(
-                self.shapes["num_images"]
-                * int(self.shapes["height"] / self.shapes["patch_size"])
-                * int(self.shapes["width"] / self.shapes["patch_size"]),
-                self.shapes["num_channels"]
-                * self.shapes["patch_size"]
-                * self.shapes["patch_size"]
-                * self.shapes["temporal_patch_size"],
-            ),
-        )
-
-    def image_grid_thw(self):
-        self.assert_not_missing_shapes(["num_images", "height", "width", "patch_size"])
-
-        return torch.tensor(
-            [
-                [
-                    self.shapes["num_images"],
-                    int(self.shapes["height"] / self.shapes["patch_size"]),
-                    int(self.shapes["width"] / self.shapes["patch_size"]),
-                ]
-            ]
-        )
-
-    def __call__(self):
-        dummy = {}
-
-        dummy["input_ids"] = self.input_ids()
-        dummy["pixel_values"] = self.pixel_values()
-        dummy["image_grid_thw"] = self.image_grid_thw()
-
-        if self.with_labels:
-            dummy["labels"] = self.input_ids()
+        if self.shapes.get("height", None) is not None:
+            dummy["pixel_values"] = self.pixel_values()
 
         return dummy
 
@@ -549,7 +415,6 @@ TASKS_TO_GENERATORS = {
     "image-classification": ImageClassificationGenerator,
     "object-detection": ObjectDetectionGenerator,
     "semantic-segmentation": SemanticSegmentationGenerator,
-    "image-text-to-text": ImageTextToTextGenerationGenerator,
     # diffusers pipelines tasks
     "text-to-image": PromptGenerator,
     "stable-diffusion": PromptGenerator,
