@@ -161,7 +161,7 @@ def extract_transformers_shapes_from_artifacts(
 
     # image input
     if "num_channels" in flat_artifacts_dict:
-        shapes["num_channels"] = flat_artifacts_dict.get("channels", None)
+        shapes["num_channels"] = flat_artifacts_dict["num_channels"]
 
     if "image_size" in flat_artifacts_dict:
         image_size = flat_artifacts_dict["image_size"]

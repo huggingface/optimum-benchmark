@@ -255,5 +255,5 @@ class Qwen2VLGenerator(BaseGenerator):
 MODEL_TYPE_TO_GENERATORS = {
     "idefics": IdeficsGenerator,
     "idefics2": Idefics2Generator,
-    "qwen2-vl": Qwen2VLGenerator,
+    "qwen2_vl": Qwen2VLGenerator,
 }

@@ -21,8 +21,6 @@ TEXT_GENERATION_DEFAULT_KWARGS = {
     "min_new_tokens": 100,
     "do_sample": False,
     "use_cache": True,
-    "pad_token_id": 0,
-    "eos_token_id": 0,
     "num_beams": 1,
 }
 TEXT_GENERATION_PREFILL_OVERRIDES = {

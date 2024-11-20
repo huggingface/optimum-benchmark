@@ -17,7 +17,7 @@ backend:
   device_ids: 0
   no_weights: true
   torch_dtype: float16
-  model: HuggingFaceM4/idefics2-8b
+  model: Qwen/Qwen2-VL-7B-Instruct
 
 scenario:
   memory: true

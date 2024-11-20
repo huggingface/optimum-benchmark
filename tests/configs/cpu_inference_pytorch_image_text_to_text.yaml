@@ -1,0 +1,11 @@
+defaults:
+  # order of inheritance, last one overrides previous ones
+  - _base_ # inherits from base config
+  - _cpu_ # inherits from cpu config
+  - _inference_ # inherits from inference config
+  - _image_text_to_text_ # inherits from image text to text config
+  - _no_weights_ # inherits from no weights config
+  - _self_ # hydra 1.1 compatibility
+  - override backend: pytorch
+
+name: cpu_inference_pytorch_image_text_to_text

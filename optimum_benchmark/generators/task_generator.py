@@ -402,6 +402,20 @@ class FeatureExtractionGenerator(TextGenerator, ImageGenerator):
         return dummy
 
 
+class ImageTextToTextGenerator(TextGenerator, ImageGenerator):
+    def __call__(self):
+        dummy = {}
+
+        dummy["input_ids"] = self.input_ids()
+        dummy["attention_mask"] = self.attention_mask()
+        dummy["pixel_values"] = self.pixel_values()
+
+        if self.with_labels:
+            dummy["labels"] = self.input_ids()
+
+        return dummy
+
+
 TASKS_TO_GENERATORS = {
     # transformers models tasks
     "feature-extraction": FeatureExtractionGenerator,
@@ -415,6 +429,7 @@ TASKS_TO_GENERATORS = {
     "image-classification": ImageClassificationGenerator,
     "object-detection": ObjectDetectionGenerator,
     "semantic-segmentation": SemanticSegmentationGenerator,
+    "image-text-to-text": ImageTextToTextGenerator,
     # diffusers pipelines tasks
     "text-to-image": PromptGenerator,
     "stable-diffusion": PromptGenerator,
