@@ -9,11 +9,11 @@ class DatasetGenerator:
     task_generator: TaskGenerator
 
     def __init__(self, task: str, dataset_shapes: Dict[str, int], model_shapes: Dict[str, int]) -> None:
-        dataset_shapes["batch_size"] = dataset_shapes["dataset_size"]
+        dataset_shapes["batch_size"] = dataset_shapes.pop("dataset_size", None)
 
         if task in TASKS_TO_GENERATORS:
-            shapes = {**dataset_shapes, **model_shapes}
-            self.task_generator = TASKS_TO_GENERATORS[task](shapes=shapes, with_labels=True)
+            all_shapes = {**model_shapes, **dataset_shapes}  # dataset_shapes take precedence over model_shapes
+            self.task_generator = TASKS_TO_GENERATORS[task](shapes=all_shapes, with_labels=True)
         else:
             raise NotImplementedError(
                 f"Task {task} is supported. \n"

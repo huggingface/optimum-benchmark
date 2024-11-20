@@ -1,3 +1,4 @@
+import warnings
 from typing import Any, Dict
 
 from transformers import PretrainedConfig
@@ -66,12 +67,8 @@ def extract_timm_shapes_from_config(config: PretrainedConfig) -> Dict[str, Any]:
         shapes["height"] = input_size[1]
         shapes["width"] = input_size[2]
 
-    # classification labels
-    if "id2label" in artifacts_dict:
-        id2label = artifacts_dict["id2label"]
-        shapes["num_labels"] = len(id2label)
-    elif "num_classes" in artifacts_dict:
-        shapes["num_labels"] = artifacts_dict["num_classes"]
+    if "num_classes" not in artifacts_dict:
+        warnings.warn("Could not extract shapes [num_channels, height, width] from timm model config.")
 
     return shapes
 

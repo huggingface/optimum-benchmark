@@ -19,6 +19,13 @@ class TaskGenerator(ABC):
         self.shapes = shapes
         self.with_labels = with_labels
 
+    def assert_not_missing_shapes(self, required_shapes: List[str]):
+        for shape in required_shapes:
+            assert self.shapes.get(shape, None) is not None, (
+                f"{shape} either couldn't be inferred automatically from model artifacts or should be provided by the user. "
+                f"Please provide it under `scenario.input_shapes.{shape}` or open an issue/PR in optimum-benchmark repository. "
+            )
+
     @staticmethod
     def generate_constant_integers(value: int, shape: Tuple[int]):
         return torch.full(shape, value, dtype=torch.int64)
@@ -52,14 +59,7 @@ class TaskGenerator(ABC):
 
 class TextGenerator(TaskGenerator):
     def input_ids(self):
-        assert self.shapes.get("batch_size", None) is not None, (
-            "Batch size must be provided, "
-            "please provide it in `input_shapes` as `batch_size` to be able to generate input ids."
-        )
-        assert self.shapes.get("sequence_length", None) is not None, (
-            "Sequence length must be provided, "
-            "please provide it in `input_shapes` as `sequence_length` to be able to generate input ids."
-        )
+        self.assert_not_missing_shapes(["batch_size", "sequence_length"])
 
         return self.generate_random_integers(
             min_value=0,
@@ -68,14 +68,7 @@ class TextGenerator(TaskGenerator):
         )
 
     def attention_mask(self):
-        assert self.shapes.get("batch_size", None) is not None, (
-            "Batch size must be provided, "
-            "please provide it in `input_shapes` as `batch_size` to be able to generate attention masks."
-        )
-        assert self.shapes.get("sequence_length", None) is not None, (
-            "Sequence length must be provided, "
-            "please provide it in `input_shapes` as `sequence_length` to be able to generate attention masks."
-        )
+        self.assert_not_missing_shapes(["batch_size", "sequence_length"])
 
         return self.generate_constant_integers(
             value=1,  # no sparsity
@@ -83,14 +76,7 @@ class TextGenerator(TaskGenerator):
         )
 
     def token_type_ids(self):
-        assert self.shapes.get("batch_size", None) is not None, (
-            "Batch size must be provided, "
-            "please provide it in `input_shapes` as `batch_size` to be able to generate token type ids."
-        )
-        assert self.shapes.get("sequence_length", None) is not None, (
-            "Sequence length must be provided, "
-            "please provide it in `input_shapes` as `sequence_length` to be able to generate token type ids."
-        )
+        self.assert_not_missing_shapes(["batch_size", "sequence_length"])
 
         return self.generate_random_integers(
             min_value=0,
@@ -99,14 +85,7 @@ class TextGenerator(TaskGenerator):
         )
 
     def position_ids(self):
-        assert self.shapes.get("batch_size", None) is not None, (
-            "Batch size must be provided, "
-            "please provide it in `input_shapes` as `batch_size` to be able to generate position ids."
-        )
-        assert self.shapes.get("sequence_length", None) is not None, (
-            "Sequence length must be provided, "
-            "please provide it in `input_shapes` as `sequence_length` to be able to generate position ids."
-        )
+        self.assert_not_missing_shapes(["batch_size", "sequence_length"])
 
         return self.generate_ranges(
             start=0,
@@ -125,22 +104,7 @@ class TextGenerator(TaskGenerator):
 
 class ImageGenerator(TaskGenerator):
     def pixel_values(self):
-        assert self.shapes.get("batch_size", None) is not None, (
-            "Batch size must be provided, "
-            "please provide it in `input_shapes` as `batch_size` to be able to generate pixel values."
-        )
-        assert self.shapes.get("num_channels", None) is not None, (
-            "Number of channels couldn't be inferred automatically from model, "
-            "please provide it in `input_shapes` as `num_channels` to be able to generate pixel values."
-        )
-        assert self.shapes.get("height", None) is not None, (
-            "Height couldn't be inferred automatically from model, "
-            "please provide it in `input_shapes` as `height` to be able to generate pixel values."
-        )
-        assert self.shapes.get("width", None) is not None, (
-            "Width couldn't be inferred automatically from model, "
-            "please provide it in `input_shapes` as `width` to be able to generate pixel values."
-        )
+        self.assert_not_missing_shapes(["batch_size", "num_channels", "height", "width"])
 
         return self.generate_random_floats(
             min_value=0,
@@ -156,14 +120,8 @@ class ImageGenerator(TaskGenerator):
 
 class AudioGenerator(TaskGenerator):
     def input_values(self):
-        assert self.shapes.get("batch_size", None) is not None, (
-            "Batch size must be provided, "
-            "please provide it in `input_shapes` as `batch_size` to be able to generate input values."
-        )
-        assert self.shapes.get("sequence_length", None) is not None, (
-            "Sequence length must be provided, "
-            "please provide it in `input_shapes` as `sequence_length` to be able to generate input values."
-        )
+        self.assert_not_missing_shapes(["batch_size", "sequence_length"])
+
         return self.generate_random_floats(
             min_value=-1,
             max_value=1,
@@ -174,18 +132,7 @@ class AudioGenerator(TaskGenerator):
         )
 
     def input_features(self):
-        assert self.shapes.get("batch_size", None) is not None, (
-            "Batch size must be provided, "
-            "please provide it in `input_shapes` as `batch_size` to be able to generate input features."
-        )
-        assert self.shapes.get("feature_size", None) is not None, (
-            "Feature size couldn't be inferred automatically from model, "
-            "please provide it in `input_shapes` as `feature_size` to be able to generate input features."
-        )
-        assert self.shapes.get("nb_max_frames", None) is not None, (
-            "Number of max frames couldn't be inferred automatically from model, "
-            "please provide it in `input_shapes` as `nb_max_frames` to be able to generate input features."
-        )
+        self.assert_not_missing_shapes(["batch_size", "feature_size", "nb_max_frames"])
 
         return self.generate_random_floats(
             min_value=-1,
@@ -200,10 +147,7 @@ class AudioGenerator(TaskGenerator):
 
 class TextClassificationGenerator(TextGenerator):
     def labels(self):
-        assert self.shapes.get("batch_size", None) is not None, (
-            "Batch size must be provided, "
-            "please provide it in `input_shapes` as `batch_size` to be able to generate labels."
-        )
+        self.assert_not_missing_shapes(["batch_size"])
 
         return self.generate_random_integers(
             min_value=0,
@@ -231,14 +175,7 @@ class TextClassificationGenerator(TextGenerator):
 
 class TokenClassificationGenerator(TextGenerator):
     def labels(self):
-        assert self.shapes.get("batch_size", None) is not None, (
-            "Batch size must be provided, "
-            "please provide it in `input_shapes` as `batch_size` to be able to generate labels."
-        )
-        assert self.shapes.get("sequence_length", None) is not None, (
-            "Sequence length must be provided, "
-            "please provide it in `input_shapes` as `sequence_length` to be able to generate labels."
-        )
+        self.assert_not_missing_shapes(["batch_size", "sequence_length"])
 
         return self.generate_random_integers(
             min_value=0,
@@ -290,14 +227,7 @@ class Text2TextGenerationGenerator(TextGenerator):
 
 class QuestionAnsweringGenerator(TextGenerator):
     def start_positions(self):
-        assert self.shapes.get("batch_size", None) is not None, (
-            "Batch size must be provided, "
-            "please provide it in `input_shapes` as `batch_size` to be able to generate start positions."
-        )
-        assert self.shapes.get("sequence_length", None) is not None, (
-            "Sequence length must be provided, "
-            "please provide it in `input_shapes` as `sequence_length` to be able to generate start positions."
-        )
+        self.assert_not_missing_shapes(["batch_size", "sequence_length"])
 
         return self.generate_random_integers(
             min_value=0,
@@ -306,14 +236,7 @@ class QuestionAnsweringGenerator(TextGenerator):
         )
 
     def end_positions(self):
-        assert self.shapes.get("batch_size", None) is not None, (
-            "Batch size must be provided, "
-            "please provide it in `input_shapes` as `batch_size` to be able to generate end positions."
-        )
-        assert self.shapes.get("sequence_length", None) is not None, (
-            "Sequence length must be provided, "
-            "please provide it in `input_shapes` as `sequence_length` to be able to generate end positions."
-        )
+        self.assert_not_missing_shapes(["batch_size", "sequence_length"])
 
         return self.generate_random_integers(
             min_value=0,
@@ -356,14 +279,7 @@ class MaskedLanguageModelingGenerator(TextGenerator):
 
 class MultipleChoiceGenerator(TextGenerator):
     def labels(self):
-        assert self.shapes.get("batch_size", None) is not None, (
-            "Batch size must be provided, "
-            "please provide it in `input_shapes` as `batch_size` to be able to generate labels."
-        )
-        assert self.shapes.get("num_choices", None) is not None, (
-            "Number of choices must be provided, "
-            "please provide it in `input_shapes` as `num_choices` to be able to generate labels."
-        )
+        self.assert_not_missing_shapes(["batch_size", "num_choices"])
 
         return self.generate_random_integers(
             min_value=0, max_value=self.shapes["num_choices"], shape=(self.shapes["batch_size"],)
@@ -399,10 +315,7 @@ class MultipleChoiceGenerator(TextGenerator):
 
 class ImageClassificationGenerator(ImageGenerator):
     def labels(self):
-        assert self.shapes.get("batch_size", None) is not None, (
-            "Batch size must be provided, "
-            "please provide it in `input_shapes` as `batch_size` to be able to generate labels."
-        )
+        self.assert_not_missing_shapes(["batch_size"])
 
         return self.generate_random_integers(
             min_value=0,
@@ -422,14 +335,7 @@ class ImageClassificationGenerator(ImageGenerator):
 
 class ObjectDetectionGenerator(ImageGenerator):
     def labels(self):
-        assert self.shapes.get("batch_size", None) is not None, (
-            "Batch size must be provided, "
-            "please provide it in `input_shapes` as `batch_size` to be able to generate labels."
-        )
-        assert self.shapes.get("num_queries", None) is not None, (
-            "Number of queries must be provided, "
-            "please provide it in `input_shapes` as `num_queries` to be able to generate labels."
-        )
+        self.assert_not_missing_shapes(["batch_size", "num_queries"])
 
         return [
             {
@@ -455,18 +361,7 @@ class ObjectDetectionGenerator(ImageGenerator):
 
 class SemanticSegmentationGenerator(ImageGenerator):
     def labels(self):
-        assert self.shapes.get("batch_size", None) is not None, (
-            "Batch size must be provided, "
-            "please provide it in `input_shapes` as `batch_size` to be able to generate labels."
-        )
-        assert self.shapes.get("height", None) is not None, (
-            "Height couldn't be inferred automatically from model, "
-            "please provide it in `input_shapes` as `height` to be able to generate labels."
-        )
-        assert self.shapes.get("width", None) is not None, (
-            "Width couldn't be inferred automatically from model, "
-            "please provide it in `input_shapes` as `width` to be able to generate labels."
-        )
+        self.assert_not_missing_shapes(["batch_size", "height", "width"])
 
         return self.generate_random_integers(
             min_value=0,
@@ -486,14 +381,7 @@ class SemanticSegmentationGenerator(ImageGenerator):
 
 class AudioClassificationGenerator(AudioGenerator):
     def labels(self):
-        assert self.shapes.get("batch_size", None) is not None, (
-            "Batch size must be provided, "
-            "please provide it in `input_shapes` as `batch_size` to be able to generate labels."
-        )
-        assert self.shapes.get("num_labels", None) is not None, (
-            "Number of labels couldn't be inferred automatically from model, "
-            "please provide it in `input_shapes` as `num_labels` to be able to generate labels."
-        )
+        self.assert_not_missing_shapes(["batch_size"])
 
         return self.generate_random_integers(
             min_value=0, max_value=self.shapes["num_labels"] or DEFAULT_NUM_LABELS, shape=(self.shapes["batch_size"],)
@@ -511,18 +399,7 @@ class AudioClassificationGenerator(AudioGenerator):
 
 class AutomaticSpeechRecognitionGenerator(AudioGenerator):
     def labels(self):
-        assert self.shapes.get("batch_size", None) is not None, (
-            "Batch size must be provided, "
-            "please provide it in `input_shapes` as `batch_size` to be able to generate labels."
-        )
-        assert self.shapes.get("sequence_length", None) is not None, (
-            "Sequence length must be provided, "
-            "please provide it in `input_shapes` as `sequence_length` to be able to generate labels."
-        )
-        assert self.shapes.get("num_labels", None) is not None, (
-            "Number of labels couldn't be inferred automatically from model, "
-            "please provide it in `input_shapes` as `num_labels` to be able to generate labels."
-        )
+        self.assert_not_missing_shapes(["batch_size", "sequence_length"])
 
         return self.generate_random_integers(
             min_value=0,
@@ -542,10 +419,7 @@ class AutomaticSpeechRecognitionGenerator(AudioGenerator):
 
 class PromptGenerator(TaskGenerator):
     def prompt(self):
-        assert self.shapes.get("batch_size", None) is not None, (
-            "Batch size must be provided, "
-            "please provide it in `input_shapes` as `batch_size` to be able to generate prompts."
-        )
+        self.assert_not_missing_shapes(["batch_size"])
 
         return self.generate_random_strings(num_seq=self.shapes["batch_size"])
 
@@ -577,45 +451,19 @@ class FeatureExtractionGenerator(TextGenerator, ImageGenerator):
 
 class ImageTextToTextGenerationGenerator(TaskGenerator):
     def input_ids(self):
-        assert self.shapes.get("batch_size", None) is not None, (
-            "Batch size must be provided, "
-            "please provide it in `input_shapes` as `batch_size` to be able to generate input ids."
-        )
-        assert self.shapes.get("sequence_length", None) is not None, (
-            "Sequence length must be provided, "
-            "please provide it in `input_shapes` as `sequence_length` to be able to generate input ids."
-        )
-        assert self.shapes.get("num_images", None) is not None, (
-            "Number of images must be provided, "
-            "please provide it in `input_shapes` as `num_images` to be able to generate input ids."
-        )
-        assert self.shapes.get("num_channels", None) is not None, (
-            "Number of channels couldn't be inferred automatically from model, "
-            "please provide it in `input_shapes` as `num_channels` to be able to generate input ids."
-        )
-        assert self.shapes.get("height", None) is not None, (
-            "Height couldn't be inferred automatically from model, "
-            "please provide it in `input_shapes` as `height` to be able to generate input ids."
-        )
-        assert self.shapes.get("width", None) is not None, (
-            "Width couldn't be inferred automatically from model, "
-            "please provide it in `input_shapes` as `width` to be able to generate input ids."
-        )
-        assert self.shapes.get("patch_size", None) is not None, (
-            "Patch size must be provided, "
-            "please provide it in `input_shapes` as `patch_size` to be able to generate input ids."
-        )
-        assert self.shapes.get("temporal_patch_size", None) is not None, (
-            "Temporal patch size must be provided, "
-            "please provide it in `input_shapes` as `temporal_patch_size` to be able to generate input ids."
-        )
-        assert self.shapes.get("spatial_merge_size", None) is not None, (
-            "Spatial merge size must be provided, "
-            "please provide it in `input_shapes` as `spatial_merge_size` to be able to generate input ids."
-        )
-        assert self.shapes.get("image_token_id", None) is not None, (
-            "Image token id must be provided, "
-            "please provide it in `input_shapes` as `image_token_id` to be able to generate input ids."
+        self.assert_not_missing_shapes(
+            [
+                "batch_size",
+                "sequence_length",
+                "num_images",
+                "num_channels",
+                "height",
+                "width",
+                "patch_size",
+                "temporal_patch_size",
+                "spatial_merge_size",
+                "image_token_id",
+            ]
         )
 
         text_tokens = self.generate_random_integers(
@@ -644,29 +492,8 @@ class ImageTextToTextGenerationGenerator(TaskGenerator):
         return torch.cat((text_tokens, image_tokens), dim=1)
 
     def pixel_values(self):
-        assert self.shapes.get("num_images", None) is not None, (
-            "Number of images must be provided, "
-            "please provide it in `input_shapes` as `num_images` to be able to generate pixel values."
-        )
-        assert self.shapes.get("num_channels", None) is not None, (
-            "Number of channels couldn't be inferred automatically from model, "
-            "please provide it in `input_shapes` as `num_channels` to be able to generate pixel values."
-        )
-        assert self.shapes.get("height", None) is not None, (
-            "Height couldn't be inferred automatically from model, "
-            "please provide it in `input_shapes` as `height` to be able to generate pixel values."
-        )
-        assert self.shapes.get("width", None) is not None, (
-            "Width couldn't be inferred automatically from model, "
-            "please provide it in `input_shapes` as `width` to be able to generate pixel values."
-        )
-        assert self.shapes.get("patch_size", None) is not None, (
-            "Patch size must be provided, "
-            "please provide it in `input_shapes` as `patch_size` to be able to generate pixel values."
-        )
-        assert self.shapes.get("temporal_patch_size", None) is not None, (
-            "Temporal patch size must be provided, "
-            "please provide it in `input_shapes` as `temporal_patch_size` to be able to generate pixel values."
+        self.assert_not_missing_shapes(
+            ["num_images", "num_channels", "height", "width", "patch_size", "temporal_patch_size"]
         )
 
         return self.generate_random_floats(
@@ -684,18 +511,7 @@ class ImageTextToTextGenerationGenerator(TaskGenerator):
         )
 
     def image_grid_thw(self):
-        assert self.shapes.get("num_images", None) is not None, (
-            "Number of images must be provided, "
-            "please provide it in `input_shapes` as `num_images` to be able to generate image grid."
-        )
-        assert self.shapes.get("height", None) is not None, (
-            "Height couldn't be inferred automatically from model, "
-            "please provide it in `input_shapes` as `height` to be able to generate image grid."
-        )
-        assert self.shapes.get("width", None) is not None, (
-            "Width couldn't be inferred automatically from model, "
-            "please provide it in `input_shapes` as `width` to be able to generate image grid."
-        )
+        self.assert_not_missing_shapes(["num_images", "height", "width", "patch_size"])
 
         return torch.tensor(
             [

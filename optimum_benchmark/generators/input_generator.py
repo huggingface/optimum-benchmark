@@ -8,8 +8,8 @@ class InputGenerator:
 
     def __init__(self, task: str, input_shapes: Dict[str, int], model_shapes: Dict[str, int]) -> None:
         if task in TASKS_TO_GENERATORS:
-            shapes = {**input_shapes, **model_shapes}
-            self.task_generator = TASKS_TO_GENERATORS[task](shapes=shapes, with_labels=False)
+            all_shapes = {**model_shapes, **input_shapes} # input_shapes take precedence over model_shapes
+            self.task_generator = TASKS_TO_GENERATORS[task](shapes=all_shapes, with_labels=False)
         else:
             raise NotImplementedError(
                 f"Task {task} is not supported. "
