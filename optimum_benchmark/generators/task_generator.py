@@ -145,7 +145,12 @@ class ImageGenerator(TaskGenerator):
         return self.generate_random_floats(
             min_value=0,
             max_value=1,
-            shape=(self.shapes["batch_size"], self.shapes["num_channels"], self.shapes["height"], self.shapes["width"]),
+            shape=(
+                self.shapes["batch_size"],
+                self.shapes["num_channels"],
+                self.shapes["height"],
+                self.shapes["width"],
+            ),
         )
 
 
@@ -160,7 +165,12 @@ class AudioGenerator(TaskGenerator):
             "please provide it in `input_shapes` as `sequence_length` to be able to generate input values."
         )
         return self.generate_random_floats(
-            min_value=-1, max_value=1, shape=(self.shapes["batch_size"], self.shapes["sequence_length"])
+            min_value=-1,
+            max_value=1,
+            shape=(
+                self.shapes["batch_size"],
+                self.shapes["sequence_length"],
+            ),
         )
 
     def input_features(self):
@@ -180,7 +190,11 @@ class AudioGenerator(TaskGenerator):
         return self.generate_random_floats(
             min_value=-1,
             max_value=1,
-            shape=(self.shapes["batch_size"], self.shapes["feature_size"], self.shapes["nb_max_frames"]),
+            shape=(
+                self.shapes["batch_size"],
+                self.shapes["feature_size"],
+                self.shapes["nb_max_frames"],
+            ),
         )
 
 
@@ -286,7 +300,9 @@ class QuestionAnsweringGenerator(TextGenerator):
         )
 
         return self.generate_random_integers(
-            min_value=0, max_value=self.shapes["sequence_length"], shape=(self.shapes["batch_size"],)
+            min_value=0,
+            max_value=self.shapes["sequence_length"],
+            shape=(self.shapes["batch_size"],),
         )
 
     def end_positions(self):
@@ -300,7 +316,9 @@ class QuestionAnsweringGenerator(TextGenerator):
         )
 
         return self.generate_random_integers(
-            min_value=0, max_value=self.shapes["sequence_length"], shape=(self.shapes["batch_size"],)
+            min_value=0,
+            max_value=self.shapes["sequence_length"],
+            shape=(self.shapes["batch_size"],),
         )
 
     def __call__(self):
@@ -557,7 +575,7 @@ class FeatureExtractionGenerator(TextGenerator, ImageGenerator):
         return dummy
 
 
-class ImageTextToTextGenerationGenerator(TextGenerator, ImageGenerator):
+class ImageTextToTextGenerationGenerator(TaskGenerator):
     def input_ids(self):
         assert self.shapes.get("batch_size", None) is not None, (
             "Batch size must be provided, "
@@ -695,10 +713,6 @@ class ImageTextToTextGenerationGenerator(TextGenerator, ImageGenerator):
         dummy["input_ids"] = self.input_ids()
         dummy["pixel_values"] = self.pixel_values()
         dummy["image_grid_thw"] = self.image_grid_thw()
-
-        print("input_ids", dummy["input_ids"].shape)
-        print("pixel_values", dummy["pixel_values"].shape)
-        print("image_grid_thw", dummy["image_grid_thw"].shape)
 
         if self.with_labels:
             dummy["labels"] = self.input_ids()
