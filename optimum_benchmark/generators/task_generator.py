@@ -230,6 +230,32 @@ class MaskedLanguageModelingGenerator(TextGenerator):
 
 
 class MultipleChoiceGenerator(TextGenerator):
+    def input_ids(self):
+        self.assert_not_missing_shapes(["batch_size", "num_choices", "sequence_length"])
+
+        return self.generate_random_integers(
+            min_value=0,
+            max_value=self.shapes.get("vocab_size", DEFAULT_VOCAB_SIZE),
+            shape=(self.shapes["batch_size"], self.shapes["num_choices"], self.shapes["sequence_length"]),
+        )
+
+    def attention_mask(self):
+        self.assert_not_missing_shapes(["batch_size", "num_choices", "sequence_length"])
+
+        return self.generate_constant_integers(
+            value=1,  # no sparsity
+            shape=(self.shapes["batch_size"], self.shapes["num_choices"], self.shapes["sequence_length"]),
+        )
+
+    def token_type_ids(self):
+        self.assert_not_missing_shapes(["batch_size", "num_choices", "sequence_length"])
+
+        return self.generate_random_integers(
+            min_value=0,
+            max_value=self.shapes.get("type_vocab_size", DEFAULT_TYPE_VOCAB_SIZE),
+            shape=(self.shapes["batch_size"], self.shapes["num_choices"], self.shapes["sequence_length"]),
+        )
+
     def labels(self):
         self.assert_not_missing_shapes(["batch_size", "num_choices"])
 
@@ -240,24 +266,11 @@ class MultipleChoiceGenerator(TextGenerator):
     def __call__(self):
         dummy = {}
 
-        dummy["input_ids"] = (
-            self.input_ids()
-            .reshape(self.shapes["batch_size"], 1, self.shapes["sequence_length"])
-            .repeat(1, self.shapes["num_choices"], 1)
-        )
-
-        dummy["attention_mask"] = (
-            self.attention_mask()
-            .reshape(self.shapes["batch_size"], 1, self.shapes["sequence_length"])
-            .repeat(1, self.shapes["num_choices"], 1)
-        )
+        dummy["input_ids"] = self.input_ids()
+        dummy["attention_mask"] = self.attention_mask()
 
         if self.requires_token_type_ids():
-            dummy["token_type_ids"] = (
-                self.token_type_ids()
-                .reshape(self.shapes["batch_size"], 1, self.shapes["sequence_length"])
-                .repeat(1, self.shapes["num_choices"], 1)
-            )
+            dummy["token_type_ids"] = self.token_type_ids()
 
         if self.with_labels:
             dummy["label"] = self.labels()

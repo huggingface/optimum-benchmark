@@ -62,8 +62,11 @@ if is_torch_available():
             model_loaders = (model_loaders,)
 
         for model_loader_name in model_loaders:
-            model_loader_class = getattr(transformers, model_loader_name)
-            TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES[task_name].update(model_loader_class._model_mapping._model_mapping)
+            model_loader_class = getattr(transformers, model_loader_name, None)
+            if model_loader_class is not None:
+                TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES[task_name].update(
+                    model_loader_class._model_mapping._model_mapping
+                )
 else:
     TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES = {}
 
