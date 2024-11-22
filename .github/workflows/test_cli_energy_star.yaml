@@ -42,7 +42,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -e .[testing,diffusers,timm,codecarbon]
+          pip install -e .[testing,diffusers,timm,codecarbon] librosa
 
       - name: Run tests
         run: |
