@@ -18,7 +18,7 @@ backend:
   no_weights: true
   library: transformers
   task: sentence-similarity
-  model: izhx/udever-bloom-7b1
+  model: sentence-transformers/all-MiniLM-L6-v2
 
 scenario:
   dataset_name: EnergyStarAI/sentence_similarity
