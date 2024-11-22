@@ -53,6 +53,7 @@ TASKS_TO_MODEL_LOADERS = {
 }
 
 SYNONYM_TASKS = {
+    "summarization": "text2text-generation",
     "sentence-similarity": "feature-extraction",
 }
 
