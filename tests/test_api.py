@@ -47,6 +47,9 @@ LIBRARIES_TASKS_MODELS = [
 def test_api_launch(device, scenario, library, task, model):
     benchmark_name = f"{device}_{scenario}_{library}_{task}_{model}"
 
+    if task == "multiple-choice":
+        INPUT_SHAPES["num_choices"] = 2
+
     if device == "cuda":
         device_isolation = True
         if is_rocm_system():
@@ -82,7 +85,7 @@ def test_api_launch(device, scenario, library, task, model):
             duration=1,
             iterations=1,
             warmup_runs=1,
-            input_shapes={"batch_size": 1, "sequence_length": 2},
+            input_shapes=INPUT_SHAPES,
             generate_kwargs={"max_new_tokens": 2, "min_new_tokens": 2},
             call_kwargs={"num_inference_steps": 2},
         )
@@ -170,7 +173,14 @@ def test_api_input_generator(library, task, model):
     else:
         raise ValueError(f"Unknown library {library}")
 
-    input_generator = InputGenerator(task=task, input_shapes=INPUT_SHAPES, model_shapes=model_shapes)
+    if task == "multiple-choice":
+        INPUT_SHAPES["num_choices"] = 2
+
+    input_generator = InputGenerator(
+        task=task,
+        input_shapes=INPUT_SHAPES,
+        model_shapes=model_shapes,
+    )
     generated_inputs = input_generator()
 
     assert len(generated_inputs) > 0, "No inputs were generated"
@@ -192,6 +202,9 @@ def test_api_dataset_generator(library, task, model):
         model_shapes = extract_diffusers_shapes_from_model(model)
     else:
         raise ValueError(f"Unknown library {library}")
+
+    if task == "multiple-choice":
+        DATASET_SHAPES["num_choices"] = 2
 
     generator = DatasetGenerator(task=task, dataset_shapes=DATASET_SHAPES, model_shapes=model_shapes)
     generated_dataset = generator()

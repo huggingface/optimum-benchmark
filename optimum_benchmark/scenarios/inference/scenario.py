@@ -21,8 +21,6 @@ TEXT_GENERATION_DEFAULT_KWARGS = {
     "min_new_tokens": 100,
     "do_sample": False,
     "use_cache": True,
-    "pad_token_id": 0,
-    "eos_token_id": 0,
     "num_beams": 1,
 }
 TEXT_GENERATION_PREFILL_OVERRIDES = {
@@ -60,7 +58,10 @@ class InferenceScenario(Scenario[InferenceConfig]):
     def run(self, backend: Backend[BackendConfigT]) -> BenchmarkReport:
         self.logger.info("\t+ Creating input generator")
         self.input_generator = InputGenerator(
-            task=backend.config.task, model_shapes=backend.model_shapes, input_shapes=self.config.input_shapes
+            task=backend.config.task,
+            input_shapes=self.config.input_shapes,
+            model_shapes=backend.model_shapes,
+            model_type=backend.config.model_type,
         )
 
         if backend.config.task in TEXT_GENERATION_TASKS:
@@ -414,8 +415,8 @@ class InferenceScenario(Scenario[InferenceConfig]):
     @property
     def atomic_prefill_volume(self) -> int:  # in tokens
         if {"input_ids", "prompt", "prompts"} & set(self.inputs.keys()):
-            # text conditioned generation (1 bos token or sequence_length tokens)
-            return self.config.input_shapes["batch_size"] * max(self.config.input_shapes["sequence_length"], 1)
+            # text conditioned generation (sequence_length tokens)
+            return self.config.input_shapes["batch_size"] * self.config.input_shapes["sequence_length"]
         else:
             # image/audio conditioned generation (1 bos token)
             return self.config.input_shapes["batch_size"]

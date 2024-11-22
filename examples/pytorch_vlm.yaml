@@ -1,0 +1,42 @@
+defaults:
+  - benchmark
+  - scenario: inference
+  - launcher: process
+  - backend: pytorch
+  - _base_
+  - _self_
+
+name: pytorch_vlm
+
+launcher:
+  device_isolation: true
+  device_isolation_action: warn
+
+backend:
+  device: cuda
+  device_ids: 0
+  no_weights: true
+  torch_dtype: float16
+  model: Qwen/Qwen2-VL-7B-Instruct
+
+scenario:
+  memory: true
+  latency: true
+
+  warmup_runs: 10
+  iterations: 10
+  duration: 10
+
+  input_shapes:
+    # text
+    batch_size: 1
+    sequence_length: 256
+    # image
+    num_images: 2
+    num_channels: 3
+    height: 224
+    width: 224
+
+  generate_kwargs:
+    max_new_tokens: 32
+    min_new_tokens: 32

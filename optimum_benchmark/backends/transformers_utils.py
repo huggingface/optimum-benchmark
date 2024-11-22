@@ -1,4 +1,3 @@
-import warnings
 from contextlib import contextmanager
 from typing import Any, Dict, Optional, Union
 
@@ -7,6 +6,7 @@ import transformers
 from transformers import (
     AutoConfig,
     AutoFeatureExtractor,
+    AutoImageProcessor,
     AutoProcessor,
     AutoTokenizer,
     FeatureExtractionMixin,
@@ -47,6 +47,7 @@ TASKS_TO_MODEL_LOADERS = {
     "image-to-text": "AutoModelForVision2Seq",
     "text-generation": "AutoModelForCausalLM",
     "text2text-generation": "AutoModelForSeq2SeqLM",
+    "image-text-to-text": "AutoModelForImageTextToText",
     "visual-question-answering": "AutoModelForVisualQuestionAnswering",
     "automatic-speech-recognition": ("AutoModelForSpeechSeq2Seq", "AutoModelForCTC"),
 }
@@ -64,8 +65,11 @@ if is_torch_available():
             model_loaders = (model_loaders,)
 
         for model_loader_name in model_loaders:
-            model_loader_class = getattr(transformers, model_loader_name)
-            TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES[task_name].update(model_loader_class._model_mapping._model_mapping)
+            model_loader_class = getattr(transformers, model_loader_name, None)
+            if model_loader_class is not None:
+                TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES[task_name].update(
+                    model_loader_class._model_mapping._model_mapping
+                )
 else:
     TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES = {}
 
@@ -107,56 +111,83 @@ def get_transformers_pretrained_processor(model: str, **kwargs) -> Optional["Pre
             return AutoFeatureExtractor.from_pretrained(model, **kwargs)
         except Exception:
             try:
-                return AutoTokenizer.from_pretrained(model, **kwargs)
+                return AutoImageProcessor.from_pretrained(model, **kwargs)
             except Exception:
-                return None
+                try:
+                    return AutoTokenizer.from_pretrained(model, **kwargs)
+                except Exception:
+                    return None
+
+
+def get_flat_dict(d: Dict[str, Any]) -> Dict[str, Any]:
+    flat_dict = {}
+    for k, v in d.items():
+        if isinstance(v, dict):
+            flat_dict.update(get_flat_dict(v))
+        else:
+            flat_dict[k] = v
+    return flat_dict
+
+
+def get_flat_artifact_dict(artifact: Union[PretrainedConfig, PretrainedProcessor]) -> Dict[str, Any]:
+    artifact_dict = {}
+
+    if isinstance(artifact, ProcessorMixin):
+        artifact_dict.update(
+            {k: v for k, v in artifact.__dict__.items() if isinstance(v, (int, str, float, bool, list, tuple, dict))}
+        )
+        for attribute in artifact.attributes:
+            artifact_dict.update(get_flat_artifact_dict(getattr(artifact, attribute)))
+    elif hasattr(artifact, "to_dict"):
+        artifact_dict.update(
+            {k: v for k, v in artifact.to_dict().items() if isinstance(v, (int, str, float, bool, list, tuple, dict))}
+        )
+    else:
+        artifact_dict.update(
+            {k: v for k, v in artifact.__dict__.items() if isinstance(v, (int, str, float, bool, list, tuple, dict))}
+        )
+
+    artifact_dict = get_flat_dict(artifact_dict)
+
+    return artifact_dict
 
 
 def extract_transformers_shapes_from_artifacts(
-    config: Optional["PretrainedConfig"] = None, processor: Optional["PretrainedProcessor"] = None
+    config: Optional["PretrainedConfig"] = None,
+    processor: Optional["PretrainedProcessor"] = None,
 ) -> Dict[str, Any]:
-    artifacts_dict = {}
+    flat_artifacts_dict = {}
 
-    if config is not None and hasattr(config, "to_dict"):
-        config_dict = {k: v for k, v in config.to_dict().items() if v is not None}
-        artifacts_dict.update(config_dict)
-    elif config is not None:
-        try:
-            config_dict = {k: getattr(config, k) for k in dir(config) if isinstance(getattr(config, k), int)}
-            artifacts_dict.update(config_dict)
-        except Exception:
-            warnings.warn(f"Could not extract shapes from config {config}")
+    if config is not None:
+        flat_artifacts_dict.update(get_flat_artifact_dict(config))
 
-    if processor is not None and hasattr(processor, "to_dict"):
-        processor_dict = {k: v for k, v in processor.to_dict().items() if v is not None}
-        artifacts_dict.update(processor_dict)
-    elif processor is not None:
-        try:
-            processor_dict = {
-                k: getattr(processor, k) for k in dir(processor) if isinstance(getattr(processor, k), int)
-            }
-        except Exception:
-            warnings.warn(f"Could not extract shapes from processor {processor}")
+    if processor is not None:
+        flat_artifacts_dict.update(get_flat_artifact_dict(processor))
 
     shapes = {}
 
     # text input
-    shapes["vocab_size"] = artifacts_dict.get("vocab_size", None)
-    shapes["type_vocab_size"] = artifacts_dict.get("type_vocab_size", None)
-    shapes["max_position_embeddings"] = artifacts_dict.get("max_position_embeddings", None)
-    if shapes["max_position_embeddings"] is None:
-        shapes["max_position_embeddings"] = artifacts_dict.get("n_positions", None)
+    if "vocab_size" in flat_artifacts_dict:
+        shapes["vocab_size"] = flat_artifacts_dict["vocab_size"]
+
+    if "type_vocab_size" in flat_artifacts_dict:
+        shapes["type_vocab_size"] = flat_artifacts_dict["type_vocab_size"]
+
+    if "max_position_embeddings" in flat_artifacts_dict:
+        shapes["max_position_embeddings"] = flat_artifacts_dict["max_position_embeddings"]
+    elif "n_positions" in flat_artifacts_dict:
+        shapes["max_position_embeddings"] = flat_artifacts_dict["n_positions"]
 
     # image input
-    shapes["num_channels"] = artifacts_dict.get("num_channels", None)
-    if shapes["num_channels"] is None:
-        # processors have different names for the number of channels
-        shapes["num_channels"] = artifacts_dict.get("channels", None)
+    if "num_channels" in flat_artifacts_dict:
+        shapes["num_channels"] = flat_artifacts_dict["num_channels"]
 
-    image_size = artifacts_dict.get("image_size", None)
-    if image_size is None:
-        # processors have different names for the image size
-        image_size = artifacts_dict.get("size", None)
+    if "image_size" in flat_artifacts_dict:
+        image_size = flat_artifacts_dict["image_size"]
+    elif "size" in flat_artifacts_dict:
+        image_size = flat_artifacts_dict["size"]
+    else:
+        image_size = None
 
     if isinstance(image_size, (int, float)):
         shapes["height"] = image_size
@@ -170,29 +201,41 @@ def extract_transformers_shapes_from_artifacts(
     elif isinstance(image_size, dict) and len(image_size) == 1:
         shapes["height"] = list(image_size.values())[0]
         shapes["width"] = list(image_size.values())[0]
-    else:
-        shapes["height"] = None
-        shapes["width"] = None
 
-    input_size = artifacts_dict.get("input_size", None)
-    if input_size is not None:
+    if "input_size" in flat_artifacts_dict:
+        input_size = flat_artifacts_dict["input_size"]
         shapes["num_channels"] = input_size[0]
         shapes["height"] = input_size[1]
         shapes["width"] = input_size[2]
 
     # classification labels
-    id2label = artifacts_dict.get("id2label", None)
-    if id2label is not None:
+    if "id2label" in flat_artifacts_dict:
+        id2label = flat_artifacts_dict["id2label"]
         shapes["num_labels"] = len(id2label)
-
-    num_classes = artifacts_dict.get("num_classes", None)
-    if num_classes is not None:
-        shapes["num_labels"] = num_classes
+    elif "num_classes" in flat_artifacts_dict:
+        shapes["num_labels"] = flat_artifacts_dict["num_classes"]
 
     # object detection labels
-    shapes["num_queries"] = artifacts_dict.get("num_queries", None)
-    if shapes["num_queries"] == 0:
-        shapes["num_queries"] = 2
+    if "num_queries" in flat_artifacts_dict:
+        shapes["num_queries"] = flat_artifacts_dict["num_queries"]
+
+    # image-text input
+
+    if "patch_size" in flat_artifacts_dict:
+        shapes["patch_size"] = flat_artifacts_dict["patch_size"]
+    if "in_chans" in flat_artifacts_dict:
+        shapes["num_channels"] = flat_artifacts_dict["in_chans"]
+    if "image_seq_len" in flat_artifacts_dict:
+        shapes["image_seq_len"] = flat_artifacts_dict["image_seq_len"]
+    if "image_token_id" in flat_artifacts_dict:
+        shapes["image_token_id"] = flat_artifacts_dict["image_token_id"]
+    if "spatial_merge_size" in flat_artifacts_dict:
+        shapes["spatial_merge_size"] = flat_artifacts_dict["spatial_merge_size"]
+    if "do_image_splitting" in flat_artifacts_dict:
+        shapes["do_image_splitting"] = flat_artifacts_dict["do_image_splitting"]
+
+    if "temporal_patch_size" in flat_artifacts_dict:
+        shapes["temporal_patch_size"] = flat_artifacts_dict["temporal_patch_size"]
 
     return shapes
 

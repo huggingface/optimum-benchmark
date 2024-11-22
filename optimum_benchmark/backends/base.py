@@ -36,7 +36,6 @@ transformers_logging.set_verbosity_error()
 class Backend(Generic[BackendConfigT], ABC):
     NAME: ClassVar[str]
 
-    model_type: str
     model_shapes: Dict[str, int]
 
     pretrained_model: PreTrainedModel
