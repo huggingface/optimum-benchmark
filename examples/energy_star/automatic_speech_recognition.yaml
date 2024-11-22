@@ -8,6 +8,10 @@ defaults:
 
 name: automatic_speech_recognition
 
+launcher:
+  device_isolation: true
+  device_isolation_action: warn
+
 backend:
   device: cuda
   device_ids: 0
@@ -15,10 +19,6 @@ backend:
   model: openai/whisper-large-v3
   processor: openai/whisper-large-v3
   task: automatic-speech-recognition
-
-launcher:
-  device_isolation: true
-  device_isolation_action: warn
 
 scenario:
   dataset_name: EnergyStarAI/ASR
