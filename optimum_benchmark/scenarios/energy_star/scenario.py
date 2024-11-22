@@ -59,7 +59,7 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
             self.prefill_kwargs = {**self.config.generate_kwargs, **TEXT_GENERATION_PREFILL_OVERRIDES}
             self.logger.info("\t+ Initializing Text Generation report")
             self.report = BenchmarkReport.from_list(
-                targets=["load_dataset", "preprocess_dataset", "load_model", "prefill", "decode", "per_token"]
+                targets=["load_dataset", "preprocess_dataset", "load_model", "prefill", "decode"]
             )
         elif self.task in IMAGE_DIFFUSION_TASKS:
             self.logger.info("\t+ Updating Image Diffusion kwargs with default values")
@@ -236,7 +236,7 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
         )
 
     @property
-    def dataset_preprocess_volume(self) -> int:
+    def dataset_preprocess_volume(self) -> int:  # in samples
         return self.config.num_samples
 
     @property
@@ -249,12 +249,13 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
 
         for sample in self.dataset:
             if "input_ids" in sample.keys():
-                # text/image-text conditioned generation
+                # text/image-text/video-image-text conditioned generation
                 prefill_volume += self.raw_sample_inputs["input_ids"].numel()
             else:
                 # image/audio/other conditioned generation (1 bos token)
                 prefill_volume += 1
 
+        print("prefill_volume", prefill_volume)
         return prefill_volume
 
     @property
