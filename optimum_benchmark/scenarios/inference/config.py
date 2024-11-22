@@ -7,7 +7,10 @@ from ..config import ScenarioConfig
 
 LOGGER = getLogger("inference")
 
-INPUT_SHAPES = {"batch_size": 2, "num_choices": 2, "sequence_length": 16}
+INPUT_SHAPES = {
+    "batch_size": 2,
+    "sequence_length": 16,
+}
 
 
 @dataclass
