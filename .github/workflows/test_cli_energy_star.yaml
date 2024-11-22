@@ -20,13 +20,13 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
 jobs:
-  run_energy_star_single_gpu_tests:
+  run_cli_energy_star_tests:
     if: ${{
       (github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch') ||
-      contains( github.event.pull_request.labels.*.name, 'single_gpu') ||
+      contains( github.event.pull_request.labels.*.name, 'cli') ||
       contains( github.event.pull_request.labels.*.name, 'energy_star') ||
-      contains( github.event.pull_request.labels.*.name, 'cli_cuda_pytorch_single_gpu')
+      contains( github.event.pull_request.labels.*.name, 'cli_energy_star')
       }}
 
     runs-on:
