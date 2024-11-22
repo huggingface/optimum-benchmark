@@ -16,8 +16,8 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
+  model: google-t5/t5-large
   task: text2text-generation
-  model: CohereForAI/aya-101
 
 scenario:
   dataset_name: EnergyStarAI/text_generation
