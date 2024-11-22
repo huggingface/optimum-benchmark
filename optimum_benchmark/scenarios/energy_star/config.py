@@ -55,14 +55,7 @@ class EnergyStarConfig(ScenarioConfig):
     audio_column_name: str = field(default="audio", metadata={"help": "Name of the column with the audio."})
 
     # scenario options
-    iterations: int = field(
-        default=10,
-        metadata={"help": "Minimum number of iterations to run the scenario, set to 0 to disable this constraint"},
-    )
     warmup_runs: int = field(default=10, metadata={"help": "Number of warmup runs to perform before scenarioing"})
-
-    # tracking options
-    energy: bool = field(default=True, metadata={"help": "Measure energy usage"})
 
     # methods kwargs
     forward_kwargs: Dict[str, Any] = field(
@@ -103,5 +96,5 @@ class EnergyStarConfig(ScenarioConfig):
             )
             self.generate_kwargs["max_new_tokens"] = self.generate_kwargs["min_new_tokens"]
 
-        if self.energy and is_rocm_system():
+        if is_rocm_system():
             raise ValueError("Energy measurement through codecarbon is not yet available on ROCm-powered devices.")
