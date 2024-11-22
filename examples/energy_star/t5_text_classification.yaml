@@ -22,7 +22,7 @@ backend:
 scenario:
   dataset_name: EnergyStarAI/text_classification
   dataset_prefix1: "sst2 sentence: "
-  t5_task: text-classification
+  t5_task: text_classification
   text_column_name: text
 
   num_samples: 1000

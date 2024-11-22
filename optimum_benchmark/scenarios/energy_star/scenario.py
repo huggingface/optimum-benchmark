@@ -58,7 +58,7 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
 
         if self.task in TEXT_GENERATION_TASKS:
             self.logger.info("\t+ Updating Text Generation kwargs with default values")
-            self.generate_kwargs = {**TEXT_GENERATION_DEFAULT_KWARGS, **self.config.generate_kwargs}
+            self.config.generate_kwargs = {**TEXT_GENERATION_DEFAULT_KWARGS, **self.config.generate_kwargs}
             self.prefill_kwargs = {**self.config.generate_kwargs, **TEXT_GENERATION_PREFILL_OVERRIDES}
             self.logger.info("\t+ Initializing Text Generation report")
             self.report = BenchmarkReport.from_list(
@@ -66,7 +66,7 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
             )
         elif self.task in IMAGE_DIFFUSION_TASKS:
             self.logger.info("\t+ Updating Image Diffusion kwargs with default values")
-            self.call_kwargs = {**IMAGE_DIFFUSION_DEFAULT_KWARGS, **self.config.call_kwargs}
+            self.config.call_kwargs = {**IMAGE_DIFFUSION_DEFAULT_KWARGS, **self.config.call_kwargs}
             self.logger.info("\t+ Initializing Image Diffusion report")
             self.report = BenchmarkReport.from_list(
                 targets=["load_dataset", "preprocess_dataset", "load_model", "call"]
@@ -146,9 +146,11 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
     # Text Generation warmup
     def warmup_text_generation(self, backend: Backend[BackendConfigT]):
         self.logger.info("\t+ Warming up backend for Text Generation")
-        backend.generate(self.prepared_sample_inputs, self.generate_kwargs)
+        backend.generate(self.prepared_sample_inputs, self.config.generate_kwargs)
         for _ in range(self.config.warmup_runs):
-            backend.generate(self.prepared_sample_inputs, {**self.generate_kwargs, **TEXT_GENERATION_WARMUP_OVERRIDES})
+            backend.generate(
+                self.prepared_sample_inputs, {**self.config.generate_kwargs, **TEXT_GENERATION_WARMUP_OVERRIDES}
+            )
 
     # Image Diffusion warmup
     def warmup_image_diffusion(self, backend: Backend[BackendConfigT]):
@@ -183,7 +185,7 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
         with self.energy_tracker.track(file_prefix="generate"):
             for i in tqdm(range(0, self.config.num_samples, self.config.input_shapes["batch_size"])):
                 inputs = backend.prepare_inputs(self.dataset[i : i + self.config.input_shapes["batch_size"]])
-                backend.generate(inputs, self.generate_kwargs)
+                backend.generate(inputs, self.config.generate_kwargs)
 
         generate_energy = self.energy_tracker.get_energy()
         decode_energy = generate_energy - prefill_energy
@@ -239,7 +241,7 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
     @property
     def dataset_call_volume(self) -> int:  # in images
         if self.task == "text-to-image":
-            return self.config.num_samples * self.call_kwargs["num_images_per_prompt"]
+            return self.config.num_samples * self.config.call_kwargs["num_images_per_prompt"]
         else:
             return self.config.num_samples
 
@@ -249,7 +251,7 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
 
         for sample in self.dataset:
             if "input_ids" in sample.keys():
-                # text/image-text conditioned generation (sequence_length tokens)
+                # text/image-text conditioned generation
                 prefill_volume += self.raw_sample_inputs["input_ids"].numel()
             else:
                 # image/audio/other conditioned generation (1 bos token)
@@ -261,13 +263,13 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
     def dataset_per_token_volume(self) -> int:  # in tokens
         return (
             self.config.num_samples
-            * self.generate_kwargs["num_beams"]  # at each beam stage there are num_beams tokens generated
+            * self.config.generate_kwargs["num_beams"]  # at each beam stage there are num_beams tokens generated
         )
 
     @property
     def dataset_decode_volume(self) -> int:  # in tokens
         return (
             self.config.num_samples
-            * self.generate_kwargs["num_beams"]  # at each beam stage there are num_beams tokens generated
-            * (self.generate_kwargs["max_new_tokens"] - 1)  # 1 token is generated during prefill
+            * self.config.generate_kwargs["num_beams"]  # at each beam stage there are num_beams tokens generated
+            * (self.config.generate_kwargs["max_new_tokens"] - 1)  # 1 token is generated during prefill
         )

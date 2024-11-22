@@ -25,7 +25,7 @@ scenario:
   context_column_name: context
   dataset_prefix1: "question: "
   dataset_prefix2: " context: "
-  t5_task: question-answering
+  t5_task: question_answering
   num_samples: 1000
 
   input_shapes:

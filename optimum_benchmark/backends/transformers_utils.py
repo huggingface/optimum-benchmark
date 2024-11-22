@@ -181,10 +181,13 @@ def extract_transformers_shapes_from_artifacts(
     return shapes
 
 
-def get_transformers_automodel_loader_for_task(task: str):
-    model_loader_name = TASKS_TO_MODEL_LOADERS[task]
-    model_loader_class = getattr(transformers, model_loader_name)
-    return model_loader_class
+def get_transformers_automodel_loader_for_task(task: str, model_type: Optional[str] = None):
+    if model_type is not None:
+        model_loader_name = TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES[task][model_type]
+    else:
+        model_loader_name = TASKS_TO_MODEL_LOADERS[task]
+
+    return getattr(transformers, model_loader_name)
 
 
 TORCH_INIT_FUNCTIONS = {

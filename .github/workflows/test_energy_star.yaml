@@ -1,0 +1,49 @@
+name: CLI CUDA Energy Star Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - labeled
+      - unlabeled
+
+concurrency:
+  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+
+jobs:
+  run_energy_star_single_gpu_tests:
+    if: ${{
+      (github.event_name == 'push') ||
+      (github.event_name == 'workflow_dispatch') ||
+      contains( github.event.pull_request.labels.*.name, 'single_gpu') ||
+      contains( github.event.pull_request.labels.*.name, 'energy_star') ||
+      contains( github.event.pull_request.labels.*.name, 'cli_cuda_pytorch_single_gpu')
+      }}
+
+    runs-on:
+      group: aws-g5-4xlarge-plus
+
+    container:
+      image: ghcr.io/huggingface/optimum-benchmark:latest-cuda
+      options: --ipc host --gpus all
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          pip install -e .[testing,diffusers,timm,codecarbon]
+
+      - name: Run tests
+        run: |
+          pytest tests/test_energy_star.py -x -s
