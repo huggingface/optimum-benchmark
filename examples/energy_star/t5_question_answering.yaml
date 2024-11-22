@@ -21,12 +21,12 @@ backend:
 
 scenario:
   dataset_name: EnergyStarAI/extractive_qa
-  num_samples: 1000
-  text_column_name: question
   question_column_name: question
   context_column_name: context
+  dataset_prefix1: "question: "
+  dataset_prefix2: " context: "
+  t5_task: question-answering
+  num_samples: 1000
+
   input_shapes:
     batch_size: 1
-  dataset_prefix1: 'question: '
-  dataset_prefix2: ' context: '
-  t5_task: question_answering

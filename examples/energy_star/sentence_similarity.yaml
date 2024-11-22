@@ -16,14 +16,15 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model: izhx/udever-bloom-7b1
-  task: sentence-similarity
   library: transformers
+  task: sentence-similarity
+  model: izhx/udever-bloom-7b1
 
 scenario:
   dataset_name: EnergyStarAI/sentence_similarity
-  num_samples: 1000
   sentence1_column_name: sentence1
   sentence2_column_name: sentence2
+  num_samples: 1000
+
   input_shapes:
     batch_size: 1

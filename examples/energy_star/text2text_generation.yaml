@@ -16,18 +16,19 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model: CohereForAI/aya-101
   task: text2text-generation
+  model: CohereForAI/aya-101
 
 scenario:
   dataset_name: EnergyStarAI/text_generation
-  num_samples: 1000
+  t5_task: text_generation
   text_column_name: text
+  dataset_prefix1: ""
+  num_samples: 1000
   truncation: True
+
   input_shapes:
     batch_size: 1
-  dataset_prefix1: ""
-  t5_task: text_generation
 
   generate_kwargs:
     max_new_tokens: 10

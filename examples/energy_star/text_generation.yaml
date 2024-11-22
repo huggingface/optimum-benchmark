@@ -16,15 +16,16 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
+  task: text-generation
   model: facebook/opt-125m
   processor: facebook/opt-125m
-  task: text-generation
 
 scenario:
   dataset_name: EnergyStarAI/text_generation
-  num_samples: 1000
   text_column_name: text
+  num_samples: 1000
   truncation: True
+
   input_shapes:
     batch_size: 1
 

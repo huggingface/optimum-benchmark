@@ -21,13 +21,14 @@ backend:
 
 scenario:
   dataset_name: EnergyStarAI/summarization
-  num_samples: 1000
+  dataset_prefix1: "summarize: "
   text_column_name: text
+  t5_task: summarization
+  num_samples: 1000
   truncation: True
+
   input_shapes:
     batch_size: 1
-  dataset_prefix1: 'summarize: '
-  t5_task: summarization
 
   generate_kwargs:
     max_new_tokens: 10

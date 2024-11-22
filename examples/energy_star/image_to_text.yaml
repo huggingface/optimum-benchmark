@@ -16,13 +16,13 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
-  model: sashakunitsyn/vlrm-blip2-opt-2.7b
-  processor: sashakunitsyn/vlrm-blip2-opt-2.7b
   task: image-to-text
+  model: sashakunitsyn/vlrm-blip2-opt-2.7b
 
 scenario:
   dataset_name: EnergyStarAI/image_captioning
-  num_samples: 1000
   image_column_name: image
+  num_samples: 1000
+
   input_shapes:
     batch_size: 1
