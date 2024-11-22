@@ -35,15 +35,12 @@ IMAGE_DIFFUSION_WARMUP_OVERRIDES = {
     "num_inference_steps": 2,
 }
 
-TEXT_GENERATION_THROUGHPUT_UNIT = "tokens/s"
-IMAGE_DIFFUSION_THROUGHPUT_UNIT = "images/s"
-PREPROCESSING_THROUGHPUT_UNIT = "samples/s"
-INFERENCE_THROUGHPUT_UNIT = "samples/s"
 
-TEXT_GENERATION_EFFICIENCY_UNIT = "tokens/kWh"
-IMAGE_DIFFUSION_EFFICIENCY_UNIT = "images/kWh"
-PREPROCESSING_EFFICIENCY_UNIT = "samples/kWh"
-INFERENCE_EFFICIENCY_UNIT = "samples/kWh"
+PREPROCESS_EFFICIENCY_UNIT = "samples/kWh"
+FORWARD_EFFICIENCY_UNIT = "samples/kWh"
+PREFILL_EFFICIENCY_UNIT = "tokens/kWh"
+DECODE_EFFICIENCY_UNIT = "tokens/kWh"
+CALL_EFFICIENCY_UNIT = "images/kWh"
 
 
 class EnergyStarScenario(Scenario[EnergyStarConfig]):
@@ -131,7 +128,9 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
 
         self.report.preprocess_dataset.energy = preprocess_energy
         self.report.preprocess_dataset.efficiency = Efficiency.from_energy(
-            preprocess_energy, preprocess_volume, unit=PREPROCESSING_EFFICIENCY_UNIT
+            preprocess_energy,
+            preprocess_volume,
+            unit=PREPROCESS_EFFICIENCY_UNIT,
         )
 
     # Model loading tracking
@@ -179,7 +178,7 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
 
         self.report.prefill.energy = prefill_energy
         self.report.prefill.efficiency = Efficiency.from_energy(
-            prefill_energy, prefill_volume, unit=TEXT_GENERATION_EFFICIENCY_UNIT
+            prefill_energy, prefill_volume, unit=PREFILL_EFFICIENCY_UNIT
         )
 
         with self.energy_tracker.track(file_prefix="generate"):
@@ -193,7 +192,9 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
 
         self.report.decode.energy = decode_energy
         self.report.decode.efficiency = Efficiency.from_energy(
-            decode_energy, decode_volume, unit=TEXT_GENERATION_EFFICIENCY_UNIT
+            decode_energy,
+            decode_volume,
+            unit=DECODE_EFFICIENCY_UNIT,
         )
 
     # Image Diffusion energy tracking
@@ -210,7 +211,9 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
 
         self.report.call.energy = call_energy
         self.report.call.efficiency = Efficiency.from_energy(
-            call_energy, call_volume, unit=IMAGE_DIFFUSION_EFFICIENCY_UNIT
+            call_energy,
+            call_volume,
+            unit=CALL_EFFICIENCY_UNIT,
         )
 
     # Inference energy tracking
@@ -227,7 +230,9 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
 
         self.report.forward.energy = forward_energy
         self.report.forward.efficiency = Efficiency.from_energy(
-            forward_energy, forward_volume, unit=INFERENCE_EFFICIENCY_UNIT
+            forward_energy,
+            forward_volume,
+            unit=FORWARD_EFFICIENCY_UNIT,
         )
 
     @property
@@ -237,13 +242,6 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
     @property
     def dataset_forward_volume(self) -> int:  # in samples
         return self.config.num_samples
-
-    @property
-    def dataset_call_volume(self) -> int:  # in images
-        if self.task == "text-to-image":
-            return self.config.num_samples * self.config.call_kwargs["num_images_per_prompt"]
-        else:
-            return self.config.num_samples
 
     @property
     def dataset_prefill_volume(self) -> int:  # in tokens
@@ -273,3 +271,10 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
             * self.config.generate_kwargs["num_beams"]  # at each beam stage there are num_beams tokens generated
             * (self.config.generate_kwargs["max_new_tokens"] - 1)  # 1 token is generated during prefill
         )
+
+    @property
+    def dataset_call_volume(self) -> int:  # in images
+        if self.task == "text-to-image":
+            return self.config.num_samples * self.config.call_kwargs["num_images_per_prompt"]
+        else:
+            return self.config.num_samples

@@ -51,6 +51,9 @@ TASKS_TO_MODEL_LOADERS = {
     "automatic-speech-recognition": ("AutoModelForSpeechSeq2Seq", "AutoModelForCTC"),
 }
 
+SYNONYM_TASKS = {
+    "sentence-similarity": "feature-extraction",
+}
 
 if is_torch_available():
     TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES = {}
@@ -66,7 +69,20 @@ if is_torch_available():
 else:
     TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES = {}
 
-PretrainedProcessor = Union[FeatureExtractionMixin, ImageProcessingMixin, SpecialTokensMixin, ProcessorMixin]
+
+def get_transformers_automodel_loader_for_task(task: str, model_type: Optional[str] = None):
+    if task in SYNONYM_TASKS:
+        task = SYNONYM_TASKS[task]
+
+    if model_type is not None:
+        model_loader_name = TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES[task][model_type]
+    else:
+        model_loader_name = TASKS_TO_MODEL_LOADERS[task]
+
+    return getattr(transformers, model_loader_name)
+
+
+PretrainedProcessor = Union["FeatureExtractionMixin", "ImageProcessingMixin", "SpecialTokensMixin", "ProcessorMixin"]
 
 
 def get_transformers_pretrained_config(model: str, **kwargs) -> "PretrainedConfig":
@@ -179,15 +195,6 @@ def extract_transformers_shapes_from_artifacts(
         shapes["num_queries"] = 2
 
     return shapes
-
-
-def get_transformers_automodel_loader_for_task(task: str, model_type: Optional[str] = None):
-    if model_type is not None:
-        model_loader_name = TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES[task][model_type]
-    else:
-        model_loader_name = TASKS_TO_MODEL_LOADERS[task]
-
-    return getattr(transformers, model_loader_name)
 
 
 TORCH_INIT_FUNCTIONS = {

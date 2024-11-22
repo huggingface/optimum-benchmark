@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List
 
 import numpy as np
 from datasets import Dataset
@@ -322,7 +322,7 @@ def image_preprocessing(
         # Add a pad token if the tokenizer doesn't have one
         dataset = dataset.select(range(scenario_config.num_samples))
 
-    def preprocess_function(examples: Dict[str, Image]):
+    def preprocess_function(examples: Dict[str, List[Image]]):
         return pretrained_processor([image.convert("RGB") for image in examples[scenario_config.image_column_name]])
 
     dataset = dataset.map(
@@ -388,13 +388,14 @@ def automatic_speech_recognition_preprocessing(
         # Add a pad token if the tokenizer doesn't have one
         pretrained_processor.tokenizer.pad_token = pretrained_processor.tokenizer.eos_token
 
-    def preprocess_function(examples):
-        audio = examples[scenario_config.audio_column_name]
+    def preprocess_function(examples: Dict[str, Dict[str, np.ndarray]]):
+        audio = [audio["array"] for audio in examples[scenario_config.audio_column_name]]
+        sampling_rates = examples[scenario_config.audio_column_name][0]["sampling_rate"]
 
         if "seamless_m4t" in pretrained_config.model_type:
-            outputs = pretrained_processor(audios=audio["array"], sampling_rate=audio["sampling_rate"])
+            outputs = pretrained_processor(audios=audio, sampling_rate=sampling_rates)
         else:
-            outputs = pretrained_processor(audio["array"], sampling_rate=audio["sampling_rate"])
+            outputs = pretrained_processor(audio=audio, sampling_rate=sampling_rates)
 
         # The processor may add an extra dimension so we squeeze it
         for key, value in outputs.items():
