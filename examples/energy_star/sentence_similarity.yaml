@@ -1,0 +1,30 @@
+defaults:
+  - benchmark
+  - backend: pytorch
+  - launcher: process
+  - scenario: energy_star
+  - _base_
+  - _self_
+
+name: sentence_similarity_udever-bloom-7b1
+
+launcher:
+  device_isolation: true
+  device_isolation_action: warn
+
+backend:
+  device: cuda
+  device_ids: 0
+  no_weights: true
+  library: transformers
+  task: sentence-similarity
+  model: sentence-transformers/all-MiniLM-L6-v2
+
+scenario:
+  dataset_name: EnergyStarAI/sentence_similarity
+  sentence1_column_name: sentence1
+  sentence2_column_name: sentence2
+  num_samples: 1000
+
+  input_shapes:
+    batch_size: 1

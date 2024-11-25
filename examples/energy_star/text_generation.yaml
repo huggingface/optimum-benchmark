@@ -1,0 +1,34 @@
+defaults:
+  - benchmark
+  - backend: pytorch
+  - launcher: process
+  - scenario: energy_star
+  - _base_
+  - _self_
+
+name: text_generation
+
+launcher:
+  device_isolation: False
+  device_isolation_action: warn
+
+backend:
+  device: cuda
+  device_ids: 0
+  no_weights: true
+  task: text-generation
+  model: facebook/opt-125m
+  processor: facebook/opt-125m
+
+scenario:
+  dataset_name: EnergyStarAI/text_generation
+  text_column_name: text
+  num_samples: 1000
+  truncation: True
+
+  input_shapes:
+    batch_size: 1
+
+  generate_kwargs:
+    max_new_tokens: 10
+    min_new_tokens: 10

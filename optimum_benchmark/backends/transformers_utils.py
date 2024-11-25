@@ -52,6 +52,10 @@ TASKS_TO_MODEL_LOADERS = {
     "automatic-speech-recognition": ("AutoModelForSpeechSeq2Seq", "AutoModelForCTC"),
 }
 
+SYNONYM_TASKS = {
+    "summarization": "text2text-generation",
+    "sentence-similarity": "feature-extraction",
+}
 
 if is_torch_available():
     TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES = {}
@@ -69,6 +73,19 @@ if is_torch_available():
                 )
 else:
     TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES = {}
+
+
+def get_transformers_automodel_loader_for_task(task: str, model_type: Optional[str] = None):
+    if task in SYNONYM_TASKS:
+        task = SYNONYM_TASKS[task]
+
+    if model_type is not None:
+        model_loader_name = TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES[task][model_type]
+    else:
+        model_loader_name = TASKS_TO_MODEL_LOADERS[task]
+
+    return getattr(transformers, model_loader_name)
+
 
 PretrainedProcessor = Union["FeatureExtractionMixin", "ImageProcessingMixin", "SpecialTokensMixin", "ProcessorMixin"]
 
@@ -222,12 +239,6 @@ def extract_transformers_shapes_from_artifacts(
         shapes["temporal_patch_size"] = flat_artifacts_dict["temporal_patch_size"]
 
     return shapes
-
-
-def get_transformers_automodel_loader_for_task(task: str):
-    model_loader_name = TASKS_TO_MODEL_LOADERS[task]
-    model_loader_class = getattr(transformers, model_loader_name)
-    return model_loader_class
 
 
 TORCH_INIT_FUNCTIONS = {

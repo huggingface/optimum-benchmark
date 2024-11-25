@@ -1,0 +1,35 @@
+defaults:
+  - benchmark
+  - backend: pytorch
+  - launcher: process
+  - scenario: energy_star
+  - _base_
+  - _self_
+
+name: text2text_generation_aya
+
+launcher:
+  device_isolation: true
+  device_isolation_action: warn
+
+backend:
+  device: cuda
+  device_ids: 0
+  no_weights: true
+  model: google-t5/t5-large
+  task: text2text-generation
+
+scenario:
+  dataset_name: EnergyStarAI/text_generation
+  t5_task: text_generation
+  text_column_name: text
+  dataset_prefix1: ""
+  num_samples: 1000
+  truncation: True
+
+  input_shapes:
+    batch_size: 1
+
+  generate_kwargs:
+    max_new_tokens: 10
+    min_new_tokens: 10

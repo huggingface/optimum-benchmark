@@ -27,16 +27,35 @@ class EnergyStarConfig(ScenarioConfig):
 
     # text dataset options
     text_column_name: str = field(default="text", metadata={"help": "Name of the column with the text input."})
-    truncation: Union[bool, str] = field(default=False, metadata={"help": "To truncate the inputs."})
+    truncation: Union[bool, str] = field(default=True, metadata={"help": "To truncate the inputs."})
     max_length: int = field(
         default=-1, metadata={"help": "Maximum length to use by one of the truncation/padding parameters"}
     )
+    dataset_prefix1: str = field(default="", metadata={"help": "Prefix to add to text2textgeneration input."})
+    dataset_prefix2: str = field(default="", metadata={"help": "Prefix to add to text2textgeneration input."})
+    t5_task: str = field(default="", metadata={"help": "Task for categorizing text2textgeneration tasks."})
+
+    # image dataset options
+    image_column_name: str = field(default="image", metadata={"help": "Name of the column with the image input."})
+    resize: Union[bool, str] = field(default=False, metadata={"help": "To resize the input images."})
+
+    # qa dataset options
+    question_column_name: str = field(default="question", metadata={"help": "Name of the column with the question."})
+    context_column_name: str = field(default="context", metadata={"help": "Name of the column with the context."})
+
+    # sts dataset options
+    sentence1_column_name: str = field(
+        default="sentence1", metadata={"help": "Name of the column with the first sentence."}
+    )
+    sentence2_column_name: str = field(
+        default="sentence2", metadata={"help": "Name of the column with the second sentence."}
+    )
+
+    # asr dataset options
+    audio_column_name: str = field(default="audio", metadata={"help": "Name of the column with the audio."})
 
     # scenario options
     warmup_runs: int = field(default=10, metadata={"help": "Number of warmup runs to perform before scenarioing"})
-
-    # tracking options
-    energy: bool = field(default=True, metadata={"help": "Measure energy usage"})
 
     # methods kwargs
     forward_kwargs: Dict[str, Any] = field(
@@ -77,5 +96,5 @@ class EnergyStarConfig(ScenarioConfig):
             )
             self.generate_kwargs["max_new_tokens"] = self.generate_kwargs["min_new_tokens"]
 
-        if self.energy and is_rocm_system():
+        if is_rocm_system():
             raise ValueError("Energy measurement through codecarbon is not yet available on ROCm-powered devices.")

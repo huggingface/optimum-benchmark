@@ -1,0 +1,28 @@
+defaults:
+  - benchmark
+  - backend: pytorch
+  - launcher: process
+  - scenario: energy_star
+  - _base_
+  - _self_
+
+name: image_to_text
+
+launcher:
+  device_isolation: true
+  device_isolation_action: warn
+
+backend:
+  device: cuda
+  device_ids: 0
+  no_weights: true
+  task: image-to-text
+  model: sashakunitsyn/vlrm-blip2-opt-2.7b
+
+scenario:
+  dataset_name: EnergyStarAI/image_captioning
+  image_column_name: image
+  num_samples: 1000
+
+  input_shapes:
+    batch_size: 1

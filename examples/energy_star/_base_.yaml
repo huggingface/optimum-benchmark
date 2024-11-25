@@ -1,0 +1,20 @@
+log_report: true
+print_report: true
+
+# hydra/cli specific settings
+hydra:
+  run:
+    # define run directory
+    dir: runs/${name}
+  sweep:
+    # define sweep directory
+    dir: sweeps/${name}
+    subdir: ${hydra.job.override_dirname}
+  job:
+    # change working directory to the job directory
+    # so that artifacts are stored there
+    chdir: true
+    env_set:
+      # set environment variable OVERRIDE_BENCHMARKS to 1
+      # to not skip benchmarks that have been run before
+      OVERRIDE_BENCHMARKS: 1

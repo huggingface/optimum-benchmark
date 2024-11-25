@@ -1,0 +1,30 @@
+defaults:
+  - benchmark
+  - backend: pytorch
+  - launcher: process
+  - scenario: energy_star
+  - _base_
+  - _self_
+
+name: image_generation_tiny
+
+launcher:
+  device_isolation: true
+  device_isolation_action: warn
+
+backend:
+  device: cuda
+  device_ids: 0
+  no_weights: false
+  model: segmind/tiny-sd
+
+scenario:
+  dataset_name: EnergyStarAI/image_generation
+  text_column_name: prompt
+  num_samples: 1000
+
+  input_shapes:
+    batch_size: 1
+
+  call_kwargs:
+    num_images_per_prompt: 1

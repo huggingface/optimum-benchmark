@@ -3,8 +3,8 @@ hydra:
   sweeper:
     params:
       backend.task: image-text-to-text
-      backend.model: hf-internal-testing/tiny-random-GitForCausalLM,
+      backend.model:
         hf-internal-testing/tiny-random-BlipForConditionalGeneration,
-        hf-internal-testing/tiny-random-Blip2ForConditionalGeneration,
-        hf-internal-testing/tiny-random-IdeficsForVisionText2Text
+        hf-internal-testing/tiny-random-IdeficsForVisionText2Text,
+        hf-internal-testing/tiny-random-GitForCausalLM
       +scenario.input_shapes.num_images: 2

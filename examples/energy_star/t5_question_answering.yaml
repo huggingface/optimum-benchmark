@@ -1,0 +1,32 @@
+defaults:
+  - benchmark
+  - backend: pytorch
+  - launcher: process
+  - scenario: energy_star
+  - _base_
+  - _self_
+
+name: question_answering_t5
+
+launcher:
+  device_isolation: true
+  device_isolation_action: warn
+
+backend:
+  device: cuda
+  device_ids: 0
+  no_weights: true
+  model: google-t5/t5-large
+  task: text2text-generation
+
+scenario:
+  dataset_name: EnergyStarAI/extractive_qa
+  question_column_name: question
+  context_column_name: context
+  dataset_prefix1: "question: "
+  dataset_prefix2: " context: "
+  t5_task: question_answering
+  num_samples: 1000
+
+  input_shapes:
+    batch_size: 1
