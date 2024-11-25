@@ -56,22 +56,24 @@ class InferenceScenario(Scenario[InferenceConfig]):
         super().__init__(config)
 
     def run(self, backend: Backend[BackendConfigT]) -> BenchmarkReport:
+        self.task = backend.config.task
+
         self.logger.info("\t+ Creating input generator")
         self.input_generator = InputGenerator(
-            task=backend.config.task,
+            task=self.task,
             input_shapes=self.config.input_shapes,
             model_shapes=backend.model_shapes,
             model_type=backend.config.model_type,
         )
 
-        if backend.config.task in TEXT_GENERATION_TASKS:
+        if self.task in TEXT_GENERATION_TASKS:
             self.logger.info("\t+ Generating Text Generation inputs")
             self.inputs = self.input_generator()
             self.logger.info("\t+ Updating Text Generation kwargs with default values")
             self.config.generate_kwargs = {**TEXT_GENERATION_DEFAULT_KWARGS, **self.config.generate_kwargs}
             self.logger.info("\t+ Initializing Text Generation report")
             self.report = BenchmarkReport.from_list(targets=["load", "prefill", "decode", "per_token"])
-        elif backend.config.task in IMAGE_DIFFUSION_TASKS:
+        elif self.task in IMAGE_DIFFUSION_TASKS:
             self.logger.info("\t+ Generating Image Diffusion inputs")
             self.inputs = self.input_generator()
             self.logger.info("\t+ Updating Image Diffusion kwargs with default values")
@@ -95,36 +97,36 @@ class InferenceScenario(Scenario[InferenceConfig]):
         if self.config.latency or self.config.energy:
             # latency and energy are metrics that require some warmup
             if self.config.warmup_runs > 0:
-                if backend.config.task in TEXT_GENERATION_TASKS:
+                if self.task in TEXT_GENERATION_TASKS:
                     self.warmup_text_generation(backend)
-                elif backend.config.task in IMAGE_DIFFUSION_TASKS:
+                elif self.task in IMAGE_DIFFUSION_TASKS:
                     self.warmup_image_diffusion(backend)
                 else:
                     self.warmup_inference(backend)
 
         if self.config.latency:
-            if backend.config.task in TEXT_GENERATION_TASKS:
+            if self.task in TEXT_GENERATION_TASKS:
                 if backend.config.name in PER_TOKEN_BACKENDS:
                     self.run_per_token_text_generation_latency_tracking(backend)
                 else:
                     self.run_text_generation_latency_tracking(backend)
-            elif backend.config.task in IMAGE_DIFFUSION_TASKS:
+            elif self.task in IMAGE_DIFFUSION_TASKS:
                 self.run_image_diffusion_latency_tracking(backend)
             else:
                 self.run_latency_inference_tracking(backend)
 
         if self.config.memory:
-            if backend.config.task in TEXT_GENERATION_TASKS:
+            if self.task in TEXT_GENERATION_TASKS:
                 self.run_text_generation_memory_tracking(backend)
-            elif backend.config.task in IMAGE_DIFFUSION_TASKS:
+            elif self.task in IMAGE_DIFFUSION_TASKS:
                 self.run_image_diffusion_memory_tracking(backend)
             else:
                 self.run_inference_memory_tracking(backend)
 
         if self.config.energy:
-            if backend.config.task in TEXT_GENERATION_TASKS:
+            if self.task in TEXT_GENERATION_TASKS:
                 self.run_text_generation_energy_tracking(backend)
-            elif backend.config.task in IMAGE_DIFFUSION_TASKS:
+            elif self.task in IMAGE_DIFFUSION_TASKS:
                 self.run_image_diffusion_energy_tracking(backend)
             else:
                 self.run_inference_energy_tracking(backend)
@@ -406,13 +408,6 @@ class InferenceScenario(Scenario[InferenceConfig]):
         return self.config.input_shapes["batch_size"]
 
     @property
-    def atomic_call_volume(self) -> int:  # in images
-        if "prompt" in self.inputs:
-            return self.config.input_shapes["batch_size"] * self.config.call_kwargs["num_images_per_prompt"]
-        else:
-            return self.config.input_shapes["batch_size"]
-
-    @property
     def atomic_prefill_volume(self) -> int:  # in tokens
         if {"input_ids", "prompt", "prompts"} & set(self.inputs.keys()):
             # text conditioned generation (sequence_length tokens)
@@ -435,3 +430,10 @@ class InferenceScenario(Scenario[InferenceConfig]):
             * self.config.generate_kwargs["num_beams"]  # at each beam stage there are num_beams tokens generated
             * (self.config.generate_kwargs["max_new_tokens"] - 1)  # 1 token is generated during prefill
         )
+
+    @property
+    def atomic_call_volume(self) -> int:  # in images
+        if self.task == "text-to-image":
+            return self.config.input_shapes["batch_size"] * self.config.call_kwargs["num_images_per_prompt"]
+        else:
+            return self.config.input_shapes["batch_size"]

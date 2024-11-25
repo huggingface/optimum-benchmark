@@ -51,7 +51,6 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
 
     def run(self, backend: Backend[BackendConfigT]) -> BenchmarkReport:
         self.task = backend.config.task
-        self.input_shapes = {**self.config.input_shapes}
 
         if self.task in TEXT_GENERATION_TASKS:
             self.logger.info("\t+ Updating Text Generation kwargs with default values")
@@ -255,7 +254,6 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
                 # image/audio/other conditioned generation (1 bos token)
                 prefill_volume += 1
 
-        print("prefill_volume", prefill_volume)
         return prefill_volume
 
     @property
