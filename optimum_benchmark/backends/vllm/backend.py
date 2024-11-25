@@ -143,7 +143,7 @@ class VLLMBackend(Backend[VLLMConfig]):
         stream = await self.pretrained_model.add_request(
             inputs=prompt,
             request_id=request_id,
-            params=self.get_sampling_params(),
+            params=self.get_sampling_params(kwargs),
         )
 
         async for _ in stream:
