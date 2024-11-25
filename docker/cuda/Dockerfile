@@ -32,11 +32,11 @@ ARG TORCH_CUDA=cu124
 ARG TORCH_RELEASE_TYPE=stable
 
 RUN if [ -n "${TORCH_VERSION}" ]; then \
-    pip install --no-cache-dir torch==${TORCH_VERSION} torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
+    pip install --no-cache-dir torch==${TORCH_VERSION} torchvision torchaudio torchao --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
 elif [ "${TORCH_RELEASE_TYPE}" = "stable" ]; then \
-    pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
+    pip install --no-cache-dir torch torchvision torchaudio torchao --index-url https://download.pytorch.org/whl/${TORCH_CUDA} ; \
 elif [ "${TORCH_RELEASE_TYPE}" = "nightly" ]; then \
-    pip install --no-cache-dir --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/${TORCH_CUDA} ; \
+    pip install --no-cache-dir --pre torch torchvision torchaudio torchao --index-url https://download.pytorch.org/whl/nightly/${TORCH_CUDA} ; \
 else \
     echo "Error: Invalid TORCH_RELEASE_TYPE. Must be 'stable', 'nightly', or specify a TORCH_VERSION." && exit 1 ; \
 fi
