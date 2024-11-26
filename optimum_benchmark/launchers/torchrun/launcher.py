@@ -129,6 +129,10 @@ def target(
     else:
         raise RuntimeError("Could not synchronize with main process")
 
+    if sys.platform == "win32":
+        logger.info("\t+ Disabline libuv on Windows")
+        os.environ["USE_LIBUV"] = "0"
+
     try:
         elastic_agent_launcher = elastic_launch(config=config, entrypoint=entrypoint)
         outputs = elastic_agent_launcher(worker, worker_args, logger)
@@ -155,19 +159,17 @@ def entrypoint(worker: Callable[..., BenchmarkReport], worker_args: List[Any], l
     else:
         setup_logging(level="ERROR", to_file=log_to_file, prefix=f"RANK-PROCESS-{rank}")
 
+    if sys.platform == "win32":
+        logger.info("\t+ Disabline libuv on Windows")
+        os.environ["USE_LIBUV"] = "0"
+
     if torch.cuda.is_available():
         logger.info(f"\t+ Setting torch.distributed cuda device to {rank}")
         device = torch.device("cuda", rank)
         torch.cuda.set_device(device)
 
-    if sys.platform == "win32":
-        logger.info("\t+ Disabling libuv for Windows")
-        init_method = "env://?use_libuv=0"
-    else:
-        init_method = "env://"
-
     logger.info("\t+ Initializing torch.distributed process group")
-    torch.distributed.init_process_group(init_method=init_method)
+    torch.distributed.init_process_group()
 
     try:
         report = worker(*worker_args)
