@@ -25,7 +25,7 @@ from ..transformers_utils import fast_weights_init
 from .config import PyTorchConfig
 
 if is_deepspeed_available():
-    import deepspeed
+    import deepspeed  # type: ignore
 
 if is_torch_distributed_available():
     import torch.distributed

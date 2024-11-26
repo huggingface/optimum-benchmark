@@ -2,6 +2,6 @@ hydra:
   mode: MULTIRUN
   sweeper:
     params:
+      backend.model: ggml-org/models
       backend.task: text-generation,feature-extraction
-      backend.model: QuantFactory/gpt2-GGUF
-      backend.filename: gpt2.Q4_0.gguf
+      backend.filename: tinyllamas/stories15M-q8_0.gguf

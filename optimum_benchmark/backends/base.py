@@ -70,14 +70,11 @@ class Backend(Generic[BackendConfigT], ABC):
 
         elif self.config.library == "llama_cpp":
             self.logger.info("\t+ Benchmarking a LlamaCpp model")
-            # TOD: need a custom method to extract shapes from gguf
-            self.model_shapes = extract_transformers_shapes_from_artifacts(
-                self.pretrained_config, self.pretrained_processor
-            )
             self.pretrained_processor = None
-            self.generation_config = None
             self.pretrained_config = None
+            self.generation_config = None
             self.automodel_loader = None
+            self.model_shapes = {}
 
         else:
             self.logger.info("\t+ Benchmarking a Transformers model")
