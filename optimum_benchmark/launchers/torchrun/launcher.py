@@ -105,7 +105,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
                 raise RuntimeError(f"Received an unexpected response from isolated process: {output}")
 
         self.logger.info("\t+ Aggregating reports from all rank processes")
-        report = BenchmarkReport.aggregate_across_processes(reports)
+        report = BenchmarkReport.aggregate(reports)
         return report
 
 
@@ -158,8 +158,6 @@ def entrypoint(worker: Callable[..., BenchmarkReport], worker_args: List[Any], l
         setup_logging(level=log_level, to_file=log_to_file, prefix=f"RANK-PROCESS-{rank}")
     else:
         setup_logging(level="ERROR", to_file=log_to_file, prefix=f"RANK-PROCESS-{rank}")
-
-
 
     if torch.cuda.is_available():
         logger.info(f"\t+ Setting torch.distributed cuda device to {rank}")
