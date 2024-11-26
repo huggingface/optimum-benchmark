@@ -53,6 +53,9 @@ def test_cli_configs(config_name):
 
 @pytest.mark.parametrize("launcher", ["inline", "process", "torchrun"])
 def test_cli_exit_code_0(launcher):
+    if launcher == "torchrun" and sys.platform == "win32":
+        pytest.skip("torchrun is not supported on Windows")
+
     args_0 = [
         "optimum-benchmark",
         "--config-dir",
@@ -73,6 +76,9 @@ def test_cli_exit_code_0(launcher):
 
 @pytest.mark.parametrize("launcher", ["inline", "process", "torchrun"])
 def test_cli_exit_code_1(launcher):
+    if launcher == "torchrun" and sys.platform == "win32":
+        pytest.skip("torchrun is not supported on Windows")
+
     args_1 = [
         "optimum-benchmark",
         "--config-dir",
