@@ -1,5 +1,4 @@
 import os
-import sys
 import traceback
 from contextlib import ExitStack
 from logging import Logger
