@@ -24,10 +24,6 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
     def __init__(self, config: TorchrunConfig):
         super().__init__(config)
 
-        if sys.platform == "win32":
-            self.logger.info("\t+ Disabline libuv on Windows")
-            os.environ["USE_LIBUV"] = "0"
-
         if get_start_method(allow_none=True) != self.config.start_method:
             self.logger.info(f"\t+ Setting multiprocessing start method to {self.config.start_method}")
             set_start_method(self.config.start_method, force=True)
@@ -164,8 +160,14 @@ def entrypoint(worker: Callable[..., BenchmarkReport], worker_args: List[Any], l
         device = torch.device("cuda", rank)
         torch.cuda.set_device(device)
 
+    if sys.platform == "win32":
+        logger.info("\t+ Disabling libuv for Windows")
+        init_method = "env://?use_libuv=0"
+    else:
+        init_method = "env://"
+
     logger.info("\t+ Initializing torch.distributed process group")
-    torch.distributed.init_process_group()
+    torch.distributed.init_process_group(init_method=init_method)
 
     try:
         report = worker(*worker_args)

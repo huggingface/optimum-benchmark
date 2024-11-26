@@ -41,15 +41,10 @@ class LlamaCppBackend(Backend[LlamaCppConfig]):
             "echo": False,
         }
 
-    def prepare_input_shapes(self, input_shapes: Dict[str, Any]) -> Dict[str, Any]:
-        if self.config.task == "text-generation":
-            if input_shapes["batch_size"] != 1:
-                raise ValueError("Batch size must be 1 for LlamaCpp text generation")
-
-        return input_shapes
-
     def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         if self.config.task == "text-generation":
+            if inputs["input_ids"].shape[0] != 1:
+                raise ValueError("Batch size must be 1 for LlamaCpp text generation")
             return {"tokens": inputs["input_ids"].squeeze(0).tolist()}
 
         elif self.config.task == "feature-extraction":
