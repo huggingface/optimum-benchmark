@@ -24,6 +24,10 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
     def __init__(self, config: TorchrunConfig):
         super().__init__(config)
 
+        if sys.platform == "win32":
+            self.logger.info("\t+ Disabline libuv on Windows")
+            os.environ["USE_LIBUV"] = "0"
+
         if get_start_method(allow_none=True) != self.config.start_method:
             self.logger.info(f"\t+ Setting multiprocessing start method to {self.config.start_method}")
             set_start_method(self.config.start_method, force=True)
@@ -101,7 +105,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
                 raise RuntimeError(f"Received an unexpected response from isolated process: {output}")
 
         self.logger.info("\t+ Aggregating reports from all rank processes")
-        report = BenchmarkReport.aggregate(reports)
+        report = BenchmarkReport.aggregate_across_processes(reports)
         return report
 
 
@@ -155,9 +159,7 @@ def entrypoint(worker: Callable[..., BenchmarkReport], worker_args: List[Any], l
     else:
         setup_logging(level="ERROR", to_file=log_to_file, prefix=f"RANK-PROCESS-{rank}")
 
-    if sys.platform == "win32":
-        logger.info("\t+ Disabline libuv on Windows")
-        os.environ["USE_LIBUV"] = "0"
+
 
     if torch.cuda.is_available():
         logger.info(f"\t+ Setting torch.distributed cuda device to {rank}")
