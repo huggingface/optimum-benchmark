@@ -82,7 +82,7 @@ class OVBackend(Backend[OVConfig]):
         if self.config.reshape:
             static_shapes = {
                 key: value
-                for key, value in {**self.input_shapes, **self.model_shapes}.items()
+                for key, value in self.model_shapes.items()
                 if key in inspect.getfullargspec(self.pretrained_model.reshape).args
             }
             if ("sequence_length" in static_shapes) and ("height" in static_shapes) and ("width" in static_shapes):
@@ -135,20 +135,6 @@ class OVBackend(Backend[OVConfig]):
             self.config.export = original_export
             self.config.model = original_model
 
-    @property
-    def is_dp_distributed(self) -> bool:
-        return is_torch_distributed_available() and torch.distributed.is_initialized()
-
-    @property
-    def ovmodel_kwargs(self) -> Dict[str, Any]:
-        kwargs = {}
-
-        if self.config.task in TEXT_GENERATION_TASKS:
-            kwargs["use_cache"] = self.config.use_cache
-            kwargs["use_merged"] = self.config.use_merged
-
-        return kwargs
-
     def quantize_automodel(self) -> None:
         self.logger.info("\t+ Attempting quantization")
         self.quantized_model = f"{self.tmpdir.name}/quantized_model"
@@ -181,29 +167,36 @@ class OVBackend(Backend[OVConfig]):
             batch_size=1,
         )
 
-    def prepare_input_shapes(self, input_shapes: Dict[str, Any]) -> Dict[str, Any]:
-        if self.is_dp_distributed:
-            if input_shapes["batch_size"] % torch.distributed.get_world_size() != 0:
-                raise ValueError(
-                    f"Batch size {input_shapes['batch_size']} must be divisible by "
-                    f"data parallel world size {torch.distributed.get_world_size()}"
-                )
-            # distributing batch size across processes
-            input_shapes["batch_size"] //= torch.distributed.get_world_size()
+    @property
+    def ovmodel_kwargs(self) -> Dict[str, Any]:
+        kwargs = {}
 
-        # registering input shapes for usage during model reshaping
-        self.input_shapes = input_shapes
+        if self.config.task in TEXT_GENERATION_TASKS:
+            kwargs["use_cache"] = self.config.use_cache
+            kwargs["use_merged"] = self.config.use_merged
 
-        return input_shapes
+        return kwargs
+
+    @property
+    def split_between_processes(self) -> bool:
+        return is_torch_distributed_available() and torch.distributed.is_initialized()
 
     def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        if self.is_dp_distributed:
+        if self.split_between_processes:
             with Accelerator().split_between_processes(inputs=inputs, apply_padding=False) as process_inputs:
                 inputs = process_inputs
 
         for key in list(inputs.keys()):
             if hasattr(self.pretrained_model, "input_names") and key not in self.pretrained_model.input_names:
                 inputs.pop(key)
+
+        if "input_ids" in inputs:
+            self.model_shapes.update(dict(zip(["batch_size", "sequence_length"], inputs["input_ids"].shape)))
+
+        if "pixel_values" in inputs:
+            self.model_shapes.update(
+                dict(zip(["batch_size", "num_channels", "height", "width"], inputs["pixel_values"].shape))
+            )
 
         return inputs
 

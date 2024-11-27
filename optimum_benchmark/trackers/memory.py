@@ -52,16 +52,14 @@ class Memory:
     max_allocated: Optional[float] = None
 
     @staticmethod
-    def aggregate(memories: List["Memory"]) -> "Memory":
+    def aggregate_across_processes(memories: List["Memory"]) -> "Memory":
         if len(memories) == 0:
             raise ValueError("No memory measurements to aggregate")
         elif any(memory is None for memory in memories):
             raise ValueError("Some memory measurements are missing")
 
-        unit = memories[0].unit
-
-        # process specific measurements
-        max_ram = sum(memory.max_ram for memory in memories)
+        # ram, reserved, allocated, and process_vram measurements are process-specific so they are summed
+        max_ram = sum(memory.max_ram for memory in memories) if memories[0].max_ram is not None else None
         max_reserved = sum(memory.max_reserved for memory in memories) if memories[0].max_reserved is not None else None
         max_allocated = (
             sum(memory.max_allocated for memory in memories) if memories[0].max_allocated is not None else None
@@ -69,10 +67,13 @@ class Memory:
         max_process_vram = (
             sum(memory.max_process_vram for memory in memories) if memories[0].max_process_vram is not None else None
         )
-        # machine level measurements
+        # global_vram is not process-specific so we take the average
         max_global_vram = (
-            max(memory.max_global_vram for memory in memories) if memories[0].max_global_vram is not None else None
+            sum(memory.max_global_vram for memory in memories) / len(memories)
+            if memories[0].max_global_vram is not None
+            else None
         )
+        unit = memories[0].unit
 
         return Memory(
             unit=unit,

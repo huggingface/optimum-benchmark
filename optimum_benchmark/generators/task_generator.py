@@ -445,6 +445,4 @@ TASKS_TO_GENERATORS = {
     "image-text-to-text": ImageTextToTextGenerator,
     # diffusers pipelines tasks
     "text-to-image": PromptGenerator,
-    "stable-diffusion": PromptGenerator,
-    "stable-diffusion-xl": PromptGenerator,
 }

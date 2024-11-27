@@ -100,7 +100,7 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
                 raise RuntimeError(f"Received an unexpected response from isolated process: {output}")
 
         self.logger.info("\t+ Aggregating reports from all rank processes")
-        report = BenchmarkReport.aggregate(reports)
+        report = BenchmarkReport.aggregate_across_processes(reports)
         return report
 
 

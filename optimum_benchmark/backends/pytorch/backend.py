@@ -27,7 +27,7 @@ if is_deepspeed_available():
     import deepspeed  # type: ignore
 
 if is_torch_distributed_available():
-    import torch.distributed
+    import torch.distributed  # type: ignore
 
 if is_zentorch_available():
     import zentorch  # type: ignore # noqa: F401
@@ -327,18 +327,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             raise ValueError(f"Quantization scheme {self.config.quantization_scheme} not recognized")
 
     @property
-    def is_distributed(self) -> bool:
-        return is_torch_distributed_available() and torch.distributed.is_initialized()
-
-    @property
-    def is_tp_distributed(self) -> bool:
-        return self.is_distributed and self.config.deepspeed_inference
-
-    @property
-    def is_dp_distributed(self) -> bool:
-        return self.is_distributed and not self.config.deepspeed_inference
-
-    @property
     def is_quantized(self) -> bool:
         return self.config.quantization_scheme is not None or (
             hasattr(self.pretrained_config, "quantization_config")
@@ -407,34 +395,25 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         return kwargs
 
-    def prepare_input_shapes(self, input_shapes: Dict[str, Any]) -> Dict[str, Any]:
-        if self.is_dp_distributed:
-            if input_shapes["batch_size"] % torch.distributed.get_world_size() != 0:
-                raise ValueError(
-                    f"Batch size {input_shapes['batch_size']} must be divisible by "
-                    f"data parallel world size {torch.distributed.get_world_size()}"
-                )
-            # distributing batch size across processes
-            input_shapes["batch_size"] //= torch.distributed.get_world_size()
-
-        if self.is_tp_distributed:
-            if torch.distributed.get_rank() != 0:
-                # zeroing throughput on other ranks
-                input_shapes["batch_size"] = 0
-
-        return input_shapes
+    @property
+    def split_between_processes(self) -> bool:
+        return (
+            is_torch_distributed_available()
+            and torch.distributed.is_initialized()
+            and not self.config.deepspeed_inference
+        )
 
     def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        if self.is_dp_distributed:
+        if self.split_between_processes:
             with Accelerator().split_between_processes(inputs=inputs, apply_padding=False) as process_inputs:
                 inputs = process_inputs
-
-        if self.config.library == "timm":
-            inputs = {"x": inputs["pixel_values"]}
 
         for key, value in inputs.items():
             if isinstance(value, torch.Tensor):
                 inputs[key] = value.to(self.config.device)
+
+        if self.config.library == "timm":
+            inputs = {"x": inputs["pixel_values"]}
 
         return inputs
 

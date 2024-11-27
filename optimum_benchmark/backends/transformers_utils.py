@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Type, Union
 
 import torch
 import transformers
@@ -7,6 +7,7 @@ from transformers import (
     AutoConfig,
     AutoFeatureExtractor,
     AutoImageProcessor,
+    AutoModel,
     AutoProcessor,
     AutoTokenizer,
     FeatureExtractionMixin,
@@ -17,9 +18,7 @@ from transformers import (
     SpecialTokensMixin,
 )
 
-from ..import_utils import is_torch_available
-
-TASKS_TO_MODEL_LOADERS = {
+TASKS_TO_AUTOMODEL_CLASS_NAMES = {
     # text processing
     "feature-extraction": "AutoModel",
     "fill-mask": "AutoModelForMaskedLM",
@@ -57,34 +56,26 @@ SYNONYM_TASKS = {
     "sentence-similarity": "feature-extraction",
 }
 
-if is_torch_available():
-    TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES = {}
-    for task_name, model_loaders in TASKS_TO_MODEL_LOADERS.items():
-        TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES[task_name] = {}
 
-        if isinstance(model_loaders, str):
-            model_loaders = (model_loaders,)
-
-        for model_loader_name in model_loaders:
-            model_loader_class = getattr(transformers, model_loader_name, None)
-            if model_loader_class is not None:
-                TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES[task_name].update(
-                    model_loader_class._model_mapping._model_mapping
-                )
-else:
-    TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES = {}
-
-
-def get_transformers_automodel_loader_for_task(task: str, model_type: Optional[str] = None):
+def get_transformers_automodel_class_for_task(task: str, model_type: Optional[str] = None) -> Type["AutoModel"]:
     if task in SYNONYM_TASKS:
         task = SYNONYM_TASKS[task]
 
-    if model_type is not None:
-        model_loader_name = TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES[task][model_type]
-    else:
-        model_loader_name = TASKS_TO_MODEL_LOADERS[task]
+    if task not in TASKS_TO_AUTOMODEL_CLASS_NAMES:
+        raise ValueError(f"Task {task} not supported")
 
-    return getattr(transformers, model_loader_name)
+    if isinstance(TASKS_TO_AUTOMODEL_CLASS_NAMES[task], str):
+        return getattr(transformers, TASKS_TO_AUTOMODEL_CLASS_NAMES[task])
+    else:
+        if model_type is None:
+            raise ValueError(f"Task {task} requires a model_type to be specified")
+
+        for automodel_class_name in TASKS_TO_AUTOMODEL_CLASS_NAMES[task]:
+            automodel_class = getattr(transformers, automodel_class_name)
+            if model_type in automodel_class._model_mapping._model_mapping:
+                return automodel_class
+
+    raise ValueError(f"Task {task} not supported for model type {model_type}")
 
 
 PretrainedProcessor = Union["FeatureExtractionMixin", "ImageProcessingMixin", "SpecialTokensMixin", "ProcessorMixin"]
