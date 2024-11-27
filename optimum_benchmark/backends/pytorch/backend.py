@@ -11,12 +11,12 @@ from transformers import (
     AwqConfig,
     BitsAndBytesConfig,
     GPTQConfig,
+    TorchAoConfig,
     Trainer,
     TrainerCallback,
     TrainerState,
     TrainingArguments,
 )
-from transformers import TorchAoConfig
 
 from ...import_utils import is_deepspeed_available, is_torch_distributed_available, is_zentorch_available
 from ..base import Backend

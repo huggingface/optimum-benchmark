@@ -33,7 +33,7 @@ WEIGHTS_CONFIGS = {
         "torch_dtype": "bfloat16",
         "quantization_scheme": "torchao",
         "quantization_config": {"quant_type": "int4_weight_only", "group_size": 128},
-    }
+    },
 }
 
 
