@@ -10,6 +10,13 @@ if is_timm_available():
     from timm.models import get_pretrained_cfg, load_model_config_from_hf, parse_model_name
 
 
+def get_timm_model_creator():
+    if not is_timm_available():
+        raise ImportError("timm is not available. Please, pip install timm.")
+
+    return create_model
+
+
 def get_timm_pretrained_config(model_name: str) -> PretrainedConfig:
     if not is_timm_available():
         raise ImportError("timm is not available. Please, pip install timm.")
@@ -71,10 +78,3 @@ def extract_timm_shapes_from_config(config: PretrainedConfig) -> Dict[str, Any]:
         warnings.warn("Could not extract shapes [num_channels, height, width] from timm model config.")
 
     return shapes
-
-
-def get_timm_automodel_loader():
-    if not is_timm_available():
-        raise ImportError("timm is not available. Please, pip install timm.")
-
-    return create_model

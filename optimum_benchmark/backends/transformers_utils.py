@@ -18,59 +18,23 @@ from transformers import (
     SpecialTokensMixin,
 )
 
-TASKS_TO_AUTOMODEL_CLASS_NAMES = {
-    # text processing
-    "feature-extraction": "AutoModel",
-    "fill-mask": "AutoModelForMaskedLM",
-    "multiple-choice": "AutoModelForMultipleChoice",
-    "question-answering": "AutoModelForQuestionAnswering",
-    "token-classification": "AutoModelForTokenClassification",
-    "text-classification": "AutoModelForSequenceClassification",
-    # audio processing
-    "audio-xvector": "AutoModelForAudioXVector",
-    "text-to-audio": "AutoModelForTextToSpectrogram",
-    "audio-classification": "AutoModelForAudioClassification",
-    "audio-frame-classification": "AutoModelForAudioFrameClassification",
-    # image processing
-    "mask-generation": "AutoModel",
-    "image-to-image": "AutoModelForImageToImage",
-    "masked-im": "AutoModelForMaskedImageModeling",
-    "object-detection": "AutoModelForObjectDetection",
-    "depth-estimation": "AutoModelForDepthEstimation",
-    "image-segmentation": "AutoModelForImageSegmentation",
-    "image-classification": "AutoModelForImageClassification",
-    "semantic-segmentation": "AutoModelForSemanticSegmentation",
-    "zero-shot-object-detection": "AutoModelForZeroShotObjectDetection",
-    "zero-shot-image-classification": "AutoModelForZeroShotImageClassification",
-    # text generation
-    "image-to-text": "AutoModelForVision2Seq",
-    "text-generation": "AutoModelForCausalLM",
-    "text2text-generation": "AutoModelForSeq2SeqLM",
-    "image-text-to-text": "AutoModelForImageTextToText",
-    "visual-question-answering": "AutoModelForVisualQuestionAnswering",
-    "automatic-speech-recognition": ("AutoModelForSpeechSeq2Seq", "AutoModelForCTC"),
-}
 
-SYNONYM_TASKS = {
-    "summarization": "text2text-generation",
-    "sentence-similarity": "feature-extraction",
-}
+def get_transformers_auto_model_class_for_task(task: str, model_type: Optional[str] = None) -> Type["AutoModel"]:
+    from ..task_utils import SYNONYM_TASKS, TASKS_TO_AUTO_MODEL_CLASS_NAMES
 
-
-def get_transformers_automodel_class_for_task(task: str, model_type: Optional[str] = None) -> Type["AutoModel"]:
     if task in SYNONYM_TASKS:
         task = SYNONYM_TASKS[task]
 
-    if task not in TASKS_TO_AUTOMODEL_CLASS_NAMES:
+    if task not in TASKS_TO_AUTO_MODEL_CLASS_NAMES:
         raise ValueError(f"Task {task} not supported")
 
-    if isinstance(TASKS_TO_AUTOMODEL_CLASS_NAMES[task], str):
-        return getattr(transformers, TASKS_TO_AUTOMODEL_CLASS_NAMES[task])
+    if isinstance(TASKS_TO_AUTO_MODEL_CLASS_NAMES[task], str):
+        return getattr(transformers, TASKS_TO_AUTO_MODEL_CLASS_NAMES[task])
     else:
         if model_type is None:
             raise ValueError(f"Task {task} requires a model_type to be specified")
 
-        for automodel_class_name in TASKS_TO_AUTOMODEL_CLASS_NAMES[task]:
+        for automodel_class_name in TASKS_TO_AUTO_MODEL_CLASS_NAMES[task]:
             automodel_class = getattr(transformers, automodel_class_name)
             if model_type in automodel_class._model_mapping._model_mapping:
                 return automodel_class
