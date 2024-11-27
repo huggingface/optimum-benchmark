@@ -16,6 +16,7 @@ from transformers import (
     TrainerState,
     TrainingArguments,
 )
+from transformers import TorchAoConfig
 
 from ...import_utils import is_deepspeed_available, is_torch_distributed_available, is_zentorch_available
 from ..base import Backend
@@ -323,6 +324,11 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.quantization_config = BitsAndBytesConfig(
                 **dict(getattr(self.pretrained_config, "quantization_config", {}), **self.config.quantization_config)
             )
+        elif self.is_torchao_quantized:
+            self.logger.info("\t+ Processing TorchAO config")
+            self.quantization_config = TorchAoConfig(
+                **dict(getattr(self.pretrained_config, "quantization_config", {}), **self.config.quantization_config)
+            )
         else:
             raise ValueError(f"Quantization scheme {self.config.quantization_scheme} not recognized")
 
@@ -352,6 +358,13 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         return self.config.quantization_scheme == "awq" or (
             hasattr(self.pretrained_config, "quantization_config")
             and self.pretrained_config.quantization_config.get("quant_method", None) == "awq"
+        )
+
+    @property
+    def is_torchao_quantized(self) -> bool:
+        return self.config.quantization_scheme == "torchao" or (
+            hasattr(self.pretrained_config, "quantization_config")
+            and self.pretrained_config.quantization_config.get("quant_method", None) == "torchao"
         )
 
     @property
