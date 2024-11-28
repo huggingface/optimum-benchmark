@@ -5,10 +5,7 @@ from typing import Optional
 
 import huggingface_hub
 
-from .backends.diffusers_utils import get_diffusers_pretrained_config
-from .backends.timm_utils import get_timm_pretrained_config
-from .backends.transformers_utils import get_transformers_pretrained_config
-from .import_utils import is_diffusers_available, is_torch_available
+from .import_utils import is_diffusers_available, is_torch_available, is_transformers_available
 
 TASKS_TO_AUTO_MODEL_CLASS_NAMES = {
     # text processing
@@ -51,7 +48,7 @@ TASKS_TO_AUTO_PIPELINE_CLASS_NAMES = {
 
 TASKS_TO_MODEL_TYPES_TO_MODEL_CLASS_NAMES = {}
 
-if is_torch_available():
+if is_transformers_available() and is_torch_available():
     import transformers
 
     for task_name, auto_model_class_names in TASKS_TO_AUTO_MODEL_CLASS_NAMES.items():
@@ -88,9 +85,8 @@ if is_diffusers_available():
 
         for task_name, pipeline_mapping in TASKS_TO_PIPELINE_TYPES_TO_PIPELINE_CLASS_NAMES.items():
             for pipeline_type, pipeline_class in pipeline_mapping.items():
+                # diffusers does not have a mappings with just class names
                 TASKS_TO_PIPELINE_TYPES_TO_PIPELINE_CLASS_NAMES[task_name][pipeline_type] = pipeline_class.__name__
-    else:
-        TASKS_TO_PIPELINE_TYPES_TO_PIPELINE_CLASS_NAMES = {}
 
 
 IMAGE_DIFFUSION_TASKS = [
@@ -133,13 +129,12 @@ SYNONYM_TASKS = {
 def map_from_synonym(task: str) -> str:
     if task in SYNONYM_TASKS:
         task = SYNONYM_TASKS[task]
+
     return task
 
 
 def infer_library_from_model_name_or_path(
-    model_name_or_path: str,
-    token: Optional[str] = None,
-    revision: Optional[str] = None,
+    model_name_or_path: str, token: Optional[str] = None, revision: Optional[str] = None
 ) -> str:
     inferred_library_name = None
 
@@ -154,9 +149,12 @@ def infer_library_from_model_name_or_path(
                 inferred_library_name = "diffusers"
             elif "config.json" in repo_files:
                 config_dict = json.loads(
-                    huggingface_hub.hf_hub_download(
-                        repo_id=model_name_or_path, filename="config.json", revision=revision, token=token
-                    )
+                    open(
+                        huggingface_hub.hf_hub_download(
+                            repo_id=model_name_or_path, filename="config.json", revision=revision, token=token
+                        ),
+                        mode="r",
+                    ).read()
                 )
                 if "pretrained_cfg" in config_dict or "architecture" in config_dict:
                     inferred_library_name = "timm"
@@ -164,6 +162,8 @@ def infer_library_from_model_name_or_path(
                     inferred_library_name = "diffusers"
                 else:
                     inferred_library_name = "transformers"
+            elif "onfig_sentence_transformers.json" in repo_files:
+                inferred_library_name = "sentence-transformers"
 
         if inferred_library_name is None:
             raise RuntimeError(f"Could not infer library name from repo {model_name_or_path}.")
@@ -175,7 +175,12 @@ def infer_library_from_model_name_or_path(
         if "model_index.json" in local_files:
             inferred_library_name = "diffusers"
         elif "config.json" in local_files:
-            config_dict = json.load(open(os.path.join(model_name_or_path, "config.json"), "r"))
+            config_dict = json.load(
+                open(
+                    os.path.join(model_name_or_path, "config.json"),
+                    mode="r",
+                )
+            )
 
             if "pretrained_cfg" in config_dict or "architecture" in config_dict:
                 inferred_library_name = "timm"
@@ -183,6 +188,8 @@ def infer_library_from_model_name_or_path(
                 inferred_library_name = "diffusers"
             else:
                 inferred_library_name = "transformers"
+        elif "config_sentence_transformers.json" in local_files:
+            inferred_library_name = "sentence-transformers"
 
         if inferred_library_name is None:
             raise KeyError(f"Could not find the proper library name for directory {model_name_or_path}.")
@@ -202,9 +209,9 @@ def infer_library_from_model_name_or_path(
 
 def infer_task_from_model_name_or_path(
     model_name_or_path: str,
-    library_name: Optional[str] = None,
-    revision: Optional[str] = None,
     token: Optional[str] = None,
+    revision: Optional[str] = None,
+    library_name: Optional[str] = None,
 ) -> str:
     if library_name is None:
         library_name = infer_library_from_model_name_or_path(model_name_or_path, revision=revision, token=token)
@@ -215,17 +222,17 @@ def infer_task_from_model_name_or_path(
         inferred_task_name = "image-classification"
 
     elif library_name == "sentence-transformers":
-        inferred_task_name = "feature-extraction"
+        inferred_task_name = "sentence-similarity"
 
     elif huggingface_hub.repo_exists(model_name_or_path, token=token):
         model_info = huggingface_hub.model_info(model_name_or_path, revision=revision, token=token)
 
         if model_info.pipeline_tag is not None:
-            inferred_task_name = map_from_synonym(model_info.pipeline_tag)
+            inferred_task_name = model_info.pipeline_tag
 
         elif inferred_task_name is None:
             if model_info.transformers_info is not None and model_info.transformersInfo.pipeline_tag is not None:
-                inferred_task_name = map_from_synonym(model_info.transformersInfo.pipeline_tag)
+                inferred_task_name = model_info.transformersInfo.pipeline_tag
             else:
                 target_auto_model = model_info.transformers_info["auto_model"]
                 for task_name, auto_model_class_names in TASKS_TO_AUTO_MODEL_CLASS_NAMES.items():
@@ -241,7 +248,12 @@ def infer_task_from_model_name_or_path(
 
     elif os.path.isdir(model_name_or_path):
         if library_name == "diffusers":
-            diffusers_config = get_diffusers_pretrained_config(model_name_or_path, revision=revision, token=token)
+            diffusers_config = json.load(
+                open(
+                    os.path.join(model_name_or_path, "model_index.json"),
+                    mode="r",
+                )
+            )
             target_class_name = diffusers_config["_class_name"]
 
             for task_name, pipeline_mapping in TASKS_TO_PIPELINE_TYPES_TO_PIPELINE_CLASS_NAMES.items():
@@ -253,7 +265,12 @@ def infer_task_from_model_name_or_path(
                     break
 
         elif library_name == "transformers":
-            transformers_config = get_transformers_pretrained_config(model_name_or_path, revision=revision, token=token)
+            transformers_config = json.load(
+                open(
+                    os.path.join(model_name_or_path, "config.json"),
+                    mode="r",
+                )
+            )
             auto_modeling_module = importlib.import_module("transformers.models.auto.modeling_auto")
             model_type = transformers_config.model_type
 
@@ -272,15 +289,16 @@ def infer_task_from_model_name_or_path(
     if inferred_task_name is None:
         raise KeyError(f"Could not find the proper task name for {auto_model_class_name}.")
 
+    inferred_task_name = map_from_synonym(inferred_task_name)
+
     return inferred_task_name
 
 
 def infer_model_type_from_model_name_or_path(
     model_name_or_path: str,
-    library_name: Optional[str] = None,
-    revision: Optional[str] = None,
     token: Optional[str] = None,
-    trust_remote_code: bool = False,
+    revision: Optional[str] = None,
+    library_name: Optional[str] = None,
 ) -> str:
     if library_name is None:
         library_name = infer_library_from_model_name_or_path(model_name_or_path, revision=revision, token=token)
@@ -291,12 +309,44 @@ def infer_model_type_from_model_name_or_path(
         inferred_model_type = "llama_cpp"
 
     elif library_name == "timm":
-        timm_config = get_timm_pretrained_config(model_name_or_path)
-        inferred_model_type = timm_config.architecture
+        if huggingface_hub.repo_exists(model_name_or_path, token=token):
+            timm_config = json.loads(
+                open(
+                    huggingface_hub.hf_hub_download(
+                        repo_id=model_name_or_path, filename="config.json", revision=revision, token=token
+                    ),
+                    mode="r",
+                ).read()
+            )
+        else:
+            timm_config = json.load(
+                open(
+                    os.path.join(model_name_or_path, "config.json"),
+                    mode="r",
+                )
+            )
+
+        inferred_model_type = timm_config["architecture"]
 
     elif library_name == "diffusers":
-        config = get_diffusers_pretrained_config(model_name_or_path, revision=revision, token=token)
-        target_class_name = config["_class_name"]
+        if huggingface_hub.repo_exists(model_name_or_path, token=token):
+            diffusers_config = json.loads(
+                open(
+                    huggingface_hub.hf_hub_download(
+                        repo_id=model_name_or_path, filename="model_index.json", revision=revision, token=token
+                    ),
+                    mode="r",
+                ).read()
+            )
+        else:
+            diffusers_config = json.load(
+                open(
+                    os.path.join(model_name_or_path, "model_index.json"),
+                    mode="r",
+                )
+            )
+
+        target_class_name = diffusers_config["_class_name"]
 
         for _, pipeline_mapping in TASKS_TO_PIPELINE_TYPES_TO_PIPELINE_CLASS_NAMES.items():
             for pipeline_type, pipeline_class_name in pipeline_mapping.items():
@@ -307,10 +357,24 @@ def infer_model_type_from_model_name_or_path(
                 break
 
     else:
-        transformers_config = get_transformers_pretrained_config(
-            model_name_or_path, revision=revision, token=token, trust_remote_code=trust_remote_code
-        )
-        inferred_model_type = transformers_config.model_type
+        if huggingface_hub.repo_exists(model_name_or_path, token=token):
+            transformers_config = json.loads(
+                open(
+                    huggingface_hub.hf_hub_download(
+                        repo_id=model_name_or_path, filename="config.json", revision=revision, token=token
+                    ),
+                    mode="r",
+                ).read()
+            )
+        else:
+            transformers_config = json.load(
+                open(
+                    os.path.join(model_name_or_path, "config.json"),
+                    mode="r",
+                )
+            )
+
+        inferred_model_type = transformers_config["model_type"]
 
     if inferred_model_type is None:
         raise KeyError(f"Could not find the proper model type for {model_name_or_path}.")

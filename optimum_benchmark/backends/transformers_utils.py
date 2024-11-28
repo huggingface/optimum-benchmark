@@ -18,15 +18,14 @@ from transformers import (
     SpecialTokensMixin,
 )
 
+from ..task_utils import TASKS_TO_AUTO_MODEL_CLASS_NAMES, map_from_synonym
+
 
 def get_transformers_auto_model_class_for_task(task: str, model_type: Optional[str] = None) -> Type["AutoModel"]:
-    from ..task_utils import SYNONYM_TASKS, TASKS_TO_AUTO_MODEL_CLASS_NAMES
-
-    if task in SYNONYM_TASKS:
-        task = SYNONYM_TASKS[task]
+    task = map_from_synonym(task)
 
     if task not in TASKS_TO_AUTO_MODEL_CLASS_NAMES:
-        raise ValueError(f"Task {task} not supported")
+        raise ValueError(f"Task {task} not supported for transformers")
 
     if isinstance(TASKS_TO_AUTO_MODEL_CLASS_NAMES[task], str):
         return getattr(transformers, TASKS_TO_AUTO_MODEL_CLASS_NAMES[task])

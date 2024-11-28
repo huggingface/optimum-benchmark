@@ -4,6 +4,7 @@ from typing import Dict
 from hydra.utils import get_class
 
 from ..import_utils import is_diffusers_available
+from ..task_utils import TASKS_TO_AUTO_PIPELINE_CLASS_NAMES, map_from_synonym
 
 if is_diffusers_available():
     import diffusers
@@ -11,14 +12,17 @@ if is_diffusers_available():
 
 
 def get_diffusers_auto_pipeline_class_for_task(task: str):
-    from ..task_utils import TASKS_TO_AUTO_PIPELINE_CLASS_NAMES
-
     if not is_diffusers_available():
         raise ImportError("diffusers is not available. Please, pip install diffusers.")
 
-    model_loader_name = TASKS_TO_AUTO_PIPELINE_CLASS_NAMES.get(task, None)
-    model_loader_class = getattr(diffusers, model_loader_name)
-    return model_loader_class
+    task = map_from_synonym(task)
+
+    if task not in TASKS_TO_AUTO_PIPELINE_CLASS_NAMES:
+        raise ValueError(f"Task {task} not supported for diffusers")
+
+    model_loader_name = TASKS_TO_AUTO_PIPELINE_CLASS_NAMES[task]
+
+    return getattr(diffusers, model_loader_name)
 
 
 def get_diffusers_pretrained_config(model: str, **kwargs) -> Dict[str, int]:
