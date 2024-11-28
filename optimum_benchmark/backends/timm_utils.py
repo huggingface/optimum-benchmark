@@ -1,4 +1,3 @@
-import warnings
 from typing import Any, Dict
 
 from transformers import PretrainedConfig
@@ -17,7 +16,7 @@ def get_timm_model_creator():
     return create_model
 
 
-def get_timm_pretrained_config(model_name: str) -> PretrainedConfig:
+def get_timm_pretrained_config(model_name: str) -> "PretrainedConfig":
     if not is_timm_available():
         raise ImportError("timm is not available. Please, pip install timm.")
 
@@ -31,7 +30,7 @@ def get_timm_pretrained_config(model_name: str) -> PretrainedConfig:
     return get_pretrained_cfg(model_name)
 
 
-def extract_timm_shapes_from_config(config: PretrainedConfig) -> Dict[str, Any]:
+def extract_timm_shapes_from_config(config: "PretrainedConfig") -> Dict[str, Any]:
     if not is_timm_available():
         raise ImportError("timm is not available. Please, pip install timm.")
 
@@ -73,8 +72,5 @@ def extract_timm_shapes_from_config(config: PretrainedConfig) -> Dict[str, Any]:
         shapes["num_channels"] = input_size[0]
         shapes["height"] = input_size[1]
         shapes["width"] = input_size[2]
-
-    if "num_classes" not in artifacts_dict:
-        warnings.warn("Could not extract shapes [num_channels, height, width] from timm model config.")
 
     return shapes

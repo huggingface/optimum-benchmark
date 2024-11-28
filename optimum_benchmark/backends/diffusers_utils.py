@@ -12,10 +12,10 @@ if is_diffusers_available():
 
 
 def get_diffusers_auto_pipeline_class_for_task(task: str):
+    task = map_from_synonym_task(task)
+
     if not is_diffusers_available():
         raise ImportError("diffusers is not available. Please, pip install diffusers.")
-
-    task = map_from_synonym_task(task)
 
     if task not in TASKS_TO_AUTO_PIPELINE_CLASS_NAMES:
         raise ValueError(f"Task {task} not supported for diffusers")

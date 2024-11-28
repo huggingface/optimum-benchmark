@@ -3,6 +3,7 @@ from typing import Any, Dict, Optional, Type, Union
 
 import torch
 import transformers
+from torch import Tensor
 from transformers import (
     AutoConfig,
     AutoFeatureExtractor,
@@ -84,7 +85,7 @@ def get_flat_dict(d: Dict[str, Any]) -> Dict[str, Any]:
     return flat_dict
 
 
-def get_flat_artifact_dict(artifact: Union[PretrainedConfig, PretrainedProcessor]) -> Dict[str, Any]:
+def get_flat_artifact_dict(artifact: Union["PretrainedConfig", "PretrainedProcessor"]) -> Dict[str, Any]:
     artifact_dict = {}
 
     if isinstance(artifact, ProcessorMixin):
@@ -175,7 +176,6 @@ def extract_transformers_shapes_from_artifacts(
         shapes["num_queries"] = flat_artifacts_dict["num_queries"]
 
     # image-text input
-
     if "patch_size" in flat_artifacts_dict:
         shapes["patch_size"] = flat_artifacts_dict["patch_size"]
     if "in_chans" in flat_artifacts_dict:
@@ -212,7 +212,7 @@ TORCH_INIT_FUNCTIONS = {
 }
 
 
-def fast_random_tensor(tensor: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:
+def fast_random_tensor(tensor: "Tensor", *args: Any, **kwargs: Any) -> "Tensor":
     return torch.nn.init.uniform_(tensor)
 
 
