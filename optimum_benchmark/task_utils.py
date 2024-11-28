@@ -158,7 +158,7 @@ def get_repo_config(
     model_name_or_path: str, config_name: str, token: Optional[str] = None, revision: Optional[str] = None
 ):
     if is_hf_hub_repo(model_name_or_path, token=token):
-        config = json.loads(
+        config = json.load(
             open(
                 huggingface_hub.hf_hub_download(
                     repo_id=model_name_or_path,
