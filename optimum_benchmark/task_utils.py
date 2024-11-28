@@ -124,12 +124,23 @@ SYNONYM_TASKS = {
     "zero-shot-classification": "text-classification",
 }
 
+SYNONYM_LIBRARIES = {
+    "sentence-transformers": "transformers",
+}
 
-def map_from_synonym(task: str) -> str:
+
+def map_from_synonym_task(task: str) -> str:
     if task in SYNONYM_TASKS:
         task = SYNONYM_TASKS[task]
 
     return task
+
+
+def map_from_synonym_library(library: str) -> str:
+    if library in SYNONYM_LIBRARIES:
+        library = SYNONYM_LIBRARIES[library]
+
+    return library
 
 
 def is_hf_hub_repo(model_name_or_path: str, token: Optional[str] = None) -> bool:
@@ -198,21 +209,20 @@ def infer_library_from_model_name_or_path(
         inferred_library_name = "sentence-transformers"
 
     elif "config.json" in repo_files:
-        config_dict = get_repo_config(model_name_or_path, token=token, revision=revision)
+        config_dict = get_repo_config(model_name_or_path, "config.json", token=token, revision=revision)
 
         if "pretrained_cfg" in config_dict:
             inferred_library_name = "timm"
         else:
             inferred_library_name = "transformers"
 
+    elif any(file.endswith(".gguf") or file.endswith(".GGUF") for file in repo_files):
+        inferred_library_name = "llama_cpp"
+
     if inferred_library_name is None:
         raise KeyError(f"Could not find the proper library name for directory {model_name_or_path}.")
 
-    # for now, we use transformers for sentence-transformers models
-    if inferred_library_name == "sentence-transformers":
-        inferred_library_name = "transformers"
-
-    return inferred_library_name
+    return map_from_synonym_library(inferred_library_name)
 
 
 def infer_task_from_model_name_or_path(
@@ -226,11 +236,11 @@ def infer_task_from_model_name_or_path(
     if library_name is None:
         library_name = infer_library_from_model_name_or_path(model_name_or_path, revision=revision, token=token)
 
-    if library_name == "timm":
-        inferred_task_name = "image-classification"
+    if library_name == "llama_cpp":
+        inferred_task_name = "text-generation"
 
-    elif library_name == "sentence-transformers":
-        inferred_task_name = "sentence-similarity"
+    elif library_name == "timm":
+        inferred_task_name = "image-classification"
 
     elif library_name == "diffusers":
         diffusers_config = get_repo_config(model_name_or_path, "model_index.json", token=token, revision=revision)
@@ -259,7 +269,7 @@ def infer_task_from_model_name_or_path(
     if inferred_task_name is None:
         raise KeyError(f"Could not find the proper task name for {auto_model_class_name}.")
 
-    return map_from_synonym(inferred_task_name)
+    return map_from_synonym_task(inferred_task_name)
 
 
 def infer_model_type_from_model_name_or_path(
@@ -292,7 +302,7 @@ def infer_model_type_from_model_name_or_path(
             if inferred_model_type is not None:
                 break
 
-    else:
+    elif library_name == "transformers":
         transformers_config = get_repo_config(model_name_or_path, "config.json", token=token, revision=revision)
         inferred_model_type = transformers_config["model_type"]
 
