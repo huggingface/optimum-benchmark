@@ -65,11 +65,12 @@ def test_cli_exit_code_0(launcher):
         "name=test",
         "launcher=" + launcher,
         # compatible task and model
-        "scenario.input_shapes.batch_size=1",
-        "scenario.input_shapes.sequence_length=16",
         "backend.task=text-classification",
         "backend.model=bert-base-uncased",
         "backend.device=cpu",
+        # input shapes
+        "+scenario.input_shapes.batch_size=1",
+        "+scenario.input_shapes.sequence_length=16",
     ]
 
     popen_0 = run_subprocess_and_log_stream_output(LOGGER, args_0)
@@ -90,11 +91,12 @@ def test_cli_exit_code_1(launcher):
         "name=test",
         "launcher=" + launcher,
         # incompatible task and model to trigger an error
-        "scenario.input_shapes.batch_size=1",
-        "scenario.input_shapes.sequence_length=16",
         "backend.task=image-classification",
         "backend.model=bert-base-uncased",
         "backend.device=cpu",
+        # input shapes
+        "+scenario.input_shapes.batch_size=1",
+        "+scenario.input_shapes.sequence_length=16",
     ]
 
     popen_1 = run_subprocess_and_log_stream_output(LOGGER, args_1)
@@ -115,11 +117,12 @@ def test_cli_numactl(launcher):
         "name=test",
         "launcher=" + launcher,
         "launcher.numactl=True",
-        "scenario.input_shapes.batch_size=1",
-        "scenario.input_shapes.sequence_length=16",
         "backend.task=text-classification",
         "backend.model=bert-base-uncased",
         "backend.device=cpu",
+        # input shapes
+        "+scenario.input_shapes.batch_size=1",
+        "+scenario.input_shapes.sequence_length=16",
     ]
 
     popen = run_subprocess_and_log_stream_output(LOGGER, args)

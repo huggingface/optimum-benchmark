@@ -35,7 +35,7 @@ jobs:
         os: [ubuntu-latest, "macos-latest", windows-latest]
         python: ["3.8", "3.12"]
 
-    name: OS ${{ matrix.os }} - Python ${{ matrix.python }}
+    name: API Misc Tests - OS ${{ matrix.os }} - Python ${{ matrix.python }}
 
     runs-on: ${{ matrix.os }}
 
@@ -48,11 +48,16 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
       - name: Install requirements
         run: |
-          pip install --upgrade pip
-          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-          pip install -e .[testing,timm,diffusers,codecarbon]
+          uv pip install --upgrade pip
+          uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+          uv pip install -e .[testing,timm,diffusers,codecarbon]
+        env:
+          UV_SYSTEM_PYTHON: 1
 
       - name: Run tests
         env:
