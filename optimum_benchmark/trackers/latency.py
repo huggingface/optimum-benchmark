@@ -53,14 +53,17 @@ class Latency:
         return Latency.from_values(values=latencies, unit=self.unit)
 
     @staticmethod
-    def aggregate(latencies: List["Latency"]) -> "Latency":
-        if len(latencies) == 0 or all(latency is None for latency in latencies):
-            return None
+    def aggregate_across_processes(latencies: List["Latency"]) -> "Latency":
+        if len(latencies) == 0:
+            raise ValueError("No latency measurements to aggregate")
         elif any(latency is None for latency in latencies):
             raise ValueError("Some latency measurements are missing")
 
-        unit = latencies[0].unit
+        # we combine the lists of latencies and statistics are then computed on this list
         values = sum((lat.values for lat in latencies), [])
+
+        unit = latencies[0].unit
+
         return Latency.from_values(values=values, unit=unit)
 
     @staticmethod
@@ -123,14 +126,15 @@ class Throughput:
     value: float
 
     @staticmethod
-    def aggregate(throughputs: List["Throughput"]) -> "Throughput":
+    def aggregate_across_processes(throughputs: List[Optional["Throughput"]]) -> Optional["Throughput"]:
         if len(throughputs) == 0:
             raise ValueError("No throughput measurements to aggregate")
         elif any(throughput is None for throughput in throughputs):
             raise ValueError("Some throughput measurements are missing")
 
+        # we compute throughputs on the whole input level so we just take the average
+        value = sum(throughput.value for throughput in throughputs) / len(throughputs)
         unit = throughputs[0].unit
-        value = sum(throughput.value for throughput in throughputs)
 
         return Throughput(value=value, unit=unit)
 

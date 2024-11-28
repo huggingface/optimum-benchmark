@@ -22,8 +22,6 @@ from optimum_benchmark.backends.transformers_utils import (
 from optimum_benchmark.generators.dataset_generator import DatasetGenerator
 from optimum_benchmark.generators.input_generator import InputGenerator
 from optimum_benchmark.import_utils import get_git_revision_hash
-from optimum_benchmark.scenarios.inference.config import INPUT_SHAPES
-from optimum_benchmark.scenarios.training.config import DATASET_SHAPES
 from optimum_benchmark.system_utils import is_nvidia_system, is_rocm_system
 from optimum_benchmark.trackers import LatencyTracker, MemoryTracker
 
@@ -40,15 +38,24 @@ LIBRARIES_TASKS_MODELS = [
     ("diffusers", "text-to-image", "CompVis/stable-diffusion-v1-4"),
 ]
 
+INPUT_SHAPES = {
+    "batch_size": 2,  # for all tasks
+    "sequence_length": 16,  # for text processing tasks
+    "num_choices": 2,  # for multiple-choice task
+}
+
+DATASET_SHAPES = {
+    "dataset_size": 2,  # for all tasks
+    "sequence_length": 16,  # for text processing tasks
+    "num_choices": 2,  # for multiple-choice task
+}
+
 
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 @pytest.mark.parametrize("scenario", ["training", "inference"])
 @pytest.mark.parametrize("library,task,model", LIBRARIES_TASKS_MODELS)
 def test_api_launch(device, scenario, library, task, model):
     benchmark_name = f"{device}_{scenario}_{library}_{task}_{model}"
-
-    if task == "multiple-choice":
-        INPUT_SHAPES["num_choices"] = 2
 
     if device == "cuda":
         device_isolation = True
@@ -172,9 +179,6 @@ def test_api_input_generator(library, task, model):
         model_shapes = extract_diffusers_shapes_from_model(model)
     else:
         raise ValueError(f"Unknown library {library}")
-
-    if task == "multiple-choice":
-        INPUT_SHAPES["num_choices"] = 2
 
     input_generator = InputGenerator(
         task=task,

@@ -61,19 +61,20 @@ class Energy:
         )
 
     @staticmethod
-    def aggregate(energies: List["Energy"]) -> "Energy":
-        if len(energies) == 0 or all(energy is None for energy in energies):
-            return None
+    def aggregate_across_processes(energies: List[Optional["Energy"]]) -> Optional["Energy"]:
+        if len(energies) == 0:
+            raise ValueError("No energy measurements to aggregate")
         elif any(energy is None for energy in energies):
             raise ValueError("Some energy measurements are missing")
 
         # since measurements are machine-level, we just take the average
+        total = sum(energy.total for energy in energies) / len(energies)
         cpu = sum(energy.cpu for energy in energies) / len(energies)
         gpu = sum(energy.gpu for energy in energies) / len(energies)
         ram = sum(energy.ram for energy in energies) / len(energies)
-        total = sum(energy.total for energy in energies) / len(energies)
+        unit = energies[0].unit
 
-        return Energy(cpu=cpu, gpu=gpu, ram=ram, total=total, unit=ENERGY_UNIT)
+        return Energy(cpu=cpu, gpu=gpu, ram=ram, total=total, unit=unit)
 
     def to_plain_text(self) -> str:
         plain_text = ""
@@ -109,14 +110,15 @@ class Efficiency:
     value: float
 
     @staticmethod
-    def aggregate(efficiencies: List["Efficiency"]) -> "Efficiency":
+    def aggregate_across_processes(efficiencies: List[Optional["Efficiency"]]) -> Optional["Efficiency"]:
         if len(efficiencies) == 0:
             raise ValueError("No efficiency measurements to aggregate")
         elif any(efficiency is None for efficiency in efficiencies):
             raise ValueError("Some efficiency measurements are None")
 
-        unit = efficiencies[0].unit
+        # since measurements are machine-level, we just take the average
         value = sum(efficiency.value for efficiency in efficiencies) / len(efficiencies)
+        unit = efficiencies[0].unit
 
         return Efficiency(value=value, unit=unit)
 

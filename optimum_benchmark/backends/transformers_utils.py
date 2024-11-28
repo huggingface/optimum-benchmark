@@ -1,12 +1,14 @@
 from contextlib import contextmanager
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Type, Union
 
 import torch
 import transformers
+from torch import Tensor
 from transformers import (
     AutoConfig,
     AutoFeatureExtractor,
     AutoImageProcessor,
+    AutoModel,
     AutoProcessor,
     AutoTokenizer,
     FeatureExtractionMixin,
@@ -17,74 +19,27 @@ from transformers import (
     SpecialTokensMixin,
 )
 
-from ..import_utils import is_torch_available
-
-TASKS_TO_MODEL_LOADERS = {
-    # text processing
-    "feature-extraction": "AutoModel",
-    "fill-mask": "AutoModelForMaskedLM",
-    "multiple-choice": "AutoModelForMultipleChoice",
-    "question-answering": "AutoModelForQuestionAnswering",
-    "token-classification": "AutoModelForTokenClassification",
-    "text-classification": "AutoModelForSequenceClassification",
-    # audio processing
-    "audio-xvector": "AutoModelForAudioXVector",
-    "text-to-audio": "AutoModelForTextToSpectrogram",
-    "audio-classification": "AutoModelForAudioClassification",
-    "audio-frame-classification": "AutoModelForAudioFrameClassification",
-    # image processing
-    "mask-generation": "AutoModel",
-    "image-to-image": "AutoModelForImageToImage",
-    "masked-im": "AutoModelForMaskedImageModeling",
-    "object-detection": "AutoModelForObjectDetection",
-    "depth-estimation": "AutoModelForDepthEstimation",
-    "image-segmentation": "AutoModelForImageSegmentation",
-    "image-classification": "AutoModelForImageClassification",
-    "semantic-segmentation": "AutoModelForSemanticSegmentation",
-    "zero-shot-object-detection": "AutoModelForZeroShotObjectDetection",
-    "zero-shot-image-classification": "AutoModelForZeroShotImageClassification",
-    # text generation
-    "image-to-text": "AutoModelForVision2Seq",
-    "text-generation": "AutoModelForCausalLM",
-    "text2text-generation": "AutoModelForSeq2SeqLM",
-    "image-text-to-text": "AutoModelForImageTextToText",
-    "visual-question-answering": "AutoModelForVisualQuestionAnswering",
-    "automatic-speech-recognition": ("AutoModelForSpeechSeq2Seq", "AutoModelForCTC"),
-}
-
-SYNONYM_TASKS = {
-    "summarization": "text2text-generation",
-    "sentence-similarity": "feature-extraction",
-}
-
-if is_torch_available():
-    TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES = {}
-    for task_name, model_loaders in TASKS_TO_MODEL_LOADERS.items():
-        TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES[task_name] = {}
-
-        if isinstance(model_loaders, str):
-            model_loaders = (model_loaders,)
-
-        for model_loader_name in model_loaders:
-            model_loader_class = getattr(transformers, model_loader_name, None)
-            if model_loader_class is not None:
-                TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES[task_name].update(
-                    model_loader_class._model_mapping._model_mapping
-                )
-else:
-    TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES = {}
+from ..task_utils import TASKS_TO_AUTO_MODEL_CLASS_NAMES, map_from_synonym_task
 
 
-def get_transformers_automodel_loader_for_task(task: str, model_type: Optional[str] = None):
-    if task in SYNONYM_TASKS:
-        task = SYNONYM_TASKS[task]
+def get_transformers_auto_model_class_for_task(task: str, model_type: Optional[str] = None) -> Type["AutoModel"]:
+    task = map_from_synonym_task(task)
 
-    if model_type is not None:
-        model_loader_name = TASKS_TO_MODEL_TYPES_TO_MODEL_CLASSES[task][model_type]
+    if task not in TASKS_TO_AUTO_MODEL_CLASS_NAMES:
+        raise ValueError(f"Task {task} not supported for transformers")
+
+    if isinstance(TASKS_TO_AUTO_MODEL_CLASS_NAMES[task], str):
+        return getattr(transformers, TASKS_TO_AUTO_MODEL_CLASS_NAMES[task])
     else:
-        model_loader_name = TASKS_TO_MODEL_LOADERS[task]
+        if model_type is None:
+            raise ValueError(f"Task {task} requires a model_type to be specified")
 
-    return getattr(transformers, model_loader_name)
+        for automodel_class_name in TASKS_TO_AUTO_MODEL_CLASS_NAMES[task]:
+            automodel_class = getattr(transformers, automodel_class_name)
+            if model_type in automodel_class._model_mapping._model_mapping:
+                return automodel_class
+
+    raise ValueError(f"Task {task} not supported for model type {model_type}")
 
 
 PretrainedProcessor = Union["FeatureExtractionMixin", "ImageProcessingMixin", "SpecialTokensMixin", "ProcessorMixin"]
@@ -130,7 +85,7 @@ def get_flat_dict(d: Dict[str, Any]) -> Dict[str, Any]:
     return flat_dict
 
 
-def get_flat_artifact_dict(artifact: Union[PretrainedConfig, PretrainedProcessor]) -> Dict[str, Any]:
+def get_flat_artifact_dict(artifact: Union["PretrainedConfig", "PretrainedProcessor"]) -> Dict[str, Any]:
     artifact_dict = {}
 
     if isinstance(artifact, ProcessorMixin):
@@ -221,7 +176,6 @@ def extract_transformers_shapes_from_artifacts(
         shapes["num_queries"] = flat_artifacts_dict["num_queries"]
 
     # image-text input
-
     if "patch_size" in flat_artifacts_dict:
         shapes["patch_size"] = flat_artifacts_dict["patch_size"]
     if "in_chans" in flat_artifacts_dict:
@@ -258,7 +212,7 @@ TORCH_INIT_FUNCTIONS = {
 }
 
 
-def fast_random_tensor(tensor: torch.Tensor, *args: Any, **kwargs: Any) -> torch.Tensor:
+def fast_random_tensor(tensor: "Tensor", *args: Any, **kwargs: Any) -> "Tensor":
     return torch.nn.init.uniform_(tensor)
 
 

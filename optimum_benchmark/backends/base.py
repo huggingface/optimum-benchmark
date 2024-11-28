@@ -13,14 +13,14 @@ from ..import_utils import is_torch_available
 from .config import BackendConfigT
 from .diffusers_utils import (
     extract_diffusers_shapes_from_model,
-    get_diffusers_automodel_loader_for_task,
+    get_diffusers_auto_pipeline_class_for_task,
     get_diffusers_pretrained_config,
 )
-from .timm_utils import extract_timm_shapes_from_config, get_timm_automodel_loader, get_timm_pretrained_config
+from .timm_utils import extract_timm_shapes_from_config, get_timm_model_creator, get_timm_pretrained_config
 from .transformers_utils import (
     PretrainedProcessor,
     extract_transformers_shapes_from_artifacts,
-    get_transformers_automodel_loader_for_task,
+    get_transformers_auto_model_class_for_task,
     get_transformers_generation_config,
     get_transformers_pretrained_config,
     get_transformers_pretrained_processor,
@@ -56,7 +56,7 @@ class Backend(Generic[BackendConfigT], ABC):
             self.logger.info("\t+ Benchmarking a Diffusers pipeline")
             self.pretrained_config = get_diffusers_pretrained_config(self.config.model, **self.config.model_kwargs)
             self.model_shapes = extract_diffusers_shapes_from_model(self.config.model, **self.config.model_kwargs)
-            self.automodel_loader = get_diffusers_automodel_loader_for_task(self.config.task)
+            self.automodel_loader = get_diffusers_auto_pipeline_class_for_task(self.config.task)
             self.pretrained_processor = None
             self.generation_config = None
 
@@ -64,7 +64,7 @@ class Backend(Generic[BackendConfigT], ABC):
             self.logger.info("\t+ Benchmarking a Timm model")
             self.pretrained_config = get_timm_pretrained_config(self.config.model)
             self.model_shapes = extract_timm_shapes_from_config(self.pretrained_config)
-            self.automodel_loader = get_timm_automodel_loader()
+            self.automodel_loader = get_timm_model_creator()
             self.pretrained_processor = None
             self.generation_config = None
 
@@ -78,7 +78,7 @@ class Backend(Generic[BackendConfigT], ABC):
 
         else:
             self.logger.info("\t+ Benchmarking a Transformers model")
-            self.automodel_loader = get_transformers_automodel_loader_for_task(self.config.task, self.config.model_type)
+            self.automodel_loader = get_transformers_auto_model_class_for_task(self.config.task, self.config.model_type)
             self.generation_config = get_transformers_generation_config(self.config.model, **self.config.model_kwargs)
             self.pretrained_config = get_transformers_pretrained_config(self.config.model, **self.config.model_kwargs)
             self.pretrained_processor = get_transformers_pretrained_processor(

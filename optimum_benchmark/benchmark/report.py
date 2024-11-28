@@ -35,16 +35,26 @@ class TargetMeasurements:
             self.efficiency = Efficiency(**self.efficiency)
 
     @staticmethod
-    def aggregate(measurements: List["TargetMeasurements"]) -> "TargetMeasurements":
+    def aggregate_across_processes(measurements: List["TargetMeasurements"]) -> "TargetMeasurements":
         assert len(measurements) > 0, "No measurements to aggregate"
 
         m0 = measurements[0]
 
-        memory = Memory.aggregate([m.memory for m in measurements]) if m0.memory is not None else None
-        latency = Latency.aggregate([m.latency for m in measurements]) if m0.latency is not None else None
-        throughput = Throughput.aggregate([m.throughput for m in measurements]) if m0.throughput is not None else None
-        energy = Energy.aggregate([m.energy for m in measurements]) if m0.energy is not None else None
-        efficiency = Efficiency.aggregate([m.efficiency for m in measurements]) if m0.efficiency is not None else None
+        memory = Memory.aggregate_across_processes([m.memory for m in measurements]) if m0.memory is not None else None
+        latency = (
+            Latency.aggregate_across_processes([m.latency for m in measurements]) if m0.latency is not None else None
+        )
+        throughput = (
+            Throughput.aggregate_across_processes([m.throughput for m in measurements])
+            if m0.throughput is not None
+            else None
+        )
+        energy = Energy.aggregate_across_processes([m.energy for m in measurements]) if m0.energy is not None else None
+        efficiency = (
+            Efficiency.aggregate_across_processes([m.efficiency for m in measurements])
+            if m0.efficiency is not None
+            else None
+        )
 
         return TargetMeasurements(
             memory=memory, latency=latency, throughput=throughput, energy=energy, efficiency=efficiency
@@ -99,11 +109,11 @@ class BenchmarkReport(PushToHubMixin):
                 setattr(self, target, TargetMeasurements(**getattr(self, target)))
 
     @classmethod
-    def aggregate(cls, reports: List["BenchmarkReport"]) -> "BenchmarkReport":
+    def aggregate_across_processes(cls, reports: List["BenchmarkReport"]) -> "BenchmarkReport":
         aggregated_measurements = {}
         for target in reports[0].to_dict().keys():
             measurements = [getattr(report, target) for report in reports]
-            aggregated_measurements[target] = TargetMeasurements.aggregate(measurements)
+            aggregated_measurements[target] = TargetMeasurements.aggregate_across_processes(measurements)
 
         return cls.from_dict(aggregated_measurements)
 

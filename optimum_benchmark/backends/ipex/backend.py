@@ -84,31 +84,14 @@ class IPEXBackend(Backend[IPEXConfig]):
         if self.config.torch_dtype is not None:
             kwargs["torch_dtype"] = getattr(torch, self.config.torch_dtype)
 
-        print(kwargs)
-
         return kwargs
 
     @property
-    def is_dp_distributed(self) -> bool:
+    def split_between_processes(self) -> bool:
         return is_torch_distributed_available() and torch.distributed.is_initialized()
 
-    def prepare_input_shapes(self, input_shapes: Dict[str, Any]) -> Dict[str, Any]:
-        if self.is_dp_distributed:
-            if input_shapes["batch_size"] % torch.distributed.get_world_size() != 0:
-                raise ValueError(
-                    f"Batch size {input_shapes['batch_size']} must be divisible by "
-                    f"data parallel world size {torch.distributed.get_world_size()}"
-                )
-            # distributing batch size across processes
-            input_shapes["batch_size"] //= torch.distributed.get_world_size()
-
-        # registering input shapes for usage during model reshaping
-        self.input_shapes = input_shapes
-
-        return input_shapes
-
     def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        if self.is_dp_distributed:
+        if self.split_between_processes:
             with Accelerator().split_between_processes(inputs=inputs, apply_padding=False) as process_inputs:
                 inputs = process_inputs
 

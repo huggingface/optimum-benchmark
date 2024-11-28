@@ -54,26 +54,25 @@ class BackendConfig(ABC):
         # TODO: add cache_dir, token, etc. to these methods
         if self.library is None:
             self.library = infer_library_from_model_name_or_path(
-                self.model,
+                model_name_or_path=self.model,
                 token=self.model_kwargs.get("token", None),
                 revision=self.model_kwargs.get("revision", None),
             )
 
         if self.task is None:
             self.task = infer_task_from_model_name_or_path(
-                self.model,
-                self.library,
+                model_name_or_path=self.model,
                 token=self.model_kwargs.get("token", None),
                 revision=self.model_kwargs.get("revision", None),
+                library_name=self.library,
             )
 
         if self.model_type is None:
             self.model_type = infer_model_type_from_model_name_or_path(
-                self.model,
-                self.library,
+                model_name_or_path=self.model,
                 token=self.model_kwargs.get("token", None),
                 revision=self.model_kwargs.get("revision", None),
-                trust_remote_code=self.model_kwargs.get("trust_remote_code", False),
+                library_name=self.library,
             )
 
         if self.device is None:

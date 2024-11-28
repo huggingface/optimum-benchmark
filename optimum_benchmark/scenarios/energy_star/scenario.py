@@ -38,7 +38,7 @@ IMAGE_DIFFUSION_WARMUP_OVERRIDES = {
 
 PREPROCESS_EFFICIENCY_UNIT = "samples/kWh"
 FORWARD_EFFICIENCY_UNIT = "samples/kWh"
-PREFILL_EFFICIENCY_UNIT = "tokens/kWh"
+PREFILL_EFFICIENCY_UNIT = "samples/kWh"
 DECODE_EFFICIENCY_UNIT = "tokens/kWh"
 CALL_EFFICIENCY_UNIT = "images/kWh"
 
@@ -50,9 +50,9 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
         super().__init__(config)
 
     def run(self, backend: Backend[BackendConfigT]) -> BenchmarkReport:
-        self.task = backend.config.task
+        self.backend = backend
 
-        if self.task in TEXT_GENERATION_TASKS:
+        if self.backend.config.task in TEXT_GENERATION_TASKS:
             self.logger.info("\t+ Updating Text Generation kwargs with default values")
             self.config.generate_kwargs = {**TEXT_GENERATION_DEFAULT_KWARGS, **self.config.generate_kwargs}
             self.prefill_kwargs = {**self.config.generate_kwargs, **TEXT_GENERATION_PREFILL_OVERRIDES}
@@ -60,7 +60,7 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
             self.report = BenchmarkReport.from_list(
                 targets=["load_dataset", "preprocess_dataset", "load_model", "prefill", "decode"]
             )
-        elif self.task in IMAGE_DIFFUSION_TASKS:
+        elif self.backend.config.task in IMAGE_DIFFUSION_TASKS:
             self.logger.info("\t+ Updating Image Diffusion kwargs with default values")
             self.config.call_kwargs = {**IMAGE_DIFFUSION_DEFAULT_KWARGS, **self.config.call_kwargs}
             self.logger.info("\t+ Initializing Image Diffusion report")
@@ -80,17 +80,18 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
         )
 
         self.run_dataset_loading_energy_tracking()
-        self.run_model_loading_energy_tracking(backend)
         self.run_dataset_preprocessing_energy_tracking(backend)
 
         self.logger.info("\t+ Preparing sample inputs for model warmup")
-        self.raw_sample_inputs = self.dataset[: self.config.input_shapes["batch_size"]]
-        self.prepared_sample_inputs = backend.prepare_inputs(self.raw_sample_inputs)
+        self.sample_inputs = self.dataset[: self.config.input_shapes["batch_size"]]
+        self.sample_inputs = backend.prepare_inputs(self.sample_inputs)
 
-        if self.task in TEXT_GENERATION_TASKS:
+        self.run_model_loading_energy_tracking(backend)
+
+        if self.backend.config.task in TEXT_GENERATION_TASKS:
             self.warmup_text_generation(backend)
             self.run_text_generation_energy_tracking(backend)
-        elif self.task in IMAGE_DIFFUSION_TASKS:
+        elif self.backend.config.task in IMAGE_DIFFUSION_TASKS:
             self.warmup_image_diffusion(backend)
             self.run_image_diffusion_energy_tracking(backend)
         else:
@@ -115,7 +116,7 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
         self.logger.info("\t+ Running dataset preprocessing energy tracking")
 
         with self.energy_tracker.track(file_prefix="preprocess_dataset"):
-            self.dataset = TASKS_TO_PREPROCESSORS[self.task](
+            self.dataset = TASKS_TO_PREPROCESSORS[self.backend.config.task](
                 dataset=self.dataset,
                 scenario_config=self.config,
                 pretrained_config=backend.pretrained_config,
@@ -144,24 +145,22 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
     # Text Generation warmup
     def warmup_text_generation(self, backend: Backend[BackendConfigT]):
         self.logger.info("\t+ Warming up backend for Text Generation")
-        backend.generate(self.prepared_sample_inputs, self.config.generate_kwargs)
+        backend.generate(self.sample_inputs, self.config.generate_kwargs)
         for _ in range(self.config.warmup_runs):
-            backend.generate(
-                self.prepared_sample_inputs, {**self.config.generate_kwargs, **TEXT_GENERATION_WARMUP_OVERRIDES}
-            )
+            backend.generate(self.sample_inputs, {**self.config.generate_kwargs, **TEXT_GENERATION_WARMUP_OVERRIDES})
 
     # Image Diffusion warmup
     def warmup_image_diffusion(self, backend: Backend[BackendConfigT]):
         self.logger.info("\t+ Warming up backend for Image Diffusion")
-        backend.call(self.prepared_sample_inputs, self.config.call_kwargs)
+        backend.call(self.sample_inputs, self.config.call_kwargs)
         for _ in range(self.config.warmup_runs):
-            backend.call(self.prepared_sample_inputs, {**self.config.call_kwargs, **IMAGE_DIFFUSION_WARMUP_OVERRIDES})
+            backend.call(self.sample_inputs, {**self.config.call_kwargs, **IMAGE_DIFFUSION_WARMUP_OVERRIDES})
 
     # Inference warmup
     def warmup_inference(self, backend: Backend[BackendConfigT]):
         self.logger.info("\t+ Warming up backend for Inference")
         for _ in range(self.config.warmup_runs):
-            backend.forward(self.prepared_sample_inputs, self.config.forward_kwargs)
+            backend.forward(self.sample_inputs, self.config.forward_kwargs)
 
     # Text Generation energy tracking
     def run_text_generation_energy_tracking(self, backend: Backend[BackendConfigT]):
@@ -243,25 +242,8 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
         return self.config.num_samples
 
     @property
-    def dataset_prefill_volume(self) -> int:  # in tokens
-        prefill_volume = 0
-
-        for sample in self.dataset:
-            if "input_ids" in sample.keys():
-                # text/image-text/video-image-text conditioned generation
-                prefill_volume += self.raw_sample_inputs["input_ids"].numel()
-            else:
-                # image/audio/other conditioned generation (1 bos token)
-                prefill_volume += 1
-
-        return prefill_volume
-
-    @property
-    def dataset_per_token_volume(self) -> int:  # in tokens
-        return (
-            self.config.num_samples
-            * self.config.generate_kwargs["num_beams"]  # at each beam stage there are num_beams tokens generated
-        )
+    def dataset_prefill_volume(self) -> int:  # in samples
+        return self.config.num_samples
 
     @property
     def dataset_decode_volume(self) -> int:  # in tokens
@@ -273,7 +255,7 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
 
     @property
     def dataset_call_volume(self) -> int:  # in images
-        if self.task == "text-to-image":
+        if self.backend.config.task == "text-to-image":
             return self.config.num_samples * self.config.call_kwargs["num_images_per_prompt"]
         else:
             return self.config.num_samples
