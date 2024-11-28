@@ -127,9 +127,16 @@ def test_api_launch(device, scenario, library, task, model):
 def test_api_push_to_hub_mixin():
     benchmark_name = "test_api_push_to_hub_mixin"
 
-    scenario_config = InferenceConfig(memory=True, latency=True, duration=1, iterations=1, warmup_runs=1)
     backend_config = PyTorchConfig(model="google-bert/bert-base-uncased", device="cpu")
     launcher_config = ProcessConfig(device_isolation=False)
+    scenario_config = InferenceConfig(
+        duration=1,
+        iterations=1,
+        warmup_runs=1,
+        memory=True,
+        latency=True,
+        input_shapes=INPUT_SHAPES,
+    )
     benchmark_config = BenchmarkConfig(
         name=benchmark_name,
         scenario=scenario_config,
