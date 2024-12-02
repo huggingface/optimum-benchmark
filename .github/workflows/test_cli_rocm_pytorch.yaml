@@ -31,27 +31,11 @@ jobs:
       contains( github.event.pull_request.labels.*.name, 'cli_rocm_pytorch_single_gpu')
       }}
 
-    runs-on: [self-hosted, amd-gpu, single-gpu]
-
-    container:
-      image: ghcr.io/huggingface/optimum-benchmark:latest-rocm
-      options: --ipc host
-        --group-add video
-        --device /dev/kfd
-        --device /dev/dri
-        --env ROCR_VISIBLE_DEVICES
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          pip install -e .[testing,diffusers,timm,peft,autoawq,auto-gptq]
-
-      - name: Run tests
-        run: |
-          pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not bnb"
+    uses: huggingface/hf-workflows/.github/workflows/optimum_benchmark_instinct_ci.yaml@main
+    with:
+      machine_type: single-gpu
+      install_extras: testing,diffusers,timm,peft,autoawq,auto-gptq
+      pytest_keywords: "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not bnb"
 
   run_cli_rocm_pytorch_multi_gpu_tests:
     if: ${{
@@ -64,28 +48,8 @@ jobs:
       contains( github.event.pull_request.labels.*.name, 'cli_rocm_pytorch_multi_gpu')
       }}
 
-    runs-on: [self-hosted, amd-gpu, multi-gpu]
-
-    container:
-      image: ghcr.io/huggingface/optimum-benchmark:latest-rocm
-      options: --ipc host
-        --group-add video
-        --device /dev/kfd
-        --device /dev/dri
-        --env ROCR_VISIBLE_DEVICES
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          pip install -e .[testing,diffusers,timm,deepspeed,peft,autoawq,auto-gptq] "deepspeed<0.15"
-
-      - name: Run tests (parallel)
-        run: |
-          pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (dp or ddp or device_map)"
-
-      - name: Run tests (sequential)
-        run: |
-          FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (deepspeed_inference)"
+    uses: huggingface/hf-workflows/.github/workflows/optimum_benchmark_instinct_ci.yaml@main
+    with:
+      machine_type: multi-gpu
+      install_extras: testing,diffusers,timm,peft,autoawq,auto-gptq
+      pytest_keywords: "cli and cuda and pytorch and (dp or ddp or device_map)"
