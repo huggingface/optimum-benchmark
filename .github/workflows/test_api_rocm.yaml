@@ -32,5 +32,5 @@ jobs:
     uses: huggingface/hf-workflows/.github/workflows/optimum_benchmark_instinct_ci.yaml@main
     with:
       machine_type: single-gpu
-      install_extras: timm,diffusers,codecarbon
-      pytest_keywords: "api and cuda"
+      install_extras: testing,timm,diffusers,codecarbon
+      pytest_keywords: api and cuda
