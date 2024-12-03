@@ -51,5 +51,5 @@ jobs:
     uses: huggingface/hf-workflows/.github/workflows/optimum_benchmark_instinct_ci.yaml@main
     with:
       machine_type: multi-gpu
-      install_extras: testing,diffusers,timm,peft,autoawq,auto-gptq
+      install_extras: testing,diffusers,timm,peft
       pytest_keywords: cli and cuda and pytorch and (dp or ddp or device_map)
