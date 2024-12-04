@@ -131,11 +131,12 @@ class InferenceScenario(Scenario[InferenceConfig]):
 
     def init_trackers(self, backend: Backend[BackendConfigT]):
         if self.config.latency:
-            if backend.config.name in PER_TOKEN_BACKENDS:
+            if backend.config.task in TEXT_GENERATION_TASKS and backend.config.name in PER_TOKEN_BACKENDS:
                 self.latency_tracker = PerTokenLatencyLogitsProcessor(
                     backend=backend.config.name,
                     device=backend.config.device,
                 )
+                self.config.generate_kwargs["logits_processor"] = LogitsProcessorList([self.latency_tracker])
             else:
                 self.latency_tracker = LatencyTracker(
                     backend=backend.config.name,
@@ -233,10 +234,6 @@ class InferenceScenario(Scenario[InferenceConfig]):
     ## Latency tracking
     def run_per_token_text_generation_latency_tracking(self, backend: Backend[BackendConfigT]):
         self.logger.info("\t+ Running Per-Token Text Generation latency tracking")
-        per_token_kwargs = {
-            **self.config.generate_kwargs,
-            "logits_processor": LogitsProcessorList([self.latency_tracker]),
-        }
 
         self.latency_tracker.reset()
         while (
@@ -244,7 +241,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
             or self.latency_tracker.count() < self.config.iterations
         ):
             with self.latency_tracker.track():
-                _ = backend.generate(self.inputs, per_token_kwargs)
+                _ = backend.generate(self.inputs, self.config.generate_kwargs)
 
         per_token_latency = self.latency_tracker.get_per_token_latency()
         prefill_latency = self.latency_tracker.get_prefill_latency()
