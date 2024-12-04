@@ -1,7 +1,7 @@
+import json
 import os
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
-from json import dump
 from logging import getLogger
 from typing import List, Literal, Optional, Union
 
@@ -224,11 +224,11 @@ class EnergyTracker:
         self.ram_energy: Optional[float] = None
 
     @contextmanager
-    def track(self, file_prefix: str = "task"):
+    def track(self, task_name: str = "task"):
         if self.is_pytorch_cuda:
             torch.cuda.synchronize()
 
-        self.emission_tracker.start_task()
+        self.emission_tracker.start_task(task_name=task_name)
 
         yield
 
@@ -237,9 +237,9 @@ class EnergyTracker:
 
         emission_data: EmissionsData = self.emission_tracker.stop_task()
 
-        with open(f"{file_prefix}_codecarbon.json", "w") as f:
-            LOGGER.info(f"\t\t+ Saving codecarbon emission data to {file_prefix}_codecarbon.json")
-            dump(asdict(emission_data), f, indent=4)
+        with open(f"{task_name}_codecarbon.json", "w") as f:
+            LOGGER.info(f"\t\t+ Saving codecarbon emission data to {task_name}_codecarbon.json")
+            json.dump(asdict(emission_data), f, indent=4)
 
         self.total_energy = emission_data.energy_consumed
         self.cpu_energy = emission_data.cpu_energy

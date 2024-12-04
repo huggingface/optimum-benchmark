@@ -147,7 +147,7 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
 
         with ExitStack() as context_stack:
             if self.config.energy:
-                context_stack.enter_context(self.energy_tracker.track(file_prefix="load_dataset"))
+                context_stack.enter_context(self.energy_tracker.track(task_name="load_dataset"))
             if self.config.memory:
                 context_stack.enter_context(self.memory_tracker.track())
             if self.config.latency:
@@ -170,7 +170,7 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
 
         with ExitStack() as context_stack:
             if self.config.energy:
-                context_stack.enter_context(self.energy_tracker.track(file_prefix="preprocess_dataset"))
+                context_stack.enter_context(self.energy_tracker.track(task_name="preprocess_dataset"))
             if self.config.memory:
                 context_stack.enter_context(self.memory_tracker.track())
             if self.config.latency:
@@ -206,7 +206,7 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
 
         with ExitStack() as context_stack:
             if self.config.energy:
-                context_stack.enter_context(self.energy_tracker.track(file_prefix="load_model"))
+                context_stack.enter_context(self.energy_tracker.track(task_name="load_model"))
             if self.config.memory:
                 context_stack.enter_context(self.memory_tracker.track())
             if self.config.latency:
@@ -229,7 +229,7 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
 
         with ExitStack() as context_stack:
             if self.config.energy:
-                context_stack.enter_context(self.energy_tracker.track(file_prefix="prefill"))
+                context_stack.enter_context(self.energy_tracker.track(task_name="prefill"))
             if self.config.memory:
                 context_stack.enter_context(self.memory_tracker.track())
             if self.config.latency:
@@ -258,16 +258,15 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
 
         with ExitStack() as context_stack:
             if self.config.energy:
-                context_stack.enter_context(self.energy_tracker.track(file_prefix="generate"))
+                context_stack.enter_context(self.energy_tracker.track(task_name="generate"))
             if self.config.memory:
                 context_stack.enter_context(self.memory_tracker.track())
             if self.config.latency:
                 context_stack.enter_context(self.latency_tracker.track())
 
-            with self.energy_tracker.track(file_prefix="generate"):
-                for i in tqdm(range(0, self.config.num_samples, self.config.input_shapes["batch_size"])):
-                    inputs = backend.prepare_inputs(self.dataset[i : i + self.config.input_shapes["batch_size"]])
-                    backend.generate(inputs, self.config.generate_kwargs)
+            for i in tqdm(range(0, self.config.num_samples, self.config.input_shapes["batch_size"])):
+                inputs = backend.prepare_inputs(self.dataset[i : i + self.config.input_shapes["batch_size"]])
+                backend.generate(inputs, self.config.generate_kwargs)
 
         if self.config.energy:
             decode_energy = self.energy_tracker.get_energy()
@@ -292,7 +291,7 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
 
         with ExitStack() as context_stack:
             if self.config.energy:
-                context_stack.enter_context(self.energy_tracker.track(file_prefix="call"))
+                context_stack.enter_context(self.energy_tracker.track(task_name="call"))
             if self.config.memory:
                 context_stack.enter_context(self.memory_tracker.track())
             if self.config.latency:
@@ -321,7 +320,7 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
 
         with ExitStack() as context_stack:
             if self.config.energy:
-                context_stack.enter_context(self.energy_tracker.track(file_prefix="forward"))
+                context_stack.enter_context(self.energy_tracker.track(task_name="forward"))
             if self.config.memory:
                 context_stack.enter_context(self.memory_tracker.track())
             if self.config.latency:

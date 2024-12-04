@@ -146,7 +146,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
 
         with ExitStack() as context_stack:
             if self.config.energy:
-                context_stack.enter_context(energy_tracker.track())
+                context_stack.enter_context(energy_tracker.track(task_name="load_model"))
             if self.config.memory:
                 context_stack.enter_context(memory_tracker.track())
             if self.config.latency:
@@ -321,7 +321,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
         elapsed = 0
         start_time = time.perf_counter()
 
-        with energy_tracker.track(file_prefix="prefill"):
+        with energy_tracker.track(task_name="prefill"):
             while elapsed < self.config.duration or count < self.config.iterations:
                 _ = backend.prefill(self.inputs, prefill_kwargs)
                 elapsed = time.perf_counter() - start_time
@@ -339,7 +339,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
         elapsed = 0
         start_time = time.perf_counter()
 
-        with energy_tracker.track(file_prefix="generate"):
+        with energy_tracker.track(task_name="generate"):
             while elapsed < self.config.duration or count < self.config.iterations:
                 _ = backend.generate(self.inputs, self.config.generate_kwargs)
                 elapsed = time.perf_counter() - start_time
@@ -364,7 +364,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
         elapsed = 0
         start_time = time.perf_counter()
 
-        with energy_tracker.track(file_prefix="call"):
+        with energy_tracker.track(task_name="call"):
             while elapsed < self.config.duration or count < self.config.iterations:
                 _ = backend.call(self.inputs, self.config.call_kwargs)
                 elapsed = time.perf_counter() - start_time
@@ -386,7 +386,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
         elapsed = 0
         start_time = time.perf_counter()
 
-        with energy_tracker.track(file_prefix="forward"):
+        with energy_tracker.track(task_name="forward"):
             while elapsed < self.config.duration or count < self.config.iterations:
                 _ = backend.forward(self.inputs, self.config.forward_kwargs)
                 elapsed = time.perf_counter() - start_time
