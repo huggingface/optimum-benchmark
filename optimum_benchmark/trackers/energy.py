@@ -223,6 +223,12 @@ class EnergyTracker:
         self.gpu_energy: Optional[float] = None
         self.ram_energy: Optional[float] = None
 
+    def reset(self):
+        self.total_energy = None
+        self.cpu_energy = None
+        self.gpu_energy = None
+        self.ram_energy = None
+
     @contextmanager
     def track(self, task_name: str = "task"):
         if self.is_pytorch_cuda:
@@ -247,6 +253,8 @@ class EnergyTracker:
         self.ram_energy = emission_data.ram_energy
 
     def get_energy(self) -> Energy:
+        assert self.total_energy is not None, "Energy must be tracked before calling this method"
+
         return Energy(
             unit=ENERGY_UNIT, cpu=self.cpu_energy, gpu=self.gpu_energy, ram=self.ram_energy, total=self.total_energy
         )
