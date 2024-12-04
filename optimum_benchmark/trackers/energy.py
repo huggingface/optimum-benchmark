@@ -148,7 +148,7 @@ class Efficiency:
 
 
 class EnergyTracker:
-    def __init__(self, backend: str, device: str, device_ids: Optional[Union[str, int, List[int]]] = None):
+    def __init__(self, device: str, backend: str, device_ids: Optional[Union[str, int, List[int]]] = None):
         self.device = device
         self.backend = backend
         self.device_ids = device_ids

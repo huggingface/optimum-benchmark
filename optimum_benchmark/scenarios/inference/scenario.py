@@ -73,6 +73,8 @@ class InferenceScenario(Scenario[InferenceConfig]):
             self.logger.info("\t+ Initializing Image Diffusion report")
             self.report = BenchmarkReport.from_list(targets=["load_model", "call"])
         else:
+            self.logger.info("\t+ Updating Inference kwargs with default values")
+            self.forward_kwargs = {**self.config.forward_kwargs}
             self.logger.info("\t+ Initializing Inference report")
             self.report = BenchmarkReport.from_list(targets=["load_model", "forward"])
 
@@ -90,15 +92,13 @@ class InferenceScenario(Scenario[InferenceConfig]):
         self.logger.info("\t+ Preparing inputs for backend")
         self.inputs = backend.prepare_inputs(inputs=self.inputs)
 
-        if self.config.latency or self.config.energy:
-            # latency and energy are metrics that require some warmup
-            if self.config.warmup_runs > 0:
-                if self.backend.config.task in TEXT_GENERATION_TASKS:
-                    self.warmup_text_generation(backend)
-                elif self.backend.config.task in IMAGE_DIFFUSION_TASKS:
-                    self.warmup_image_diffusion(backend)
-                else:
-                    self.warmup_inference(backend)
+        if self.config.warmup_runs > 0:
+            if self.backend.config.task in TEXT_GENERATION_TASKS:
+                self.warmup_text_generation(backend)
+            elif self.backend.config.task in IMAGE_DIFFUSION_TASKS:
+                self.warmup_image_diffusion(backend)
+            else:
+                self.warmup_inference(backend)
 
         if self.config.latency:
             if self.backend.config.task in TEXT_GENERATION_TASKS:
@@ -129,25 +129,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
 
         return self.report
 
-    # Warmup
-    def warmup_text_generation(self, backend: Backend[BackendConfigT]):
-        self.logger.info("\t+ Warming up backend for Text Generation")
-        _ = backend.generate(self.inputs, self.config.generate_kwargs)
-        for _ in range(self.config.warmup_runs):
-            _ = backend.generate(self.inputs, {**self.config.generate_kwargs, **TEXT_GENERATION_WARMUP_OVERRIDES})
-
-    def warmup_image_diffusion(self, backend: Backend[BackendConfigT]):
-        self.logger.info("\t+ Warming up backend for Image Diffusion")
-        _ = backend.call(self.inputs, self.config.call_kwargs)
-        for _ in range(self.config.warmup_runs):
-            _ = backend.call(self.inputs, {**self.config.call_kwargs, **IMAGE_DIFFUSION_WARMUP_OVERRIDES})
-
-    def warmup_inference(self, backend: Backend[BackendConfigT]):
-        self.logger.info("\t+ Warming up backend for Inference")
-        for _ in range(self.config.warmup_runs):
-            _ = backend.forward(self.inputs, self.config.forward_kwargs)
-
-    # Loading tracking
+    # Model loading tracking
     def run_model_loading_tracking(self, backend: Backend[BackendConfigT]):
         self.logger.info("\t+ Running model loading tracking")
 
@@ -178,6 +160,24 @@ class InferenceScenario(Scenario[InferenceConfig]):
             self.report.load_model.memory = memory_tracker.get_max_memory()
         if self.config.energy:
             self.report.load_model.energy = energy_tracker.get_energy()
+
+    # Warmup
+    def warmup_text_generation(self, backend: Backend[BackendConfigT]):
+        self.logger.info("\t+ Warming up backend for Text Generation")
+        _ = backend.generate(self.inputs, self.config.generate_kwargs)
+        for _ in range(self.config.warmup_runs):
+            _ = backend.generate(self.inputs, {**self.config.generate_kwargs, **TEXT_GENERATION_WARMUP_OVERRIDES})
+
+    def warmup_image_diffusion(self, backend: Backend[BackendConfigT]):
+        self.logger.info("\t+ Warming up backend for Image Diffusion")
+        _ = backend.call(self.inputs, self.config.call_kwargs)
+        for _ in range(self.config.warmup_runs):
+            _ = backend.call(self.inputs, {**self.config.call_kwargs, **IMAGE_DIFFUSION_WARMUP_OVERRIDES})
+
+    def warmup_inference(self, backend: Backend[BackendConfigT]):
+        self.logger.info("\t+ Warming up backend for Inference")
+        for _ in range(self.config.warmup_runs):
+            _ = backend.forward(self.inputs, self.config.forward_kwargs)
 
     ## Memory tracking
     def run_text_generation_memory_tracking(self, backend: Backend[BackendConfigT]):
@@ -409,7 +409,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
         return self.config.input_shapes["batch_size"]
 
     @property
-    def atomic_decode_volume(self) -> int:  # in terms of output/generated tokens
+    def atomic_decode_volume(self) -> int:  # in terms of generated tokens
         return (
             self.config.input_shapes["batch_size"]
             * self.config.generate_kwargs["num_beams"]  # at each beam stage there are num_beams tokens generated
@@ -417,7 +417,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
         )
 
     @property
-    def atomic_call_volume(self) -> int:  # in terms of output images
+    def atomic_call_volume(self) -> int:  # in terms of generated images
         if self.backend.config.task == "text-to-image":
             return self.config.input_shapes["batch_size"] * self.config.call_kwargs["num_images_per_prompt"]
         else:

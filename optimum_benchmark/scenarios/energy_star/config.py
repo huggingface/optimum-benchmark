@@ -55,6 +55,10 @@ class EnergyStarConfig(ScenarioConfig):
     audio_column_name: str = field(default="audio", metadata={"help": "Name of the column with the audio."})
 
     # scenario options
+    energy: bool = field(default=True, metadata={"help": "Whether to measure energy."})
+    memory: bool = field(default=False, metadata={"help": "Whether to measure memory."})
+    latency: bool = field(default=False, metadata={"help": "Whether to measure latency."})
+
     warmup_runs: int = field(default=10, metadata={"help": "Number of warmup runs to perform before scenarioing"})
 
     # methods kwargs
