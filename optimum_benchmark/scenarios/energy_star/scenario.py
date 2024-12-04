@@ -85,9 +85,11 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
             )
 
         self.init_trackers(backend)
-        self.run_model_loading_tracking(backend)
+
         self.run_dataset_loading_tracking(backend)
         self.run_dataset_preprocessing_tracking(backend)
+
+        self.run_model_loading_tracking(backend)
 
         self.logger.info("\t+ Preparing sample inputs for model warmup")
         self.sample_inputs = self.dataset[: self.config.input_shapes["batch_size"]]
