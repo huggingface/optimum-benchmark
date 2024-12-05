@@ -127,29 +127,29 @@ class InferenceScenario(Scenario[InferenceConfig]):
         if self.config.latency:
             if self.backend.config.task in TEXT_GENERATION_TASKS:
                 if self.backend.config.name in PER_TOKEN_BACKENDS:
-                    self.run_per_token_text_generation_latency_tracking(self.backend)
+                    self.run_per_token_text_generation_latency_tracking()
                 else:
-                    self.run_text_generation_latency_tracking(self.backend)
+                    self.run_text_generation_latency_tracking()
             elif self.backend.config.task in IMAGE_DIFFUSION_TASKS:
-                self.run_image_diffusion_latency_tracking(self.backend)
+                self.run_image_diffusion_latency_tracking()
             else:
-                self.run_inference_latency_tracking(self.backend)
+                self.run_inference_latency_tracking()
 
         if self.config.memory:
             if self.backend.config.task in TEXT_GENERATION_TASKS:
-                self.run_text_generation_memory_tracking(self.backend)
+                self.run_text_generation_memory_tracking()
             elif self.backend.config.task in IMAGE_DIFFUSION_TASKS:
-                self.run_image_diffusion_memory_tracking(self.backend)
+                self.run_image_diffusion_memory_tracking()
             else:
-                self.run_inference_memory_tracking(self.backend)
+                self.run_inference_memory_tracking()
 
         if self.config.energy:
             if self.backend.config.task in TEXT_GENERATION_TASKS:
-                self.run_text_generation_energy_tracking(self.backend)
+                self.run_text_generation_energy_tracking()
             elif self.backend.config.task in IMAGE_DIFFUSION_TASKS:
-                self.run_image_diffusion_energy_tracking(self.backend)
+                self.run_image_diffusion_energy_tracking()
             else:
-                self.run_inference_energy_tracking(self.backend)
+                self.run_inference_energy_tracking()
 
         return self.report
 
