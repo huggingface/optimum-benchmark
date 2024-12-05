@@ -1,7 +1,7 @@
+import json
 import os
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
-from json import dump
 from logging import getLogger
 from typing import List, Literal, Optional, Union
 
@@ -148,7 +148,7 @@ class Efficiency:
 
 
 class EnergyTracker:
-    def __init__(self, backend: str, device: str, device_ids: Optional[Union[str, int, List[int]]] = None):
+    def __init__(self, device: str, backend: str, device_ids: Optional[Union[str, int, List[int]]] = None):
         self.device = device
         self.backend = backend
         self.device_ids = device_ids
@@ -223,12 +223,18 @@ class EnergyTracker:
         self.gpu_energy: Optional[float] = None
         self.ram_energy: Optional[float] = None
 
+    def reset(self):
+        self.total_energy = None
+        self.cpu_energy = None
+        self.gpu_energy = None
+        self.ram_energy = None
+
     @contextmanager
-    def track(self, file_prefix: str = "task"):
+    def track(self, task_name: str = "task"):
         if self.is_pytorch_cuda:
             torch.cuda.synchronize()
 
-        self.emission_tracker.start_task()
+        self.emission_tracker.start_task(task_name=task_name)
 
         yield
 
@@ -237,9 +243,9 @@ class EnergyTracker:
 
         emission_data: EmissionsData = self.emission_tracker.stop_task()
 
-        with open(f"{file_prefix}_codecarbon.json", "w") as f:
-            LOGGER.info(f"\t\t+ Saving codecarbon emission data to {file_prefix}_codecarbon.json")
-            dump(asdict(emission_data), f, indent=4)
+        with open(f"{task_name}_codecarbon.json", "w") as f:
+            LOGGER.info(f"\t\t+ Saving codecarbon emission data to {task_name}_codecarbon.json")
+            json.dump(asdict(emission_data), f, indent=4)
 
         self.total_energy = emission_data.energy_consumed
         self.cpu_energy = emission_data.cpu_energy
@@ -247,6 +253,8 @@ class EnergyTracker:
         self.ram_energy = emission_data.ram_energy
 
     def get_energy(self) -> Energy:
+        assert self.total_energy is not None, "Energy must be tracked before calling this method"
+
         return Energy(
             unit=ENERGY_UNIT, cpu=self.cpu_energy, gpu=self.gpu_energy, ram=self.ram_energy, total=self.total_energy
         )

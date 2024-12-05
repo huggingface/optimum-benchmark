@@ -258,6 +258,8 @@ class MemoryTracker:
         parent_connection.close()
 
     def get_max_memory(self):
+        assert self.max_ram_memory is not None, "Memory tracker must be run before getting the maximum memory"
+
         return Memory(
             unit=MEMORY_UNIT,
             max_ram=self.max_ram_memory,

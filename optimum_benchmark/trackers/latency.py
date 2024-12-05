@@ -209,6 +209,10 @@ class LatencyTracker:
         self.end_events.append(time.perf_counter())
 
     def get_latency(self) -> Latency:
+        assert len(self.start_events) == len(
+            self.end_events
+        ), "Mismatched number of start and end events, get_latency() should only be called outside of track() context"
+
         if self.is_pytorch_cuda:
             torch.cuda.synchronize()
 
@@ -276,6 +280,10 @@ class StepLatencyTrainerCallback(TrainerCallback):
             self.end_events.append(time.perf_counter())
 
     def get_latency(self) -> Latency:
+        assert len(self.start_events) == len(
+            self.end_events
+        ), "Mismatched number of start and end events, get_latency() should only be called outside of track() context"
+
         if self.is_pytorch_cuda:
             torch.cuda.synchronize()
 
@@ -404,6 +412,10 @@ class PerTokenLatencyLogitsProcessor(LogitsProcessor):
         return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
 
     def get_per_token_latency(self) -> Latency:
+        assert (
+            len(self.per_token_events) > 0
+        ), "No per-token events recorded, make sure to pass the PerTokenLatencyLogitsProcessor to the generate() method"
+
         if self.is_pytorch_cuda:
             torch.cuda.synchronize()
 

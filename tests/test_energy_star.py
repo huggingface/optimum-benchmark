@@ -28,6 +28,9 @@ def test_cli_configs(config_name):
         TEST_CONFIG_DIR,
         "--config-name",
         config_name,
+        "scenario.energy=true",
+        "scenario.memory=true",
+        "scenario.latency=true",
         "scenario.num_samples=2",
         "scenario.input_shapes.batch_size=2",
     ]
