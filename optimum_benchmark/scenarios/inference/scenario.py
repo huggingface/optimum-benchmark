@@ -87,8 +87,6 @@ class InferenceScenario(Scenario[InferenceConfig]):
                 self.per_token_latency_tracker = PerTokenLatencyLogitsProcessor(
                     backend=self.backend.config.name, device=self.backend.config.device
                 )
-                self.logger.info("\t+ Updating generate_kwargs with LogitsProcessorList")
-                self.config.generate_kwargs["logits_processor"] = LogitsProcessorList([self.per_token_latency_tracker])
         if self.config.memory:
             self.logger.info("\t+ Initializing Memory tracker")
             self.memory_tracker = MemoryTracker(
@@ -230,6 +228,8 @@ class InferenceScenario(Scenario[InferenceConfig]):
     ## Per-Token Text Generation latency tracking
     def run_per_token_text_generation_latency_tracking(self):
         self.logger.info("\t+ Running Per-Token Text Generation latency tracking")
+
+        self.config.generate_kwargs["logits_processor"] = LogitsProcessorList([self.per_token_latency_tracker])
 
         self.per_token_latency_tracker.reset()
         while (
