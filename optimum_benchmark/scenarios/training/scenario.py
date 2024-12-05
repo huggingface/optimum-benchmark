@@ -51,7 +51,7 @@ class TrainingScenario(Scenario[TrainingConfig]):
                 energy_tracker = EnergyTracker(
                     device=backend.config.device, backend=backend.config.name, device_ids=backend.config.device_ids
                 )
-                context_stack.enter_context(energy_tracker.track(file_prefix="train"))
+                context_stack.enter_context(energy_tracker.track(task_name="train"))
 
             backend.train(
                 training_dataset=training_dataset,
