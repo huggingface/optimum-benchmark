@@ -60,16 +60,16 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
         super().__init__(config)
 
     def run(self, backend: Backend[BackendConfigT]) -> BenchmarkReport:
-        self.task = backend.config.task
+        self.backend = backend
 
-        if backend.config.task in TEXT_GENERATION_TASKS:
+        if self.backend.config.task in TEXT_GENERATION_TASKS:
             self.logger.info("\t+ Updating Text Generation kwargs with default values")
             self.config.generate_kwargs = {**TEXT_GENERATION_DEFAULT_KWARGS, **self.config.generate_kwargs}
             self.logger.info("\t+ Initializing Text Generation report")
             self.report = BenchmarkReport.from_list(
                 targets=["load_dataset", "preprocess_dataset", "load_model", "prefill", "decode"]
             )
-        elif backend.config.task in IMAGE_DIFFUSION_TASKS:
+        elif self.backend.config.task in IMAGE_DIFFUSION_TASKS:
             self.logger.info("\t+ Updating Image Diffusion kwargs with default values")
             self.config.call_kwargs = {**IMAGE_DIFFUSION_DEFAULT_KWARGS, **self.config.call_kwargs}
             self.logger.info("\t+ Initializing Image Diffusion report")
@@ -82,59 +82,59 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
                 targets=["load_dataset", "preprocess_dataset", "load_model", "forward"]
             )
 
-        self.init_trackers(backend)
-
-        self.run_dataset_loading_tracking(backend)
-        self.run_dataset_preprocessing_tracking(backend)
-
-        self.run_model_loading_tracking(backend)
-
-        self.logger.info("\t+ Preparing sample inputs for model warmup")
-        self.sample_inputs = self.dataset[: self.config.input_shapes["batch_size"]]
-        self.sample_inputs = backend.prepare_inputs(self.sample_inputs)
-
-        if backend.config.task in TEXT_GENERATION_TASKS:
-            if self.config.warmup_runs > 0:
-                self.warmup_text_generation(backend)
-            self.run_text_generation_tracking(backend)
-        elif backend.config.task in IMAGE_DIFFUSION_TASKS:
-            if self.config.warmup_runs > 0:
-                self.warmup_image_diffusion(backend)
-            self.run_image_diffusion_tracking(backend)
-        else:
-            if self.config.warmup_runs > 0:
-                self.warmup_inference(backend)
-            self.run_inference_tracking(backend)
-
-        return self.report
-
-    def init_trackers(self, backend: Backend[BackendConfigT]):
         if self.config.latency:
+            self.logger.info("\t+ Initializing Latency tracker")
             self.latency_tracker = LatencyTracker(
-                backend=backend.config.name,
-                device=backend.config.device,
+                backend=self.backend.config.name,
+                device=self.backend.config.device,
             )
         if self.config.memory:
+            self.logger.info("\t+ Initializing Memory tracker")
             self.memory_tracker = MemoryTracker(
-                backend=backend.config.name,
-                device=backend.config.device,
-                device_ids=backend.config.device_ids,
+                backend=self.backend.config.name,
+                device=self.backend.config.device,
+                device_ids=self.backend.config.device_ids,
             )
         if self.config.energy:
+            self.logger.info("\t+ Initializing Energy tracker")
             self.energy_tracker = EnergyTracker(
-                backend=backend.config.name,
-                device=backend.config.device,
-                device_ids=backend.config.device_ids,
+                backend=self.backend.config.name,
+                device=self.backend.config.device,
+                device_ids=self.backend.config.device_ids,
             )
+
+        # we start with loading/preprocessing the dataset as it takes no vram
+        self.run_dataset_loading_tracking()
+        self.run_dataset_preprocessing_tracking()
+        self.run_model_loading_tracking()
+
+        if self.config.warmup_runs > 0:
+            self.logger.info("\t+ Preparing sample inputs for warmup")
+            self.sample_inputs = self.dataset[: self.config.input_shapes["batch_size"]]
+            self.sample_inputs = self.backend.prepare_inputs(self.sample_inputs)
+
+            if self.backend.config.task in TEXT_GENERATION_TASKS:
+                self.warmup_text_generation()
+            elif self.backend.config.task in IMAGE_DIFFUSION_TASKS:
+                self.warmup_image_diffusion()
+            else:
+                self.warmup_inference()
+
+        if self.backend.config.task in TEXT_GENERATION_TASKS:
+            self.run_text_generation_tracking()
+        elif self.backend.config.task in IMAGE_DIFFUSION_TASKS:
+            self.run_image_diffusion_tracking()
+        else:
+            self.run_inference_tracking()
+
+        return self.report
 
     @contextmanager
     def track(self, task_name: str):
         with ExitStack() as context_stack:
             if self.config.energy:
-                self.energy_tracker.reset()
                 context_stack.enter_context(self.energy_tracker.track(task_name=task_name))
             if self.config.memory:
-                self.memory_tracker.reset()
                 context_stack.enter_context(self.memory_tracker.track())
             if self.config.latency:
                 self.latency_tracker.reset()
@@ -142,12 +142,14 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
             yield
 
     # Dataset loading tracking
-    def run_dataset_loading_tracking(self, backend: Backend[BackendConfigT]):
+    def run_dataset_loading_tracking(self):
         self.logger.info("\t+ Running dataset loading tracking")
 
         with self.track(task_name="load_dataset"):
             self.dataset = load_dataset(
-                self.config.dataset_name, self.config.dataset_config, split=self.config.dataset_split
+                self.config.dataset_name,
+                self.config.dataset_config,
+                split=self.config.dataset_split,
             )
 
         if self.config.energy:
@@ -158,15 +160,15 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
             self.report.load_dataset.memory = self.memory_tracker.get_max_memory()
 
     # Dataset preprocessing tracking
-    def run_dataset_preprocessing_tracking(self, backend: Backend[BackendConfigT]):
+    def run_dataset_preprocessing_tracking(self):
         self.logger.info("\t+ Running dataset preprocessing tracking")
 
         with self.track(task_name="preprocess_dataset"):
-            self.dataset = TASKS_TO_PREPROCESSORS[backend.config.task](
+            self.dataset = TASKS_TO_PREPROCESSORS[self.backend.config.task](
                 dataset=self.dataset,
                 scenario_config=self.config,
-                pretrained_config=backend.pretrained_config,
-                pretrained_processor=backend.pretrained_processor,
+                pretrained_config=self.backend.pretrained_config,
+                pretrained_processor=self.backend.pretrained_processor,
             )
 
         if self.config.energy:
@@ -187,11 +189,11 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
             self.report.preprocess_dataset.memory = self.memory_tracker.get_max_memory()
 
     # Model loading tracking
-    def run_model_loading_tracking(self, backend: Backend[BackendConfigT]):
+    def run_model_loading_tracking(self):
         self.logger.info("\t+ Running model loading energy tracking")
 
         with self.track(task_name="load_model"):
-            backend.load()
+            self.backend.load()
 
         if self.config.latency:
             self.report.load_model.latency = self.latency_tracker.get_latency()
@@ -201,37 +203,37 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
             self.report.load_model.energy = self.energy_tracker.get_energy()
 
     # Text Generation warmup
-    def warmup_text_generation(self, backend: Backend[BackendConfigT]):
+    def warmup_text_generation(self):
         warmup_kwargs = {**self.config.generate_kwargs, **TEXT_GENERATION_WARMUP_OVERRIDES}
         self.logger.info("\t+ Warming up backend for Text Generation")
-        backend.generate(self.sample_inputs, self.config.generate_kwargs)
+        self.backend.generate(self.sample_inputs, self.config.generate_kwargs)
         for _ in range(self.config.warmup_runs):
-            backend.generate(self.sample_inputs, warmup_kwargs)
+            self.backend.generate(self.sample_inputs, warmup_kwargs)
 
     # Image Diffusion warmup
-    def warmup_image_diffusion(self, backend: Backend[BackendConfigT]):
+    def warmup_image_diffusion(self):
         warmup_kwargs = {**self.config.call_kwargs, **IMAGE_DIFFUSION_WARMUP_OVERRIDES}
         self.logger.info("\t+ Warming up backend for Image Diffusion")
-        backend.call(self.sample_inputs, self.config.call_kwargs)
+        self.backend.call(self.sample_inputs, self.config.call_kwargs)
         for _ in range(self.config.warmup_runs):
-            backend.call(self.sample_inputs, warmup_kwargs)
+            self.backend.call(self.sample_inputs, warmup_kwargs)
 
     # Inference warmup
-    def warmup_inference(self, backend: Backend[BackendConfigT]):
+    def warmup_inference(self):
         self.logger.info("\t+ Warming up backend for Inference")
         for _ in range(self.config.warmup_runs):
-            backend.forward(self.sample_inputs, self.config.forward_kwargs)
+            self.backend.forward(self.sample_inputs, self.config.forward_kwargs)
 
-    # Text Generation energy tracking
-    def run_text_generation_tracking(self, backend: Backend[BackendConfigT]):
+    # Text Generation tracking
+    def run_text_generation_tracking(self):
         self.logger.info("\t+ Running Text Generation tracking")
 
         prefill_kwargs = {**self.config.generate_kwargs, **TEXT_GENERATION_PREFILL_OVERRIDES}
 
         with self.track(task_name="prefill"):
             for i in tqdm(range(0, self.config.num_samples, self.config.input_shapes["batch_size"])):
-                inputs = backend.prepare_inputs(self.dataset[i : i + self.config.input_shapes["batch_size"]])
-                backend.prefill(inputs, prefill_kwargs)
+                inputs = self.backend.prepare_inputs(self.dataset[i : i + self.config.input_shapes["batch_size"]])
+                self.backend.prefill(inputs, prefill_kwargs)
 
         if self.config.energy:
             prefill_energy = self.energy_tracker.get_energy()
@@ -252,8 +254,8 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
 
         with self.track(task_name="generate"):
             for i in tqdm(range(0, self.config.num_samples, self.config.input_shapes["batch_size"])):
-                inputs = backend.prepare_inputs(self.dataset[i : i + self.config.input_shapes["batch_size"]])
-                backend.generate(inputs, self.config.generate_kwargs)
+                inputs = self.backend.prepare_inputs(self.dataset[i : i + self.config.input_shapes["batch_size"]])
+                self.backend.generate(inputs, self.config.generate_kwargs)
 
         if self.config.energy:
             generate_energy = self.energy_tracker.get_energy()
@@ -275,13 +277,13 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
             self.report.decode.memory = self.memory_tracker.get_max_memory()
 
     # Image Diffusion tracking
-    def run_image_diffusion_tracking(self, backend: Backend[BackendConfigT]):
+    def run_image_diffusion_tracking(self):
         self.logger.info("\t+ Running Image Diffusion tracking")
 
         with self.track(task_name="call"):
             for i in tqdm(range(0, self.config.num_samples, self.config.input_shapes["batch_size"])):
-                inputs = backend.prepare_inputs(self.dataset[i : i + self.config.input_shapes["batch_size"]])
-                backend.call(inputs, self.config.call_kwargs)
+                inputs = self.backend.prepare_inputs(self.dataset[i : i + self.config.input_shapes["batch_size"]])
+                self.backend.call(inputs, self.config.call_kwargs)
 
         if self.config.energy:
             call_energy = self.energy_tracker.get_energy()
@@ -297,13 +299,13 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
             self.report.call.memory = self.memory_tracker.get_max_memory()
 
     # Inference tracking
-    def run_inference_tracking(self, backend: Backend[BackendConfigT]):
+    def run_inference_tracking(self):
         self.logger.info("\t+ Running Inference tracking")
 
         with self.track(task_name="forward"):
             for i in tqdm(range(0, self.config.num_samples, self.config.input_shapes["batch_size"])):
-                inputs = backend.prepare_inputs(self.dataset[i : i + self.config.input_shapes["batch_size"]])
-                backend.forward(inputs, self.config.forward_kwargs)
+                inputs = self.backend.prepare_inputs(self.dataset[i : i + self.config.input_shapes["batch_size"]])
+                self.backend.forward(inputs, self.config.forward_kwargs)
 
         if self.config.energy:
             forward_energy = self.energy_tracker.get_energy()
@@ -344,7 +346,7 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
 
     @property
     def dataset_call_volume(self) -> int:  # in terms of generated images
-        if self.task == "text-to-image":
+        if self.backend.config.task == "text-to-image":
             return self.config.num_samples * self.config.call_kwargs["num_images_per_prompt"]
         else:
             return self.config.num_samples
