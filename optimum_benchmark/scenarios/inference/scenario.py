@@ -82,13 +82,13 @@ class InferenceScenario(Scenario[InferenceConfig]):
         if self.config.latency:
             self.logger.info("\t+ Initializing Latency tracker")
             self.latency_tracker = LatencyTracker(backend=self.backend.config.name, device=self.backend.config.device)
-
-        if self.config.latency:
-            self.logger.info("\t+ Initializing Latency tracker")
-            self.latency_tracker = LatencyTracker(
-                backend=self.backend.config.name,
-                device=self.backend.config.device,
-            )
+            if self.backend.config.task in TEXT_GENERATION_TASKS and self.backend.config.name in PER_TOKEN_BACKENDS:
+                self.logger.info("\t+ Initializing Per-Token Latency tracker")
+                self.per_token_latency_tracker = PerTokenLatencyLogitsProcessor(
+                    backend=self.backend.config.name, device=self.backend.config.device
+                )
+                self.logger.info("\t+ Updating generate_kwargs with LogitsProcessorList")
+                self.config.generate_kwargs["logits_processor"] = LogitsProcessorList([self.per_token_latency_tracker])
         if self.config.memory:
             self.logger.info("\t+ Initializing Memory tracker")
             self.memory_tracker = MemoryTracker(
@@ -231,22 +231,17 @@ class InferenceScenario(Scenario[InferenceConfig]):
     def run_per_token_text_generation_latency_tracking(self):
         self.logger.info("\t+ Running Per-Token Text Generation latency tracking")
 
-        self.latency_tracker = PerTokenLatencyLogitsProcessor(
-            backend=self.backend.config.name, device=self.backend.config.device
-        )
-        self.config.generate_kwargs["logits_processor"] = LogitsProcessorList([self.latency_tracker])
-
-        self.latency_tracker.reset()
+        self.per_token_latency_tracker.reset()
         while (
-            self.latency_tracker.elapsed() < self.config.duration
-            or self.latency_tracker.count() < self.config.iterations
+            self.per_token_latency_tracker.elapsed() < self.config.duration
+            or self.per_token_latency_tracker.count() < self.config.iterations
         ):
-            with self.latency_tracker.track():
+            with self.per_token_latency_tracker.track():
                 self.backend.generate(self.inputs, self.config.generate_kwargs)
 
-        per_token_latency = self.latency_tracker.get_per_token_latency()
-        prefill_latency = self.latency_tracker.get_prefill_latency()
-        decode_latency = self.latency_tracker.get_decode_latency()
+        per_token_latency = self.per_token_latency_tracker.get_per_token_latency()
+        prefill_latency = self.per_token_latency_tracker.get_prefill_latency()
+        decode_latency = self.per_token_latency_tracker.get_decode_latency()
         prefill_volume = self.atomic_prefill_volume
         decode_volume = self.atomic_decode_volume
 
