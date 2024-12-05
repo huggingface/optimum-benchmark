@@ -234,7 +234,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
         self.latency_tracker = PerTokenLatencyLogitsProcessor(
             backend=self.backend.config.name, device=self.backend.config.device
         )
-        self.config.generate_kwargs["logits_processors"] = LogitsProcessorList([self.latency_tracker])
+        self.config.generate_kwargs["logits_processor"] = LogitsProcessorList([self.latency_tracker])
 
         self.latency_tracker.reset()
         while (
