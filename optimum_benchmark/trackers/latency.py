@@ -46,7 +46,10 @@ class Latency:
     def __sub__(self, latency: "Latency") -> "Latency":
         latencies = [lat - latency.mean for lat in self.values]
 
-        assert all(latency >= 0 for latency in latencies)
+        assert all(latency >= 0 for latency in latencies), (
+            "Found some negative latencies while performing substraction. "
+            "Please increase the dimensions of your benchmark or the number of warmup runs."
+        )
 
         return Latency.from_values(values=latencies, unit=self.unit)
 
@@ -275,7 +278,10 @@ class LatencySessionTracker:
                 (end_event - start_event) for start_event, end_event in zip(self.start_events, self.end_events)
             ]
 
-        assert all(latency >= 0 for latency in latencies)
+        assert all(latency >= 0 for latency in latencies), (
+            "Found some negative latencies while performing substraction. "
+            "Please increase the dimensions of your benchmark or the number of warmup runs."
+        )
 
         return Latency.from_values(latencies, unit=LATENCY_UNIT)
 
@@ -386,7 +392,10 @@ class PerTokenLatencySessionTrackerLogitsProcessor:
                 for start_event, end_event in zip(self.prefill_start_events, self.prefill_end_events)
             ]
 
-        assert all(latency >= 0 for latency in latencies)
+        assert all(latency >= 0 for latency in latencies), (
+            "Found some negative latencies while performing substraction. "
+            "Please increase the dimensions of your benchmark or the number of warmup runs."
+        )
 
         return Latency.from_values(latencies, unit=LATENCY_UNIT)
 
@@ -406,7 +415,10 @@ class PerTokenLatencySessionTrackerLogitsProcessor:
                 for start_event, end_event in zip(self.decode_start_events, self.decode_end_events)
             ]
 
-        assert all(latency >= 0 for latency in latencies)
+        assert all(latency >= 0 for latency in latencies), (
+            "Found some negative latencies while performing substraction. "
+            "Please increase the dimensions of your benchmark or the number of warmup runs."
+        )
 
         return Latency.from_values(latencies, unit=LATENCY_UNIT)
 
@@ -426,7 +438,10 @@ class PerTokenLatencySessionTrackerLogitsProcessor:
                 for start_event, end_event in zip(self.per_token_start_events, self.per_token_end_events)
             ]
 
-        assert all(latency >= 0 for latency in latencies)
+        assert all(latency >= 0 for latency in latencies), (
+            "Found some negative latencies while performing substraction. "
+            "Please increase the dimensions of your benchmark or the number of warmup runs."
+        )
 
         return Latency.from_values(latencies, unit=LATENCY_UNIT)
 
@@ -525,7 +540,10 @@ class PerStepLatencySessionTrackerPipelineCallback:
                 for start_event, end_event in zip(self.per_step_start_events, self.per_step_end_events)
             ]
 
-        assert all(latency >= 0 for latency in latencies)
+        assert all(latency >= 0 for latency in latencies), (
+            "Found some negative latencies while performing substraction. "
+            "Please increase the dimensions of your benchmark or the number of warmup runs."
+        )
 
         return Latency.from_values(latencies, unit=LATENCY_UNIT)
 
@@ -545,7 +563,10 @@ class PerStepLatencySessionTrackerPipelineCallback:
                 for start_event, end_event in zip(self.call_start_events, self.call_end_events)
             ]
 
-        assert all(latency >= 0 for latency in latencies)
+        assert all(latency >= 0 for latency in latencies), (
+            "Found some negative latencies while performing substraction. "
+            "Please increase the dimensions of your benchmark or the number of warmup runs."
+        )
 
         return Latency.from_values(latencies, unit=LATENCY_UNIT)
 
@@ -597,6 +618,9 @@ class StepLatencyTrackerTrainerCallback(TrainerCallback):
                 (end_event - start_event) for start_event, end_event in zip(self.start_events, self.end_events)
             ]
 
-        assert all(latency >= 0 for latency in latencies)
+        assert all(latency >= 0 for latency in latencies), (
+            "Found some negative latencies while performing substraction. "
+            "Please increase the dimensions of your benchmark or the number of warmup runs."
+        )
 
         return Latency.from_values(latencies, unit=LATENCY_UNIT)
