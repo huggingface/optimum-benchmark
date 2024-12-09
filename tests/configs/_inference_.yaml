@@ -14,8 +14,8 @@ scenario:
     sequence_length: 16
 
   generate_kwargs:
-    max_new_tokens: 4
-    min_new_tokens: 4
+    max_new_tokens: 16
+    min_new_tokens: 16
 
   call_kwargs:
     num_inference_steps: 4
