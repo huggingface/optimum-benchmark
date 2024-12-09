@@ -50,6 +50,10 @@ jobs:
         run: |
           FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and vllm and not (tp or pp)"
 
+      - name: Run examples (sequential)
+        run: |
+          FORCE_SEQUENTIAL=1 pytest tests/test_examples.py -x -s -k "cli and cuda and vllm and not (tp or pp)"
+
   run_cli_cuda_vllm_multi_gpu_tests:
     if: ${{
       (github.event_name == 'push') ||

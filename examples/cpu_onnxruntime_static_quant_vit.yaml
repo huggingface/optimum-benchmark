@@ -6,10 +6,11 @@ defaults:
   - _base_
   - _self_
 
-name: onnxruntime_static_quant_vit
+name: cpu_onnxruntime_static_quant_vit
 
 backend:
   device: cpu
+  export: true
   no_weights: true
   model: google/vit-base-patch16-224
   quantization: true

@@ -1,19 +1,19 @@
 defaults:
   - benchmark
-  - backend: onnxruntime
   - scenario: inference
+  - backend: openvino
   - launcher: process
   - _base_
   - _self_
 
-name: onnxruntime_timm
+name: openvino_diffusion
 
 backend:
+  half: true
   device: cpu
-  model: timm/mobilenetv3_large_100.ra_in1k
+  export: true
+  model: stabilityai/stable-diffusion-2-1
 
 scenario:
-  memory: true
-  latency: true
   input_shapes:
-    batch_size: 2
+    batch_size: 1

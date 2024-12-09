@@ -11,12 +11,13 @@ except Exception as e:
     print(f"Failed to get username from Hugging Face Hub: {e}")
     USERNAME = None
 
-BENCHMARK_NAME = "pytorch_bert"
+BENCHMARK_NAME = "cuda_pytorch_bert"
+MODEL = "google-bert/bert-base-uncased"
 
 
 def run_benchmark():
     launcher_config = ProcessConfig(device_isolation=True, device_isolation_action="warn")
-    backend_config = PyTorchConfig(device="cuda", device_ids="0", no_weights=True, model="bert-base-uncased")
+    backend_config = PyTorchConfig(device="cuda", device_ids="0", no_weights=True, model=MODEL)
     scenario_config = InferenceConfig(memory=True, latency=True, input_shapes={"batch_size": 1, "sequence_length": 128})
     benchmark_config = BenchmarkConfig(
         name=BENCHMARK_NAME,

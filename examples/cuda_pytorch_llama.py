@@ -11,7 +11,8 @@ except Exception as e:
     print(f"Failed to get username from Hugging Face Hub: {e}")
     USERNAME = None
 
-BENCHMARK_NAME = "pytorch-llama"
+BENCHMARK_NAME = "cuda_pytorch_llama"
+MODEL = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
 
 WEIGHTS_CONFIGS = {
     "float16": {
@@ -40,10 +41,10 @@ WEIGHTS_CONFIGS = {
 def run_benchmark(weight_config: str):
     launcher_config = ProcessConfig(device_isolation=True, device_isolation_action="warn")
     backend_config = PyTorchConfig(
+        model=MODEL,
         device="cuda",
         device_ids="0",
         no_weights=True,
-        model="gpt2",
         **WEIGHTS_CONFIGS[weight_config],
     )
     scenario_config = InferenceConfig(

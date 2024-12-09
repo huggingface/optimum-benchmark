@@ -50,6 +50,9 @@ jobs:
         run: |
           pytest tests/test_cli.py -x -s -k "cli and cuda and tensorrt_llm and not (tp or pp)"
 
+      - name: Run examples
+        run: pytest tests/test_examples.py -x -s -k "cli and cuda and tensorrt_llm and not (tp or pp)"
+
   cli_cuda_tensorrt_llm_multi_gpu_tests:
     if: ${{
       (github.event_name == 'push') ||
