@@ -246,8 +246,6 @@ class LatencySessionTracker:
 
     @contextmanager
     def track(self):
-        assert self.start_time is not None, "This method can only be called inside of a '.session()' context"
-
         if self.is_pytorch_cuda:
             start_event = torch.cuda.Event(enable_timing=True)
             end_event = torch.cuda.Event(enable_timing=True)
@@ -338,8 +336,6 @@ class PerTokenLatencySessionTrackerLogitsProcessor:
 
     @contextmanager
     def track(self):
-        assert self.start_time is not None, "This method can only be called inside of a '.session()' context"
-
         if self.is_pytorch_cuda:
             start_event = torch.cuda.Event(enable_timing=True)
             end_event = torch.cuda.Event(enable_timing=True)
@@ -359,8 +355,6 @@ class PerTokenLatencySessionTrackerLogitsProcessor:
         self.per_token_end_events.extend(self.per_token_events[1:])
 
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor):
-        assert self.start_time is not None, "This method can only be called inside of a '.session()' context"
-
         if self.is_pytorch_cuda:
             event = torch.cuda.Event(enable_timing=True)
             event.record()
@@ -486,8 +480,6 @@ class PerStepLatencySessionTrackerPipelineCallback:
 
     @contextmanager
     def track(self):
-        assert self.start_time is not None, "This method can only be called inside of a '.session()' context"
-
         if self.is_pytorch_cuda:
             start_event = torch.cuda.Event(enable_timing=True)
             end_event = torch.cuda.Event(enable_timing=True)
@@ -507,8 +499,6 @@ class PerStepLatencySessionTrackerPipelineCallback:
         self.per_step_end_events.extend(self.per_step_events[1:])
 
     def __call__(self, pipeline, step_index, timestep, callback_kwargs):
-        assert self.start_time is not None, "This method can only be called inside of a '.session()' context"
-
         if self.is_pytorch_cuda:
             event = torch.cuda.Event(enable_timing=True)
             event.record()
