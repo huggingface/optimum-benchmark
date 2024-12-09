@@ -188,7 +188,7 @@ def test_api_input_generator(library, task, model):
         model_shapes = extract_timm_shapes_from_config(model_config)
     elif library == "diffusers":
         model_config = get_diffusers_pretrained_config(model)
-        model_shapes = extract_diffusers_shapes_from_model(model)
+        model_shapes = extract_diffusers_shapes_from_model()
     else:
         raise ValueError(f"Unknown library {library}")
 
@@ -215,7 +215,7 @@ def test_api_dataset_generator(library, task, model):
         model_shapes = extract_timm_shapes_from_config(config=model_config)
     elif library == "diffusers":
         model_config = get_diffusers_pretrained_config(model)
-        model_shapes = extract_diffusers_shapes_from_model(model)
+        model_shapes = extract_diffusers_shapes_from_model()
     else:
         raise ValueError(f"Unknown library {library}")
 
