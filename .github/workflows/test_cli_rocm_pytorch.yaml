@@ -31,7 +31,7 @@ jobs:
       contains( github.event.pull_request.labels.*.name, 'cli_rocm_pytorch_single_gpu')
       }}
 
-    uses: huggingface/hf-workflows/.github/workflows/optimum_benchmark_instinct_ci.yaml@main
+    uses: huggingface/hf-workflows/.github/workflows/optimum_benchmark_instinct_ci.yaml@testing
     with:
       machine_type: single-gpu
       install_extras: testing,diffusers,timm,peft,autoawq,auto-gptq
@@ -48,7 +48,7 @@ jobs:
       contains( github.event.pull_request.labels.*.name, 'cli_rocm_pytorch_multi_gpu')
       }}
 
-    uses: huggingface/hf-workflows/.github/workflows/optimum_benchmark_instinct_ci.yaml@main
+    uses: huggingface/hf-workflows/.github/workflows/optimum_benchmark_instinct_ci.yaml@testing
     with:
       machine_type: multi-gpu
       install_extras: testing,diffusers,timm,peft
