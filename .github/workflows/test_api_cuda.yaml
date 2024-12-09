@@ -56,3 +56,4 @@ jobs:
           pytest tests/test_examples.py -x -s -k "api and cuda"
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          PUSH_REPO_ID: optimum-benchmark/cuda

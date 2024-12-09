@@ -36,7 +36,7 @@ def test_cli_configs(config_name):
     assert popen.returncode == 0, f"Failed to run {config_name}"
 
 
-@pytest.mark.parametrize("config_name", TEST_SCRIPT_PATHS)
+@pytest.mark.parametrize("script_path", TEST_SCRIPT_PATHS)
 def test_api_scripts(script_path):
     args = ["python", script_path]
 
