@@ -6,10 +6,9 @@ from typing import List, Literal, Optional, Union
 
 import numpy as np
 import torch
-from diffusers.callbacks import PipelineCallback
 from rich.console import Console
 from rich.markdown import Markdown
-from transformers import LogitsProcessor, TrainerCallback
+from transformers import TrainerCallback
 
 CONSOLE = Console()
 LOGGER = getLogger("latency")
@@ -283,7 +282,7 @@ class LatencySessionTracker:
         return Latency.from_values(latencies, unit=LATENCY_UNIT)
 
 
-class PerTokenLatencySessionTrackerLogitsProcessor(LogitsProcessor):
+class PerTokenLatencySessionTrackerLogitsProcessor:
     def __init__(self, device: str, backend: str):
         self.device = device
         self.backend = backend
@@ -428,7 +427,7 @@ class PerTokenLatencySessionTrackerLogitsProcessor(LogitsProcessor):
         return Latency.from_values(latencies, unit=LATENCY_UNIT)
 
 
-class PerStepLatencySessionTrackerPipelineCallback(PipelineCallback):
+class PerStepLatencySessionTrackerPipelineCallback:
     tensor_inputs = []
 
     def __init__(self, device: str, backend: str):
