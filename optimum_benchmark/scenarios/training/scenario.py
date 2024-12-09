@@ -6,7 +6,7 @@ from ...backends.base import Backend, BackendConfigT
 from ...benchmark.report import BenchmarkReport
 from ...generators.dataset_generator import DatasetGenerator
 from ...trackers.energy import Efficiency, EnergyTracker
-from ...trackers.latency import StepLatencyTrainerCallback, Throughput
+from ...trackers.latency import StepLatencyTrackerTrainerCallback, Throughput
 from ...trackers.memory import MemoryTracker
 from ..base import Scenario
 from .config import TrainingConfig
@@ -40,7 +40,7 @@ class TrainingScenario(Scenario[TrainingConfig]):
 
         with ExitStack() as context_stack:
             if self.config.latency:
-                latency_callback = StepLatencyTrainerCallback(device=backend.config.device, backend=backend.config.name)
+                latency_callback = StepLatencyTrackerTrainerCallback(device=backend.config.device, backend=backend.config.name)
                 training_callbackes.append(latency_callback)
             if self.config.memory:
                 memory_tracker = MemoryTracker(

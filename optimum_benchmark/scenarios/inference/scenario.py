@@ -8,7 +8,12 @@ from ...benchmark.report import BenchmarkReport
 from ...generators.input_generator import InputGenerator
 from ...task_utils import IMAGE_DIFFUSION_TASKS, TEXT_GENERATION_TASKS
 from ...trackers.energy import Efficiency, EnergyTracker
-from ...trackers.latency import LatencyTracker, PerTokenLatencyLogitsProcessor, Throughput
+from ...trackers.latency import (
+    LatencySessionTracker,
+    PerStepLatencySessionTrackerPipelineCallback,
+    PerTokenLatencySessionTrackerLogitsProcessor,
+    Throughput,
+)
 from ...trackers.memory import MemoryTracker
 from ..base import Scenario
 from .config import InferenceConfig
@@ -74,19 +79,29 @@ class InferenceScenario(Scenario[InferenceConfig]):
             self.logger.info("\t+ Updating Image Diffusion kwargs with default values")
             self.config.call_kwargs = {**IMAGE_DIFFUSION_DEFAULT_KWARGS, **self.config.call_kwargs}
             self.logger.info("\t+ Initializing Image Diffusion report")
-            self.report = BenchmarkReport.from_list(targets=["load_model", "call"])
+            self.report = BenchmarkReport.from_list(targets=["load_model", "call", "per_step"])
         else:
             self.logger.info("\t+ Initializing Inference report")
             self.report = BenchmarkReport.from_list(targets=["load_model", "forward"])
 
         if self.config.latency:
             self.logger.info("\t+ Initializing Latency tracker")
-            self.latency_tracker = LatencyTracker(backend=self.backend.config.name, device=self.backend.config.device)
+            self.latency_tracker = LatencySessionTracker(
+                device=self.backend.config.device, backend=self.backend.config.name
+            )
             if self.backend.config.task in TEXT_GENERATION_TASKS and self.backend.config.name in PER_TOKEN_BACKENDS:
                 self.logger.info("\t+ Initializing Per-Token Latency tracker")
-                self.per_token_latency_tracker = PerTokenLatencyLogitsProcessor(
-                    backend=self.backend.config.name, device=self.backend.config.device
+                self.per_token_latency_tracker = PerTokenLatencySessionTrackerLogitsProcessor(
+                    device=self.backend.config.device, backend=self.backend.config.name
                 )
+                self.config.generate_kwargs["logits_processor"] = LogitsProcessorList([self.per_token_latency_tracker])
+            elif self.backend.config.task in IMAGE_DIFFUSION_TASKS:
+                self.logger.info("\t+ Initializing Diffusion Step Latency tracker")
+                self.per_step_latency_tracker = PerStepLatencySessionTrackerPipelineCallback(
+                    device=self.backend.config.device, backend=self.backend.config.name
+                )
+                self.config.call_kwargs["callback_on_step_end"] = self.per_step_latency_tracker
+
         if self.config.memory:
             self.logger.info("\t+ Initializing Memory tracker")
             self.memory_tracker = MemoryTracker(
@@ -94,6 +109,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
                 device=self.backend.config.device,
                 device_ids=self.backend.config.device_ids,
             )
+
         if self.config.energy:
             self.logger.info("\t+ Initializing Energy tracker")
             self.energy_tracker = EnergyTracker(
@@ -161,7 +177,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
             if self.config.memory:
                 context_stack.enter_context(self.memory_tracker.track())
             if self.config.latency:
-                self.latency_tracker.reset()
+                context_stack.enter_context(self.latency_tracker.session())
                 context_stack.enter_context(self.latency_tracker.track())
 
             self.backend.load()
@@ -229,21 +245,17 @@ class InferenceScenario(Scenario[InferenceConfig]):
     def run_per_token_text_generation_latency_tracking(self):
         self.logger.info("\t+ Running Per-Token Text Generation latency tracking")
 
-        self.config.generate_kwargs["logits_processor"] = LogitsProcessorList([self.per_token_latency_tracker])
-
-        self.per_token_latency_tracker.reset()
-        while (
-            self.per_token_latency_tracker.elapsed() < self.config.duration
-            or self.per_token_latency_tracker.count() < self.config.iterations
-        ):
-            with self.per_token_latency_tracker.track():
-                self.backend.generate(self.inputs, self.config.generate_kwargs)
+        with self.per_token_latency_tracker.session():
+            while (
+                self.per_token_latency_tracker.elapsed() < self.config.duration
+                or self.per_token_latency_tracker.count() < self.config.iterations
+            ):
+                with self.per_token_latency_tracker.track():
+                    self.backend.generate(self.inputs, self.config.generate_kwargs)
 
         per_token_latency = self.per_token_latency_tracker.get_per_token_latency()
         prefill_latency = self.per_token_latency_tracker.get_prefill_latency()
         decode_latency = self.per_token_latency_tracker.get_decode_latency()
-        prefill_volume = self.atomic_prefill_volume
-        decode_volume = self.atomic_decode_volume
 
         self.report.per_token.latency = per_token_latency
         self.report.prefill.latency = prefill_latency
@@ -253,84 +265,86 @@ class InferenceScenario(Scenario[InferenceConfig]):
         # it's a confusing metric and the same signal as the decode throughput
 
         self.report.prefill.throughput = Throughput.from_latency(
-            prefill_latency, prefill_volume, unit=PREFILL_THROUGHPUT_UNIT
+            prefill_latency, self.atomic_prefill_volume, unit=PREFILL_THROUGHPUT_UNIT
         )
         self.report.decode.throughput = Throughput.from_latency(
-            decode_latency, decode_volume, unit=DECODE_THROUGHPUT_UNIT
+            decode_latency, self.atomic_decode_volume, unit=DECODE_THROUGHPUT_UNIT
         )
 
     ## Text Generation latency tracking
     def run_text_generation_latency_tracking(self):
         self.logger.info("\t+ Running Text Generation latency tracking")
+
         prefill_kwargs = {**self.config.generate_kwargs, **TEXT_GENERATION_PREFILL_OVERRIDES}
 
-        self.latency_tracker.reset()
-        while (
-            self.latency_tracker.elapsed() < self.config.duration
-            or self.latency_tracker.count() < self.config.iterations
-        ):
-            with self.latency_tracker.track():
-                self.backend.prefill(self.inputs, prefill_kwargs)
+        with self.latency_tracker.session():
+            while (
+                self.latency_tracker.elapsed() < self.config.duration
+                or self.latency_tracker.count() < self.config.iterations
+            ):
+                with self.latency_tracker.track():
+                    self.backend.prefill(self.inputs, prefill_kwargs)
 
         prefill_latency = self.latency_tracker.get_latency()
-        prefill_volume = self.atomic_prefill_volume
 
         self.report.prefill.latency = prefill_latency
         self.report.prefill.throughput = Throughput.from_latency(
-            prefill_latency, prefill_volume, unit=PREFILL_THROUGHPUT_UNIT
+            prefill_latency, self.atomic_prefill_volume, unit=PREFILL_THROUGHPUT_UNIT
         )
 
-        self.latency_tracker.reset()
-        while (
-            self.latency_tracker.elapsed() < self.config.duration
-            or self.latency_tracker.count() < self.config.iterations
-        ):
-            with self.latency_tracker.track():
-                self.backend.generate(self.inputs, self.config.generate_kwargs)
+        with self.latency_tracker.session():
+            while (
+                self.latency_tracker.elapsed() < self.config.duration
+                or self.latency_tracker.count() < self.config.iterations
+            ):
+                with self.latency_tracker.track():
+                    self.backend.generate(self.inputs, self.config.generate_kwargs)
 
         generate_latency = self.latency_tracker.get_latency()
         decode_latency = generate_latency - prefill_latency
-        decode_volume = self.atomic_decode_volume
 
         self.report.decode.latency = decode_latency
         self.report.decode.throughput = Throughput.from_latency(
-            decode_latency, decode_volume, unit=DECODE_THROUGHPUT_UNIT
+            decode_latency, self.atomic_decode_volume, unit=DECODE_THROUGHPUT_UNIT
         )
 
     def run_image_diffusion_latency_tracking(self):
         self.logger.info("\t+ Running Image Diffusion latency tracking")
 
-        self.latency_tracker.reset()
-        while (
-            self.latency_tracker.elapsed() < self.config.duration
-            or self.latency_tracker.count() < self.config.iterations
-        ):
-            with self.latency_tracker.track():
-                self.backend.call(self.inputs, self.config.call_kwargs)
+        with self.per_step_latency_tracker.session():
+            while (
+                self.per_step_latency_tracker.elapsed() < self.config.duration
+                or self.per_step_latency_tracker.count() < self.config.iterations
+            ):
+                with self.per_step_latency_tracker.track():
+                    self.backend.call(self.inputs, self.config.call_kwargs)
 
-        call_latency = self.latency_tracker.get_latency()
-        call_volume = self.atomic_call_volume
+        call_latency = self.per_step_latency_tracker.get_call_latency()
+        per_step_latency = self.per_step_latency_tracker.get_step_latency()
 
         self.report.call.latency = call_latency
-        self.report.call.throughput = Throughput.from_latency(call_latency, call_volume, unit=CALL_THROUGHPUT_UNIT)
+        self.report.per_step.latency = per_step_latency
+
+        self.report.call.throughput = Throughput.from_latency(
+            call_latency, self.atomic_call_volume, unit=CALL_THROUGHPUT_UNIT
+        )
 
     def run_inference_latency_tracking(self):
         self.logger.info("\t+ Running Inference latency tracking")
 
-        self.latency_tracker.reset()
-        while (
-            self.latency_tracker.elapsed() < self.config.duration
-            or self.latency_tracker.count() < self.config.iterations
-        ):
-            with self.latency_tracker.track():
-                self.backend.forward(self.inputs, self.config.forward_kwargs)
+        with self.latency_tracker.session():
+            while (
+                self.latency_tracker.elapsed() < self.config.duration
+                or self.latency_tracker.count() < self.config.iterations
+            ):
+                with self.latency_tracker.track():
+                    self.backend.forward(self.inputs, self.config.forward_kwargs)
 
         forward_latency = self.latency_tracker.get_latency()
-        forward_volume = self.atomic_forward_volume
 
         self.report.forward.latency = forward_latency
         self.report.forward.throughput = Throughput.from_latency(
-            forward_latency, forward_volume, unit=FORWARD_THROUGHPUT_UNIT
+            forward_latency, self.atomic_forward_volume, unit=FORWARD_THROUGHPUT_UNIT
         )
 
     ## Energy tracking
@@ -349,11 +363,10 @@ class InferenceScenario(Scenario[InferenceConfig]):
                 count += 1
 
         prefill_energy = self.energy_tracker.get_energy() / count
-        prefill_volume = self.atomic_prefill_volume
 
         self.report.prefill.energy = prefill_energy
         self.report.prefill.efficiency = Efficiency.from_energy(
-            prefill_energy, prefill_volume, unit=PREFILL_EFFICIENCY_UNIT
+            prefill_energy, self.atomic_prefill_volume, unit=PREFILL_EFFICIENCY_UNIT
         )
 
         count = 0
@@ -368,11 +381,10 @@ class InferenceScenario(Scenario[InferenceConfig]):
 
         generate_energy = self.energy_tracker.get_energy() / count
         decode_energy = generate_energy - prefill_energy
-        decode_volume = self.atomic_decode_volume
 
         self.report.decode.energy = decode_energy
         self.report.decode.efficiency = Efficiency.from_energy(
-            decode_energy, decode_volume, unit=DECODE_EFFICIENCY_UNIT
+            decode_energy, self.atomic_decode_volume, unit=DECODE_EFFICIENCY_UNIT
         )
 
     def run_image_diffusion_energy_tracking(self):
@@ -389,10 +401,11 @@ class InferenceScenario(Scenario[InferenceConfig]):
                 count += 1
 
         call_energy = self.energy_tracker.get_energy() / count
-        call_volume = self.atomic_call_volume
 
         self.report.call.energy = call_energy
-        self.report.call.efficiency = Efficiency.from_energy(call_energy, call_volume, unit=CALL_EFFICIENCY_UNIT)
+        self.report.call.efficiency = Efficiency.from_energy(
+            call_energy, self.atomic_call_volume, unit=CALL_EFFICIENCY_UNIT
+        )
 
     def run_inference_energy_tracking(self):
         self.logger.info("\t+ Running energy tracking")
@@ -408,11 +421,10 @@ class InferenceScenario(Scenario[InferenceConfig]):
                 count += 1
 
         forward_energy = self.energy_tracker.get_energy() / count
-        forward_volume = self.atomic_forward_volume
 
         self.report.forward.energy = forward_energy
         self.report.forward.efficiency = Efficiency.from_energy(
-            forward_energy, forward_volume, unit=FORWARD_EFFICIENCY_UNIT
+            forward_energy, self.atomic_forward_volume, unit=FORWARD_EFFICIENCY_UNIT
         )
 
     @property

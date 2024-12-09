@@ -55,8 +55,8 @@ class Backend(Generic[BackendConfigT], ABC):
         if self.config.library == "diffusers":
             self.logger.info("\t+ Benchmarking a Diffusers pipeline")
             self.pretrained_config = get_diffusers_pretrained_config(self.config.model, **self.config.model_kwargs)
-            self.model_shapes = extract_diffusers_shapes_from_model(self.config.model, **self.config.model_kwargs)
             self.automodel_loader = get_diffusers_auto_pipeline_class_for_task(self.config.task)
+            self.model_shapes = extract_diffusers_shapes_from_model()
             self.pretrained_processor = None
             self.generation_config = None
 
