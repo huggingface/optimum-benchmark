@@ -30,7 +30,8 @@ jobs:
       contains( github.event.pull_request.labels.*.name, 'cli_cpu_openvino')
       }}
 
-    runs-on: ubuntu-latest
+    runs-on:
+      group: aws-c7i-8xlarge
 
     steps:
       - name: Checkout

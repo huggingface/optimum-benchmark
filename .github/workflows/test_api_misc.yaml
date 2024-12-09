@@ -58,8 +58,8 @@ jobs:
           UV_SYSTEM_PYTHON: 1
 
       - name: Run tests
+        run: |
+          pytest tests/test_api.py -s -k "api and not (cpu or cuda or rocm or mps)"
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PUSH_REPO_ID: optimum-benchmark/misc-${{ matrix.os }}-${{ matrix.python }}
-        run: |
-          pytest tests/test_api.py -s -k "api and not (cpu or cuda or rocm or mps)"
