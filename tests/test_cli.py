@@ -65,8 +65,8 @@ def test_cli_exit_code_0(launcher):
         "name=test",
         "launcher=" + launcher,
         # compatible task and model
+        "backend.model=google-bert/bert-base-uncased",
         "backend.task=text-classification",
-        "backend.model=bert-base-uncased",
         "backend.device=cpu",
         # input shapes
         "+scenario.input_shapes.batch_size=1",
@@ -91,8 +91,8 @@ def test_cli_exit_code_1(launcher):
         "name=test",
         "launcher=" + launcher,
         # incompatible task and model to trigger an error
+        "backend.model=google-bert/bert-base-uncased",
         "backend.task=image-classification",
-        "backend.model=bert-base-uncased",
         "backend.device=cpu",
         # input shapes
         "+scenario.input_shapes.batch_size=1",
@@ -117,8 +117,8 @@ def test_cli_numactl(launcher):
         "name=test",
         "launcher=" + launcher,
         "launcher.numactl=True",
+        "backend.model=google-bert/bert-base-uncased",
         "backend.task=text-classification",
-        "backend.model=bert-base-uncased",
         "backend.device=cpu",
         # input shapes
         "+scenario.input_shapes.batch_size=1",
