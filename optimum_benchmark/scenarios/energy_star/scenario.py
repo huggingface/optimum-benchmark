@@ -137,7 +137,6 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
             if self.config.memory:
                 context_stack.enter_context(self.memory_tracker.track())
             if self.config.latency:
-                self.latency_tracker.reset()
                 context_stack.enter_context(self.latency_tracker.track())
             yield
 
@@ -173,17 +172,17 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
 
         if self.config.energy:
             preprocess_energy = self.energy_tracker.get_energy()
-            preprocess_volume = self.dataset_preprocess_volume
+
             self.report.preprocess_dataset.energy = preprocess_energy
             self.report.preprocess_dataset.efficiency = Efficiency.from_energy(
-                preprocess_energy, preprocess_volume, unit=PREPROCESS_EFFICIENCY_UNIT
+                preprocess_energy, self.dataset_preprocess_volume, unit=PREPROCESS_EFFICIENCY_UNIT
             )
         if self.config.latency:
             preprocess_latency = self.latency_tracker.get_latency()
-            preprocess_volume = self.dataset_preprocess_volume
+
             self.report.preprocess_dataset.latency = preprocess_latency
             self.report.preprocess_dataset.throughput = Throughput.from_latency(
-                preprocess_latency, preprocess_volume, unit=PREPROCESS_THROUGHPUT_UNIT
+                preprocess_latency, self.dataset_preprocess_volume, unit=PREPROCESS_THROUGHPUT_UNIT
             )
         if self.config.memory:
             self.report.preprocess_dataset.memory = self.memory_tracker.get_max_memory()
@@ -237,17 +236,17 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
 
         if self.config.energy:
             prefill_energy = self.energy_tracker.get_energy()
-            decode_energy = self.dataset_prefill_volume
+
             self.report.prefill.energy = prefill_energy
             self.report.prefill.efficiency = Efficiency.from_energy(
-                prefill_energy, decode_energy, unit=PREFILL_EFFICIENCY_UNIT
+                prefill_energy, self.dataset_prefill_volume, unit=PREFILL_EFFICIENCY_UNIT
             )
         if self.config.latency:
             prefill_latency = self.latency_tracker.get_latency()
-            prefill_volume = self.dataset_prefill_volume
+
             self.report.prefill.latency = prefill_latency
             self.report.prefill.throughput = Throughput.from_latency(
-                prefill_latency, prefill_volume, unit=PREFILL_THROUGHPUT_UNIT
+                prefill_latency, self.dataset_prefill_volume, unit=PREFILL_THROUGHPUT_UNIT
             )
         if self.config.memory:
             self.report.prefill.memory = self.memory_tracker.get_max_memory()
@@ -260,18 +259,18 @@ class EnergyStarScenario(Scenario[EnergyStarConfig]):
         if self.config.energy:
             generate_energy = self.energy_tracker.get_energy()
             decode_energy = generate_energy - prefill_energy
-            decode_volume = self.dataset_decode_volume
+
             self.report.decode.energy = decode_energy
             self.report.decode.efficiency = Efficiency.from_energy(
-                decode_energy, decode_volume, unit=DECODE_EFFICIENCY_UNIT
+                decode_energy, self.dataset_decode_volume, unit=DECODE_EFFICIENCY_UNIT
             )
         if self.config.latency:
             generate_latency = self.latency_tracker.get_latency()
             decode_latency = generate_latency - prefill_latency
-            decode_volume = self.dataset_decode_volume
+
             self.report.decode.latency = decode_latency
             self.report.decode.throughput = Throughput.from_latency(
-                decode_latency, decode_volume, unit=DECODE_THROUGHPUT_UNIT
+                decode_latency, self.dataset_decode_volume, unit=DECODE_THROUGHPUT_UNIT
             )
         if self.config.memory:
             self.report.decode.memory = self.memory_tracker.get_max_memory()

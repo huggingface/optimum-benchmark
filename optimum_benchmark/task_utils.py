@@ -254,6 +254,9 @@ def infer_task_from_model_name_or_path(
             if inferred_task_name is not None:
                 break
 
+        if inferred_task_name is None:
+            raise KeyError(f"Could not find the proper task name for target class name {target_class_name}.")
+
     elif library_name == "transformers":
         transformers_config = get_repo_config(model_name_or_path, "config.json", token=token, revision=revision)
         target_class_name = transformers_config["architectures"][0]
@@ -266,8 +269,8 @@ def infer_task_from_model_name_or_path(
             if inferred_task_name is not None:
                 break
 
-    if inferred_task_name is None:
-        raise KeyError(f"Could not find the proper task name for {auto_model_class_name}.")
+        if inferred_task_name is None:
+            raise KeyError(f"Could not find the proper task name for target class name {target_class_name}.")
 
     return map_from_synonym_task(inferred_task_name)
 
@@ -302,11 +305,11 @@ def infer_model_type_from_model_name_or_path(
             if inferred_model_type is not None:
                 break
 
+        if inferred_model_type is None:
+            raise KeyError(f"Could not find the proper model type for target class name {target_class_name}.")
+
     elif library_name == "transformers":
         transformers_config = get_repo_config(model_name_or_path, "config.json", token=token, revision=revision)
         inferred_model_type = transformers_config["model_type"]
-
-    if inferred_model_type is None:
-        raise KeyError(f"Could not find the proper model type for {model_name_or_path}.")
 
     return inferred_model_type

@@ -63,7 +63,6 @@ class IPEXBackend(Backend[IPEXConfig]):
         self.pretrained_model = self.ipexmodel_class.from_pretrained(
             self.config.model,
             export=self.config.export,
-            device=self.config.device,
             **self.config.model_kwargs,
             **self.automodel_kwargs,
         )

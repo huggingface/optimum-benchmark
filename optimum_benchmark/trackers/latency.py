@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from rich.console import Console
 from rich.markdown import Markdown
-from transformers import LogitsProcessor, TrainerCallback
+from transformers import TrainerCallback
 
 CONSOLE = Console()
 LOGGER = getLogger("latency")
@@ -46,9 +46,7 @@ class Latency:
     def __sub__(self, latency: "Latency") -> "Latency":
         latencies = [lat - latency.mean for lat in self.values]
 
-        assert not any(
-            latency < 0 for latency in latencies
-        ), "Negative latency detected. Please increase the dimensions of your benchmark (inputs/warmup/iterations)."
+        assert all(latency >= 0 for latency in latencies)
 
         return Latency.from_values(values=latencies, unit=self.unit)
 
@@ -176,77 +174,383 @@ class LatencyTracker:
         else:
             LOGGER.info("\t\t+ Tracking latency using CPU performance counter")
 
-        self.start_time: Optional[float] = None
-        self.start_events: List[Union[float, torch.cuda.Event]] = []
-        self.end_events: List[Union[float, torch.cuda.Event]] = []
-
-    def reset(self):
-        self.start_time = None
-        self.start_events = []
-        self.end_events = []
+        self.start_event: Optional[Union[float, torch.cuda.Event]] = None
+        self.end_event: Optional[Union[float, torch.cuda.Event]] = None
 
     @contextmanager
     def track(self):
         if self.is_pytorch_cuda:
-            yield from self._pytorch_cuda_latency()
+            self.start_event = torch.cuda.Event(enable_timing=True)
+            self.end_event = torch.cuda.Event(enable_timing=True)
+
+            self.start_event.record()
+            yield
+            self.end_event.record()
         else:
-            yield from self._cpu_latency()
-
-    def _pytorch_cuda_latency(self):
-        self.start_events.append(torch.cuda.Event(enable_timing=True))
-        self.start_events[-1].record()
-
-        yield
-
-        self.end_events.append(torch.cuda.Event(enable_timing=True))
-        self.end_events[-1].record()
-
-    def _cpu_latency(self):
-        self.start_events.append(time.perf_counter())
-
-        yield
-
-        self.end_events.append(time.perf_counter())
+            self.start_event = time.perf_counter()
+            yield
+            self.end_event = time.perf_counter()
 
     def get_latency(self) -> Latency:
-        assert len(self.start_events) == len(
-            self.end_events
-        ), "Mismatched number of start and end events, get_latency() should only be called outside of track() context"
+        assert self.start_event is not None and self.end_event is not None
 
         if self.is_pytorch_cuda:
             torch.cuda.synchronize()
-
-            latencies_list = [
-                self.start_events[i].elapsed_time(self.end_events[i]) / 1e3 for i in range(len(self.start_events))
-            ]
+            latency = self.start_event.elapsed_time(self.end_event) / 1e3
         else:
-            latencies_list = [(self.end_events[i] - self.start_events[i]) for i in range(len(self.start_events))]
+            latency = self.end_event - self.start_event
 
-        assert not any(
-            latency < 0 for latency in latencies_list
-        ), "Negative latency detected. Please increase the dimensions of your benchmark (inputs/warmup/iterations)."
+        assert latency >= 0
 
-        return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
+        return Latency.from_values([latency], unit=LATENCY_UNIT)
 
-    def count(self):
-        assert len(self.start_events) == len(
-            self.end_events
-        ), "Mismatched number of start and end events, count() should only be called outside of track() context"
+
+class LatencySessionTracker:
+    def __init__(self, device: str, backend: str):
+        self.device = device
+        self.backend = backend
+
+        self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
+
+        if self.is_pytorch_cuda:
+            LOGGER.info("\t\t+ Tracking latency using Pytorch CUDA events")
+        else:
+            LOGGER.info("\t\t+ Tracking latency using CPU performance counter")
+
+        self.start_events: List[Union[float, torch.cuda.Event]] = []
+        self.end_events: List[Union[float, torch.cuda.Event]] = []
+
+        self.start_time: Optional[float] = None
+
+    @contextmanager
+    def session(self):
+        assert self.start_time is None
+
+        self.start_events = []
+        self.end_events = []
+
+        self.start_time = time.perf_counter()
+        yield
+        self.start_time = None
+
+    def count(self) -> int:
+        assert self.start_time is not None, "This method can only be called inside of a '.session()' context"
+        assert len(self.start_events) == len(self.end_events)
 
         return len(self.start_events)
 
     def elapsed(self):
-        if self.start_time is None:
-            assert (
-                len(self.start_events) == 0 and len(self.end_events) == 0
-            ), "Number of recorded events is not zero, make sure to reset() the tracker properly"
-
-            self.start_time = time.perf_counter()
+        assert self.start_time is not None, "This method can only be called inside of a '.session()' context"
 
         return time.perf_counter() - self.start_time
 
+    @contextmanager
+    def track(self):
+        if self.is_pytorch_cuda:
+            start_event = torch.cuda.Event(enable_timing=True)
+            end_event = torch.cuda.Event(enable_timing=True)
 
-class StepLatencyTrainerCallback(TrainerCallback):
+            start_event.record()
+            yield
+            end_event.record()
+        else:
+            start_event = time.perf_counter()
+            yield
+            end_event = time.perf_counter()
+
+        self.start_events.append(start_event)
+        self.end_events.append(end_event)
+
+    def get_latency(self) -> Latency:
+        assert len(self.end_events) == len(self.start_events) >= 0
+
+        if self.is_pytorch_cuda:
+            torch.cuda.synchronize()
+            latencies = [
+                start_event.elapsed_time(end_event) / 1e3
+                for start_event, end_event in zip(self.start_events, self.end_events)
+            ]
+        else:
+            latencies = [
+                (end_event - start_event) for start_event, end_event in zip(self.start_events, self.end_events)
+            ]
+
+        assert all(latency >= 0 for latency in latencies)
+
+        return Latency.from_values(latencies, unit=LATENCY_UNIT)
+
+
+class PerTokenLatencySessionTrackerLogitsProcessor:
+    def __init__(self, device: str, backend: str):
+        self.device = device
+        self.backend = backend
+
+        self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
+
+        if self.is_pytorch_cuda:
+            LOGGER.info("\t\t+ Tracking latency using Pytorch CUDA events")
+        else:
+            LOGGER.info("\t\t+ Tracking latency using CPU performance counter")
+
+        self.prefill_start_events: List[Union[float, torch.cuda.Event]] = []
+        self.prefill_end_events: List[Union[float, torch.cuda.Event]] = []
+        self.per_token_start_events: List[Union[float, torch.cuda.Event]] = []
+        self.per_token_end_events: List[Union[float, torch.cuda.Event]] = []
+        self.per_token_events: List[Union[float, torch.cuda.Event]] = []
+        self.decode_start_events: List[Union[float, torch.cuda.Event]] = []
+        self.decode_end_events: List[Union[float, torch.cuda.Event]] = []
+
+        self.start_time: Optional[float] = None
+
+    @contextmanager
+    def session(self):
+        assert self.start_time is None
+
+        self.prefill_start_events = []
+        self.prefill_end_events = []
+        self.per_token_start_events = []
+        self.per_token_end_events = []
+        self.per_token_events = []
+        self.decode_start_events = []
+        self.decode_end_events = []
+
+        self.start_time = time.perf_counter()
+        yield
+        self.start_time = None
+
+    def count(self) -> int:
+        assert self.start_time is not None, "This method can only be called inside of a '.session()' context"
+        assert (
+            len(self.prefill_start_events)
+            == len(self.prefill_end_events)
+            == len(self.decode_start_events)
+            == len(self.decode_end_events)
+        )
+
+        return len(self.prefill_start_events)
+
+    def elapsed(self):
+        assert self.start_time is not None, "This method can only be called inside of a '.session()' context"
+
+        return time.perf_counter() - self.start_time
+
+    @contextmanager
+    def track(self):
+        if self.is_pytorch_cuda:
+            start_event = torch.cuda.Event(enable_timing=True)
+            end_event = torch.cuda.Event(enable_timing=True)
+
+            start_event.record()
+            yield
+            end_event.record()
+        else:
+            start_event = time.perf_counter()
+            yield
+            end_event = time.perf_counter()
+
+        self.prefill_start_events.append(start_event)
+        self.decode_end_events.append(end_event)
+
+        self.per_token_start_events.extend(self.per_token_events[:-1])
+        self.per_token_end_events.extend(self.per_token_events[1:])
+
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor):
+        if self.is_pytorch_cuda:
+            event = torch.cuda.Event(enable_timing=True)
+            event.record()
+        else:
+            event = time.perf_counter()
+
+        if len(self.prefill_start_events) == len(self.prefill_end_events):
+            # on the first call (prefill), there will be the same number of prefill/decode start/end events
+            self.prefill_end_events.append(event)
+            self.decode_start_events.append(event)
+
+        self.per_token_events.append(event)
+
+        return scores
+
+    def get_prefill_latency(self) -> Latency:
+        assert len(self.prefill_start_events) == len(self.prefill_end_events) > 0
+
+        if self.is_pytorch_cuda:
+            torch.cuda.synchronize()
+
+            latencies = [
+                start_event.elapsed_time(end_event) / 1e3
+                for start_event, end_event in zip(self.prefill_start_events, self.prefill_end_events)
+            ]
+        else:
+            latencies = [
+                (end_event - start_event)
+                for start_event, end_event in zip(self.prefill_start_events, self.prefill_end_events)
+            ]
+
+        assert all(latency >= 0 for latency in latencies)
+
+        return Latency.from_values(latencies, unit=LATENCY_UNIT)
+
+    def get_decode_latency(self) -> Latency:
+        assert len(self.decode_start_events) == len(self.decode_end_events) > 0
+
+        if self.is_pytorch_cuda:
+            torch.cuda.synchronize()
+
+            latencies = [
+                start_event.elapsed_time(end_event) / 1e3
+                for start_event, end_event in zip(self.decode_start_events, self.decode_end_events)
+            ]
+        else:
+            latencies = [
+                (end_event - start_event)
+                for start_event, end_event in zip(self.decode_start_events, self.decode_end_events)
+            ]
+
+        assert all(latency >= 0 for latency in latencies)
+
+        return Latency.from_values(latencies, unit=LATENCY_UNIT)
+
+    def get_per_token_latency(self) -> Latency:
+        assert len(self.per_token_start_events) == len(self.per_token_end_events) > 0
+
+        if self.is_pytorch_cuda:
+            torch.cuda.synchronize()
+
+            latencies = [
+                start_event.elapsed_time(end_event) / 1e3
+                for start_event, end_event in zip(self.per_token_start_events, self.per_token_end_events)
+            ]
+        else:
+            latencies = [
+                (end_event - start_event)
+                for start_event, end_event in zip(self.per_token_start_events, self.per_token_end_events)
+            ]
+
+        assert all(latency >= 0 for latency in latencies)
+
+        return Latency.from_values(latencies, unit=LATENCY_UNIT)
+
+
+class PerStepLatencySessionTrackerPipelineCallback:
+    tensor_inputs = []
+
+    def __init__(self, device: str, backend: str):
+        self.device = device
+        self.backend = backend
+
+        self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
+
+        if self.is_pytorch_cuda:
+            LOGGER.info("\t\t+ Tracking latency using Pytorch CUDA events")
+        else:
+            LOGGER.info("\t\t+ Tracking latency using CPU performance counter")
+
+        self.call_start_events: List[Union[float, torch.cuda.Event]] = []
+        self.call_end_events: List[Union[float, torch.cuda.Event]] = []
+        self.per_step_start_events: List[Union[float, torch.cuda.Event]] = []
+        self.per_step_end_events: List[Union[float, torch.cuda.Event]] = []
+        self.per_step_events: List[Union[float, torch.cuda.Event]] = []
+
+        self.start_time: Optional[float] = None
+
+    @contextmanager
+    def session(self):
+        assert self.start_time is None
+
+        self.call_start_events = []
+        self.call_end_events = []
+        self.per_step_start_events = []
+        self.per_step_end_events = []
+        self.per_step_events = []
+
+        self.start_time = time.perf_counter()
+        yield
+        self.start_time = None
+
+    def count(self) -> int:
+        assert self.start_time is not None, "This method can only be called inside of a '.session()' context"
+        assert len(self.call_start_events) == len(self.call_start_events)
+
+        return len(self.call_start_events)
+
+    def elapsed(self):
+        assert self.start_time is not None, "This method can only be called inside of a '.session()' context"
+
+        return time.perf_counter() - self.start_time
+
+    @contextmanager
+    def track(self):
+        if self.is_pytorch_cuda:
+            start_event = torch.cuda.Event(enable_timing=True)
+            end_event = torch.cuda.Event(enable_timing=True)
+
+            start_event.record()
+            yield
+            end_event.record()
+        else:
+            start_event = time.perf_counter()
+            yield
+            end_event = time.perf_counter()
+
+        self.call_start_events.append(start_event)
+        self.call_end_events.append(end_event)
+
+        self.per_step_start_events.extend(self.per_step_events[:-1])
+        self.per_step_end_events.extend(self.per_step_events[1:])
+
+    def __call__(self, pipeline, step_index, timestep, callback_kwargs):
+        if self.is_pytorch_cuda:
+            event = torch.cuda.Event(enable_timing=True)
+            event.record()
+        else:
+            event = time.perf_counter()
+
+        self.per_step_events.append(event)
+
+        return callback_kwargs
+
+    def get_step_latency(self) -> Latency:
+        assert len(self.per_step_start_events) == len(self.per_step_end_events) > 0
+
+        if self.is_pytorch_cuda:
+            torch.cuda.synchronize()
+
+            latencies = [
+                start_event.elapsed_time(end_event) / 1e3
+                for start_event, end_event in zip(self.per_step_start_events, self.per_step_end_events)
+            ]
+        else:
+            latencies = [
+                (end_event - start_event)
+                for start_event, end_event in zip(self.per_step_start_events, self.per_step_end_events)
+            ]
+
+        assert all(latency >= 0 for latency in latencies)
+
+        return Latency.from_values(latencies, unit=LATENCY_UNIT)
+
+    def get_call_latency(self) -> Latency:
+        assert len(self.call_start_events) == len(self.call_end_events) > 0
+
+        if self.is_pytorch_cuda:
+            torch.cuda.synchronize()
+
+            latencies = [
+                start_event.elapsed_time(end_event) / 1e3
+                for start_event, end_event in zip(self.call_start_events, self.call_end_events)
+            ]
+        else:
+            latencies = [
+                (end_event - start_event)
+                for start_event, end_event in zip(self.call_start_events, self.call_end_events)
+            ]
+
+        assert all(latency >= 0 for latency in latencies)
+
+        return Latency.from_values(latencies, unit=LATENCY_UNIT)
+
+
+class StepLatencyTrackerTrainerCallback(TrainerCallback):
     def __init__(self, device: str, backend: str) -> None:
         self.device = device
         self.backend = backend
@@ -261,195 +565,38 @@ class StepLatencyTrainerCallback(TrainerCallback):
         self.start_events: List[Union[float, torch.cuda.Event]] = []
         self.end_events: List[Union[float, torch.cuda.Event]] = []
 
-    def reset(self):
-        self.start_events = []
-        self.end_events = []
-
     def on_step_begin(self, *args, **kwargs):
-        if self.is_pytorch_cuda:
-            self.start_events.append(torch.cuda.Event(enable_timing=True))
-            self.start_events[-1].record()
-        else:
-            self.start_events.append(time.perf_counter())
-
-    def on_step_end(self, *args, **kwargs):
-        if self.is_pytorch_cuda:
-            self.end_events.append(torch.cuda.Event(enable_timing=True))
-            self.end_events[-1].record()
-        else:
-            self.end_events.append(time.perf_counter())
-
-    def get_latency(self) -> Latency:
-        assert len(self.start_events) == len(
-            self.end_events
-        ), "Mismatched number of start and end events, get_latency() should only be called outside of track() context"
-
-        if self.is_pytorch_cuda:
-            torch.cuda.synchronize()
-
-            latencies_list = [
-                self.start_events[i].elapsed_time(self.end_events[i]) / 1e3 for i in range(len(self.start_events))
-            ]
-        else:
-            latencies_list = [(self.end_events[i] - self.start_events[i]) for i in range(len(self.start_events))]
-
-        assert not any(
-            latency < 0 for latency in latencies_list
-        ), "Negative latency detected. Please increase the dimensions of your benchmark (inputs/warmup/iterations)."
-
-        return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
-
-
-class PerTokenLatencyLogitsProcessor(LogitsProcessor):
-    def __init__(self, device: str, backend: str):
-        self.device = device
-        self.backend = backend
-
-        self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
-
-        if self.is_pytorch_cuda:
-            LOGGER.info("\t\t+ Tracking latency using Pytorch CUDA events")
-        else:
-            LOGGER.info("\t\t+ Tracking latency using CPU performance counter")
-
-        self.start_time: Optional[float] = None
-        self.prefilled: Optional[bool] = None
-
-        self.per_token_events: List[List[Union[float, torch.cuda.Event]]] = []
-        self.prefill_start_events: List[Union[float, torch.cuda.Event]] = []
-        self.prefill_end_events: List[Union[float, torch.cuda.Event]] = []
-        self.decode_start_events: List[Union[float, torch.cuda.Event]] = []
-        self.decode_end_events: List[Union[float, torch.cuda.Event]] = []
-
-    def reset(self):
-        self.start_time = None
-        self.prefilled = None
-
-        self.per_token_events = []
-        self.prefill_start_events = []
-        self.prefill_end_events = []
-        self.decode_start_events = []
-        self.decode_end_events = []
-
-    @contextmanager
-    def track(self):
-        self.prefilled = False
-        self.per_token_events.append([])
-
-        if self.is_pytorch_cuda:
-            self.prefill_start_events.append(torch.cuda.Event(enable_timing=True))
-            self.prefill_start_events[-1].record()
-        else:
-            self.prefill_start_events.append(time.perf_counter())
-
-        yield
-
-        if self.is_pytorch_cuda:
-            self.decode_end_events.append(torch.cuda.Event(enable_timing=True))
-            self.decode_end_events[-1].record()
-        else:
-            self.decode_end_events.append(time.perf_counter())
-
-        self.prefilled = False
-
-    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor):
-        assert (
-            self.prefilled is not None
-        ), "PerTokenLatencyLogitsProcessor should only be called inside of track() context"
-
         if self.is_pytorch_cuda:
             event = torch.cuda.Event(enable_timing=True)
             event.record()
         else:
             event = time.perf_counter()
 
-        if not self.prefilled:
-            self.prefill_end_events.append(event)
-            self.decode_start_events.append(event)
-            self.prefilled = True
+        self.start_events.append(event)
 
-        self.per_token_events[-1].append(event)
-
-        return scores
-
-    def get_prefill_latency(self) -> Latency:
+    def on_step_end(self, *args, **kwargs):
         if self.is_pytorch_cuda:
-            torch.cuda.synchronize()
-
-            latencies_list = [
-                self.prefill_start_events[i].elapsed_time(self.prefill_end_events[i]) / 1e3
-                for i in range(len(self.prefill_start_events))
-            ]
+            event = torch.cuda.Event(enable_timing=True)
+            event.record()
         else:
-            latencies_list = [
-                (self.prefill_end_events[i] - self.prefill_start_events[i])
-                for i in range(len(self.prefill_start_events))
-            ]
+            event = time.perf_counter()
 
-        assert not any(
-            latency < 0 for latency in latencies_list
-        ), "Negative latency detected. Please increase the dimensions of your benchmark (inputs/warmup/iterations)."
+        self.end_events.append(event)
 
-        return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
-
-    def get_decode_latency(self) -> Latency:
-        if self.is_pytorch_cuda:
-            torch.cuda.synchronize()
-
-            latencies_list = [
-                self.decode_start_events[i].elapsed_time(self.decode_end_events[i]) / 1e3
-                for i in range(len(self.decode_start_events))
-            ]
-        else:
-            latencies_list = [
-                (self.decode_end_events[i] - self.decode_start_events[i]) for i in range(len(self.decode_start_events))
-            ]
-
-        assert not any(
-            latency < 0 for latency in latencies_list
-        ), "Negative latency detected. Please increase the dimensions of your benchmark (inputs/warmup/iterations)."
-
-        return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
-
-    def get_per_token_latency(self) -> Latency:
-        assert (
-            len(self.per_token_events) > 0
-        ), "No per-token events recorded, make sure to pass the PerTokenLatencyLogitsProcessor to the generate() method"
+    def get_latency(self) -> Latency:
+        assert len(self.start_events) == len(self.end_events) > 0
 
         if self.is_pytorch_cuda:
             torch.cuda.synchronize()
-
-            latencies_list = [
-                self.per_token_events[i][j].elapsed_time(self.per_token_events[i][j + 1]) / 1e3
-                for i in range(len(self.per_token_events))
-                for j in range(0, len(self.per_token_events[i]) - 1)
+            latencies = [
+                start_event.elapsed_time(end_event) / 1e3
+                for start_event, end_event in zip(self.start_events, self.end_events)
             ]
         else:
-            latencies_list = [
-                (self.per_token_events[i][j + 1] - self.per_token_events[i][j])
-                for i in range(len(self.per_token_events))
-                for j in range(0, len(self.per_token_events[i]) - 1)
+            latencies = [
+                (end_event - start_event) for start_event, end_event in zip(self.start_events, self.end_events)
             ]
 
-        assert not any(
-            latency < 0 for latency in latencies_list
-        ), "Negative latency detected. Please increase the dimensions of your benchmark (inputs/warmup/iterations)."
+        assert all(latency >= 0 for latency in latencies)
 
-        return Latency.from_values(latencies_list, unit=LATENCY_UNIT)
-
-    def count(self):
-        assert len(self.prefill_start_events) == len(
-            self.prefill_end_events
-        ), "Mismatched number of start and end events, count() should only be called outside of track() context"
-
-        return len(self.prefill_start_events)
-
-    def elapsed(self):
-        if self.start_time is None:
-            assert (
-                len(self.prefill_start_events) == 0 and len(self.prefill_end_events) == 0
-            ), "Number of recorded events is not zero, make sure to reset() the tracker properly"
-
-            self.start_time = time.perf_counter()
-
-        return time.perf_counter() - self.start_time
+        return Latency.from_values(latencies, unit=LATENCY_UNIT)
