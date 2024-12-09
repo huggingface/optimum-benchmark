@@ -1,15 +1,12 @@
 defaults:
   - benchmark
   - scenario: inference
-  - launcher: process # launcher: inline works, 
+  - launcher: inline # mps has problems with multi processing (process launcher)
   - backend: pytorch
   - _base_
   - _self_
 
-name: pytorch_bert
-
-# launcher:
-#   start_method: spawn
+name: mps_pytorch_bert
 
 scenario:
   latency: true
@@ -19,8 +16,6 @@ scenario:
     sequence_length: 128
 
 backend:
-  device: cpu
+  device: mps
   no_weights: true
   model: bert-base-uncased
-
-

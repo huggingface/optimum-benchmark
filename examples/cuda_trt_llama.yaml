@@ -1,12 +1,12 @@
 defaults:
   - benchmark
+  - backend: tensorrt-llm
   - scenario: inference
   - launcher: process
-  - backend: py-txi
   - _base_
   - _self_
 
-name: tgi_llama
+name: cuda_trt_llama
 
 launcher:
   device_isolation: true
@@ -14,14 +14,15 @@ launcher:
 
 backend:
   device: cuda
-  device_ids: 4
-  # no_weights: true
+  device_ids: 0
+  no_weights: true
   model: TinyLlama/TinyLlama-1.1B-Chat-v1.0
 
 scenario:
   input_shapes:
     batch_size: 4
-    sequence_length: 256
+    sequence_length: 64
+
   generate_kwargs:
-    max_new_tokens: 100
-    min_new_tokens: 100
+    max_new_tokens: 16
+    min_new_tokens: 16

@@ -51,6 +51,10 @@ jobs:
         run: |
           pytest tests/test_cli.py -x -s -k "cli and cuda and torch_ort and not (dp or ddp or device_map) and not (peft)"
 
+      - name: Run examples
+        run: |
+          pytest tests/test_examples.py -x -s -k "cli and cuda and torch_ort and not (dp or ddp or device_map) and not (peft)"
+
   run_cli_cuda_torch_ort_multi_gpu_tests:
     if: ${{
       (github.event_name == 'push') ||

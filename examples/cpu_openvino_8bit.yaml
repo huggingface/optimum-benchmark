@@ -6,16 +6,16 @@ defaults:
   - _base_
   - _self_
 
-name: openvino_static_quant_bert
+name: openvino_static_quant
 
 backend:
   device: cpu
-  no_weights: true
-  model: bert-base-uncased
-  quantization: true
-  calibration: true
   reshape: true
+  no_weights: true
+  load_in_8bit: true
+  model: google-bert/bert-base-uncased
 
 scenario:
   input_shapes:
     batch_size: 1
+    sequence_length: 16
