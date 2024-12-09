@@ -229,10 +229,10 @@ def test_api_dataset_generator(library, task, model):
 def test_api_latency_tracker(device, backend):
     tracker = LatencyTracker(device=device, backend=backend)
 
-    tracker.reset()
-    while tracker.elapsed() < 2:
-        with tracker.track():
-            time.sleep(1)
+    with tracker.session():
+        while tracker.elapsed() < 2:
+            with tracker.track():
+                time.sleep(1)
 
     latency = tracker.get_latency()
     latency.log()
@@ -241,10 +241,10 @@ def test_api_latency_tracker(device, backend):
     assert latency.mean > 0.9
     assert len(latency.values) == 2
 
-    tracker.reset()
-    while tracker.count() < 2:
-        with tracker.track():
-            time.sleep(1)
+    with tracker.session():
+        while tracker.count() < 2:
+            with tracker.track():
+                time.sleep(1)
 
     latency = tracker.get_latency()
     latency.log()
@@ -273,7 +273,6 @@ def test_api_memory_tracker(device, backend):
 
     tracker = MemoryTracker(device=device, backend=backend, device_ids=device_ids)
 
-    tracker.reset()
     with tracker.track():
         time.sleep(1)
         pass
@@ -281,7 +280,6 @@ def test_api_memory_tracker(device, backend):
     initial_memory = tracker.get_max_memory()
     initial_memory.log()
 
-    tracker.reset()
     with tracker.track():
         array = torch.randn((10000, 10000), dtype=torch.float64, device=device)
         expected_memory = array.nbytes / 1e6
