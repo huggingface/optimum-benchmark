@@ -1,7 +1,4 @@
-import warnings
 from typing import Dict
-
-from hydra.utils import get_class
 
 from ..import_utils import is_diffusers_available
 from ..task_utils import TASKS_TO_AUTO_PIPELINE_CLASS_NAMES, map_from_synonym_task
