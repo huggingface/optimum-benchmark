@@ -1,8 +1,6 @@
 from .config import BackendConfig
 from .ipex.config import IPEXConfig
 from .llama_cpp.config import LlamaCppConfig
-from .llm_swarm.config import LLMSwarmConfig
-from .neural_compressor.config import INCConfig
 from .onnxruntime.config import ORTConfig
 from .openvino.config import OVConfig
 from .py_txi.config import PyTXIConfig
@@ -18,9 +16,7 @@ __all__ = [
     "OVConfig",
     "TorchORTConfig",
     "TRTLLMConfig",
-    "INCConfig",
     "PyTXIConfig",
-    "LLMSwarmConfig",
     "BackendConfig",
     "VLLMConfig",
     "LlamaCppConfig",
