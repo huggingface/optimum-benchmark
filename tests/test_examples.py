@@ -40,10 +40,5 @@ def test_cli_configs(config_name):
 def test_api_scripts(script_path):
     args = ["python", script_path]
 
-    if ROCR_VISIBLE_DEVICES is not None:
-        args += [f'backend.device_ids="{ROCR_VISIBLE_DEVICES}"']
-    elif CUDA_VISIBLE_DEVICES is not None:
-        args += [f'backend.device_ids="{CUDA_VISIBLE_DEVICES}"']
-
     popen = run_subprocess_and_log_stream_output(LOGGER, args)
     assert popen.returncode == 0, f"Failed to run {script_path}"

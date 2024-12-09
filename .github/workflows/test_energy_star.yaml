@@ -20,7 +20,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
 jobs:
-  run_energy_star_tests:
+  run_energy_star:
     if: ${{
       (github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch') ||
