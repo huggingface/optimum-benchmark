@@ -29,29 +29,10 @@ jobs:
       contains( github.event.pull_request.labels.*.name, 'api_rocm')
       }}
 
-    runs-on: [self-hosted, amd-gpu, single-gpu]
-
-    container:
-      image: ghcr.io/huggingface/optimum-benchmark:latest-rocm
-      options: --ipc host
-        --shm-size "16gb"
-        --group-add video
-        --device /dev/kfd
-        --device /dev/dri
-        --env ROCR_VISIBLE_DEVICES
-        --env HIP_VISIBLE_DEVICES=0
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          pip install -e .[testing,timm,diffusers,codecarbon]
-
-      - name: Run tests
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          PUSH_REPO_ID: optimum-benchmark/rocm
-        run: |
-          pytest tests/test_api.py -x -s -k "api and cuda"
+    uses: huggingface/hf-workflows/.github/workflows/optimum_benchmark_instinct_ci.yaml@testing
+    with:
+      machine_type: single-gpu
+      install_extras: testing,timm,diffusers,codecarbon
+      pytest_keywords: api and cuda
+    secrets:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
