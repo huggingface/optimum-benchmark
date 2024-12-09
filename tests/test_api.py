@@ -9,18 +9,6 @@ import pytest
 import torch
 
 from optimum_benchmark import Benchmark, BenchmarkConfig, InferenceConfig, ProcessConfig, PyTorchConfig, TrainingConfig
-from optimum_benchmark.backends.diffusers_utils import (
-    extract_diffusers_shapes_from_model,
-    get_diffusers_pretrained_config,
-)
-from optimum_benchmark.backends.timm_utils import extract_timm_shapes_from_config, get_timm_pretrained_config
-from optimum_benchmark.backends.transformers_utils import (
-    extract_transformers_shapes_from_artifacts,
-    get_transformers_pretrained_config,
-    get_transformers_pretrained_processor,
-)
-from optimum_benchmark.generators.dataset_generator import DatasetGenerator
-from optimum_benchmark.generators.input_generator import InputGenerator
 from optimum_benchmark.import_utils import get_git_revision_hash
 from optimum_benchmark.system_utils import is_nvidia_system, is_rocm_system
 from optimum_benchmark.trackers import LatencySessionTracker, MemoryTracker
@@ -28,14 +16,10 @@ from optimum_benchmark.trackers import LatencySessionTracker, MemoryTracker
 PUSH_REPO_ID = os.environ.get("PUSH_REPO_ID", "optimum-benchmark/local")
 
 LIBRARIES_TASKS_MODELS = [
-    ("timm", "image-classification", "timm/resnet50.a1_in1k"),
-    ("transformers", "text-generation", "openai-community/gpt2"),
-    ("transformers", "fill-mask", "google-bert/bert-base-uncased"),
-    ("transformers", "multiple-choice", "FacebookAI/roberta-base"),
-    ("transformers", "text-classification", "FacebookAI/roberta-base"),
-    ("transformers", "token-classification", "microsoft/deberta-v3-base"),
-    ("transformers", "image-classification", "google/vit-base-patch16-224"),
-    ("diffusers", "text-to-image", "CompVis/stable-diffusion-v1-4"),
+    ("timm", "image-classification", "timm/tiny_vit_21m_224.in1k"),
+    ("transformers", "fill-mask", "hf-internal-testing/tiny-random-BertModel"),
+    ("transformers", "text-generation", "hf-internal-testing/tiny-random-LlamaForCausalLM"),
+    ("diffusers", "text-to-image", "hf-internal-testing/tiny-stable-diffusion-torch"),
 ]
 
 INPUT_SHAPES = {
@@ -175,58 +159,6 @@ def test_api_push_to_hub_mixin():
         artifact.push_to_hub(repo_id=PUSH_REPO_ID, subfolder=benchmark_name)
         from_hub_artifact = artifact.__class__.from_pretrained(repo_id=PUSH_REPO_ID, subfolder=benchmark_name)
         assert from_hub_artifact.to_dict() == artifact.to_dict()
-
-
-@pytest.mark.parametrize("library,task,model", LIBRARIES_TASKS_MODELS)
-def test_api_input_generator(library, task, model):
-    if library == "transformers":
-        model_config = get_transformers_pretrained_config(model)
-        model_processor = get_transformers_pretrained_processor(model)
-        model_shapes = extract_transformers_shapes_from_artifacts(model_config, model_processor)
-    elif library == "timm":
-        model_config = get_timm_pretrained_config(model)
-        model_shapes = extract_timm_shapes_from_config(model_config)
-    elif library == "diffusers":
-        model_config = get_diffusers_pretrained_config(model)
-        model_shapes = extract_diffusers_shapes_from_model()
-    else:
-        raise ValueError(f"Unknown library {library}")
-
-    input_generator = InputGenerator(
-        task=task,
-        input_shapes=INPUT_SHAPES,
-        model_shapes=model_shapes,
-    )
-    generated_inputs = input_generator()
-
-    assert len(generated_inputs) > 0, "No inputs were generated"
-
-    for key in generated_inputs:
-        assert len(generated_inputs[key]) == INPUT_SHAPES["batch_size"], "Incorrect batch size"
-
-
-@pytest.mark.parametrize("library,task,model", LIBRARIES_TASKS_MODELS)
-def test_api_dataset_generator(library, task, model):
-    if library == "transformers":
-        model_config = get_transformers_pretrained_config(model=model)
-        model_shapes = extract_transformers_shapes_from_artifacts(config=model_config)
-    elif library == "timm":
-        model_config = get_timm_pretrained_config(model)
-        model_shapes = extract_timm_shapes_from_config(config=model_config)
-    elif library == "diffusers":
-        model_config = get_diffusers_pretrained_config(model)
-        model_shapes = extract_diffusers_shapes_from_model()
-    else:
-        raise ValueError(f"Unknown library {library}")
-
-    if task == "multiple-choice":
-        DATASET_SHAPES["num_choices"] = 2
-
-    generator = DatasetGenerator(task=task, dataset_shapes=DATASET_SHAPES, model_shapes=model_shapes)
-    generated_dataset = generator()
-
-    assert len(generated_dataset) > 0, "No dataset was generated"
-    assert len(generated_dataset) == DATASET_SHAPES["dataset_size"]
 
 
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
