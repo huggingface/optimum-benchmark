@@ -23,7 +23,7 @@ from optimum_benchmark.generators.dataset_generator import DatasetGenerator
 from optimum_benchmark.generators.input_generator import InputGenerator
 from optimum_benchmark.import_utils import get_git_revision_hash
 from optimum_benchmark.system_utils import is_nvidia_system, is_rocm_system
-from optimum_benchmark.trackers import LatencyTracker, MemoryTracker
+from optimum_benchmark.trackers import LatencySessionTracker, MemoryTracker
 
 PUSH_REPO_ID = os.environ.get("PUSH_REPO_ID", "optimum-benchmark/local")
 
@@ -55,6 +55,9 @@ DATASET_SHAPES = {
 @pytest.mark.parametrize("scenario", ["training", "inference"])
 @pytest.mark.parametrize("library,task,model", LIBRARIES_TASKS_MODELS)
 def test_api_launch(device, scenario, library, task, model):
+    if scenario == "training" and library != "transformers":
+        pytest.skip("Training is only supported with transformers library models")
+
     benchmark_name = f"{device}_{scenario}_{library}_{task}_{model}"
 
     if device == "cuda":
@@ -65,24 +68,26 @@ def test_api_launch(device, scenario, library, task, model):
         elif is_nvidia_system():
             device_isolation_action = "error"
             device_ids = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
+        else:
+            raise RuntimeError("Using CUDA device on a machine that is neither NVIDIA nor ROCM.")
     else:
         device_isolation_action = None
         device_isolation = False
         device_ids = None
 
-    launcher_config = ProcessConfig(device_isolation=device_isolation, device_isolation_action=device_isolation_action)
+    launcher_config = ProcessConfig(
+        device_isolation=device_isolation,
+        device_isolation_action=device_isolation_action,
+    )
 
     if scenario == "training":
-        if library == "transformers":
-            scenario_config = TrainingConfig(
-                memory=True,
-                latency=True,
-                energy=not is_rocm_system(),
-                warmup_steps=2,
-                max_steps=5,
-            )
-        else:
-            pytest.skip("Training scenario is only available for Transformers library")
+        scenario_config = TrainingConfig(
+            memory=True,
+            latency=True,
+            energy=not is_rocm_system(),
+            warmup_steps=2,
+            max_steps=5,
+        )
 
     elif scenario == "inference":
         scenario_config = InferenceConfig(
@@ -227,7 +232,7 @@ def test_api_dataset_generator(library, task, model):
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
 @pytest.mark.parametrize("backend", ["pytorch", "other"])
 def test_api_latency_tracker(device, backend):
-    tracker = LatencyTracker(device=device, backend=backend)
+    tracker = LatencySessionTracker(device=device, backend=backend)
 
     with tracker.session():
         while tracker.elapsed() < 2:
