@@ -18,3 +18,9 @@ backend:
     is_static: true
     per_channel: false
   calibration: true
+
+scenario:
+  memory: true
+  latency: true
+  input_shapes:
+    batch_size: 2

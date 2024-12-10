@@ -46,7 +46,7 @@ def run_benchmark(weight_config: str):
         duration=10,
         iterations=10,
         warmup_runs=10,
-        input_shapes={"batch_size": 1, "sequence_length": 128},
+        input_shapes={"batch_size": 1, "sequence_length": 64},
         generate_kwargs={"max_new_tokens": 32, "min_new_tokens": 32},
     )
     benchmark_config = BenchmarkConfig(

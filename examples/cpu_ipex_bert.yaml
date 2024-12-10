@@ -17,8 +17,8 @@ launcher:
 backend:
   device: cpu
   export: true
-  no_weights: false
-  torch_dtype: bfloat16
+  no_weights: false # because on multi-node machines, intializing weights could harm performance
+  torch_dtype: float32 # but use bfloat16 on compatible Intel CPUs
   model: google-bert/bert-base-uncased
 
 scenario:

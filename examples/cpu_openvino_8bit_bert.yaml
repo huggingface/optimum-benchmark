@@ -16,6 +16,9 @@ backend:
   model: google-bert/bert-base-uncased
 
 scenario:
+  memory: true
+  latency: true
+
   input_shapes:
     batch_size: 1
-    sequence_length: 16
+    sequence_length: 128

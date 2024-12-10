@@ -9,10 +9,10 @@ defaults:
 name: openvino_diffusion
 
 backend:
-  half: true
   device: cpu
   export: true
   model: stabilityai/stable-diffusion-2-1
+  half: false # enable half-precision on compatible Intel CPU machines
 
 scenario:
   input_shapes:

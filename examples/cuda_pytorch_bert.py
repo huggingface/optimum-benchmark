@@ -8,7 +8,11 @@ MODEL = "google-bert/bert-base-uncased"
 PUSH_REPO_ID = os.environ.get("PUSH_REPO_ID", None)
 
 
-def run_benchmark():
+if __name__ == "__main__":
+    level = os.environ.get("LOG_LEVEL", "INFO")
+    to_file = os.environ.get("LOG_TO_FILE", "0") == "1"
+    setup_logging(level=level, to_file=to_file, prefix="MAIN-PROCESS")
+
     launcher_config = ProcessConfig(device_isolation=True, device_isolation_action="warn")
     backend_config = PyTorchConfig(device="cuda", device_ids="0", no_weights=True, model=MODEL)
     scenario_config = InferenceConfig(memory=True, latency=True, input_shapes={"batch_size": 1, "sequence_length": 128})
@@ -21,16 +25,6 @@ def run_benchmark():
         log_report=True,
     )
     benchmark_report = Benchmark.launch(benchmark_config)
-
-    return benchmark_config, benchmark_report
-
-
-if __name__ == "__main__":
-    level = os.environ.get("LOG_LEVEL", "INFO")
-    to_file = os.environ.get("LOG_TO_FILE", "0") == "1"
-    setup_logging(level=level, to_file=to_file, prefix="MAIN-PROCESS")
-
-    benchmark_config, benchmark_report = run_benchmark()
     benchmark = Benchmark(config=benchmark_config, report=benchmark_report)
 
     if PUSH_REPO_ID is not None:
