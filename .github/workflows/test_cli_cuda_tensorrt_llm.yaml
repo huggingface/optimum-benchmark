@@ -46,11 +46,16 @@ jobs:
         run: |
           pip install -e .[testing]
 
-      - name: Run tests
+      - name: Run tests (sequential)
         run: |
-          pytest tests/test_cli.py -x -s -k "cli and cuda and tensorrt_llm and not (tp or pp)"
+          FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and tensorrt_llm and not (tp or pp)"
 
-      - name: Run examples
+      - if: ${{
+          (github.event_name == 'push') ||
+          (github.event_name == 'workflow_dispatch') ||
+          contains( github.event.pull_request.labels.*.name, 'examples')
+          }}
+        name: Run examples
         run: pytest tests/test_examples.py -x -s -k "cli and cuda and trt"
 
   cli_cuda_tensorrt_llm_multi_gpu_tests:

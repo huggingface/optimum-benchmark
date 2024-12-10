@@ -51,8 +51,14 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PUSH_REPO_ID: optimum-benchmark/cuda
 
-      - name: Run examples
+      - if: ${{
+          (github.event_name == 'push') ||
+          (github.event_name == 'workflow_dispatch') ||
+          contains( github.event.pull_request.labels.*.name, 'examples')
+          }}
+        name: Run examples
         run: |
+          pip install -e .[testing,torchao,autoawq,auto-gptq]
           pytest tests/test_examples.py -x -s -k "api and cuda and pytorch"
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
