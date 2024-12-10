@@ -46,6 +46,7 @@ class TRTLLMBackend(Backend[TRTLLMConfig]):
             max_batch_size=self.config.max_batch_size,
             max_new_tokens=self.config.max_new_tokens,
             max_beam_width=self.config.max_beam_width,
+            force_export=self.config.force_export,
             **self.config.model_kwargs,
         )
 
