@@ -10,7 +10,8 @@ name: onnxruntime_timm
 
 backend:
   device: cpu
-  model: timm/mobilenetv3_large_100.ra_in1k
+  export: true
+  model: timm/tiny_vit_21m_224.in1k
 
 scenario:
   memory: true

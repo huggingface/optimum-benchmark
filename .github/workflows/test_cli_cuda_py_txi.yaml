@@ -45,7 +45,15 @@ jobs:
       - name: Install requirements
         run: |
           pip install --upgrade pip
-          pip install -e .[testing,py-txi]
+          pip install -e .[testing,py-txi] git+https://github.com/IlyasMoutawwakil/py-txi.git
 
       - name: Run tests
         run: pytest tests/test_cli.py -x -s -k "cli and cuda and py_txi"
+
+      - if: ${{
+          (github.event_name == 'push') ||
+          (github.event_name == 'workflow_dispatch') ||
+          contains( github.event.pull_request.labels.*.name, 'examples')
+          }}
+        name: Run examples
+        run: pytest tests/test_examples.py -x -s -k "cli and cuda and (tgi or tei)"

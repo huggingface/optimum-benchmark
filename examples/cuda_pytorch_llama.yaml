@@ -1,12 +1,12 @@
 defaults:
   - benchmark
-  - backend: tensorrt-llm
   - scenario: inference
   - launcher: process
+  - backend: pytorch
   - _base_
   - _self_
 
-name: trt_llama
+name: cuda_pytorch_llama
 
 launcher:
   device_isolation: true
@@ -16,12 +16,14 @@ backend:
   device: cuda
   device_ids: 0
   no_weights: true
+  torch_dtype: float16
   model: TinyLlama/TinyLlama-1.1B-Chat-v1.0
 
 scenario:
   input_shapes:
     batch_size: 4
-    sequence_length: 256
+    sequence_length: 64
+
   generate_kwargs:
-    max_new_tokens: 100
-    min_new_tokens: 100
+    max_new_tokens: 32
+    min_new_tokens: 32

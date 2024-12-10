@@ -6,7 +6,7 @@ defaults:
   - _base_
   - _self_
 
-name: pytorch_vlm
+name: cuda_pytorch_vlm
 
 launcher:
   device_isolation: true
@@ -30,7 +30,7 @@ scenario:
   input_shapes:
     # text
     batch_size: 1
-    sequence_length: 256
+    sequence_length: 64
     # image
     num_images: 2
     num_channels: 3

@@ -6,15 +6,13 @@ defaults:
   - _base_
   - _self_
 
-name: openvino_static_quant_bert
+name: openvino_diffusion
 
 backend:
   device: cpu
-  no_weights: true
-  model: bert-base-uncased
-  quantization: true
-  calibration: true
-  reshape: true
+  export: true
+  model: stabilityai/stable-diffusion-2-1
+  half: false # enable half-precision on compatible Intel CPU machines
 
 scenario:
   input_shapes:

@@ -1,0 +1,24 @@
+defaults:
+  - benchmark
+  - scenario: inference
+  - backend: llama_cpp
+  - launcher: process
+  - _base_
+  - _self_
+
+name: cpu_llama_cpp_embedding
+
+backend:
+  device: cpu
+  task: feature-extraction
+  model: nomic-ai/nomic-embed-text-v1.5-GGUF
+  filename: nomic-embed-text-v1.5.Q4_0.gguf
+
+scenario:
+  input_shapes:
+    batch_size: 1
+    sequence_length: 64
+
+  generate_kwargs:
+    max_new_tokens: 32
+    min_new_tokens: 32

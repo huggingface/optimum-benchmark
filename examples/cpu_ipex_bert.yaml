@@ -1,0 +1,30 @@
+defaults:
+  - benchmark
+  - scenario: inference
+  - launcher: process
+  - backend: ipex
+  - _base_
+  - _self_
+
+name: cpu_ipex_bert
+
+launcher:
+  numactl: true
+  numactl_kwargs:
+    cpunodebind: 0
+    membind: 0
+
+backend:
+  device: cpu
+  export: true
+  no_weights: false # because on multi-node machines, intializing weights could harm performance
+  torch_dtype: float32 # but use bfloat16 on compatible Intel CPUs
+  model: google-bert/bert-base-uncased
+
+scenario:
+  memory: true
+  latency: true
+
+  input_shapes:
+    batch_size: 1
+    sequence_length: 128

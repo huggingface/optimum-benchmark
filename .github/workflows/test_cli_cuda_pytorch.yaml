@@ -50,6 +50,14 @@ jobs:
         run: |
           pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed)"
 
+      - if: ${{
+          (github.event_name == 'push') ||
+          (github.event_name == 'workflow_dispatch') ||
+          contains( github.event.pull_request.labels.*.name, 'examples')
+          }}
+        name: Run examples
+        run: pytest tests/test_examples.py -x -s -k "cli and cuda and pytorch"
+
   run_cli_cuda_pytorch_multi_gpu_tests:
     if: ${{
       (github.event_name == 'push') ||

@@ -9,19 +9,19 @@ defaults:
 name: pytorch_bert
 
 launcher:
-  numactl: true
-  numactl_kwargs:
-    cpunodebind: 0
-    membind: 0
+  device_isolation: true
+  device_isolation_action: warn
+
+backend:
+  device: cuda
+  device_ids: 0
+  no_weights: true
+  model: google-bert/bert-base-uncased
 
 scenario:
-  latency: true
   memory: true
+  latency: true
+
   input_shapes:
     batch_size: 1
     sequence_length: 128
-
-backend:
-  device: cpu
-  no_weights: true
-  model: bert-base-uncased

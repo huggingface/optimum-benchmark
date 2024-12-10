@@ -1,17 +1,11 @@
 import os
 
-from huggingface_hub import whoami
-
 from optimum_benchmark import Benchmark, BenchmarkConfig, InferenceConfig, ProcessConfig, PyTorchConfig
 from optimum_benchmark.logging_utils import setup_logging
 
-try:
-    USERNAME = whoami()["name"]
-except Exception as e:
-    print(f"Failed to get username from Hugging Face Hub: {e}")
-    USERNAME = None
-
-BENCHMARK_NAME = "pytorch-llama"
+BENCHMARK_NAME = "cuda_pytorch_llama"
+MODEL = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+PUSH_REPO_ID = os.environ.get("PUSH_REPO_ID", None)
 
 WEIGHTS_CONFIGS = {
     "float16": {
@@ -40,10 +34,10 @@ WEIGHTS_CONFIGS = {
 def run_benchmark(weight_config: str):
     launcher_config = ProcessConfig(device_isolation=True, device_isolation_action="warn")
     backend_config = PyTorchConfig(
+        model=MODEL,
         device="cuda",
         device_ids="0",
         no_weights=True,
-        model="gpt2",
         **WEIGHTS_CONFIGS[weight_config],
     )
     scenario_config = InferenceConfig(
@@ -52,7 +46,7 @@ def run_benchmark(weight_config: str):
         duration=10,
         iterations=10,
         warmup_runs=10,
-        input_shapes={"batch_size": 1, "sequence_length": 128},
+        input_shapes={"batch_size": 1, "sequence_length": 64},
         generate_kwargs={"max_new_tokens": 32, "min_new_tokens": 32},
     )
     benchmark_config = BenchmarkConfig(
@@ -77,7 +71,5 @@ if __name__ == "__main__":
         benchmark_config, benchmark_report = run_benchmark(weight_config)
         benchmark = Benchmark(config=benchmark_config, report=benchmark_report)
 
-        if USERNAME is not None:
-            benchmark.push_to_hub(
-                repo_id=f"{USERNAME}/benchmarks", filename=f"{weight_config}.json", subfolder=BENCHMARK_NAME
-            )
+        if PUSH_REPO_ID is not None:
+            benchmark.push_to_hub(repo_id=PUSH_REPO_ID, subfolder=BENCHMARK_NAME, filename=f"{weight_config}.json")
