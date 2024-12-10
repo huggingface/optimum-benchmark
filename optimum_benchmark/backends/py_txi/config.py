@@ -50,7 +50,7 @@ class PyTXIConfig(BackendConfig):
     quantize: Optional[str] = None
     num_shard: Optional[int] = None
     speculate: Optional[int] = None
-    cuda_graphs: Optional[bool] = None
+    cuda_graphs: Optional[int] = None
     disable_custom_kernels: Optional[bool] = None
     trust_remote_code: Optional[bool] = None
 
