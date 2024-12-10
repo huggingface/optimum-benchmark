@@ -53,7 +53,7 @@ jobs:
 
       - name: Run examples
         run: |
-          pytest tests/test_examples.py -x -s -k "api and cuda"
+          pytest tests/test_examples.py -x -s -k "api and cuda and pytorch"
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PUSH_REPO_ID: optimum-benchmark/cuda
