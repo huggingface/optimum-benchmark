@@ -12,7 +12,7 @@ backend:
   device: cpu
   reshape: true
   no_weights: true
-  load_in_8bit: true
+  load_in_8bit: false # enable 8bit on compatible Intel CPU machines
   model: google-bert/bert-base-uncased
 
 scenario:
