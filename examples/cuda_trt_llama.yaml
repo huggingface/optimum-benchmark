@@ -15,6 +15,9 @@ launcher:
 backend:
   device: cuda
   device_ids: 0
+  max_batch_size: 4
+  max_new_tokens: 32
+  max_prompt_length: 64
   model: TinyLlama/TinyLlama-1.1B-Chat-v1.0
 
 scenario:
