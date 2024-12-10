@@ -18,7 +18,6 @@ class TRTLLMConfig(BackendConfig):
     pp: int = 1
     use_fp8: bool = False
     dtype: str = "float16"
-    force_export: bool = False
     optimization_level: int = 2
     use_cuda_graph: bool = False
 

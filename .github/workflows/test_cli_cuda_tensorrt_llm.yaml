@@ -56,7 +56,9 @@ jobs:
           contains( github.event.pull_request.labels.*.name, 'examples')
           }}
         name: Run examples
-        run: pytest tests/test_examples.py -x -s -k "cli and cuda and trt"
+        run: |
+          huggingface-cli delete-cache
+          pytest tests/test_examples.py -x -s -k "cli and cuda and trt"
 
   cli_cuda_tensorrt_llm_multi_gpu_tests:
     if: ${{
