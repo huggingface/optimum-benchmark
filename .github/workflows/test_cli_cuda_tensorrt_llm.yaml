@@ -46,9 +46,9 @@ jobs:
         run: |
           pip install -e .[testing]
 
-      - name: Run tests (sequential)
+      - name: Run tests
         run: |
-          FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and tensorrt_llm and not (tp or pp)"
+          pytest tests/test_cli.py -x -s -k "cli and cuda and tensorrt_llm and not (tp or pp)"
 
       - if: ${{
           (github.event_name == 'push') ||

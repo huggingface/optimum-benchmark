@@ -45,7 +45,7 @@ jobs:
       - name: Install requirements
         run: |
           pip install --upgrade pip
-          pip install -e .[testing,py-txi]
+          pip install -e .[testing,py-txi] git+https://github.com/IlyasMoutawwakil/py-txi.git
 
       - name: Run tests
         run: pytest tests/test_cli.py -x -s -k "cli and cuda and py_txi"

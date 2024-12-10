@@ -44,16 +44,20 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -e .[testing,torch-ort,peft]
-          pip install optimum@git+https://github.com/huggingface/optimum.git@fxi-ort-trainer
+          pip install -e .[testing,torch-ort,peft] optimum@git+https://github.com/huggingface/optimum.git@fxi-ort-trainer
 
       - name: Run tests
         run: |
           pytest tests/test_cli.py -x -s -k "cli and cuda and torch_ort and not (dp or ddp or device_map) and not (peft)"
 
-      - name: Run examples
+      - if: ${{
+          (github.event_name == 'push') ||
+          (github.event_name == 'workflow_dispatch') ||
+          contains( github.event.pull_request.labels.*.name, 'examples')
+          }}
+        name: Run examples
         run: |
-          pytest tests/test_examples.py -x -s -k "cli and cuda and torch_ort and not (dp or ddp or device_map) and not (peft)"
+          pytest tests/test_examples.py -x -s -k "cli and cuda and torch_ort"
 
   run_cli_cuda_torch_ort_multi_gpu_tests:
     if: ${{
@@ -79,8 +83,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -e .[testing,torch-ort,peft] 
-          pip install optimum@git+https://github.com/huggingface/optimum.git@fxi-ort-trainer
+          pip install -e .[testing,torch-ort,peft] optimum@git+https://github.com/huggingface/optimum.git@fxi-ort-trainer
 
       - name: Run tests
         run: |
