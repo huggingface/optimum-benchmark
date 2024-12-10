@@ -53,6 +53,7 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PUSH_REPO_ID: optimum-benchmark/cpu
 
+      # no examples for now
       # - if: ${{
       #     (github.event_name == 'push') ||
       #     (github.event_name == 'workflow_dispatch') ||
