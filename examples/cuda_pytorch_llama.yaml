@@ -14,6 +14,7 @@ launcher:
 
 backend:
   device: cuda
+  device_ids: 0
   no_weights: true
   torch_dtype: float16
   model: TinyLlama/TinyLlama-1.1B-Chat-v1.0

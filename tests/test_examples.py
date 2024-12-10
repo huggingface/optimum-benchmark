@@ -17,7 +17,9 @@ TEST_CONFIG_NAMES = [
     if config.endswith(".yaml") and not (config.startswith("_") or config.endswith("_"))
 ]
 
-TEST_SCRIPT_PATHS = [TEST_CONFIG_DIR / filename for filename in os.listdir(TEST_CONFIG_DIR) if filename.endswith(".py")]
+TEST_SCRIPT_PATHS = [
+    str(TEST_CONFIG_DIR / filename) for filename in os.listdir(TEST_CONFIG_DIR) if filename.endswith(".py")
+]
 
 ROCR_VISIBLE_DEVICES = os.environ.get("ROCR_VISIBLE_DEVICES", None)
 CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", None)
