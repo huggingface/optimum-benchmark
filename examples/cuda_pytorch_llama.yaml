@@ -20,16 +20,10 @@ backend:
   model: TinyLlama/TinyLlama-1.1B-Chat-v1.0
 
 scenario:
-  memory: true
-  latency: true
-
-  warmup_runs: 10
-  iterations: 10
-  duration: 10
-
   input_shapes:
-    batch_size: 1
-    sequence_length: 256
+    batch_size: 4
+    sequence_length: 64
+
   generate_kwargs:
     max_new_tokens: 32
     min_new_tokens: 32

@@ -23,5 +23,5 @@ scenario:
     sequence_length: 64
 
   generate_kwargs:
-    max_new_tokens: 16
-    min_new_tokens: 16
+    max_new_tokens: 32
+    min_new_tokens: 32

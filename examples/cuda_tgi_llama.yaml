@@ -15,6 +15,7 @@ launcher:
 backend:
   device: cuda
   device_ids: 0
+  cuda_graphs: 0 # remove for better perf but bigger memory footprint
   model: TinyLlama/TinyLlama-1.1B-Chat-v1.0
 
 scenario:
@@ -23,5 +24,5 @@ scenario:
     sequence_length: 64
 
   generate_kwargs:
-    max_new_tokens: 16
-    min_new_tokens: 16
+    max_new_tokens: 32
+    min_new_tokens: 32

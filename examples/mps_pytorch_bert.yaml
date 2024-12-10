@@ -1,7 +1,7 @@
 defaults:
   - benchmark
   - scenario: inference
-  - launcher: inline # mps has problems with multi processing (process launcher)
+  - launcher: inline # mps fails with python multi-processing for some reason
   - backend: pytorch
   - _base_
   - _self_
