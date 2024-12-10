@@ -45,7 +45,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e .[testing,torch-ort,peft]
-          pip install optimum@git+https://github.com/huggingface/optimum.git
+          pip install optimum@git+https://github.com/huggingface/optimum.git@fxi-ort-trainer
 
       - name: Run tests
         run: |
@@ -80,7 +80,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e .[testing,torch-ort,peft] 
-          pip install optimum@git+https://github.com/huggingface/optimum.git
+          pip install optimum@git+https://github.com/huggingface/optimum.git@fxi-ort-trainer
 
       - name: Run tests
         run: |
