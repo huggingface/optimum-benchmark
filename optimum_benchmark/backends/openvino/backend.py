@@ -42,10 +42,10 @@ class OVBackend(Backend[OVBackendConfig]):
             self.logger.info("\t+ Creating no weights OVModel")
             self.create_no_weights_model()
             self.logger.info("\t+ Loading no weights OVModel")
-            self._load_ovmodel_with_no_weights()
+            self.load_ovmodel_with_no_weights()
         else:
             self.logger.info("\t+ Loading pretrained OVModel")
-            self._load_ovmodel_from_pretrained()
+            self.load_ovmodel_from_pretrained()
 
         if self.config.reshape:
             static_shapes = {
@@ -67,19 +67,19 @@ class OVBackend(Backend[OVBackendConfig]):
 
         self.tmpdir.cleanup()
 
-    def _load_ovmodel_from_pretrained(self) -> None:
+    def load_ovmodel_from_pretrained(self) -> None:
         self.pretrained_model = self.ovmodel_class.from_pretrained(
             self.config.model,
             **self.config.model_kwargs,
             **self.ovmodel_kwargs,
         )
 
-    def _load_ovmodel_with_no_weights(self) -> None:
+    def load_ovmodel_with_no_weights(self) -> None:
         with fast_weights_init():
             original_model, self.config.model = self.config.model, self.no_weights_model
             original_export, self.config.export = self.config.export, True
             self.logger.info("\t+ Loading no weights OVModel")
-            self._load_ovmodel_from_pretrained()
+            self.load_ovmodel_from_pretrained()
             self.config.export = original_export
             self.config.model = original_model
 
