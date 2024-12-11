@@ -65,10 +65,10 @@ EXTRAS_REQUIRE = {
     "testing": ["pytest", "hydra-joblib-launcher"],
     # optimum backends
     "ipex": [f"optimum[ipex]>={MIN_OPTIMUM_VERSION}"],
+    "tensorrt-llm": [f"optimum[nvidia]>={MIN_OPTIMUM_VERSION}"],
     "openvino": [f"optimum[openvino,nncf]>={MIN_OPTIMUM_VERSION}"],
     "onnxruntime": [f"optimum[onnxruntime]>={MIN_OPTIMUM_VERSION}"],
     "onnxruntime-gpu": [f"optimum[onnxruntime-gpu]>={MIN_OPTIMUM_VERSION}"],
-    "neural-compressor": [f"optimum[neural-compressor]>={MIN_OPTIMUM_VERSION}"],
     "torch-ort": ["torch-ort", "onnxruntime-training", f"optimum>={MIN_OPTIMUM_VERSION}"],
     # other backends
     "llama-cpp": ["llama-cpp-python"],
