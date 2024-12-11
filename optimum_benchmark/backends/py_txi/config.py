@@ -51,8 +51,8 @@ class PyTXIConfig(BackendConfig):
     num_shard: Optional[int] = None
     speculate: Optional[int] = None
     cuda_graphs: Optional[int] = None
-    disable_custom_kernels: Optional[bool] = None
     trust_remote_code: Optional[bool] = None
+    disable_custom_kernels: Optional[bool] = None
 
     # TEI specific
     pooling: Optional[str] = None

@@ -126,13 +126,10 @@ class InferenceScenario(Scenario[InferenceConfig]):
             input_shapes=self.config.input_shapes,
         )()
 
-        self.logger.info(f"\t+ Preparing inputs for backend {self.backend.config.name} before model loading.")
-        self.inputs = self.backend.prepare_inputs_before_load(inputs=self.inputs)
-
         self.run_model_loading_tracking()
 
-        self.logger.info(f"\t+ Preparing inputs for backend {self.backend.config.name} after model loading.")
-        self.inputs = self.backend.prepare_inputs_after_load(inputs=self.inputs)
+        self.logger.info(f"\t+ Preparing inputs for backend {self.backend.config.name}")
+        self.inputs = self.backend.prepare_inputs(inputs=self.inputs)
 
         if self.config.warmup_runs > 0:
             if self.backend.config.task in TEXT_GENERATION_TASKS:

@@ -284,7 +284,7 @@ class ORTBackend(Backend[ORTConfig]):
     def split_between_processes(self) -> bool:
         return is_torch_distributed_available() and torch.distributed.is_initialized()
 
-    def prepare_inputs_before_load(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         if self.split_between_processes:
             with Accelerator().split_between_processes(inputs=inputs, apply_padding=False) as process_inputs:
                 inputs = process_inputs
@@ -293,9 +293,6 @@ class ORTBackend(Backend[ORTConfig]):
             if isinstance(value, torch.Tensor):
                 inputs[key] = value.to(self.config.device)
 
-        return inputs
-
-    def prepare_inputs_after_load(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         for key in list(inputs.keys()):
             if hasattr(self.pretrained_model, "input_names") and key not in self.pretrained_model.input_names:
                 inputs.pop(key)

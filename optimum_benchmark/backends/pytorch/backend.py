@@ -416,7 +416,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             and not self.config.deepspeed_inference
         )
 
-    def prepare_inputs_before_load(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         if self.split_between_processes:
             with Accelerator().split_between_processes(inputs=inputs, apply_padding=False) as process_inputs:
                 inputs = process_inputs

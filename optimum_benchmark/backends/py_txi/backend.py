@@ -139,7 +139,7 @@ class PyTXIBackend(Backend[PyTXIConfig]):
         else:
             raise NotImplementedError(f"TXI does not support task {self.config.task}")
 
-    def prepare_inputs_after_load(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         if self.config.task in TEXT_GENERATION_TASKS:
             inputs = {"prompt": self.pretrained_processor.batch_decode(inputs["input_ids"].tolist())}
         elif self.config.task in TEXT_EMBEDDING_TASKS:

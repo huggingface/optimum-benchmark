@@ -19,14 +19,13 @@ class OVConfig(BackendConfig):
     use_merged: Optional[bool] = None
     load_in_8bit: Optional[bool] = None
     load_in_4bit: Optional[bool] = None
+    ov_config: Dict[str, Any] = field(default_factory=dict)
 
     # compilation options
     half: bool = False
     compile: bool = False
     reshape: bool = False
-
-    # openvino config
-    ov_config: Dict[str, Any] = field(default_factory=dict)
+    reshape_kwargs: Dict[str, int] = field(default_factory=dict)
 
     def __post_init__(self):
         super().__post_init__()

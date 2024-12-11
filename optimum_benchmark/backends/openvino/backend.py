@@ -1,4 +1,3 @@
-import inspect
 from collections import OrderedDict
 from tempfile import TemporaryDirectory
 from typing import Any, Dict
@@ -48,14 +47,8 @@ class OVBackend(Backend[OVBackendConfig]):
             self.load_ovmodel_from_pretrained()
 
         if self.config.reshape:
-            static_shapes = {
-                key: value
-                for key, value in self.model_shapes.items()
-                if key in inspect.getfullargspec(self.pretrained_model.reshape).args
-            }
-
-            self.logger.info(f"\t+ Reshaping model with static shapes: {static_shapes}")
-            self.pretrained_model.reshape(**static_shapes)
+            self.logger.info("\t+ Reshaping model with static shapes")
+            self.pretrained_model.reshape(**self.config.reshape_kwargs)
 
         if self.config.half:
             self.logger.info("\t+ Converting model to half precision")
@@ -78,7 +71,6 @@ class OVBackend(Backend[OVBackendConfig]):
         with fast_weights_init():
             original_model, self.config.model = self.config.model, self.no_weights_model
             original_export, self.config.export = self.config.export, True
-            self.logger.info("\t+ Loading no weights OVModel")
             self.load_ovmodel_from_pretrained()
             self.config.export = original_export
             self.config.model = original_model
@@ -102,28 +94,20 @@ class OVBackend(Backend[OVBackendConfig]):
         if self.config.load_in_4bit is not None:
             kwargs["load_in_4bit"] = self.config.load_in_4bit
 
+        if self.config.ov_config:
+            kwargs["ov_config"] = self.config.ov_config
+
         return kwargs
 
     @property
     def split_between_processes(self) -> bool:
         return is_torch_distributed_available() and torch.distributed.is_initialized()
 
-    def prepare_inputs_before_load(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         if self.split_between_processes:
             with Accelerator().split_between_processes(inputs=inputs, apply_padding=False) as process_inputs:
                 inputs = process_inputs
 
-        if "input_ids" in inputs:
-            self.model_shapes.update(dict(zip(["batch_size", "sequence_length"], inputs["input_ids"].shape)))
-
-        if "pixel_values" in inputs:
-            self.model_shapes.update(
-                dict(zip(["batch_size", "num_channels", "height", "width"], inputs["pixel_values"].shape))
-            )
-
-        return inputs
-
-    def prepare_inputs_after_load(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         for key in list(inputs.keys()):
             if hasattr(self.pretrained_model, "input_names") and key not in self.pretrained_model.input_names:
                 inputs.pop(key)

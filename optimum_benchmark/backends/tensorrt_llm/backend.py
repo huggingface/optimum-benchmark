@@ -146,7 +146,11 @@ class TRTLLMBackend(Backend[TRTLLMConfig]):
         return kwargs
 
     def prefill(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
-        return self.pretrained_model.generate(inputs=inputs.get("input_ids"), **kwargs)
+        return self.pretrained_model.generate(
+            inputs=inputs.get("input_ids"), attention_mask=inputs.get("attention_mask"), **kwargs
+        )
 
     def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
-        return self.pretrained_model.generate(inputs=inputs.get("input_ids"), **kwargs)
+        return self.pretrained_model.generate(
+            inputs=inputs.get("input_ids"), attention_mask=inputs.get("attention_mask"), **kwargs
+        )

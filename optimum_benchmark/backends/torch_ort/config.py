@@ -14,7 +14,9 @@ class TorchORTConfig(BackendConfig):
     # load options
     no_weights: bool = False
     torch_dtype: Optional[str] = None
-    attn_implementation: Optional[str] = None
+    attn_implementation: Optional[str] = (
+        "eager"  # we pin eager because sdpa became default of many architectures, which fails with torch-ort
+    )
 
     # peft options
     peft_type: Optional[str] = None

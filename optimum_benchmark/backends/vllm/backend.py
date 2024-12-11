@@ -113,7 +113,7 @@ class VLLMBackend(Backend[VLLMConfig]):
             **self.config.engine_args,
         }
 
-    def prepare_inputs_before_load(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         if self.config.task in TEXT_GENERATION_TASKS:
             inputs = {"prompts": self.pretrained_processor.batch_decode(inputs["input_ids"])}
         else:

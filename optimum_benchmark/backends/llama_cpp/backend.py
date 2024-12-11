@@ -41,7 +41,7 @@ class LlamaCppBackend(Backend[LlamaCppConfig]):
             "echo": False,
         }
 
-    def prepare_inputs_after_load(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         if self.config.task == "text-generation":
             if inputs["input_ids"].shape[0] != 1:
                 raise ValueError("Batch size must be 1 for Text Generation with llama-cpp-python")
@@ -55,9 +55,11 @@ class LlamaCppBackend(Backend[LlamaCppConfig]):
         self.pretrained_model.embed(**inputs)
 
     def prefill(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> list[int]:
-        next(self.pretrained_model.generate(**inputs))
+        generator = self.pretrained_model.generate(**inputs, reset=True)
+        for _ in range(kwargs["max_new_tokens"]):
+            next(generator)
 
     def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> list[int]:
-        generator = self.pretrained_model.generate(**inputs)
+        generator = self.pretrained_model.generate(**inputs, reset=True)
         for _ in range(kwargs["max_new_tokens"]):
             next(generator)
