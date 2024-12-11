@@ -28,8 +28,7 @@ class LlamaCppBackend(Backend[LlamaCppConfig]):
         """
 
         self.pretrained_model = Llama.from_pretrained(
-            repo_id=self.config.model,
-            filename=self.config.filename,
+            self.config.model,
             **self.llama_cpp_kwargs,
         )
 
@@ -37,20 +36,20 @@ class LlamaCppBackend(Backend[LlamaCppConfig]):
     def llama_cpp_kwargs(self) -> Dict[str, Any]:
         return {
             "embedding": self.config.task == "feature-extraction",
+            "filename": self.config.filename,
             "verbose": False,
             "echo": False,
         }
 
-    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+    def prepare_inputs_after_load(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         if self.config.task == "text-generation":
             if inputs["input_ids"].shape[0] != 1:
-                raise ValueError("Batch size must be 1 for LlamaCpp text generation")
+                raise ValueError("Batch size must be 1 for Text Generation with llama-cpp-python")
             return {"tokens": inputs["input_ids"].squeeze(0).tolist()}
-
         elif self.config.task == "feature-extraction":
             return {"input": [self.pretrained_model.detokenize(x).decode("utf-8") for x in inputs["input_ids"]]}
-
-        raise ValueError(f"Task {self.config.task} not supported by {self.NAME}")
+        else:
+            raise ValueError(f"Task {self.config.task} not supported by {self.NAME}")
 
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> Any:
         self.pretrained_model.embed(**inputs)
