@@ -17,3 +17,7 @@ backend:
 scenario:
   input_shapes:
     batch_size: 1
+    sequence_length: 16
+
+  call_kwargs:
+    num_inference_steps: 4
