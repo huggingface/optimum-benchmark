@@ -35,19 +35,15 @@ class ORTConfig(BackendConfig):
     # load options
     no_weights: bool = False
 
-    # export options
-    export: bool = True
-    use_cache: bool = True
-    use_merged: bool = False
-    torch_dtype: Optional[str] = None
-
-    # provider options
+    # ortmodel kwargs
+    export: Optional[bool] = None
     provider: Optional[str] = None
-    provider_options: Dict[str, Any] = field(default_factory=dict)
-
-    # inference options
+    use_cache: Optional[bool] = None
+    use_merged: Optional[bool] = None
+    torch_dtype: Optional[str] = None
     use_io_binding: Optional[bool] = None
     session_options: Dict[str, Any] = field(default_factory=dict)
+    provider_options: Dict[str, Any] = field(default_factory=dict)
 
     # null, O1, O2, O3, O4
     auto_optimization: Optional[str] = None

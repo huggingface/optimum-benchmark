@@ -1,3 +1,0 @@
-backend:
-  ptq_quantization: true
-  calibration: true

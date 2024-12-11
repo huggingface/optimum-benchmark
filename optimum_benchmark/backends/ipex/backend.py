@@ -9,7 +9,7 @@ from ...import_utils import is_accelerate_available, is_torch_distributed_availa
 from ..base import Backend
 from ..transformers_utils import fast_weights_init
 from .config import IPEXConfig
-from .utils import TASKS_TO_IPEXMODEL
+from .utils import TASKS_TO_IPEXMODELS
 
 if is_accelerate_available():
     from accelerate import Accelerator
@@ -24,8 +24,8 @@ class IPEXBackend(Backend[IPEXConfig]):
     def __init__(self, config: IPEXConfig) -> None:
         super().__init__(config)
 
-        if self.config.task in TASKS_TO_IPEXMODEL:
-            self.ipexmodel_class = get_class(TASKS_TO_IPEXMODEL[self.config.task])
+        if self.config.task in TASKS_TO_IPEXMODELS:
+            self.ipexmodel_class = get_class(TASKS_TO_IPEXMODELS[self.config.task])
             self.logger.info(f"\t+ Using IPEXModel class {self.ipexmodel_class.__name__}")
         else:
             raise NotImplementedError(f"IPEXBackend does not support task {self.config.task}")
@@ -38,47 +38,34 @@ class IPEXBackend(Backend[IPEXConfig]):
             self.logger.info("\t+ Creating no weights IPEXModel")
             self.create_no_weights_model()
             self.logger.info("\t+ Loading no weights IPEXModel")
-            self._load_ipexmodel_with_no_weights()
+            self.load_ipexmodel_with_no_weights()
         else:
             self.logger.info("\t+ Loading pretrained IPEXModel")
-            self._load_ipexmodel_from_pretrained()
+            self.load_ipexmodel_from_pretrained()
 
         self.tmpdir.cleanup()
 
-    def _load_automodel_from_pretrained(self) -> None:
-        self.pretrained_model = self.automodel_loader.from_pretrained(self.config.model, **self.config.model_kwargs)
-
-    def _load_automodel_with_no_weights(self) -> None:
-        original_model, self.config.model = self.config.model, self.no_weights_model
-
-        with fast_weights_init():
-            self._load_automodel_from_pretrained()
-
-        self.logger.info("\t+ Tying model weights")
-        self.pretrained_model.tie_weights()
-
-        self.config.model = original_model
-
-    def _load_ipexmodel_from_pretrained(self) -> None:
+    def load_ipexmodel_from_pretrained(self) -> None:
         self.pretrained_model = self.ipexmodel_class.from_pretrained(
             self.config.model,
-            export=self.config.export,
             **self.config.model_kwargs,
-            **self.automodel_kwargs,
+            **self.ipexmodel_kwargs,
         )
 
-    def _load_ipexmodel_with_no_weights(self) -> None:
+    def load_ipexmodel_with_no_weights(self) -> None:
         with fast_weights_init():
             original_model, self.config.model = self.config.model, self.no_weights_model
             original_export, self.config.export = self.config.export, True
-            self.logger.info("\t+ Loading no weights IPEXModel")
-            self._load_ipexmodel_from_pretrained()
+            self.load_ipexmodel_from_pretrained()
             self.config.export = original_export
             self.config.model = original_model
 
     @property
-    def automodel_kwargs(self) -> Dict[str, Any]:
+    def ipexmodel_kwargs(self) -> Dict[str, Any]:
         kwargs = {}
+
+        if self.config.export:
+            kwargs["export"] = self.config.export
 
         if self.config.torch_dtype is not None:
             kwargs["torch_dtype"] = getattr(torch, self.config.torch_dtype)

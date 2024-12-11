@@ -15,7 +15,8 @@ launcher:
 backend:
   device: cuda
   device_ids: 0
-  serving_mode: online # server-like
+  no_weights: true
+  serving_mode: online
   model: TinyLlama/TinyLlama-1.1B-Chat-v1.0
   engine_args:
     enforce_eager: true # remove for better perf but bigger memory footprint

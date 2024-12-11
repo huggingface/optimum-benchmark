@@ -11,28 +11,21 @@ class OVConfig(BackendConfig):
     version: Optional[str] = openvino_version()
     _target_: str = "optimum_benchmark.backends.openvino.backend.OVBackend"
 
-    # load options
     no_weights: bool = False
 
-    # export options
-    export: bool = True
-    use_cache: bool = True
-    use_merged: bool = False
-
-    # openvino config
-    openvino_config: Dict[str, Any] = field(default_factory=dict)
+    # ovmodel kwargs
+    export: Optional[bool] = None
+    use_cache: Optional[bool] = None
+    use_merged: Optional[bool] = None
+    load_in_8bit: Optional[bool] = None
+    load_in_4bit: Optional[bool] = None
+    ov_config: Dict[str, Any] = field(default_factory=dict)
 
     # compilation options
     half: bool = False
+    compile: bool = False
     reshape: bool = False
-
-    # quantization options
-    quantization: bool = False
-    quantization_config: Dict[str, Any] = field(default_factory=dict)
-
-    # calibration options
-    calibration: bool = False
-    calibration_config: Dict[str, Any] = field(default_factory=dict)
+    reshape_kwargs: Dict[str, int] = field(default_factory=dict)
 
     def __post_init__(self):
         super().__post_init__()
@@ -42,7 +35,7 @@ class OVConfig(BackendConfig):
             raise ValueError(f"OVBackend only supports CPU devices, got {self.device}")
 
         if self.intra_op_num_threads is not None:
-            raise NotImplementedError("OVBackend does not support intra_op_num_threads")
+            raise NotImplementedError("OVBackend does not support intra_op_num_threads. Please use the ov_config")
 
-        if self.quantization and not self.calibration:
-            raise ValueError("OpenVINO quantization requires enabling calibration.")
+        if self.inter_op_num_threads is not None:
+            raise NotImplementedError("OVBackend does not support inter_op_num_threads. Please use the ov_config")

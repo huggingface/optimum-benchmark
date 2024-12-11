@@ -1,4 +1,4 @@
-TASKS_TO_IPEXMODEL = {
+TASKS_TO_IPEXMODELS = {
     "fill-mask": "optimum.intel.IPEXModelForMaskedLM",
     "text-generation": "optimum.intel.IPEXModelForCausalLM",
     "feature-extraction": "optimum.intel.IPEXModel",

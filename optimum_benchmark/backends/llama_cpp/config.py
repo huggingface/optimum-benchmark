@@ -12,6 +12,8 @@ class LlamaCppConfig(BackendConfig):
     _target_: str = "optimum_benchmark.backends.llama_cpp.backend.LlamaCppBackend"
 
     no_weights: bool = False
+
+    # llamamodel kwargs
     filename: Optional[str] = None
 
     def __post_init__(self):

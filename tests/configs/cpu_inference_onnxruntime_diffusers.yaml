@@ -4,6 +4,7 @@ defaults:
   - _cpu_ # inherits from cpu config
   - _inference_ # inherits from inference config
   - _diffusers_ # inherits from diffusers config
+  - _export_ # inherits from export config
   - _self_ # hydra 1.1 compatibility
   - override backend: onnxruntime
 

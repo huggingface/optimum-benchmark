@@ -23,13 +23,12 @@ from optimum.onnxruntime.configuration import (
 
 from ...generators.dataset_generator import DatasetGenerator
 from ...import_utils import is_accelerate_available, is_torch_distributed_available
-from ...task_utils import TEXT_GENERATION_TASKS
 from ..base import Backend
 from ..transformers_utils import fast_weights_init
 from .config import ORTConfig
 from .utils import (
-    TASKS_TO_MODEL_TYPES_TO_ORTPIPELINES,
     TASKS_TO_ORTMODELS,
+    TASKS_TO_ORTPIPELINES,
     format_calibration_config,
     format_quantization_config,
 )
@@ -47,27 +46,14 @@ class ORTBackend(Backend[ORTConfig]):
     def __init__(self, config: ORTConfig) -> None:
         super().__init__(config)
 
-        if self.config.task in TASKS_TO_ORTMODELS:
+        if self.config.library != "diffusers" and self.config.task in TASKS_TO_ORTMODELS:
             self.ort_model_loader = get_class(TASKS_TO_ORTMODELS[self.config.task])
-            self.logger.info(f"Using ORT Model class {self.ort_model_loader.__name__}")
-        elif self.config.task in TASKS_TO_MODEL_TYPES_TO_ORTPIPELINES:
-            if self.config.model_type in TASKS_TO_MODEL_TYPES_TO_ORTPIPELINES[self.config.task]:
-                self.ort_model_loader = get_class(
-                    TASKS_TO_MODEL_TYPES_TO_ORTPIPELINES[self.config.task][self.config.model_type]
-                )
-                self.logger.info(f"Using ORT Pipeline class {self.ort_model_loader.__name__}")
-            else:
-                raise NotImplementedError(
-                    f"ORTBackend does not support model {self.config.model_type} for task {self.config.task}"
-                )
+            self.logger.info(f"Using ORTModel class {self.ort_model_loader.__name__}")
+        elif self.config.library == "diffusers" and self.config.task in TASKS_TO_ORTPIPELINES:
+            self.ort_model_loader = get_class(TASKS_TO_ORTPIPELINES[self.config.task])
+            self.logger.info(f"Using ORTDiffusionPipeline class {self.ort_model_loader.__name__}")
         else:
             raise NotImplementedError(f"ORTBackend does not support task {self.config.task}")
-
-        self.session_options = SessionOptions()
-        if self.config.session_options:
-            self.logger.info("\t+ Processing session options")
-            for key, value in self.config.session_options.items():
-                setattr(self.session_options, key, value)
 
     def validate_execution_provider(self) -> None:
         if not self.pretrained_model.providers[0] == self.config.provider:
@@ -117,22 +103,18 @@ class ORTBackend(Backend[ORTConfig]):
     def load_ortmodel_from_pretrained(self) -> None:
         self.pretrained_model = self.ort_model_loader.from_pretrained(
             self.config.model,
-            export=self.config.export,
-            session_options=self.session_options,
-            provider_options=self.config.provider_options,
-            use_io_binding=self.config.use_io_binding,
-            provider=self.config.provider,
             **self.config.model_kwargs,
             **self.ortmodel_kwargs,
         )
 
     def load_ortmodel_with_no_weights(self) -> None:
-        original_model, self.config.model = self.config.model, self.no_weights_model
-
         with fast_weights_init():
+            original_model, self.config.model = self.config.model, self.no_weights_model
+            original_export, self.config.export = self.config.export, True
+            self.logger.info("\t+ Loading no weights ORTModel")
             self.load_ortmodel_from_pretrained()
-
-        self.config.model = original_model
+            self.config.export = original_export
+            self.config.model = original_model
 
     @property
     def is_optimized(self) -> bool:
@@ -147,16 +129,34 @@ class ORTBackend(Backend[ORTConfig]):
         return (self.config.auto_calibration is not None) or self.config.calibration
 
     @property
-    def is_dp_distributed(self) -> bool:
-        return is_torch_distributed_available() and torch.distributed.is_initialized()
-
-    @property
     def ortmodel_kwargs(self) -> Dict[str, Any]:
         kwargs = {}
 
-        if self.config.task in TEXT_GENERATION_TASKS:
+        if self.config.export is not None:
+            kwargs["export"] = self.config.export
+
+        if self.config.provider is not None:
+            kwargs["provider"] = self.config.provider
+
+        if self.config.use_cache is not None:
             kwargs["use_cache"] = self.config.use_cache
+
+        if self.config.use_merged is not None:
             kwargs["use_merged"] = self.config.use_merged
+
+        if self.config.torch_dtype is not None:
+            kwargs["torch_dtype"] = self.config.torch_dtype
+
+        if self.config.use_io_binding is not None:
+            kwargs["use_io_binding"] = self.config.use_io_binding
+
+        if self.config.session_options:
+            kwargs["session_options"] = SessionOptions()
+            for key, value in self.config.session_options.items():
+                setattr(kwargs["session_options"], key, value)
+
+        if self.config.provider_options:
+            kwargs["provider_options"] = self.config.provider_options
 
         return kwargs
 
@@ -223,7 +223,7 @@ class ORTBackend(Backend[ORTConfig]):
 
         if self.is_calibrated:
             self.logger.info("\t+ Generating calibration dataset")
-            dataset_shapes = {"dataset_size": 1, "sequence_length": 1, **self.model_shapes}
+            dataset_shapes = {"dataset_size": 2, "sequence_length": 2, "num_choices": 2}
             calibration_dataset = DatasetGenerator(
                 task=self.config.task, dataset_shapes=dataset_shapes, model_shapes=self.model_shapes
             )()
@@ -275,8 +275,10 @@ class ORTBackend(Backend[ORTConfig]):
                 preprocessor=None,
                 file_suffix="",
             )
+
         if self.pretrained_processor is not None:
             self.pretrained_processor.save_pretrained(self.quantized_model)
+
         if self.pretrained_config is not None:
             self.pretrained_config.save_pretrained(self.quantized_model)
 
@@ -289,13 +291,13 @@ class ORTBackend(Backend[ORTConfig]):
             with Accelerator().split_between_processes(inputs=inputs, apply_padding=False) as process_inputs:
                 inputs = process_inputs
 
-        for key in list(inputs.keys()):
-            if hasattr(self.pretrained_model, "input_names") and key not in self.pretrained_model.input_names:
-                inputs.pop(key)
-
         for key, value in inputs.items():
             if isinstance(value, torch.Tensor):
                 inputs[key] = value.to(self.config.device)
+
+        for key in list(inputs.keys()):
+            if hasattr(self.pretrained_model, "input_names") and key not in self.pretrained_model.input_names:
+                inputs.pop(key)
 
         return inputs
 

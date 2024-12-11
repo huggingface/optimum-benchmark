@@ -1,4 +1,7 @@
-backend:
-  library: diffusers
-  task: text-to-image
-  model: hf-internal-testing/tiny-stable-diffusion-torch
+hydra:
+  mode: MULTIRUN
+  sweeper:
+    params:
+      backend.library: diffusers
+      backend.task: text-to-image
+      backend.model: hf-internal-testing/tiny-stable-diffusion-torch

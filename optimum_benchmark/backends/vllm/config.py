@@ -54,11 +54,3 @@ class VLLMConfig(BackendConfig):
         if self.serving_mode == "online":
             if self.engine_args.get("disable_log_requests", None) is None:
                 self.engine_args["disable_log_requests"] = True
-
-    def to_engine_args(self) -> Dict[str, Any]:
-        return dict(
-            model=self.model,
-            tokenizer=self.processor,
-            device=self.device,
-            **self.engine_args,
-        )
