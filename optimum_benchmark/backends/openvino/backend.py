@@ -9,7 +9,7 @@ from ...import_utils import is_accelerate_available, is_torch_distributed_availa
 from ..base import Backend
 from ..transformers_utils import fast_weights_init
 from .config import OVConfig as OVBackendConfig
-from .utils import TASKS_OVPIPELINE, TASKS_TO_OVMODEL
+from .utils import TASKS_TO_OVMODELS, TASKS_TO_OVPIPELINES
 
 if is_accelerate_available():
     from accelerate import Accelerator
@@ -24,11 +24,11 @@ class OVBackend(Backend[OVBackendConfig]):
     def __init__(self, config: OVBackendConfig) -> None:
         super().__init__(config)
 
-        if self.config.task in TASKS_TO_OVMODEL:
-            self.ovmodel_class = get_class(TASKS_TO_OVMODEL[self.config.task])
+        if self.config.library != "diffusers" and self.config.task in TASKS_TO_OVMODELS:
+            self.ovmodel_class = get_class(TASKS_TO_OVMODELS[self.config.task])
             self.logger.info(f"\t+ Using OVModel class {self.ovmodel_class.__name__}")
-        elif self.config.task in TASKS_OVPIPELINE:
-            self.ovmodel_class = get_class(TASKS_OVPIPELINE[self.config.task])
+        elif self.config.library == "diffusers" and self.config.task in TASKS_TO_OVPIPELINES:
+            self.ovmodel_class = get_class(TASKS_TO_OVPIPELINES[self.config.task])
             self.logger.info(f"\t+ Using OVDiffusionPipeline class {self.ovmodel_class.__name__}")
         else:
             raise NotImplementedError(f"OVBackend does not support task {self.config.task}")

@@ -9,7 +9,7 @@ from ...import_utils import is_accelerate_available, is_torch_distributed_availa
 from ..base import Backend
 from ..transformers_utils import fast_weights_init
 from .config import IPEXConfig
-from .utils import TASKS_TO_IPEXMODEL
+from .utils import TASKS_TO_IPEXMODELS
 
 if is_accelerate_available():
     from accelerate import Accelerator
@@ -24,8 +24,8 @@ class IPEXBackend(Backend[IPEXConfig]):
     def __init__(self, config: IPEXConfig) -> None:
         super().__init__(config)
 
-        if self.config.task in TASKS_TO_IPEXMODEL:
-            self.ipexmodel_class = get_class(TASKS_TO_IPEXMODEL[self.config.task])
+        if self.config.task in TASKS_TO_IPEXMODELS:
+            self.ipexmodel_class = get_class(TASKS_TO_IPEXMODELS[self.config.task])
             self.logger.info(f"\t+ Using IPEXModel class {self.ipexmodel_class.__name__}")
         else:
             raise NotImplementedError(f"IPEXBackend does not support task {self.config.task}")

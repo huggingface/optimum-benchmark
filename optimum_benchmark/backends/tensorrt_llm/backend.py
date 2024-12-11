@@ -12,7 +12,7 @@ from ...task_utils import TEXT_GENERATION_TASKS
 from ..base import Backend
 from ..transformers_utils import fast_weights_init
 from .config import TRTLLMConfig
-from .utils import MODEL_TYPE_TO_TRTLLMMODEL
+from .utils import MODEL_TYPE_TO_TRTLLMMODELS
 
 
 class TRTLLMBackend(Backend[TRTLLMConfig]):
@@ -21,8 +21,8 @@ class TRTLLMBackend(Backend[TRTLLMConfig]):
     def __init__(self, config: TRTLLMConfig):
         super().__init__(config)
 
-        if self.config.model_type in MODEL_TYPE_TO_TRTLLMMODEL:
-            self.trtllm_loader = get_class(MODEL_TYPE_TO_TRTLLMMODEL[self.config.model_type])
+        if self.config.model_type in MODEL_TYPE_TO_TRTLLMMODELS:
+            self.trtllm_loader = get_class(MODEL_TYPE_TO_TRTLLMMODELS[self.config.model_type])
             self.logger.info(f"\t+ Using TRTLLMModel class {self.trtllm_loader.__name__}")
         else:
             raise NotImplementedError(f"TRTLLMBackend does not support model_type {self.config.model_type}")

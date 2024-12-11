@@ -28,7 +28,7 @@ from ..transformers_utils import fast_weights_init
 from .config import ORTConfig
 from .utils import (
     TASKS_TO_ORTMODELS,
-    TASKS_TO_ORTPIPELINE,
+    TASKS_TO_ORTPIPELINES,
     format_calibration_config,
     format_quantization_config,
 )
@@ -49,8 +49,8 @@ class ORTBackend(Backend[ORTConfig]):
         if self.config.library != "diffusers" and self.config.task in TASKS_TO_ORTMODELS:
             self.ort_model_loader = get_class(TASKS_TO_ORTMODELS[self.config.task])
             self.logger.info(f"Using ORTModel class {self.ort_model_loader.__name__}")
-        elif self.config.library == "diffusers" and self.config.task in TASKS_TO_ORTPIPELINE:
-            self.ort_model_loader = get_class(TASKS_TO_ORTPIPELINE[self.config.task])
+        elif self.config.library == "diffusers" and self.config.task in TASKS_TO_ORTPIPELINES:
+            self.ort_model_loader = get_class(TASKS_TO_ORTPIPELINES[self.config.task])
             self.logger.info(f"Using ORTDiffusionPipeline class {self.ort_model_loader.__name__}")
         else:
             raise NotImplementedError(f"ORTBackend does not support task {self.config.task}")

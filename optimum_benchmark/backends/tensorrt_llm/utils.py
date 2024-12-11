@@ -1,1 +1,1 @@
-MODEL_TYPE_TO_TRTLLMMODEL = {"llama": "optimum.nvidia.models.llama.LlamaForCausalLM"}
+MODEL_TYPE_TO_TRTLLMMODELS = {"llama": "optimum.nvidia.models.llama.LlamaForCausalLM"}

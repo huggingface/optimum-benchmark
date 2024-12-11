@@ -7,7 +7,7 @@ TASKS_TO_ORTMODELS = {
     task: f"optimum.onnxruntime.{task_dict['class'][0].__name__}" for task, task_dict in ORT_SUPPORTED_TASKS.items()
 }
 
-TASKS_TO_ORTPIPELINE = {
+TASKS_TO_ORTPIPELINES = {
     "inpainting": "optimum.onnxruntime.ORTPipelineForInpainting",
     "text-to-image": "optimum.onnxruntime.ORTPipelineForText2Image",
     "image-to-image": "optimum.onnxruntime.ORTPipelineForImage2Image",
