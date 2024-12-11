@@ -45,7 +45,6 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e .[testing]
-          pip install huggingface-cli[cli]
 
       - name: Run tests
         run: |
@@ -58,7 +57,7 @@ jobs:
           }}
         name: Run examples
         run: |
-
+          pip install huggingface-cli[cli]
           huggingface-cli delete-cache
           pytest tests/test_examples.py -x -s -k "cli and cuda and trt"
 
