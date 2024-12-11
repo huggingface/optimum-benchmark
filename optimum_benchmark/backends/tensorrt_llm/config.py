@@ -22,12 +22,11 @@ class TRTLLMConfig(BackendConfig):
     use_fp8: Optional[bool] = None
     world_size: Optional[int] = None
     gpus_per_node: Optional[int] = None
-    use_cuda_graph: Optional[bool] = None
-    optimization_level: Optional[int] = None
-    max_prompt_length: Optional[int] = None
-    max_new_tokens: Optional[int] = None
     max_batch_size: Optional[int] = None
-    max_beam_width: Optional[int] = None
+    max_new_tokens: Optional[int] = None
+    max_prompt_length: Optional[int] = None
+    optimization_level: Optional[int] = None
+    use_cuda_graph: Optional[bool] = None
 
     def __post_init__(self) -> None:
         super().__post_init__()

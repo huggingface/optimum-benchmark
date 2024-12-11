@@ -128,20 +128,20 @@ class TRTLLMBackend(Backend[TRTLLMConfig]):
         if self.config.gpus_per_node is not None:
             kwargs["gpus_per_node"] = self.config.gpus_per_node
 
-        if self.config.use_cuda_graph is not None:
-            kwargs["use_cuda_graph"] = self.config.use_cuda_graph
-
-        if self.config.optimization_level is not None:
-            kwargs["optimization_level"] = self.config.optimization_level
-
-        if self.config.max_prompt_length is not None:
-            kwargs["max_prompt_length"] = self.config.max_prompt_length
+        if self.config.max_batch_size is not None:
+            kwargs["max_batch_size"] = self.config.max_batch_size
 
         if self.config.max_new_tokens is not None:
             kwargs["max_new_tokens"] = self.config.max_new_tokens
 
-        if self.config.max_beam_width is not None:
-            kwargs["max_beam_width"] = self.config.max_beam_width
+        if self.config.max_prompt_length is not None:
+            kwargs["max_prompt_length"] = self.config.max_prompt_length
+
+        if self.config.optimization_level is not None:
+            kwargs["optimization_level"] = self.config.optimization_level
+
+        if self.config.use_cuda_graph is not None:
+            kwargs["use_cuda_graph"] = self.config.use_cuda_graph
 
         return kwargs
 
