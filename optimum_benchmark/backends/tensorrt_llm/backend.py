@@ -147,10 +147,36 @@ class TRTLLMBackend(Backend[TRTLLMConfig]):
 
     def prefill(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         return self.pretrained_model.generate(
-            inputs=inputs.get("input_ids"), attention_mask=inputs.get("attention_mask"), **kwargs
+            input_ids=inputs.get("input_ids"),
+            attention_mask=inputs.get("attention_mask"),
+            min_length=kwargs.get("min_new_tokens", None),
+            max_new_tokens=kwargs.get("max_new_tokens", None),
+            repetition_penalty=kwargs.get("repetition_penalty", None),
+            length_penalty=kwargs.get("length_penalty", None),
+            pad_token_id=kwargs.get("pad_token_id", None),
+            bos_token_id=kwargs.get("bos_token_id", None),
+            eos_token_id=kwargs.get("eos_token_id", None),
+            temperature=kwargs.get("temperature", None),
+            num_beams=kwargs.get("num_beams", None),
+            top_p=kwargs.get("top_p", None),
+            top_k=kwargs.get("top_k", None),
+            seed=kwargs.get("seed", None),
         )
 
     def generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
         return self.pretrained_model.generate(
-            inputs=inputs.get("input_ids"), attention_mask=inputs.get("attention_mask"), **kwargs
+            input_ids=inputs.get("input_ids"),
+            attention_mask=inputs.get("attention_mask"),
+            min_length=kwargs.get("min_new_tokens", None),
+            max_new_tokens=kwargs.get("max_new_tokens", None),
+            repetition_penalty=kwargs.get("repetition_penalty", None),
+            length_penalty=kwargs.get("length_penalty", None),
+            pad_token_id=kwargs.get("pad_token_id", None),
+            bos_token_id=kwargs.get("bos_token_id", None),
+            eos_token_id=kwargs.get("eos_token_id", None),
+            temperature=kwargs.get("temperature", None),
+            num_beams=kwargs.get("num_beams", None),
+            top_p=kwargs.get("top_p", None),
+            top_k=kwargs.get("top_k", None),
+            seed=kwargs.get("seed", None),
         )

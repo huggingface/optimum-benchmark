@@ -12,8 +12,11 @@ backend:
   device: cpu
   reshape: true
   no_weights: true
-  load_in_8bit: false # enable 8bit on compatible Intel CPU machines
+  load_in_8bit: true
   model: google-bert/bert-base-uncased
+  reshape_kwargs:
+    batch_size: 1
+    sequence_length: 128
 
 scenario:
   memory: true

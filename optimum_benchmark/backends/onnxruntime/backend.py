@@ -223,7 +223,7 @@ class ORTBackend(Backend[ORTConfig]):
 
         if self.is_calibrated:
             self.logger.info("\t+ Generating calibration dataset")
-            dataset_shapes = {"dataset_size": 1, "sequence_length": 1, **self.model_shapes}
+            dataset_shapes = {"dataset_size": 2, "sequence_length": 2, "num_choices": 2}
             calibration_dataset = DatasetGenerator(
                 task=self.config.task, dataset_shapes=dataset_shapes, model_shapes=self.model_shapes
             )()
@@ -275,8 +275,10 @@ class ORTBackend(Backend[ORTConfig]):
                 preprocessor=None,
                 file_suffix="",
             )
+
         if self.pretrained_processor is not None:
             self.pretrained_processor.save_pretrained(self.quantized_model)
+
         if self.pretrained_config is not None:
             self.pretrained_config.save_pretrained(self.quantized_model)
 

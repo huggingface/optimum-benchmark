@@ -8,14 +8,14 @@ defaults:
 
 name: mps_pytorch_bert
 
-scenario:
-  latency: true
-  memory: true
-  input_shapes:
-    batch_size: 1
-    sequence_length: 128
-
 backend:
   device: mps
   no_weights: true
   model: bert-base-uncased
+
+scenario:
+  memory: true
+  latency: true
+  input_shapes:
+    batch_size: 1
+    sequence_length: 128
