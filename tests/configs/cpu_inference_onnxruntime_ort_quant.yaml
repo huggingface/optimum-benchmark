@@ -5,6 +5,7 @@ defaults:
   - _inference_ # inherits from inference config
   - _ort_quant_ # inherits from ort static quant config
   - _no_weights_ # inherits from no weights sweep config
+  - _export_ # inherits from export config
   - _self_ # hydra 1.1 compatibility
   - override backend: onnxruntime
 
