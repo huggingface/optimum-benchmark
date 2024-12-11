@@ -118,8 +118,6 @@ class InferenceScenario(Scenario[InferenceConfig]):
                 device_ids=self.backend.config.device_ids,
             )
 
-        self.run_model_loading_tracking()
-
         self.logger.info(f"\t+ Generating inputs for task {self.backend.config.task}")
         self.inputs = InputGenerator(
             task=self.backend.config.task,
@@ -127,8 +125,14 @@ class InferenceScenario(Scenario[InferenceConfig]):
             model_type=self.backend.config.model_type,
             input_shapes=self.config.input_shapes,
         )()
-        self.logger.info(f"\t+ Preparing inputs for backend {self.backend.config.name}")
-        self.inputs = self.backend.prepare_inputs(inputs=self.inputs)
+
+        self.logger.info(f"\t+ Preparing inputs for backend {self.backend.config.name} before model loading.")
+        self.inputs = self.backend.prepare_inputs_before_load(inputs=self.inputs)
+
+        self.run_model_loading_tracking()
+
+        self.logger.info(f"\t+ Preparing inputs for backend {self.backend.config.name} after model loading.")
+        self.inputs = self.backend.prepare_inputs_after_load(inputs=self.inputs)
 
         if self.config.warmup_runs > 0:
             if self.backend.config.task in TEXT_GENERATION_TASKS:
