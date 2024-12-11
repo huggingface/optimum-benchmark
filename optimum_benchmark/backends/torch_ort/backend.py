@@ -39,19 +39,17 @@ class TorchORTBackend(Backend[TorchORTConfig]):
         self.tmpdir.cleanup()
 
     def load_automodel_with_no_weights(self) -> None:
-        original_model, self.config.model = self.config.model, self.no_weights_model
-
         with fast_weights_init():
+            original_model, self.config.model = self.config.model, self.no_weights_model
             self.load_automodel_from_pretrained()
-
-        self.logger.info("\t+ Tying model weights")
-        self.pretrained_model.tie_weights()
-
-        self.config.model = original_model
+            self.pretrained_model.tie_weights()
+            self.config.model = original_model
 
     def load_automodel_from_pretrained(self) -> None:
         self.pretrained_model = self.automodel_loader.from_pretrained(
-            self.config.model, **self.automodel_kwargs, **self.config.model_kwargs
+            self.config.model,
+            **self.config.model_kwargs,
+            **self.automodel_kwargs,
         ).to(self.config.device)
 
     @property

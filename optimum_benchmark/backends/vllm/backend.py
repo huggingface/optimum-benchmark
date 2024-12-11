@@ -6,7 +6,10 @@ from typing import Any, Dict, Union
 import torch
 from huggingface_hub.constants import HUGGINGFACE_HUB_CACHE
 from safetensors.torch import save_file
-from vllm import AsyncEngineArgs, AsyncLLMEngine, EngineArgs, LLMEngine, SamplingParams
+from vllm.engine.arg_utils import AsyncEngineArgs, EngineArgs
+from vllm.engine.async_llm_engine import AsyncLLMEngine
+from vllm.engine.llm_engine import LLMEngine
+from vllm.sampling_params import SamplingParams
 
 from ...task_utils import TEXT_GENERATION_TASKS
 from ..base import Backend
@@ -32,7 +35,7 @@ class VLLMBackend(Backend[VLLMConfig]):
             self.logger.info("\t+ Creating no weights model")
             self.create_no_weights_model()
             self.logger.info("\t+ Loading no weights model")
-            self.load_model_with_no_weights()
+            self.load_vllm_with_no_weights()
         else:
             self.logger.info("\t+ Downloading pretrained model")
             self.download_pretrained_model()
@@ -40,7 +43,7 @@ class VLLMBackend(Backend[VLLMConfig]):
                 self.logger.info("\t+ Preparing generation config")
                 self.prepare_generation_config()
             self.logger.info("\t+ Loading pretrained model")
-            self.load_model_from_pretrained()
+            self.load_vllm_from_pretrained()
 
         self.logger.info("\t+ Cleaning up backend temporary directory")
         self.tmpdir.cleanup()
@@ -52,13 +55,11 @@ class VLLMBackend(Backend[VLLMConfig]):
     def prepare_generation_config(self) -> None:
         self.generation_config.eos_token_id = None
         self.generation_config.pad_token_id = None
-
         model_cache_folder = f"models/{self.config.model}".replace("/", "--")
         model_cache_path = f"{HUGGINGFACE_HUB_CACHE}/{model_cache_folder}"
         snapshot_file = f"{model_cache_path}/refs/{self.config.model_kwargs.get('revision', 'main')}"
         snapshot_ref = open(snapshot_file, "r").read().strip()
         model_snapshot_path = f"{model_cache_path}/snapshots/{snapshot_ref}"
-        self.logger.info("\t+ Saving new pretrained generation config")
         self.generation_config.save_pretrained(save_directory=model_snapshot_path)
 
     def create_no_weights_model(self) -> None:
@@ -92,19 +93,27 @@ class VLLMBackend(Backend[VLLMConfig]):
             self.logger.info("\t+ Saving new pretrained generation config")
             self.generation_config.save_pretrained(save_directory=self.no_weights_model)
 
-    def load_model_with_no_weights(self) -> None:
+    def load_vllm_with_no_weights(self) -> None:
         original_model, self.config.model = self.config.model, self.no_weights_model
-        self.logger.info("\t+ Loading no weights model")
-        self.load_model_from_pretrained()
+        self.load_vllm_from_pretrained()
         self.config.model = original_model
 
-    def load_model_from_pretrained(self) -> None:
+    def load_vllm_from_pretrained(self) -> None:
         if self.config.serving_mode == "offline":
-            self.pretrained_model = LLMEngine.from_engine_args(EngineArgs(**self.config.to_engine_args()))
+            self.pretrained_model = LLMEngine.from_engine_args(EngineArgs(**self.vllm_kwargs))
         else:
-            self.pretrained_model = AsyncLLMEngine.from_engine_args(AsyncEngineArgs(**self.config.to_engine_args()))
+            self.pretrained_model = AsyncLLMEngine.from_engine_args(AsyncEngineArgs(**self.vllm_kwargs))
 
-    def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+    @property
+    def vllm_kwargs(self):
+        return {
+            "model": self.config.model,
+            "tokenizer": self.config.processor,
+            "device": self.config.device,
+            **self.config.engine_args,
+        }
+
+    def prepare_inputs_before_load(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         if self.config.task in TEXT_GENERATION_TASKS:
             inputs = {"prompts": self.pretrained_processor.batch_decode(inputs["input_ids"])}
         else:
