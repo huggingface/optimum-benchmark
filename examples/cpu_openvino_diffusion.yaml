@@ -11,6 +11,7 @@ name: openvino_diffusion
 backend:
   device: cpu
   export: true
+  task: text-to-image
   model: stabilityai/stable-diffusion-2-1
   half: false # enable half-precision on compatible Intel CPU machines
 
