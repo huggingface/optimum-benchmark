@@ -33,7 +33,7 @@ jobs:
     with:
       machine_type: single-gpu
       install_extras: testing,timm,diffusers,codecarbon
-      test_file: tests/test_api.py
+      test_file: test_api.py
       pytest_keywords: api and cuda
     secrets:
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
