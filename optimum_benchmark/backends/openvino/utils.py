@@ -10,10 +10,8 @@ TASKS_TO_OVMODEL = {
     "audio-classification": "optimum.intel.openvino.OVModelForAudioClassification",
     "pix2struct": "optimum.intel.openvino.OVModelForPix2Struct",
 }
-TASKS_TO_MODEL_TYPES_TO_OVPIPELINE = {
-    "text-to-image": {
-        "lcm": "optimum.intel.openvino.OVLatentConsistencyModelPipeline",
-        "stable-diffusion": "optimum.intel.openvino.OVStableDiffusionPipeline",
-        "stable-diffusion-xl": "optimum.intel.openvino.OVStableDiffusionXLPipeline",
-    },
+TASKS_OVPIPELINE = {
+    "inpainting": "optimum.intel.openvino.OVPipelineForInpainting",
+    "text-to-image": "optimum.intel.openvino.OVPipelineForText2Image",
+    "image-to-image": "optimum.intel.openvino.OVPipelineForImage2Image",
 }
