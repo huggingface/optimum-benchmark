@@ -4,7 +4,7 @@ from typing import Optional
 from ...import_utils import tesnorrt_llm_version
 from ..config import BackendConfig
 
-SUPPORTED_DTYPES = ["float16", "bfloat16", "float32"]
+SUPPORTED_DTYPES = [None, "float16", "bfloat16", "float32"]
 
 
 @dataclass
@@ -38,8 +38,13 @@ class TRTLLMConfig(BackendConfig):
         if self.dtype not in SUPPORTED_DTYPES:
             raise ValueError(f"dtype must be one of float16, bfloat16, float32, got {self.dtype}")
 
-        if self.gpus_per_node != self.world_size:
+        if self.gpus_per_node is not None and self.world_size is not None and self.gpus_per_node != self.world_size:
             raise ValueError(f"gpus_per_node ({self.gpus_per_node}) != world_size ({self.world_size})")
 
-        if self.world_size != self.pp * self.tp:
+        if (
+            self.world_size is not None
+            and self.pp is not None
+            and self.tp is not None
+            and self.world_size != self.pp * self.tp
+        ):
             raise ValueError(f"world_size ({self.gpus_per_node}) != pp ({self.pp}) * tp ({self.tp})")

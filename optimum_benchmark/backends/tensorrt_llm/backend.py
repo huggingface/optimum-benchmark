@@ -137,7 +137,7 @@ class TRTLLMBackend(Backend[TRTLLMConfig]):
         if self.config.max_prompt_length is not None:
             kwargs["max_prompt_length"] = self.config.max_prompt_length
 
-        if self.config.tp is not None:
+        if self.config.max_new_tokens is not None:
             kwargs["max_new_tokens"] = self.config.max_new_tokens
 
         if self.config.max_beam_width is not None:
