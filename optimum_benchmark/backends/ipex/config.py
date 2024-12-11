@@ -13,17 +13,17 @@ class IPEXConfig(BackendConfig):
     version: Optional[str] = ipex_version()
     _target_: str = "optimum_benchmark.backends.ipex.backend.IPEXBackend"
 
-    # load options
     no_weights: bool = False
-    torch_dtype: Optional[str] = None
 
-    # export options
-    export: bool = True
+    # ipexmodel kwargs
+    export: Optional[bool] = None
+    torch_dtype: Optional[str] = None
 
     def __post_init__(self):
         super().__post_init__()
 
         self.device = self.device.lower()
+
         if self.device not in ["cpu", "gpu"]:
             raise ValueError(f"IPEXBackend only supports CPU devices, got {self.device}")
 
