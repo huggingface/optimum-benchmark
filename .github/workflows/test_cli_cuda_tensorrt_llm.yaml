@@ -57,7 +57,6 @@ jobs:
           }}
         name: Run examples
         run: |
-          rm -rf /root/.cache/huggingface
           pytest tests/test_examples.py -x -s -k "cli and cuda and trt"
 
   cli_cuda_tensorrt_llm_multi_gpu_tests:
