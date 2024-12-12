@@ -55,7 +55,6 @@ class TRTLLMBackend(Backend[TRTLLMConfig]):
     def prepare_generation_config(self) -> None:
         self.generation_config.eos_token_id = None
         self.generation_config.pad_token_id = None
-
         model_cache_folder = f"models/{self.config.model}".replace("/", "--")
         model_cache_path = f"{HUGGINGFACE_HUB_CACHE}/{model_cache_folder}"
         snapshot_file = f"{model_cache_path}/refs/{self.config.model_kwargs.get('revision', 'main')}"
@@ -91,7 +90,6 @@ class TRTLLMBackend(Backend[TRTLLMConfig]):
             self.logger.info("\t+ Modifying generation config for fixed length generation")
             self.generation_config.eos_token_id = None
             self.generation_config.pad_token_id = None
-            self.logger.info("\t+ Saving new pretrained generation config")
             self.generation_config.save_pretrained(save_directory=self.no_weights_model)
 
     def load_trtllm_with_no_weights(self) -> None:
@@ -127,6 +125,12 @@ class TRTLLMBackend(Backend[TRTLLMConfig]):
 
         if self.config.gpus_per_node is not None:
             kwargs["gpus_per_node"] = self.config.gpus_per_node
+
+        if self.config.max_input_len is not None:
+            kwargs["max_input_len"] = self.config.max_input_len
+
+        if self.config.max_output_len is not None:
+            kwargs["max_output_len"] = self.config.max_output_len
 
         if self.config.max_batch_size is not None:
             kwargs["max_batch_size"] = self.config.max_batch_size

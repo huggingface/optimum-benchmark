@@ -242,13 +242,13 @@ def infer_task_from_model_name_or_path(
     elif library_name == "timm":
         inferred_task_name = "image-classification"
 
-    elif library_name == "diffusers":
-        diffusers_config = get_repo_config(model_name_or_path, "model_index.json", token=token, revision=revision)
-        target_class_name = diffusers_config["_class_name"]
+    elif library_name == "transformers":
+        transformers_config = get_repo_config(model_name_or_path, "config.json", token=token, revision=revision)
+        target_class_name = transformers_config["architectures"][0]
 
-        for task_name, pipeline_mapping in TASKS_TO_PIPELINE_TYPES_TO_PIPELINE_CLASS_NAMES.items():
-            for _, pipeline_class_name in pipeline_mapping.items():
-                if target_class_name == pipeline_class_name:
+        for task_name, model_mapping in TASKS_TO_MODEL_TYPES_TO_MODEL_CLASS_NAMES.items():
+            for _, model_class_name in model_mapping.items():
+                if target_class_name == model_class_name:
                     inferred_task_name = task_name
                     break
             if inferred_task_name is not None:
@@ -257,13 +257,13 @@ def infer_task_from_model_name_or_path(
         if inferred_task_name is None:
             raise KeyError(f"Could not find the proper task name for target class name {target_class_name}.")
 
-    elif library_name == "transformers":
-        transformers_config = get_repo_config(model_name_or_path, "config.json", token=token, revision=revision)
-        target_class_name = transformers_config["architectures"][0]
+    elif library_name == "diffusers":
+        diffusers_config = get_repo_config(model_name_or_path, "model_index.json", token=token, revision=revision)
+        target_class_name = diffusers_config["_class_name"]
 
-        for task_name, model_mapping in TASKS_TO_MODEL_TYPES_TO_MODEL_CLASS_NAMES.items():
-            for _, model_class_name in model_mapping.items():
-                if target_class_name == model_class_name:
+        for task_name, pipeline_mapping in TASKS_TO_PIPELINE_TYPES_TO_PIPELINE_CLASS_NAMES.items():
+            for _, pipeline_class_name in pipeline_mapping.items():
+                if target_class_name == pipeline_class_name or (pipeline_class_name in target_class_name):
                     inferred_task_name = task_name
                     break
             if inferred_task_name is not None:
@@ -293,13 +293,17 @@ def infer_model_type_from_model_name_or_path(
         timm_config = get_repo_config(model_name_or_path, "config.json", token=token, revision=revision)
         inferred_model_type = timm_config["architecture"]
 
+    elif library_name == "transformers":
+        transformers_config = get_repo_config(model_name_or_path, "config.json", token=token, revision=revision)
+        inferred_model_type = transformers_config["model_type"]
+
     elif library_name == "diffusers":
         diffusers_config = get_repo_config(model_name_or_path, "model_index.json", token=token, revision=revision)
         target_class_name = diffusers_config["_class_name"]
 
         for _, pipeline_mapping in TASKS_TO_PIPELINE_TYPES_TO_PIPELINE_CLASS_NAMES.items():
             for pipeline_type, pipeline_class_name in pipeline_mapping.items():
-                if target_class_name == pipeline_class_name:
+                if target_class_name == pipeline_class_name or (pipeline_class_name in target_class_name):
                     inferred_model_type = pipeline_type
                     break
             if inferred_model_type is not None:
@@ -307,9 +311,5 @@ def infer_model_type_from_model_name_or_path(
 
         if inferred_model_type is None:
             raise KeyError(f"Could not find the proper model type for target class name {target_class_name}.")
-
-    elif library_name == "transformers":
-        transformers_config = get_repo_config(model_name_or_path, "config.json", token=token, revision=revision)
-        inferred_model_type = transformers_config["model_type"]
 
     return inferred_model_type
