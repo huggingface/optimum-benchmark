@@ -22,6 +22,8 @@ class TRTLLMConfig(BackendConfig):
     use_fp8: Optional[bool] = None
     world_size: Optional[int] = None
     gpus_per_node: Optional[int] = None
+    max_input_len: Optional[int] = None
+    max_output_len: Optional[int] = None
     max_batch_size: Optional[int] = None
     max_new_tokens: Optional[int] = None
     max_prompt_length: Optional[int] = None

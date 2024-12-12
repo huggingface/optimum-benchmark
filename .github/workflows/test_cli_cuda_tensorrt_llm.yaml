@@ -44,7 +44,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -e .[testing,tesnsorrt-llm]
+          pip install -e .[testing]
 
       - name: Run tests
         run: |
@@ -84,7 +84,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -e .[testing,tesnsorrt-llm]
+          pip install -e .[testing]
 
       - name: Run tests (sequential)
         run: |
