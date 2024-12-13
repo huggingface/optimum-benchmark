@@ -76,7 +76,9 @@ class PyTXIConfig(BackendConfig):
             renderDs = [file for file in os.listdir("/dev/dri") if file.startswith("renderD")]
             self.devices = ["/dev/kfd"] + [f"/dev/dri/{renderDs[i]}" for i in ids]
 
-        # TGI specific
-        if self.task in TEXT_GENERATION_TASKS:
-            if self.trust_remote_code is None:
-                self.trust_remote_code = self.model_kwargs.get("trust_remote_code", False)
+        # Common options
+        if self.max_concurrent_requests is None:
+            if self.task in TEXT_GENERATION_TASKS:
+                self.max_concurrent_requests = 128
+            elif self.task in TEXT_EMBEDDING_TASKS:
+                self.max_concurrent_requests = 512
