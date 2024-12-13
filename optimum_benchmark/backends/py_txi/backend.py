@@ -53,7 +53,6 @@ class PyTXIBackend(Backend[PyTXIConfig]):
     def prepare_generation_config(self) -> None:
         self.generation_config.eos_token_id = None
         self.generation_config.pad_token_id = None
-
         model_cache_folder = f"models/{self.config.model}".replace("/", "--")
         model_cache_path = f"{self.volume}/{model_cache_folder}"
         snapshot_file = f"{model_cache_path}/refs/{self.config.model_kwargs.get('revision', 'main')}"
@@ -95,8 +94,7 @@ class PyTXIBackend(Backend[PyTXIConfig]):
 
     def load_model_with_no_weights(self) -> None:
         original_volumes, self.config.volumes = self.config.volumes, {self.tmpdir.name: {"bind": "/data", "mode": "rw"}}
-        original_model, self.config.model = self.config.model, "/data/no_weights_model"
-        self.logger.info("\t+ Loading no weights model")
+        original_model, self.config.model = self.config.model, "/data/no_weights_model/"
         self.load_model_from_pretrained()
         self.config.model, self.config.volumes = original_model, original_volumes
 

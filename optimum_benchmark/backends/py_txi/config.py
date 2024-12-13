@@ -22,7 +22,7 @@ class PyTXIConfig(BackendConfig):
     # Image to use for the container
     image: Optional[str] = None
     # Shared memory size for the container
-    shm_size: str = "1g"
+    shm_size: Optional[str] = None
     # List of custom devices to forward to the container e.g. ["/dev/kfd", "/dev/dri"] for ROCm
     devices: Optional[List[str]] = None
     # NVIDIA-docker GPU device options e.g. "all" (all) or "0,1,2,3" (ids) or 4 (count)
@@ -41,9 +41,13 @@ class PyTXIConfig(BackendConfig):
         metadata={"help": "List of environment variables to forward to the container from the host."},
     )
 
+    # first connection/request
+    connection_timeout: int = 60
+    first_request_timeout: int = 60
+    max_concurrent_requests: Optional[int] = None
+
     # Common options
     dtype: Optional[str] = None
-    max_concurrent_requests: Optional[int] = None
 
     # TGI specific
     sharded: Optional[str] = None
@@ -71,13 +75,6 @@ class PyTXIConfig(BackendConfig):
             ids = list(map(int, self.device_ids.split(",")))
             renderDs = [file for file in os.listdir("/dev/dri") if file.startswith("renderD")]
             self.devices = ["/dev/kfd"] + [f"/dev/dri/{renderDs[i]}" for i in ids]
-
-        # Common options
-        if self.max_concurrent_requests is None:
-            if self.task in TEXT_GENERATION_TASKS:
-                self.max_concurrent_requests = 128
-            elif self.task in TEXT_EMBEDDING_TASKS:
-                self.max_concurrent_requests = 512
 
         # TGI specific
         if self.task in TEXT_GENERATION_TASKS:

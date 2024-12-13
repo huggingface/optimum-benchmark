@@ -3,6 +3,7 @@ defaults:
   - _base_ # inherits from base config
   - _cuda_ # inherits from cuda config
   - _inference_ # inherits from inference config
+  - _no_weights_ # inherits from no weights config
   - _st_bert_ # inherits from bert config
   - _self_ # hydra 1.1 compatibility
   - override backend: py-txi
