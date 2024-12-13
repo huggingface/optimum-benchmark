@@ -155,7 +155,11 @@ def is_local_dir_repo(model_name_or_path: str) -> bool:
 
 
 def get_repo_config(
-    model_name_or_path: str, config_name: str, token: Optional[str] = None, revision: Optional[str] = None
+    model_name_or_path: str,
+    config_name: str,
+    token: Optional[str] = None,
+    revision: Optional[str] = None,
+    cache_dir: Optional[str] = None,
 ):
     if is_hf_hub_repo(model_name_or_path, token=token):
         config = json.load(
@@ -163,6 +167,7 @@ def get_repo_config(
                 huggingface_hub.hf_hub_download(
                     repo_id=model_name_or_path,
                     filename=config_name,
+                    cache_dir=cache_dir,
                     revision=revision,
                     token=token,
                 ),
@@ -197,6 +202,7 @@ def infer_library_from_model_name_or_path(
     model_name_or_path: str,
     token: Optional[str] = None,
     revision: Optional[str] = None,
+    cache_dir: Optional[str] = None,
 ) -> str:
     inferred_library_name = None
 
@@ -209,7 +215,9 @@ def infer_library_from_model_name_or_path(
         inferred_library_name = "sentence-transformers"
 
     elif "config.json" in repo_files:
-        config_dict = get_repo_config(model_name_or_path, "config.json", token=token, revision=revision)
+        config_dict = get_repo_config(
+            model_name_or_path, "config.json", token=token, revision=revision, cache_dir=cache_dir
+        )
 
         if "pretrained_cfg" in config_dict:
             inferred_library_name = "timm"
@@ -229,12 +237,15 @@ def infer_task_from_model_name_or_path(
     model_name_or_path: str,
     token: Optional[str] = None,
     revision: Optional[str] = None,
+    cache_dir: Optional[str] = None,
     library_name: Optional[str] = None,
 ) -> str:
     inferred_task_name = None
 
     if library_name is None:
-        library_name = infer_library_from_model_name_or_path(model_name_or_path, revision=revision, token=token)
+        library_name = infer_library_from_model_name_or_path(
+            model_name_or_path, revision=revision, token=token, cache_dir=cache_dir
+        )
 
     if library_name == "llama_cpp":
         inferred_task_name = "text-generation"
@@ -243,7 +254,9 @@ def infer_task_from_model_name_or_path(
         inferred_task_name = "image-classification"
 
     elif library_name == "transformers":
-        transformers_config = get_repo_config(model_name_or_path, "config.json", token=token, revision=revision)
+        transformers_config = get_repo_config(
+            model_name_or_path, "config.json", token=token, revision=revision, cache_dir=cache_dir
+        )
         target_class_name = transformers_config["architectures"][0]
 
         for task_name, model_mapping in TASKS_TO_MODEL_TYPES_TO_MODEL_CLASS_NAMES.items():
@@ -258,7 +271,9 @@ def infer_task_from_model_name_or_path(
             raise KeyError(f"Could not find the proper task name for target class name {target_class_name}.")
 
     elif library_name == "diffusers":
-        diffusers_config = get_repo_config(model_name_or_path, "model_index.json", token=token, revision=revision)
+        diffusers_config = get_repo_config(
+            model_name_or_path, "model_index.json", token=token, revision=revision, cache_dir=cache_dir
+        )
         target_class_name = diffusers_config["_class_name"]
 
         for task_name, pipeline_mapping in TASKS_TO_PIPELINE_TYPES_TO_PIPELINE_CLASS_NAMES.items():
@@ -279,26 +294,35 @@ def infer_model_type_from_model_name_or_path(
     model_name_or_path: str,
     token: Optional[str] = None,
     revision: Optional[str] = None,
+    cache_dir: Optional[str] = None,
     library_name: Optional[str] = None,
 ) -> str:
     inferred_model_type = None
 
     if library_name is None:
-        library_name = infer_library_from_model_name_or_path(model_name_or_path, revision=revision, token=token)
+        library_name = infer_library_from_model_name_or_path(
+            model_name_or_path, revision=revision, token=token, cache_dir=cache_dir
+        )
 
     if library_name == "llama_cpp":
         inferred_model_type = "llama_cpp"
 
     elif library_name == "timm":
-        timm_config = get_repo_config(model_name_or_path, "config.json", token=token, revision=revision)
+        timm_config = get_repo_config(
+            model_name_or_path, "config.json", token=token, revision=revision, cache_dir=cache_dir
+        )
         inferred_model_type = timm_config["architecture"]
 
     elif library_name == "transformers":
-        transformers_config = get_repo_config(model_name_or_path, "config.json", token=token, revision=revision)
+        transformers_config = get_repo_config(
+            model_name_or_path, "config.json", token=token, revision=revision, cache_dir=cache_dir
+        )
         inferred_model_type = transformers_config["model_type"]
 
     elif library_name == "diffusers":
-        diffusers_config = get_repo_config(model_name_or_path, "model_index.json", token=token, revision=revision)
+        diffusers_config = get_repo_config(
+            model_name_or_path, "model_index.json", token=token, revision=revision, cache_dir=cache_dir
+        )
         target_class_name = diffusers_config["_class_name"]
 
         for _, pipeline_mapping in TASKS_TO_PIPELINE_TYPES_TO_PIPELINE_CLASS_NAMES.items():
@@ -310,6 +334,7 @@ def infer_model_type_from_model_name_or_path(
                 break
 
         if inferred_model_type is None:
-            raise KeyError(f"Could not find the proper model type for target class name {target_class_name}.")
+            # we use the class name in this case
+            inferred_model_type = target_class_name.replace("DiffusionPipeline", "").replace("Pipeline", "")
 
     return inferred_model_type

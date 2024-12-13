@@ -22,12 +22,12 @@ class BackendConfig(ABC):
     version: str
     _target_: str
 
+    model: Optional[str] = None
+    processor: Optional[str] = None
+
     task: Optional[str] = None
     library: Optional[str] = None
     model_type: Optional[str] = None
-
-    model: Optional[str] = None
-    processor: Optional[str] = None
 
     device: Optional[str] = None
     # we use a string here instead of a list
@@ -48,30 +48,44 @@ class BackendConfig(ABC):
         if self.model is None:
             raise ValueError("`model` must be specified.")
 
+        if self.model_kwargs.get("token", None) is not None:
+            LOGGER.info(
+                "You have passed an argument `token` to `model_kwargs`. This is dangerous as the config cannot do encryption to protect it. "
+                "We will proceed to registering `token` in the environment as `HF_TOKEN` to avoid saving it or pushing it to the hub by mistake."
+            )
+            os.environ["HF_TOKEN"] = self.model_kwargs.pop("token")
+
         if self.processor is None:
             self.processor = self.model
 
-        # TODO: add cache_dir, token, etc. to these methods
+        if not self.processor_kwargs:
+            self.processor_kwargs = self.model_kwargs
+
         if self.library is None:
             self.library = infer_library_from_model_name_or_path(
                 model_name_or_path=self.model,
-                token=self.model_kwargs.get("token", None),
                 revision=self.model_kwargs.get("revision", None),
+                cache_dir=self.model_kwargs.get("cache_dir", None),
+            )
+
+        if self.library not in ["transformers", "diffusers", "timm", "llama_cpp"]:
+            raise ValueError(
+                f"`library` must be either `transformers`, `diffusers`, `timm` or `llama_cpp`, but got {self.library}"
             )
 
         if self.task is None:
             self.task = infer_task_from_model_name_or_path(
                 model_name_or_path=self.model,
-                token=self.model_kwargs.get("token", None),
                 revision=self.model_kwargs.get("revision", None),
+                cache_dir=self.model_kwargs.get("cache_dir", None),
                 library_name=self.library,
             )
 
         if self.model_type is None:
             self.model_type = infer_model_type_from_model_name_or_path(
                 model_name_or_path=self.model,
-                token=self.model_kwargs.get("token", None),
                 revision=self.model_kwargs.get("revision", None),
+                cache_dir=self.model_kwargs.get("cache_dir", None),
                 library_name=self.library,
             )
 
@@ -102,11 +116,6 @@ class BackendConfig(ABC):
                 LOGGER.info(f"ROCR_VISIBLE_DEVICES was set to {os.environ['ROCR_VISIBLE_DEVICES']}.")
             else:
                 raise RuntimeError("CUDA device is only supported on systems with NVIDIA or ROCm drivers.")
-
-        if self.library not in ["transformers", "diffusers", "timm", "llama_cpp"]:
-            raise ValueError(
-                f"`library` must be either `transformers`, `diffusers`, `timm` or `llama_cpp`, but got {self.library}"
-            )
 
         if self.inter_op_num_threads is not None:
             if self.inter_op_num_threads == -1:
