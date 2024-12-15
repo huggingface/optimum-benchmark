@@ -37,7 +37,7 @@ class PyTXIConfig(BackendConfig):
         metadata={"help": "Dictionary of volumes to mount inside the container."},
     )
     environment: List[str] = field(
-        default_factory=lambda: ["HUGGING_FACE_HUB_TOKEN"],
+        default_factory=lambda: ["HF_TOKEN"],
         metadata={"help": "List of environment variables to forward to the container from the host."},
     )
 
