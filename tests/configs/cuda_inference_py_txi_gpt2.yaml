@@ -9,3 +9,6 @@ defaults:
   - override backend: py-txi
 
 name: cuda_inference_py_txi_gpt2
+
+backend:
+  cuda_graphs: 0
