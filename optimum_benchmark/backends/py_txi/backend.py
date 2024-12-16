@@ -56,7 +56,7 @@ class PyTXIBackend(Backend[PyTXIConfig]):
             self.generation_config.save_pretrained(save_directory=self.no_weights_model)
 
         filename = os.path.join(self.no_weights_model, "model.safetensors")
-        save_model(tensors=torch.nn.Linear(1, 1), filename=filename, metadata={"format": "pt"})
+        save_model(model=torch.nn.Linear(1, 1), filename=filename, metadata={"format": "pt"})
         with fast_weights_init():
             # unlike Transformers, TXI won't accept any missing tensors so we need to materialize the model
             self.pretrained_model = self.automodel_loader.from_pretrained(
