@@ -18,6 +18,7 @@ backend:
   cuda_graphs: 0 # remove for better perf but bigger memory footprint
   no_weights: true
   model: TinyLlama/TinyLlama-1.1B-Chat-v1.0
+  image: ghcr.io/huggingface/text-generation-inference:2.4.1
 
 scenario:
   input_shapes:
