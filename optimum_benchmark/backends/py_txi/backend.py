@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, List, Union
@@ -68,7 +69,7 @@ class PyTXIBackend(Backend[PyTXIConfig]):
     def load_model_with_no_weights(self) -> None:
         original_volumes, self.config.volumes = (
             self.config.volumes,
-            {Path(self.tmpdir.name) / "hub": {"bind": "/data", "mode": "rw"}},
+            {self.tmpdir.name: {"bind": "/data/hub/", "mode": "rw"}},
         )
         self.load_model_from_pretrained()
         self.config.volumes = original_volumes
