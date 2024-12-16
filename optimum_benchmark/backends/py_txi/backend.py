@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 import torch
 from huggingface_hub import snapshot_download
 from py_txi import TEI, TGI, TEIConfig, TGIConfig
-from safetensors.torch import save_file
+from safetensors.torch import save_file, save_model
 
 from ...task_utils import TEXT_EMBEDDING_TASKS, TEXT_GENERATION_TASKS
 from ..base import Backend
@@ -60,7 +60,7 @@ class PyTXIBackend(Backend[PyTXIConfig]):
             self.pretrained_model = self.automodel_loader.from_pretrained(
                 self.no_weights_model, **self.config.model_kwargs, device_map="auto", _fast_init=False
             )
-        save_file(tensors=self.pretrained_model.state_dict(), filename=filename, metadata={"format": "pt"})
+        self.pretrained_model.save_pretrained(save_directory=self.no_weights_model)
         del self.pretrained_model
         torch.cuda.empty_cache()
 
