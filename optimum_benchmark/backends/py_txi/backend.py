@@ -1,6 +1,6 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 import torch
 from huggingface_hub import hf_hub_download, snapshot_download
@@ -15,6 +15,7 @@ from .config import PyTXIConfig
 
 class PyTXIBackend(Backend[PyTXIConfig]):
     NAME: str = "py-txi"
+    pretrained_model: Union[TEI, TGI]
 
     def __init__(self, config: PyTXIConfig) -> None:
         super().__init__(config)
@@ -65,7 +66,10 @@ class PyTXIBackend(Backend[PyTXIConfig]):
             self.generation_config.save_pretrained(save_directory=model_path)
 
     def load_model_with_no_weights(self) -> None:
-        original_volumes, self.config.volumes = self.config.volumes, {self.tmpdir.name: {"bind": "/data", "mode": "rw"}}
+        original_volumes, self.config.volumes = (
+            self.config.volumes,
+            {Path(self.tmpdir.name) / "hub": {"bind": "/data", "mode": "rw"}},
+        )
         self.load_model_from_pretrained()
         self.config.volumes = original_volumes
 
