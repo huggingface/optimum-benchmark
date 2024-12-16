@@ -39,7 +39,7 @@ class PyTXIBackend(Backend[PyTXIConfig]):
         try:
             self.tmpdir.cleanup()
         except Exception:
-            shutil.rmtree(self.tmpdir.name)
+            shutil.rmtree(self.tmpdir.name, ignore_errors=True)
 
     def download_pretrained_model(self) -> None:
         model_snapshot_folder = snapshot_download(self.config.model, **self.config.model_kwargs)
