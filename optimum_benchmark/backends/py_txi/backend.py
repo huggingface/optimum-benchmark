@@ -46,9 +46,14 @@ class PyTXIBackend(Backend[PyTXIConfig]):
 
     def create_no_weights_model(self) -> None:
         self.no_weights_model = os.path.join(self.tmpdir.name, "no_weights_model")
-        filename = os.path.join(self.no_weights_model, "model.safetensors")
         os.makedirs(self.no_weights_model, exist_ok=True)
 
+        if self.pretrained_config is not None:
+            self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
+        if self.pretrained_processor is not None:
+            self.pretrained_processor.save_pretrained(save_directory=self.no_weights_model)
+
+        filename = os.path.join(self.no_weights_model, "model.safetensors")
         save_file(tensors=torch.nn.Linear(1, 1).state_dict(), filename=filename, metadata={"format": "pt"})
         with fast_weights_init():
             # unlike Transformers, TXI won't accept any missing tensors so we need to materialize the model
@@ -58,11 +63,6 @@ class PyTXIBackend(Backend[PyTXIConfig]):
         save_file(tensors=self.pretrained_model.state_dict(), filename=filename, metadata={"format": "pt"})
         del self.pretrained_model
         torch.cuda.empty_cache()
-
-        if self.pretrained_config is not None:
-            self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
-        if self.pretrained_processor is not None:
-            self.pretrained_processor.save_pretrained(save_directory=self.no_weights_model)
 
         if self.config.task in TEXT_GENERATION_TASKS:
             self.generation_config.eos_token_id = None
@@ -78,11 +78,11 @@ class PyTXIBackend(Backend[PyTXIConfig]):
     def load_model_from_pretrained(self) -> None:
         if self.config.task in TEXT_GENERATION_TASKS:
             self.pretrained_model = TGI(
-                config=TGIConfig(self.config.model, **self.txi_kwargs, **self.tgi_kwargs),
+                config=TGIConfig(model_id=self.config.model, **self.txi_kwargs, **self.tgi_kwargs),
             )
         elif self.config.task in TEXT_EMBEDDING_TASKS:
             self.pretrained_model = TEI(
-                config=TEIConfig(self.config.model, **self.txi_kwargs, **self.tei_kwargs),
+                config=TEIConfig(model_id=self.config.model, **self.txi_kwargs, **self.tei_kwargs),
             )
         else:
             raise NotImplementedError(f"TXI does not support task {self.config.task}")
