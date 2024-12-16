@@ -74,7 +74,7 @@ class PyTXIBackend(Backend[PyTXIConfig]):
     def load_model_with_no_weights(self) -> None:
         original_volumes, self.config.volumes = (
             self.config.volumes,
-            {self.tmpdir.name: {"bind": "/data/hub/", "mode": "rw"}},
+            {self.tmpdir.name: {"bind": "/data", "mode": "rw"}},
         )
         self.load_model_from_pretrained()
         self.config.volumes = original_volumes
