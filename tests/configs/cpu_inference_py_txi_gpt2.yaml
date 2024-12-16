@@ -9,7 +9,3 @@ defaults:
   - override backend: py-txi
 
 name: cpu_inference_py_txi_gpt2
-
-backend:
-  cuda_graphs: 0
-  image: ghcr.io/huggingface/text-generation-inference:2.4.1

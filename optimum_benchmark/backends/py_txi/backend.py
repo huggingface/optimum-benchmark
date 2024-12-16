@@ -46,16 +46,12 @@ class PyTXIBackend(Backend[PyTXIConfig]):
 
     def create_no_weights_model(self) -> None:
         self.no_weights_model = os.path.join(self.tmpdir.name, "no_weights_model")
+        filename = os.path.join(self.no_weights_model, "model.safetensors")
         os.makedirs(self.no_weights_model, exist_ok=True)
 
         self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
         self.pretrained_processor.save_pretrained(save_directory=self.no_weights_model)
-        if self.config.task in TEXT_GENERATION_TASKS:
-            self.generation_config.eos_token_id = None
-            self.generation_config.pad_token_id = None
-            self.generation_config.save_pretrained(save_directory=self.no_weights_model)
 
-        filename = os.path.join(self.no_weights_model, "model.safetensors")
         save_model(model=torch.nn.Linear(1, 1), filename=filename, metadata={"format": "pt"})
         with fast_weights_init():
             # unlike Transformers, TXI won't accept any missing tensors so we need to materialize the model
@@ -65,6 +61,11 @@ class PyTXIBackend(Backend[PyTXIConfig]):
         save_model(model=self.pretrained_model, filename=filename, metadata={"format": "pt"})
         del self.pretrained_model
         torch.cuda.empty_cache()
+
+        if self.config.task in TEXT_GENERATION_TASKS:
+            self.generation_config.eos_token_id = None
+            self.generation_config.pad_token_id = None
+            self.generation_config.save_pretrained(save_directory=self.no_weights_model)
 
     def load_model_with_no_weights(self) -> None:
         self.config.volumes = {self.no_weights_model: {"bind": "/no_weights_model/", "mode": "rw"}}
