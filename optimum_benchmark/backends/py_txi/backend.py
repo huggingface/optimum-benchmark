@@ -4,8 +4,9 @@ from typing import Any, Dict, List
 
 import torch
 from huggingface_hub import snapshot_download
+from huggingface_hub.constants import HUGGINGFACE_HUB_CACHE
 from py_txi import TEI, TGI, TEIConfig, TGIConfig
-from safetensors.torch import save_file, save_model
+from safetensors.torch import save_file
 
 from ...task_utils import TEXT_EMBEDDING_TASKS, TEXT_GENERATION_TASKS
 from ..base import Backend
@@ -67,8 +68,11 @@ class PyTXIBackend(Backend[PyTXIConfig]):
             self.generation_config.save_pretrained(save_directory=self.no_weights_model)
 
     def load_model_with_no_weights(self) -> None:
-        self.config.volumes = {self.tmpdir.name: {"bind": "/data", "mode": "rw"}}
-        original_model, self.config.model = self.config.model, "/data/no_weights_model/"
+        self.config.volumes = {
+            HUGGINGFACE_HUB_CACHE: {"bind": "/data", "mode": "rw"},
+            self.tmpdir.name: {"bind": "/no_weights_folder", "mode": "rw"},
+        }
+        original_model, self.config.model = self.config.model, "/no_weights_folder/no_weights_model/"
         self.load_model_from_pretrained()
         self.config.model = original_model
 
