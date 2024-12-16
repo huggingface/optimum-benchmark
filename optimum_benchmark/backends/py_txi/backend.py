@@ -67,8 +67,8 @@ class PyTXIBackend(Backend[PyTXIConfig]):
             self.generation_config.save_pretrained(save_directory=self.no_weights_model)
 
     def load_model_with_no_weights(self) -> None:
-        self.config.volumes = {self.tmpdir.name: {"bind": "/var/no_weights_folder", "mode": "rw"}}
-        original_model, self.config.model = self.config.model, "/var/no_weights_folder/no_weights_model"
+        self.config.volumes = {self.tmpdir.name: {"bind": "/data", "mode": "rw"}}
+        original_model, self.config.model = self.config.model, "/data/no_weights_model/"
         self.load_model_from_pretrained()
         self.config.model = original_model
 
