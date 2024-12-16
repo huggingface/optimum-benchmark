@@ -38,7 +38,7 @@ class PyTXIBackend(Backend[PyTXIConfig]):
         self.tmpdir.cleanup()
 
     def download_pretrained_model(self) -> None:
-        model_snapshot_folder = snapshot_download(self.config.model, self.config.model_kwargs)
+        model_snapshot_folder = snapshot_download(self.config.model, **self.config.model_kwargs)
 
         if self.config.task in TEXT_GENERATION_TASKS:
             self.generation_config.eos_token_id = None
@@ -68,11 +68,8 @@ class PyTXIBackend(Backend[PyTXIConfig]):
             self.generation_config.save_pretrained(save_directory=self.no_weights_model)
 
     def load_model_with_no_weights(self) -> None:
-        self.config.volumes = {
-            HUGGINGFACE_HUB_CACHE: {"bind": "/data", "mode": "rw"},
-            self.tmpdir.name: {"bind": "/no_weights_folder", "mode": "rw"},
-        }
-        original_model, self.config.model = self.config.model, "/no_weights_folder/no_weights_model/"
+        self.config.volumes = {self.no_weights_model: {"bind": "/no_weights_model/", "mode": "rw"}}
+        original_model, self.config.model = self.config.model, "/no_weights_model/"
         self.load_model_from_pretrained()
         self.config.model = original_model
 
