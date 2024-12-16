@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 import torch
 from huggingface_hub import snapshot_download
 from py_txi import TEI, TGI, TEIConfig, TGIConfig
-from safetensors.torch import save_file, save_model
+from safetensors.torch import save_model
 
 from ...task_utils import TEXT_EMBEDDING_TASKS, TEXT_GENERATION_TASKS
 from ..base import Backend
@@ -56,13 +56,13 @@ class PyTXIBackend(Backend[PyTXIConfig]):
             self.generation_config.save_pretrained(save_directory=self.no_weights_model)
 
         filename = os.path.join(self.no_weights_model, "model.safetensors")
-        save_file(tensors=torch.nn.Linear(1, 1).state_dict(), filename=filename, metadata={"format": "pt"})
+        save_model(tensors=torch.nn.Linear(1, 1), filename=filename, metadata={"format": "pt"})
         with fast_weights_init():
             # unlike Transformers, TXI won't accept any missing tensors so we need to materialize the model
             self.pretrained_model = self.automodel_loader.from_pretrained(
                 self.no_weights_model, **self.config.model_kwargs, device_map="auto", _fast_init=False
             )
-        save_model(tensors=self.pretrained_model, filename=filename, metadata={"format": "pt"})
+        save_model(model=self.pretrained_model, filename=filename, metadata={"format": "pt"})
         del self.pretrained_model
         torch.cuda.empty_cache()
 
