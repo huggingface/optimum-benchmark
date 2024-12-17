@@ -44,11 +44,16 @@ jobs:
 
       - name: Install requirements
         run: |
-          pip install --upgrade pip
-          pip install -e .[testing,py-txi] git+https://github.com/IlyasMoutawwakil/py-txi.git
+          pip install uv
+          uv pip install --upgrade pip
+          uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+          uv pip install -e .[testing,py-txi] git+https://github.com/IlyasMoutawwakil/py-txi.git
+        env:
+          UV_SYSTEM_PYTHON: 1
 
       - name: Run tests
-        run: pytest tests/test_cli.py -x -s -k "cli and cuda and py_txi"
+        run: |
+          FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and py_txi"
 
       - if: ${{
           (github.event_name == 'push') ||
@@ -56,4 +61,5 @@ jobs:
           contains( github.event.pull_request.labels.*.name, 'examples')
           }}
         name: Run examples
-        run: pytest tests/test_examples.py -x -s -k "cli and cuda and (tgi or tei)"
+        run: |
+          FORCE_SEQUENTIAL=1 pytest tests/test_examples.py -x -s -k "cli and cuda and (tgi or tei)"

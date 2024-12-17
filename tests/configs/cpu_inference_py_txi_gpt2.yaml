@@ -3,6 +3,7 @@ defaults:
   - _base_ # inherits from base config
   - _cpu_ # inherits from cpu config
   - _inference_ # inherits from inference config
+  - _no_weights_ # inherits from no weights config
   - _gpt2_ # inherits from gpt2 config
   - _self_ # hydra 1.1 compatibility
   - override backend: py-txi

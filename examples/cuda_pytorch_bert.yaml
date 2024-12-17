@@ -6,7 +6,7 @@ defaults:
   - _base_
   - _self_
 
-name: pytorch_bert
+name: cuda_pytorch_bert
 
 launcher:
   device_isolation: true

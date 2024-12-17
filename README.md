@@ -50,7 +50,6 @@ Optimum-Benchmark is continuously and intensively tested on a variety of devices
 
 [![CLI_CPU_IPEX](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_ipex.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_ipex.yaml)
 [![CLI_CPU_LLAMA_CPP](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_llama_cpp.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_llama_cpp.yaml)
-[![CLI_CPU_NEURAL_COMPRESSOR](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_neural_compressor.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_neural_compressor.yaml)
 [![CLI_CPU_ONNXRUNTIME](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_onnxruntime.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_onnxruntime.yaml)
 [![CLI_CPU_OPENVINO](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_openvino.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_openvino.yaml)
 [![CLI_CPU_PYTORCH](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_pytorch.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_pytorch.yaml)
@@ -61,7 +60,6 @@ Optimum-Benchmark is continuously and intensively tested on a variety of devices
 [![CLI_CUDA_TENSORRT_LLM](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_tensorrt_llm.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_tensorrt_llm.yaml)
 [![CLI_CUDA_TORCH_ORT](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_torch_ort.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_torch_ort.yaml)
 [![CLI_CUDA_VLLM](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_vllm.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_vllm.yaml)
-[![CLI_ENERGY_STAR](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_energy_star.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_energy_star.yaml)
 [![CLI_MISC](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_misc.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_misc.yaml)
 [![CLI_ROCM_PYTORCH](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_rocm_pytorch.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_rocm_pytorch.yaml)
 
@@ -100,10 +98,9 @@ Depending on the backends you want to use, you can install `optimum-benchmark` w
 - OnnxRuntime: `pip install optimum-benchmark[onnxruntime]`
 - TensorRT-LLM: `pip install optimum-benchmark[tensorrt-llm]`
 - OnnxRuntime-GPU: `pip install optimum-benchmark[onnxruntime-gpu]`
-- Neural Compressor: `pip install optimum-benchmark[neural-compressor]`
-- Py-TXI: `pip install optimum-benchmark[py-txi]`
-- IPEX: `pip install optimum-benchmark[ipex]`
+- Py-TXI (TGI & TEI): `pip install optimum-benchmark[py-txi]`
 - vLLM: `pip install optimum-benchmark[vllm]`
+- IPEX: `pip install optimum-benchmark[ipex]`
 
 We also support the following extra extra dependencies:
 
@@ -144,9 +141,6 @@ if __name__ == "__main__":
     )
     benchmark_report = Benchmark.launch(benchmark_config)
 
-    # log the benchmark in terminal
-    benchmark_report.log() # or print(benchmark_report)
-
     # convert artifacts to a dictionary or dataframe
     benchmark_config.to_dict() # or benchmark_config.to_dataframe()
 
@@ -175,15 +169,17 @@ If you're on VSCode, you can hover over the configuration classes to see the ava
 You can also run a benchmark using the command line by specifying the configuration directory and the configuration name. Both arguments are mandatory for [`hydra`](https://hydra.cc/). `--config-dir` is the directory where the configuration files are stored and `--config-name` is the name of the configuration file without its `.yaml` extension.
 
 ```bash
-optimum-benchmark --config-dir examples/ --config-name pytorch_bert
+optimum-benchmark --config-dir examples/ --config-name cuda_pytorch_bert
 ```
 
-This will run the benchmark using the configuration in [`examples/pytorch_bert.yaml`](examples/pytorch_bert.yaml) and store the results in `runs/pytorch_bert`.
+This will run the benchmark using the configuration in [`examples/cuda_pytorch_bert.yaml`](examples/cuda_pytorch_bert.yaml) and store the results in `runs/cuda_pytorch_bert`.
 
 The resulting files are :
 
 - `benchmark_config.json` which contains the configuration used for the benchmark, including the backend, launcher, scenario and the environment in which the benchmark was run.
 - `benchmark_report.json` which contains a full report of the benchmark's results, like latency measurements, memory usage, energy consumption, etc.
+- `benchmark_report.txt` which contains a detailed report of the benchmark's results, in the same format they were logged.
+- `benchmark_report.md` which contains a detailed report of the benchmark's results, in markdown format.
 - `benchmark.json` contains both the report and the configuration in a single file.
 - `benchmark.log` contains the logs of the benchmark run.
 
@@ -309,9 +305,7 @@ For more information on the features of each backend, you can check their respec
 - [PyTorchConfig](optimum_benchmark/backends/pytorch/config.py)
 - [ORTConfig](optimum_benchmark/backends/onnxruntime/config.py)
 - [TorchORTConfig](optimum_benchmark/backends/torch_ort/config.py)
-- [LLMSwarmConfig](optimum_benchmark/backends/llm_swarm/config.py)
 - [TRTLLMConfig](optimum_benchmark/backends/tensorrt_llm/config.py)
-- [INCConfig](optimum_benchmark/backends/neural_compressor/config.py)
 
 </details>
 

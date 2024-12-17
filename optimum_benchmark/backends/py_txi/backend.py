@@ -1,11 +1,12 @@
-import os
+import shutil
+from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 import torch
-from accelerate import init_empty_weights
+from huggingface_hub import hf_hub_download, snapshot_download
 from py_txi import TEI, TGI, TEIConfig, TGIConfig
-from safetensors.torch import save_file
+from safetensors.torch import save_model
 
 from ...task_utils import TEXT_EMBEDDING_TASKS, TEXT_GENERATION_TASKS
 from ..base import Backend
@@ -15,6 +16,7 @@ from .config import PyTXIConfig
 
 class PyTXIBackend(Backend[PyTXIConfig]):
     NAME: str = "py-txi"
+    pretrained_model: Union[TEI, TGI]
 
     def __init__(self, config: PyTXIConfig) -> None:
         super().__init__(config)
@@ -31,113 +33,140 @@ class PyTXIBackend(Backend[PyTXIConfig]):
         else:
             self.logger.info("\t+ Downloading pretrained model")
             self.download_pretrained_model()
-
-            if self.config.task in TEXT_GENERATION_TASKS:
-                self.logger.info("\t+ Preparing generation config")
-                self.prepare_generation_config()
-
             self.logger.info("\t+ Loading pretrained model")
             self.load_model_from_pretrained()
 
-        self.tmpdir.cleanup()
-
-    @property
-    def volume(self) -> str:
-        return list(self.config.volumes.keys())[0]
+        try:
+            self.tmpdir.cleanup()
+        except Exception:
+            shutil.rmtree(self.tmpdir.name, ignore_errors=True)
 
     def download_pretrained_model(self) -> None:
-        # directly downloads pretrained model in volume (/data) to change generation config before loading model
-        with init_empty_weights(include_buffers=True):
-            self.automodel_loader.from_pretrained(self.config.model, **self.config.model_kwargs, cache_dir=self.volume)
+        model_snapshot_folder = snapshot_download(self.config.model, **self.config.model_kwargs)
 
-    def prepare_generation_config(self) -> None:
-        self.generation_config.eos_token_id = None
-        self.generation_config.pad_token_id = None
-
-        model_cache_folder = f"models/{self.config.model}".replace("/", "--")
-        model_cache_path = f"{self.volume}/{model_cache_folder}"
-        snapshot_file = f"{model_cache_path}/refs/{self.config.model_kwargs.get('revision', 'main')}"
-        snapshot_ref = open(snapshot_file, "r").read().strip()
-        model_snapshot_path = f"{model_cache_path}/snapshots/{snapshot_ref}"
-        self.logger.info("\t+ Saving new pretrained generation config")
-        self.generation_config.save_pretrained(save_directory=model_snapshot_path)
+        if self.config.task in TEXT_GENERATION_TASKS:
+            self.generation_config.eos_token_id = None
+            self.generation_config.pad_token_id = None
+            self.generation_config.save_pretrained(save_directory=model_snapshot_folder)
 
     def create_no_weights_model(self) -> None:
-        self.no_weights_model = os.path.join(self.tmpdir.name, "no_weights_model")
-        self.logger.info("\t+ Creating no weights model directory")
-        os.makedirs(self.no_weights_model, exist_ok=True)
-        self.logger.info("\t+ Creating no weights model state dict")
-        state_dict = torch.nn.Linear(1, 1).state_dict()
-        self.logger.info("\t+ Saving no weights model safetensors")
-        safetensor = os.path.join(self.no_weights_model, "model.safetensors")
-        save_file(tensors=state_dict, filename=safetensor, metadata={"format": "pt"})
-        self.logger.info("\t+ Saving no weights model pretrained config")
-        self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
-        self.logger.info("\t+ Saving no weights model pretrained processor")
-        self.pretrained_processor.save_pretrained(save_directory=self.no_weights_model)
-        # unlike Transformers, TXI won't accept any missing tensors so we need to materialize the model
-        self.logger.info(f"\t+ Loading no weights model from {self.no_weights_model}")
+        model_path = Path(hf_hub_download(self.config.model, filename="config.json", cache_dir=self.tmpdir.name)).parent
+        save_model(model=torch.nn.Linear(1, 1), filename=model_path / "model.safetensors", metadata={"format": "pt"})
+
+        self.pretrained_processor.save_pretrained(save_directory=model_path)
+        self.pretrained_config.save_pretrained(save_directory=model_path)
+
         with fast_weights_init():
+            # unlike Transformers, TXI won't accept any missing tensors so we need to materialize the model
             self.pretrained_model = self.automodel_loader.from_pretrained(
-                self.no_weights_model, **self.config.model_kwargs, device_map="auto", _fast_init=False
+                model_path,
+                _fast_init=False,
+                device_map="auto",
+                **self.config.model_kwargs,
             )
-        self.logger.info("\t+ Saving no weights model")
-        self.pretrained_model.save_pretrained(save_directory=self.no_weights_model)
+
+        save_model(model=self.pretrained_model, filename=model_path / "model.safetensors", metadata={"format": "pt"})
         del self.pretrained_model
         torch.cuda.empty_cache()
 
         if self.config.task in TEXT_GENERATION_TASKS:
-            self.logger.info("\t+ Modifying generation config for fixed length generation")
             self.generation_config.eos_token_id = None
             self.generation_config.pad_token_id = None
-            self.logger.info("\t+ Saving new pretrained generation config")
-            self.generation_config.save_pretrained(save_directory=self.no_weights_model)
+            self.generation_config.save_pretrained(save_directory=model_path)
 
     def load_model_with_no_weights(self) -> None:
-        original_volumes, self.config.volumes = self.config.volumes, {self.tmpdir.name: {"bind": "/data", "mode": "rw"}}
-        original_model, self.config.model = self.config.model, "/data/no_weights_model"
-        self.logger.info("\t+ Loading no weights model")
+        self.config.volumes = {self.tmpdir.name: {"bind": "/data", "mode": "rw"}}
         self.load_model_from_pretrained()
-        self.config.model, self.config.volumes = original_model, original_volumes
 
     def load_model_from_pretrained(self) -> None:
         if self.config.task in TEXT_GENERATION_TASKS:
             self.pretrained_model = TGI(
-                config=TGIConfig(
-                    model_id=self.config.model,
-                    gpus=self.config.gpus,
-                    devices=self.config.devices,
-                    volumes=self.config.volumes,
-                    environment=self.config.environment,
-                    ports=self.config.ports,
-                    dtype=self.config.dtype,
-                    sharded=self.config.sharded,
-                    quantize=self.config.quantize,
-                    num_shard=self.config.num_shard,
-                    speculate=self.config.speculate,
-                    cuda_graphs=self.config.cuda_graphs,
-                    disable_custom_kernels=self.config.disable_custom_kernels,
-                    trust_remote_code=self.config.trust_remote_code,
-                    max_concurrent_requests=self.config.max_concurrent_requests,
-                ),
+                config=TGIConfig(model_id=self.config.model, **self.txi_kwargs, **self.tgi_kwargs),
             )
-
         elif self.config.task in TEXT_EMBEDDING_TASKS:
             self.pretrained_model = TEI(
-                config=TEIConfig(
-                    model_id=self.config.model,
-                    gpus=self.config.gpus,
-                    devices=self.config.devices,
-                    volumes=self.config.volumes,
-                    environment=self.config.environment,
-                    ports=self.config.ports,
-                    dtype=self.config.dtype,
-                    pooling=self.config.pooling,
-                    max_concurrent_requests=self.config.max_concurrent_requests,
-                ),
+                config=TEIConfig(model_id=self.config.model, **self.txi_kwargs, **self.tei_kwargs),
             )
         else:
             raise NotImplementedError(f"TXI does not support task {self.config.task}")
+
+    @property
+    def txi_kwargs(self):
+        kwargs = {}
+
+        if self.config.gpus is not None:
+            kwargs["gpus"] = self.config.gpus
+
+        if self.config.image is not None:
+            kwargs["image"] = self.config.image
+
+        if self.config.ports is not None:
+            kwargs["ports"] = self.config.ports
+
+        if self.config.volumes is not None:
+            kwargs["volumes"] = self.config.volumes
+
+        if self.config.devices is not None:
+            kwargs["devices"] = self.config.devices
+
+        if self.config.shm_size is not None:
+            kwargs["shm_size"] = self.config.shm_size
+
+        if self.config.environment is not None:
+            kwargs["environment"] = self.config.environment
+
+        if self.config.connection_timeout is not None:
+            kwargs["connection_timeout"] = self.config.connection_timeout
+
+        if self.config.first_request_timeout is not None:
+            kwargs["first_request_timeout"] = self.config.first_request_timeout
+
+        if self.config.max_concurrent_requests is not None:
+            kwargs["max_concurrent_requests"] = self.config.max_concurrent_requests
+
+        return kwargs
+
+    @property
+    def tei_kwargs(self):
+        kwargs = {}
+
+        if self.config.dtype is not None:
+            kwargs["dtype"] = self.config.dtype
+
+        if self.config.pooling is not None:
+            kwargs["pooling"] = self.config.pooling
+
+        return kwargs
+
+    @property
+    def tgi_kwargs(self):
+        kwargs = {}
+
+        if self.config.dtype is not None:
+            kwargs["dtype"] = self.config.dtype
+
+        if self.config.sharded is not None:
+            kwargs["sharded"] = self.config.sharded
+
+        if self.config.quantize is not None:
+            kwargs["quantize"] = self.config.quantize
+
+        if self.config.num_shard is not None:
+            kwargs["num_shard"] = self.config.num_shard
+
+        if self.config.speculate is not None:
+            kwargs["speculate"] = self.config.speculate
+
+        if self.config.cuda_graphs is not None:
+            kwargs["cuda_graphs"] = self.config.cuda_graphs
+
+        if self.config.trust_remote_code is not None:
+            kwargs["trust_remote_code"] = self.config.trust_remote_code
+
+        if self.config.disable_custom_kernels is not None:
+            kwargs["disable_custom_kernels"] = self.config.disable_custom_kernels
+
+        return kwargs
 
     def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         if self.config.task in TEXT_GENERATION_TASKS:
