@@ -16,7 +16,7 @@ backend:
   device: cuda
   device_ids: 0
   cuda_graphs: 0 # remove for better perf but bigger memory footprint
-  no_weights: false
+  no_weights: true
   model: TinyLlama/TinyLlama-1.1B-Chat-v1.0
 
 scenario:

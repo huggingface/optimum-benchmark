@@ -59,7 +59,10 @@ class PyTXIBackend(Backend[PyTXIConfig]):
         with fast_weights_init():
             # unlike Transformers, TXI won't accept any missing tensors so we need to materialize the model
             self.pretrained_model = self.automodel_loader.from_pretrained(
-                model_path, **self.config.model_kwargs, device_map="auto", _fast_init=False
+                model_path,
+                _fast_init=False,
+                device_map="auto",
+                **self.config.model_kwargs,
             )
 
         save_model(model=self.pretrained_model, filename=model_path / "model.safetensors", metadata={"format": "pt"})
@@ -72,12 +75,8 @@ class PyTXIBackend(Backend[PyTXIConfig]):
             self.generation_config.save_pretrained(save_directory=model_path)
 
     def load_model_with_no_weights(self) -> None:
-        original_volumes, self.config.volumes = (
-            self.config.volumes,
-            {self.tmpdir.name: {"bind": "/data", "mode": "rw"}},
-        )
+        self.config.volumes = {self.tmpdir.name: {"bind": "/data", "mode": "rw"}}
         self.load_model_from_pretrained()
-        self.config.volumes = original_volumes
 
     def load_model_from_pretrained(self) -> None:
         if self.config.task in TEXT_GENERATION_TASKS:
