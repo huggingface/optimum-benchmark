@@ -8,15 +8,12 @@ from accelerate import Accelerator, init_empty_weights, init_on_device
 from datasets import Dataset
 from safetensors.torch import save_file
 from transformers import (
-    AwqConfig,
-    BitsAndBytesConfig,
-    GPTQConfig,
-    TorchAoConfig,
     Trainer,
     TrainerCallback,
     TrainerState,
     TrainingArguments,
 )
+from transformers.quantizers import AutoQuantizationConfig
 
 from ...import_utils import is_deepspeed_available, is_torch_distributed_available, is_zentorch_available
 from ..base import Backend
@@ -286,8 +283,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
     def process_quantization_config(self) -> None:
         if self.is_gptq_quantized:
-            self.logger.info("\t+ Processing GPTQ config")
-
             try:
                 import exllamav2_kernels  # noqa: F401
             except ImportError:
@@ -299,12 +294,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                     "`optimum-benchmark` repository at `https://github.com/huggingface/optimum-benchmark`."
                 )
 
-            self.quantization_config = GPTQConfig(
-                **dict(getattr(self.pretrained_config, "quantization_config", {}), **self.config.quantization_config)
-            )
         elif self.is_awq_quantized:
-            self.logger.info("\t+ Processing AWQ config")
-
             try:
                 import exlv2_ext  # noqa: F401
             except ImportError:
@@ -316,55 +306,30 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                     "`optimum-benchmark` repository at `https://github.com/huggingface/optimum-benchmark`."
                 )
 
-            self.quantization_config = AwqConfig(
-                **dict(getattr(self.pretrained_config, "quantization_config", {}), **self.config.quantization_config)
-            )
-        elif self.is_bnb_quantized:
-            self.logger.info("\t+ Processing BitsAndBytes config")
-            self.quantization_config = BitsAndBytesConfig(
-                **dict(getattr(self.pretrained_config, "quantization_config", {}), **self.config.quantization_config)
-            )
-        elif self.is_torchao_quantized:
-            self.logger.info("\t+ Processing TorchAO config")
-            self.quantization_config = TorchAoConfig(
-                **dict(getattr(self.pretrained_config, "quantization_config", {}), **self.config.quantization_config)
-            )
-        else:
-            raise ValueError(f"Quantization scheme {self.config.quantization_scheme} not recognized")
+        self.logger.info("\t+ Processing AutoQuantization config")
+        self.quantization_config = AutoQuantizationConfig.from_dict(
+            dict(getattr(self.pretrained_config, "quantization_config", {}), **self.config.quantization_config)
+        )
 
     @property
     def is_quantized(self) -> bool:
         return self.config.quantization_scheme is not None or (
             hasattr(self.pretrained_config, "quantization_config")
-            and self.pretrained_config.quantization_config.get("quant_method", None) is not None
-        )
-
-    @property
-    def is_bnb_quantized(self) -> bool:
-        return self.config.quantization_scheme == "bnb" or (
-            hasattr(self.pretrained_config, "quantization_config")
-            and self.pretrained_config.quantization_config.get("quant_method", None) == "bnb"
+            and self.pretrained_config.quantization_config.get("quant_method") is not None
         )
 
     @property
     def is_gptq_quantized(self) -> bool:
         return self.config.quantization_scheme == "gptq" or (
             hasattr(self.pretrained_config, "quantization_config")
-            and self.pretrained_config.quantization_config.get("quant_method", None) == "gptq"
+            and self.pretrained_config.quantization_config.get("quant_method") == "gptq"
         )
 
     @property
     def is_awq_quantized(self) -> bool:
         return self.config.quantization_scheme == "awq" or (
             hasattr(self.pretrained_config, "quantization_config")
-            and self.pretrained_config.quantization_config.get("quant_method", None) == "awq"
-        )
-
-    @property
-    def is_torchao_quantized(self) -> bool:
-        return self.config.quantization_scheme == "torchao" or (
-            hasattr(self.pretrained_config, "quantization_config")
-            and self.pretrained_config.quantization_config.get("quant_method", None) == "torchao"
+            and self.pretrained_config.quantization_config.get("quant_method") == "awq"
         )
 
     @property
@@ -376,11 +341,11 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 (
                     hasattr(self.pretrained_config, "quantization_config")
                     and hasattr(self.pretrained_config.quantization_config, "exllama_config")
-                    and self.pretrained_config.quantization_config.exllama_config.get("version", None) == 2
+                    and self.pretrained_config.quantization_config.exllama_config.get("version") == 2
                 )
                 or (
                     "exllama_config" in self.config.quantization_config
-                    and self.config.quantization_config["exllama_config"].get("version", None) == 2
+                    and self.config.quantization_config["exllama_config"].get("version") == 2
                 )
             )
         )
@@ -390,7 +355,10 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         kwargs = {}
 
         if self.config.torch_dtype is not None:
-            kwargs["torch_dtype"] = getattr(torch, self.config.torch_dtype)
+            if hasattr(torch, self.config.torch_dtype):
+                kwargs["torch_dtype"] = getattr(torch, self.config.torch_dtype)
+            else:
+                kwargs["torch_dtype"] = self.config.torch_dtype
 
         if self.is_quantized:
             kwargs["quantization_config"] = self.quantization_config
