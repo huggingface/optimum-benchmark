@@ -10,23 +10,33 @@ PUSH_REPO_ID = os.environ.get("PUSH_REPO_ID", None)
 WEIGHTS_CONFIGS = {
     "float16": {
         "torch_dtype": "float16",
-        "quantization_scheme": None,
         "quantization_config": {},
     },
     "4bit-awq-gemm": {
         "torch_dtype": "float16",
-        "quantization_scheme": "awq",
-        "quantization_config": {"bits": 4, "version": "gemm"},
+        "quantization_config": {
+            "quant_method": "awq",
+            "bits": 4,
+            "version": "gemm",
+        },
     },
     "4bit-gptq-exllama-v2": {
         "torch_dtype": "float16",
-        "quantization_scheme": "gptq",
-        "quantization_config": {"bits": 4, "use_exllama ": True, "version": 2, "model_seqlen": 256},
+        "quantization_config": {
+            "quant_method": "gptq",
+            "bits": 4,
+            "use_exllama ": True,
+            "version": 2,
+            "model_seqlen": 256,
+        },
     },
     "torchao-int4wo-128": {
         "torch_dtype": "bfloat16",
-        "quantization_scheme": "torchao",
-        "quantization_config": {"quant_type": "int4_weight_only", "group_size": 128},
+        "quantization_config": {
+            "quant_method": "torchao",
+            "quant_type": "int4_weight_only",
+            "group_size": 128,
+        },
     },
 }
 

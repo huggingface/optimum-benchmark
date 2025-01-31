@@ -1,14 +1,17 @@
 from dataclasses import dataclass, field
+from logging import getLogger
 from typing import Any, Dict, Optional
 
 from ...import_utils import torch_version
-from ...system_utils import is_rocm_system
 from ..config import BackendConfig
 
 AMP_DTYPES = ["bfloat16", "float16"]
 TORCH_DTYPES = ["bfloat16", "float16", "float32", "auto"]
 
-QUANTIZATION_CONFIGS = {"bnb": {"llm_int8_threshold": 0.0}, "gptq": {}, "awq": {}, "torchao": {}}
+QUANTIZATION_CONFIGS = {"bnb": {"llm_int8_threshold": 0.0}}
+
+
+LOGGER = getLogger(__name__)
 
 
 @dataclass
@@ -66,15 +69,17 @@ class PyTorchConfig(BackendConfig):
             raise ValueError(f"`autocast_dtype` must be one of {AMP_DTYPES}. Got {self.autocast_dtype} instead.")
 
         if self.quantization_scheme is not None:
-            if self.quantization_scheme not in QUANTIZATION_CONFIGS:
-                raise ValueError(
-                    f"`quantization_scheme` must be one of {list(QUANTIZATION_CONFIGS.keys())}. "
-                    f"Got {self.quantization_scheme} instead."
-                )
+            LOGGER.warning(
+                "`backend.quantization_scheme` is deprecated and will be removed in a future version. "
+                "Please use `quantization_config.quant_method` instead."
+            )
+            if self.quantization_config is None:
+                self.quantization_config = {"quant_method": self.quantization_scheme}
+            else:
+                self.quantization_config["quant_method"] = self.quantization_scheme
 
-            if self.quantization_scheme == "bnb" and is_rocm_system():
-                raise ValueError("BitsAndBytes is not supported on ROCm GPUs. Please disable it.")
-
-            if self.quantization_config:
-                QUANTIZATION_CONFIG = QUANTIZATION_CONFIGS[self.quantization_scheme]
-                self.quantization_config = {**QUANTIZATION_CONFIG, **self.quantization_config}
+        if self.quantization_config is not None:
+            self.quantization_config = dict(
+                QUANTIZATION_CONFIGS.get(self.quantization_scheme, {}),  # default config
+                **self.quantization_config,  # user config (overwrites default)
+            )
