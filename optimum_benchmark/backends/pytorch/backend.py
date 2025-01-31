@@ -308,7 +308,10 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         self.logger.info("\t+ Processing AutoQuantization config")
         self.quantization_config = AutoQuantizationConfig.from_dict(
-            dict(getattr(self.pretrained_config, "quantization_config", {}), **self.config.quantization_config)
+            dict(
+                getattr(self.pretrained_config, "quantization_config", {}),
+                **self.config.quantization_config,
+            )
         )
 
     @property
