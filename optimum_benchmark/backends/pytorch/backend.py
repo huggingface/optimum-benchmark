@@ -404,9 +404,9 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
     @torch.inference_mode()
     def prefill(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
-        assert (
-            kwargs.get("max_new_tokens") == kwargs.get("min_new_tokens") == 1
-        ), "For prefilling, max_new_tokens and min_new_tokens must be equal to 1"
+        assert kwargs.get("max_new_tokens") == kwargs.get("min_new_tokens") == 1, (
+            "For prefilling, max_new_tokens and min_new_tokens must be equal to 1"
+        )
         return self.pretrained_model.generate(**inputs, **kwargs)
 
     @torch.inference_mode()
