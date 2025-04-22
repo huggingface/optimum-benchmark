@@ -95,7 +95,7 @@ class TargetMeasurements:
 class BenchmarkReport(PushToHubMixin):
     @classmethod
     def from_list(cls, targets: List[str]) -> "BenchmarkReport":
-        return cls.from_dict({target: None for target in targets})
+        return cls.from_dict(dict.fromkeys(targets))
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "BenchmarkReport":
