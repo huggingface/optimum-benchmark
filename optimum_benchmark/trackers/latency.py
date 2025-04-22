@@ -376,6 +376,30 @@ class PerTokenLatencySessionTrackerLogitsProcessor:
 
         return scores
 
+    def get_generate_latency(self) -> Latency:
+        assert len(self.prefill_start_events) == len(self.prefill_end_events) > 0
+        assert len(self.decode_start_events) == len(self.decode_end_events) > 0
+
+        if self.is_pytorch_cuda:
+            torch.cuda.synchronize()
+
+            latencies = [
+                start_event.elapsed_time(end_event) / 1e3
+                for start_event, end_event in zip(self.prefill_start_events, self.decode_end_events)
+            ]
+        else:
+            latencies = [
+                (end_event - start_event)
+                for start_event, end_event in zip(self.prefill_start_events, self.decode_end_events)
+            ]
+
+        assert all(latency >= 0 for latency in latencies), (
+            "Found some negative latencies while performing substraction. "
+            "Please increase the dimensions of your benchmark or the number of warmup runs."
+        )
+
+        return Latency.from_values(latencies, unit=LATENCY_UNIT)
+
     def get_prefill_latency(self) -> Latency:
         assert len(self.prefill_start_events) == len(self.prefill_end_events) > 0
 

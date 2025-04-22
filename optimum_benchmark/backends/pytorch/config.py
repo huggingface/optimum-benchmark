@@ -32,7 +32,10 @@ class PyTorchConfig(BackendConfig):
     attn_implementation: Optional[str] = None
     cache_implementation: Optional[str] = None
 
-    # automatic mixed precision options
+    # tf32 options
+    allow_tf32: bool = False
+
+    # autocast options
     autocast_enabled: bool = False
     autocast_dtype: Optional[str] = None
 

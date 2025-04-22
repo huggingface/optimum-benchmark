@@ -7,12 +7,7 @@ import torch
 from accelerate import Accelerator, init_empty_weights, init_on_device
 from datasets import Dataset
 from safetensors.torch import save_file
-from transformers import (
-    Trainer,
-    TrainerCallback,
-    TrainerState,
-    TrainingArguments,
-)
+from transformers import Trainer, TrainerCallback, TrainerState, TrainingArguments
 from transformers.quantizers import AutoQuantizationConfig
 
 from ...import_utils import is_deepspeed_available, is_torch_distributed_available, is_zentorch_available
@@ -31,6 +26,40 @@ if is_zentorch_available():
     import zentorch  # type: ignore # noqa: F401
 
 
+# COMPILED_SUBMODULES = set()
+
+
+def regional_compilation(module: torch.nn.Module, **compile_kwargs) -> None:
+    if isinstance(module, torch.nn.ModuleList):
+        for name, submodule in module.named_children():
+            # if submodule.__class__.__name__ not in COMPILED_SUBMODULES:
+            #     print("Compiling leaf submodules of type", submodule.__class__.__name__)
+            #     COMPILED_SUBMODULES.add(submodule.__class__.__name__)
+            #     torch._dynamo.config.cache_size_limit += 1
+
+            # Compile the submodule
+            compiled_submodule = torch.compile(submodule, **compile_kwargs)
+            compiled_submodule.__dict__.pop("_parameters", None)
+            setattr(module, name, compiled_submodule)
+
+    elif module._modules:  # Non-leaf node
+        for name, submodule in module.named_children():
+            compiled_submodule = regional_compilation(submodule, **compile_kwargs)
+            setattr(module, name, compiled_submodule)
+
+    else:  # Leaf node
+        # if module.__class__.__name__ not in COMPILED_SUBMODULES:
+        #     print("Compiling leaf submodule of type", module.__class__.__name__)
+        #     COMPILED_SUBMODULES.add(module.__class__.__name__)
+        #     torch._dynamo.config.cache_size_limit += 1
+
+        # Compile the module
+        module = torch.compile(module, **compile_kwargs)
+        module.__dict__.pop("_parameters", None)
+
+    return module
+
+
 class PyTorchBackend(Backend[PyTorchConfig]):
     NAME = "pytorch"
 
@@ -45,6 +74,12 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         if self.config.intra_op_num_threads is not None:
             self.logger.info(f"\t+ Setting pytorch intra_op_num_threads({self.config.intra_op_num_threads}))")
             torch.set_num_interop_threads(self.config.intra_op_num_threads)
+
+        # TF32
+        if self.config.allow_tf32:
+            self.logger.info("\t+ Enabling TF32")
+            torch.backends.cuda.matmul.allow_tf32 = True
+            torch.backends.cudnn.allow_tf32 = True
 
         # Autocast
         if self.config.autocast_enabled:
@@ -185,9 +220,16 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 self.pretrained_model.forward = torch.compile(
                     self.pretrained_model.forward, **self.config.torch_compile_config
                 )
+
             elif self.config.torch_compile_target == "model":
                 self.logger.info("\t+ Using torch.compile on model")
                 self.pretrained_model = torch.compile(self.pretrained_model, **self.config.torch_compile_config)
+
+            elif self.config.torch_compile_target == "regions":
+                # torch._dynamo.config.cache_size_limit = 0
+                self.logger.info("\t+ Using torch.compile on model regions (regional compilation)")
+                self.pretrained_model = regional_compilation(self.pretrained_model, **self.config.torch_compile_config)
+
             else:
                 raise ValueError(f"Target {self.config.torch_compile_target} not supported")
 
