@@ -49,4 +49,4 @@ ENV ROCM_VERSION=5.7
 ENV PYTORCH_ROCM_ARCH="gfx900;gfx906;gfx908;gfx90a;gfx1030;gfx1100"
 
 COPY scripts/install_quantization_libs.py /internal/install_quantization_libs.py
-RUN python internal/install_quantization_libs.py --install-autogptq-from-source --install-autoawq-from-source
+RUN python internal/install_quantization_libs.py --gptqmodel --autoawq

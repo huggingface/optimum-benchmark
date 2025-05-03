@@ -1,5 +1,4 @@
-# List of targets that are not associated with files
-.PHONY: quality style install build_cpu_image build_cuda_image build_cuda_ort_image build_rocm_image run_cpu_container run_cuda_container run_cuda_ort_container run_rocm_container install_api_misc install_api_cpu install_api_cuda install_api_rocm install_cli_misc install_cli_cpu_pytorch install_cli_cpu_openvino install_cli_cpu_onnxruntime install_cli_cpu_neural_compressor install_cli_cuda_pytorch install_cli_rocm_pytorch install_cli_cuda_torch_ort install_cli_cuda_onnxruntime test_api_misc test_api_cpu test_api_cuda test_api_rocm test_cli_misc test_cli_cpu_pytorch test_cli_cpu_openvino test_cli_cpu_onnxruntime test_cli_cpu_neural_compressor test_cli_cuda_onnxruntime test_cli_cuda_vllm test_cli_cuda_pytorch_multi_gpu test_cli_cuda_pytorch_single_gpu test_cli_cuda_torch_ort_multi_gpu test_cli_cuda_torch_ort_single_gpu test_cli_rocm_pytorch_multi_gpu test_cli_rocm_pytorch_single_gpu install_llm_perf_cuda_pytorch run_llm_perf_cuda_pytorch_unquantized run_llm_perf_cuda_pytorch_bnb run_llm_perf_cuda_pytorch_gptq run_llm_perf_cuda_pytorch_awq
+# Makefile for Optimum-Benchmark
 
 PWD := $(shell pwd)
 USER_ID := $(shell id -u)
@@ -108,10 +107,10 @@ install_cli_cpu_neural_compressor:
 	pip install -e .[testing,peft,timm,diffusers,neural-compressor]
 
 install_cli_cuda_pytorch:
-	pip install -e .[testing,timm,diffusers,peft,autoawq,auto-gptq,bitsandbytes,deepspeed]
+	pip install -e .[testing,timm,diffusers,peft,autoawq,gptqmodel,bitsandbytes,deepspeed]
 
 install_cli_rocm_pytorch:
-	pip install -e .[testing,timm,diffusers,peft,autoawq,auto-gptq] "deepspeed<0.15"
+	pip install -e .[testing,timm,diffusers,peft,autoawq,gptqmodel] "deepspeed<0.15"
 
 install_cli_cuda_torch_ort:
 	pip install -e .[testing,timm,diffusers,peft,torch-ort,deepspeed]
@@ -174,21 +173,3 @@ test_cli_rocm_pytorch_single_gpu:
 
 test_cli_llama_cpp:
 	pytest -s -k "llama_cpp"
-
-# llm-perf
-install_llm_perf_cuda_pytorch:
-	pip install packaging && pip install flash-attn einops scipy auto-gptq optimum bitsandbytes autoawq codecarbon
-	pip install -U transformers huggingface_hub[hf_transfer]
-	pip install -e .
-
-run_llm_perf_cuda_pytorch_unquantized:
-	MACHINE=1xA100 SUBSET=unquantized python llm_perf/update_llm_perf_cuda_pytorch.py
-
-run_llm_perf_cuda_pytorch_bnb:
-	MACHINE=1xA100 SUBSET=bnb python llm_perf/update_llm_perf_cuda_pytorch.py
-
-run_llm_perf_cuda_pytorch_gptq:
-	MACHINE=1xA100 SUBSET=gptq python llm_perf/update_llm_perf_cuda_pytorch.py
-
-run_llm_perf_cuda_pytorch_awq:
-	MACHINE=1xA100 SUBSET=awq python llm_perf/update_llm_perf_cuda_pytorch.py

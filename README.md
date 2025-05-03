@@ -105,7 +105,7 @@ Depending on the backends you want to use, you can install `optimum-benchmark` w
 We also support the following extra extra dependencies:
 
 - autoawq
-- auto-gptq
+- gptqmodel
 - sentence-transformers
 - bitsandbytes
 - codecarbon

@@ -64,47 +64,44 @@ def install_autoawq_from_source():
     print("AutoAWQ and AutoAWQ_kernels packages installed.")
 
 
-def install_autogptq_from_source():
-    """Install the AutoGPTQ package from GitHub."""
-    print("Installing AutoGPTQ package.")
-    autogptq_repo_path = os.path.join(EXTERNAL_REPOS_DIR, "AutoGPTQ")
+def install_gptqmodel_from_source():
+    """Install the GPTQModel package from GitHub."""
+    print("Installing GPTQModel package.")
+    gptqmodel_repo_path = os.path.join(EXTERNAL_REPOS_DIR, "GPTQModel")
 
-    clone_or_pull_repo("https://github.com/PanQiWei/AutoGPTQ.git", autogptq_repo_path)
-    subprocess.run("pip install numpy gekko pandas", shell=True, check=True, env=os.environ)
+    clone_or_pull_repo("https://github.com/ModelCloud/GPTQModel.git", gptqmodel_repo_path)
     subprocess.run(
-        f"cd {autogptq_repo_path} && {sys.executable} -m pip install .",
+        f"cd {gptqmodel_repo_path} && {sys.executable} -m pip install .",
         shell=True,
         check=True,
         env=os.environ,
     )
 
-    print("AutoGPTQ package installed.")
+    print("GPTQModel package installed.")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Install AutoAWQ or AutoGPTQ from source.")
+    parser = argparse.ArgumentParser(description="Install AutoAWQ and/or GPTQModel packages from source.")
     parser.add_argument(
-        "--install-autoawq-from-source",
+        "--autoawq",
         action="store_true",
         help="Install AutoAWQ and AutoAWQ_kernels packages from source.",
     )
     parser.add_argument(
-        "--install-autogptq-from-source",
+        "--gptqmodel",
         action="store_true",
-        help="Install AutoGPTQ package from source.",
+        help="Install GPTQModel package from source.",
     )
 
     args = parser.parse_args()
 
-    if args.install_autoawq_from_source:
+    if args.autoawq:
         install_autoawq_from_source()
-    if args.install_autogptq_from_source:
-        install_autogptq_from_source()
+    if args.gptqmodel:
+        install_gptqmodel_from_source()
 
-    if not args.install_autoawq_from_source and not args.install_autogptq_from_source:
-        print(
-            "Please specify an installation option. Use --install-autoawq-from-source or --install-autogptq-from-source."
-        )
+    if not args.autoawq and not args.gptqmodel:
+        print("Please specify an installation option. Use --autoawq or --gptqmodel.")
         sys.exit(1)
 
 

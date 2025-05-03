@@ -44,7 +44,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -e .[testing,diffusers,timm,peft,bitsandbytes,autoawq,auto-gptq]
+          pip install -e .[testing,diffusers,timm,peft,bitsandbytes,autoawq,gptqmodel]
 
       - name: Run tests
         run: |

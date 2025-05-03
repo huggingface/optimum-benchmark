@@ -326,13 +326,13 @@ class PyTorchBackend(Backend[PyTorchConfig]):
     def process_quantization_config(self) -> None:
         if self.is_gptq_quantized:
             try:
-                import exllamav2_kernels  # noqa: F401
+                import gptqmodel_exllamav2_kernels  # noqa: F401
             except ImportError:
                 raise ImportError(
-                    "Tried to import `exllamav2_kernels` but failed. "
-                    "This means that the AutoGPTQ package is either not installed or not compiled with the right torch version. "
-                    "Please install it from source following the instructions at `https://github.com/AutoGPTQ/AutoGPTQ`"
-                    "Or use `python scripts/install_quantization_libs.py --install-autogptq-from-source` in "
+                    "Tried to import `gptqmodel_exllamav2_kernels` but failed. "
+                    "This means that the GPTQModel package is either not installed or not compiled with the right torch version. "
+                    "Please install it from source following the instructions at `https://github.com/ModelCloud/GPTQModel`"
+                    "Or use `python scripts/install_quantization_libs.py --install-gptqmodel-from-source` in "
                     "`optimum-benchmark` repository at `https://github.com/huggingface/optimum-benchmark`."
                 )
 
