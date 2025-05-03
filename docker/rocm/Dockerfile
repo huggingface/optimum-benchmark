@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG ROCM_VERSION=5.7.1
+ARG ROCM_VERSION=6.3.4
 ARG UBUNTU_VERSION=22.04
 
 FROM rocm/dev-ubuntu-${UBUNTU_VERSION}:${ROCM_VERSION}
@@ -31,7 +31,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
 
 # Install PyTorch
 ARG TORCH_VERSION=""
-ARG TORCH_ROCM=rocm5.7
+ARG TORCH_ROCM=rocm6.3
 ARG TORCH_RELEASE_TYPE=stable
 
 RUN if [ -n "${TORCH_VERSION}" ]; then \
@@ -45,7 +45,7 @@ else \
 fi
 
 # Install quantization libraries from source
-ENV ROCM_VERSION=5.7
+ENV ROCM_VERSION=6.3
 ENV PYTORCH_ROCM_ARCH="gfx900;gfx906;gfx908;gfx90a;gfx1030;gfx1100"
 
 COPY scripts/install_quantization_libs.py /internal/install_quantization_libs.py

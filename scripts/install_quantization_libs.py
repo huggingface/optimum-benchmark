@@ -1,6 +1,5 @@
 import argparse
 import os
-import re
 import subprocess
 import sys
 
@@ -18,20 +17,6 @@ def clone_or_pull_repo(repo_url, repo_location_path):
         subprocess.run(f"git clone {repo_url} {repo_location_path}", shell=True, check=True)
 
 
-def process_setup_file_for_autoawq(setup_file_path):
-    print("Processing setup.py for AutoAWQ")
-
-    with open(setup_file_path, "r") as file:
-        setup_content = file.read()
-
-    # Use regex to match any line that starts with IS_CPU_ONLY = and modify it to IS_CPU_ONLY = False
-    setup_content = re.sub(r"(IS_CPU_ONLY\s*=\s*.*)", r"\1\nIS_CPU_ONLY = False", setup_content)
-
-    # Write the modified content back to setup.py
-    with open(setup_file_path, "w") as file:
-        file.write(setup_content)
-
-
 def install_autoawq_from_source():
     """Install the AutoAWQ and AutoAWQ_kernels packages from GitHub."""
     print("Installing AutoAWQ and AutoAWQ_kernels packages.")
@@ -44,7 +29,7 @@ def install_autoawq_from_source():
     print("Installing AutoAWQ_kernels package.")
     clone_or_pull_repo(f"https://github.com/casper-hansen/{autoawq_kernels_repo_name}", kernels_repo_path)
     subprocess.run(
-        f"cd {kernels_repo_path} && {sys.executable} -m pip install .",
+        f"cd {kernels_repo_path} && {sys.executable} -m pip install . --no-build-isolation",
         shell=True,
         check=True,
         env=os.environ,
@@ -52,10 +37,8 @@ def install_autoawq_from_source():
 
     print("Installing AutoAWQ package.")
     clone_or_pull_repo(f"https://github.com/casper-hansen/{autoawq_repo_name}", autoawq_repo_path)
-    autoawq_setup_file_path = os.path.join(autoawq_repo_path, "setup.py")
-    process_setup_file_for_autoawq(autoawq_setup_file_path)
     subprocess.run(
-        f"cd {autoawq_repo_path} && {sys.executable} -m pip install .",
+        f"cd {autoawq_repo_path} && {sys.executable} -m pip install . --no-build-isolation",
         shell=True,
         check=True,
         env=os.environ,
