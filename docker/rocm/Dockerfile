@@ -21,7 +21,7 @@ FROM rocm/dev-ubuntu-${UBUNTU_VERSION}:${ROCM_VERSION}
 ENV PATH="/opt/rocm/bin:${PATH}"
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \ 
-    hipsparse hipblas hipblaslt hipsolver rocthrust \
+    hipsparse hipblas hipblaslt hipsolver rocthrust rocsparse \
     sudo build-essential git bash-completion \
     python3.10 python3-pip python3.10-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && \
