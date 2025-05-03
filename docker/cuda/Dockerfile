@@ -43,7 +43,9 @@ fi
 
 # Install quantization libraries from source
 ENV CUDA_VERSION=12.8
-ENV TORCH_CUDA_ARCH_LIST="6.0 7.0 7.5 8.0 8.6 9.0+PTX"
+ENV TORCH_CUDA_ARCH_LIST="7.5 8.0 8.6 8.7 8.9 9.0+PTX"
 
-RUN git clone https://github.com/casper-hansen/AutoAWQ_kernels.git && cd AutoAWQ_kernels && pip install . --no-build-isolation
-RUN git clone https://github.com/casper-hansen/AutoAWQ.git && cd AutoAWQ && pip install . --no-build-isolation
+RUN git clone https://github.com/casper-hansen/AutoAWQ_kernels.git && cd AutoAWQ_kernels && pip install --no-build-isolation --no-cache-dir .
+RUN git clone https://github.com/casper-hansen/AutoAWQ.git && cd AutoAWQ && pip install --no-build-isolation --no-cache-dir .
+
+RUN git clone https://github.com/ModelCloud/GPTQModel.git && cd GPTQModel && pip install --no-build-isolation --no-cache-dir .

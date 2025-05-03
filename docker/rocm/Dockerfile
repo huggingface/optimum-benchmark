@@ -21,13 +21,12 @@ FROM rocm/dev-ubuntu-${UBUNTU_VERSION}:${ROCM_VERSION}
 ENV PATH="/opt/rocm/bin:${PATH}"
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \ 
-    rocsparse-dev hipsparse-dev rocthrust-dev rocblas-dev hipblas-dev hipblaslt-dev hipsolver-dev \
+    hipsparse hipblas hipblaslt hipsolver rocthrust \
     sudo build-essential git bash-completion \
     python3.10 python3-pip python3.10-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 && \
-    pip install --no-cache-dir --upgrade pip setuptools wheel requests && \
-    cd /opt/rocm/share/amd_smi && pip install .
+    pip install --no-cache-dir --upgrade pip setuptools wheel requests
 
 # Install PyTorch
 ARG TORCH_VERSION=""
@@ -48,5 +47,7 @@ fi
 ENV ROCM_VERSION=6.3
 ENV PYTORCH_ROCM_ARCH="gfx900;gfx906;gfx908;gfx90a;gfx1030;gfx1100"
 
-RUN git clone https://github.com/casper-hansen/AutoAWQ_kernels.git && cd AutoAWQ_kernels && pip install . --no-build-isolation
-RUN git clone https://github.com/casper-hansen/AutoAWQ.git && cd AutoAWQ && pip install . --no-build-isolation
+RUN git clone https://github.com/casper-hansen/AutoAWQ_kernels.git && cd AutoAWQ_kernels && pip install --no-build-isolation --no-cache-dir .
+RUN git clone https://github.com/casper-hansen/AutoAWQ.git && cd AutoAWQ && pip install --no-build-isolation --no-cache-dir .
+
+RUN git clone https://github.com/ModelCloud/GPTQModel.git && cd GPTQModel && pip install --no-build-isolation --no-cache-dir .
