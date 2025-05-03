@@ -20,6 +20,16 @@ WEIGHTS_CONFIGS = {
             "version": "gemm",
         },
     },
+    "4bit-gptq-exllama-v2": {
+        "torch_dtype": "float16",
+        "quantization_config": {
+            "quant_method": "gptq",
+            "bits": 4,
+            "use_exllama ": True,
+            "version": 2,
+            "model_seqlen": 256,
+        },
+    },
     "torchao-int4wo-128": {
         "torch_dtype": "bfloat16",
         "quantization_config": {
