@@ -1,7 +1,0 @@
-backend:
-  model: TheBloke/TinyLlama-1.1B-Chat-v1.0-GPTQ
-  quantization_scheme: gptq
-  quantization_config:
-    exllama_config:
-      version: 2
-      max_input_len: 512

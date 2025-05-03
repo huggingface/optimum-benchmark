@@ -107,10 +107,10 @@ install_cli_cpu_neural_compressor:
 	pip install -e .[testing,peft,timm,diffusers,neural-compressor]
 
 install_cli_cuda_pytorch:
-	pip install -e .[testing,timm,diffusers,peft,autoawq,gptqmodel,bitsandbytes,deepspeed]
+	pip install -e .[testing,timm,diffusers,peft,autoawq,bitsandbytes,deepspeed]
 
 install_cli_rocm_pytorch:
-	pip install -e .[testing,timm,diffusers,peft,autoawq,gptqmodel] "deepspeed<0.15"
+	pip install -e .[testing,timm,diffusers,peft,autoawq] "deepspeed<0.15"
 
 install_cli_cuda_torch_ort:
 	pip install -e .[testing,timm,diffusers,peft,torch-ort,deepspeed]

@@ -324,19 +324,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
 
     def process_quantization_config(self) -> None:
-        if self.is_gptq_quantized:
-            try:
-                import gptqmodel_exllamav2_kernels  # noqa: F401
-            except ImportError:
-                raise ImportError(
-                    "Tried to import `gptqmodel_exllamav2_kernels` but failed. "
-                    "This means that the GPTQModel package is either not installed or not compiled with the right torch version. "
-                    "Please install it from source following the instructions at `https://github.com/ModelCloud/GPTQModel`"
-                    "Or use `python scripts/install_quantization_libs.py --install-gptqmodel-from-source` in "
-                    "`optimum-benchmark` repository at `https://github.com/huggingface/optimum-benchmark`."
-                )
-
-        elif self.is_awq_quantized:
+        if self.is_awq_quantized:
             try:
                 import exlv2_ext  # noqa: F401
             except ImportError:
@@ -364,13 +352,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         )
 
     @property
-    def is_gptq_quantized(self) -> bool:
-        return self.config.quantization_scheme == "gptq" or (
-            hasattr(self.pretrained_config, "quantization_config")
-            and self.pretrained_config.quantization_config.get("quant_method") == "gptq"
-        )
-
-    @property
     def is_awq_quantized(self) -> bool:
         return self.config.quantization_scheme == "awq" or (
             hasattr(self.pretrained_config, "quantization_config")
@@ -381,7 +362,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
     def is_exllamav2(self) -> bool:
         return (
             self.is_quantized
-            and (self.is_gptq_quantized or self.is_awq_quantized)
+            and self.is_awq_quantized
             and (
                 (
                     hasattr(self.pretrained_config, "quantization_config")
