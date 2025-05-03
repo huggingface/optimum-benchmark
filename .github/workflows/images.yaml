@@ -8,6 +8,15 @@ on:
     paths:
       - docker/**
       - .github/workflows/images.yaml
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - labeled
+      - unlabeled
   schedule:
     - cron: "0 0 * * *"
 
@@ -21,6 +30,13 @@ env:
 
 jobs:
   publish:
+    if: ${{
+      github.event_name == 'push' ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.pull_request.labels.*.name, 'docker')
+      }}
+
     strategy:
       fail-fast: true
       matrix:
