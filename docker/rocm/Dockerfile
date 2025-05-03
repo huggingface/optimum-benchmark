@@ -21,7 +21,7 @@ FROM rocm/dev-ubuntu-${UBUNTU_VERSION}:${ROCM_VERSION}
 ENV PATH="/opt/rocm/bin:${PATH}"
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \ 
-    rocsparse-dev hipsparse-dev rocthrust-dev rocblas-dev hipblas-dev \
+    rocsparse-dev hipsparse-dev rocthrust-dev rocblas-dev hipblas-dev hipblaslt \
     sudo build-essential git bash-completion \
     python3.10 python3-pip python3.10-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && \
@@ -48,5 +48,6 @@ fi
 ENV ROCM_VERSION=6.3
 ENV PYTORCH_ROCM_ARCH="gfx900;gfx906;gfx908;gfx90a;gfx1030;gfx1100"
 
-COPY scripts/install_quantization_libs.py /internal/install_quantization_libs.py
-RUN python internal/install_quantization_libs.py --gptqmodel --autoawq
+RUN git clone https://github.com/casper-hansen/AutoAWQ.git && cd AutoAWQ && pip install -e . --no-build-isolation
+RUN git clone https://github.com/ModelCloud/GPTQModel.git && cd GPTQModel && pip install -e . --no-build-isolation
+RUN git clone https://github.com/casper-hansen/AutoAWQ_kernels.git && cd AutoAWQ_kernels && pip install -e . --no-build-isolation

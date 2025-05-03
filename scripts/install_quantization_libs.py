@@ -54,7 +54,7 @@ def install_gptqmodel_from_source():
 
     clone_or_pull_repo("https://github.com/ModelCloud/GPTQModel.git", gptqmodel_repo_path)
     subprocess.run(
-        f"cd {gptqmodel_repo_path} && {sys.executable} -m pip install .",
+        f"cd {gptqmodel_repo_path} && {sys.executable} -m pip install . --no-build-isolation",
         shell=True,
         check=True,
         env=os.environ,
