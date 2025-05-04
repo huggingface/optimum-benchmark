@@ -1,3 +1,4 @@
+import enum
 from typing import Any, Dict
 
 from transformers import PreTrainedModel
@@ -13,5 +14,9 @@ def apply_peft(model: "PreTrainedModel", peft_type: str, peft_config: Dict[str, 
         raise ImportError("peft is not available. Please, pip install peft.")
 
     peft_config = PEFT_TYPE_TO_CONFIG_MAPPING[peft_type](**peft_config)
+
+    # Fix for PEFT which import GPTQModel which imports EnumType from enum
+    if not hasattr(enum, "EnumType") and hasattr(enum, "EnumMeta"):
+        enum.EnumType = enum.EnumMeta
 
     return get_peft_model(model=model, peft_config=peft_config)
