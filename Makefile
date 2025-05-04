@@ -19,19 +19,19 @@ install:
 
 build_cpu_image:
 	docker build -t optimum-benchmark:latest-cpu -f docker/cpu/Dockerfile .
-	docker build --build-arg IMAGE=optimum-benchmark:latest-cpu --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cpu docker/unroot
+	# docker build --build-arg IMAGE=optimum-benchmark:latest-cpu --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cpu docker/unroot
 
 build_cuda_image:
 	docker build -t optimum-benchmark:latest-cuda -f docker/cuda/Dockerfile .
-	docker build --build-arg IMAGE=optimum-benchmark:latest-cuda --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cuda docker/unroot
+	# docker build --build-arg IMAGE=optimum-benchmark:latest-cuda --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cuda docker/unroot
 
 build_cuda_ort_image:
 	docker build -t optimum-benchmark:latest-cuda-ort -f docker/cuda-ort/Dockerfile .
-	docker build --build-arg IMAGE=optimum-benchmark:latest-cuda-ort --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cuda-ort docker/unroot
+	# docker build --build-arg IMAGE=optimum-benchmark:latest-cuda-ort --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cuda-ort docker/unroot
 
 build_rocm_image:
 	docker build -t optimum-benchmark:latest-rocm -f docker/rocm/Dockerfile .
-	docker build --build-arg IMAGE=optimum-benchmark:latest-rocm --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-rocm docker/unroot
+	# docker build --build-arg IMAGE=optimum-benchmark:latest-rocm --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-rocm docker/unroot
 
 # Run docker
 
@@ -110,7 +110,7 @@ install_cli_cuda_pytorch:
 	pip install -e .[testing,timm,diffusers,peft,autoawq,gptqmodel,bitsandbytes,deepspeed]
 
 install_cli_rocm_pytorch:
-	pip install -e .[testing,timm,diffusers,peft,autoawq,gptqmodel] "deepspeed<0.15"
+	pip install -e .[testing,timm,diffusers,peft,autoawq,gptqmodel]
 
 install_cli_cuda_torch_ort:
 	pip install -e .[testing,timm,diffusers,peft,torch-ort,deepspeed]
