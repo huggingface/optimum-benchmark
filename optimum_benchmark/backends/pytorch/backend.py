@@ -10,7 +10,12 @@ from safetensors.torch import save_file
 from transformers import Trainer, TrainerCallback, TrainerState, TrainingArguments
 from transformers.quantizers import AutoQuantizationConfig
 
-from ...import_utils import is_deepspeed_available, is_torch_distributed_available, is_zentorch_available
+from ...import_utils import (
+    is_deepspeed_available,
+    is_gptqmodel_available,
+    is_torch_distributed_available,
+    is_zentorch_available,
+)
 from ..base import Backend
 from ..peft_utils import apply_peft
 from ..transformers_utils import fast_weights_init
@@ -25,39 +30,54 @@ if is_torch_distributed_available():
 if is_zentorch_available():
     import zentorch  # type: ignore # noqa: F401
 
+if is_gptqmodel_available():
+    import enum
 
-# COMPILED_SUBMODULES = set()
+    if not hasattr(enum, "EnumType") and hasattr(enum, "EnumMeta"):
+        # This is a workaround for a bug in gptqmodel where it tries to access EnumType
+        # from the enum module, but it is not available in Python 3.10 and below.
+        enum.EnumType = enum.EnumMeta
 
 
-def regional_compilation(module: torch.nn.Module, **compile_kwargs) -> None:
-    if isinstance(module, torch.nn.ModuleList):
-        for name, submodule in module.named_children():
-            # if submodule.__class__.__name__ not in COMPILED_SUBMODULES:
-            #     print("Compiling leaf submodules of type", submodule.__class__.__name__)
-            #     COMPILED_SUBMODULES.add(submodule.__class__.__name__)
-            #     torch._dynamo.config.cache_size_limit += 1
+def compile_regions(module: torch.nn.Module, **compile_kwargs) -> torch.nn.Module:
+    """
+    Performs a version of the regional compilation recipe where we target repeated blocks of the same class and compile
+    them sequentially to hit the compiler's cache. This allows us to speed up the compilation time / cold start of
+    models like LLMs and Transformers in general.
+    See: https://pytorch.org/tutorials/recipes/regional_compilation.html
+    Args:
+        module (`torch.nn.Module`):
+            The model to compile.
+        **compile_kwargs:
+            Additional keyword arguments to pass to `torch.compile()`.
+    """
 
-            # Compile the submodule
-            compiled_submodule = torch.compile(submodule, **compile_kwargs)
-            compiled_submodule.__dict__.pop("_parameters", None)
-            setattr(module, name, compiled_submodule)
+    def _compile_regions(module: torch.nn.Module, **compile_kwargs) -> torch.nn.Module:
+        if isinstance(module, torch.nn.ModuleList):
+            if all(isinstance(submodule, module[0].__class__) for submodule in module):
+                new_module = torch.nn.ModuleList()
+                for submodule in module:
+                    new_module.append(torch.compile(submodule, **compile_kwargs))
+            else:
+                new_module = torch.compile(module, **compile_kwargs)
+        elif module._modules:  # Non-leaf node
+            new_module = module.__class__.__new__(module.__class__)
+            new_module.__dict__.update(module.__dict__)
+            new_module._modules = {}
+            for name, submodule in module.named_children():
+                new_module.add_module(name, _compile_regions(submodule, **compile_kwargs))
+        else:  # Leaf node
+            new_module = torch.compile(module, **compile_kwargs)
 
-    elif module._modules:  # Non-leaf node
-        for name, submodule in module.named_children():
-            compiled_submodule = regional_compilation(submodule, **compile_kwargs)
-            setattr(module, name, compiled_submodule)
+        return new_module
 
-    else:  # Leaf node
-        # if module.__class__.__name__ not in COMPILED_SUBMODULES:
-        #     print("Compiling leaf submodule of type", module.__class__.__name__)
-        #     COMPILED_SUBMODULES.add(module.__class__.__name__)
-        #     torch._dynamo.config.cache_size_limit += 1
+    new_module = _compile_regions(module, **compile_kwargs)
 
-        # Compile the module
-        module = torch.compile(module, **compile_kwargs)
-        module.__dict__.pop("_parameters", None)
+    if not hasattr(new_module, "_orig_mod"):
+        # Keeps a reference to the original module to decompile/unwrap it later
+        new_module.__dict__["_orig_mod"] = module
 
-    return module
+    return new_module
 
 
 class PyTorchBackend(Backend[PyTorchConfig]):
@@ -223,9 +243,8 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 self.pretrained_model = torch.compile(self.pretrained_model, **self.config.torch_compile_config)
 
             elif self.config.torch_compile_target == "regions":
-                # torch._dynamo.config.cache_size_limit = 0
-                self.logger.info("\t+ Using torch.compile on model regions (regional compilation)")
-                self.pretrained_model = regional_compilation(self.pretrained_model, **self.config.torch_compile_config)
+                self.logger.info("\t+ Using torch.compile on regions")
+                self.pretrained_model = compile_regions(self.pretrained_model, **self.config.torch_compile_config)
 
             else:
                 raise ValueError(f"Target {self.config.torch_compile_target} not supported")
