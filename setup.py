@@ -51,14 +51,7 @@ if USE_CUDA:
     INSTALL_REQUIRES.append("nvidia-ml-py")
 
 if USE_ROCM:
-    PYRSMI = "pyrsmi@git+https://github.com/ROCm/pyrsmi.git"
-    INSTALL_REQUIRES.append(PYRSMI)
-    if not importlib.util.find_spec("amdsmi"):
-        print(
-            "ROCm GPU detected without amdsmi installed. You won't be able to run process-specific VRAM tracking. "
-            "Please install amdsmi from https://github.com/ROCm/amdsmi to enable this feature."
-        )
-
+    INSTALL_REQUIRES.extend(["pyrsmi", "amdsmi"])
 
 EXTRAS_REQUIRE = {
     "quality": ["ruff"],
@@ -78,7 +71,7 @@ EXTRAS_REQUIRE = {
     # optional dependencies
     "torchao": ["torchao"],
     "autoawq": ["autoawq"],
-    "gptqmodel": ["gptqmodel"],
+    "gptqmodel": ["gptqmodel", "optimum"],
     "sentence-transformers": ["sentence-transformers"],
     "bitsandbytes": ["bitsandbytes"],
     "codecarbon": ["codecarbon"],
