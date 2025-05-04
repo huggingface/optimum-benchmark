@@ -9,20 +9,11 @@ from typing import List, Literal, Optional, Union
 from rich.console import Console
 from rich.markdown import Markdown
 
-from ..import_utils import (
-    is_amdsmi_available,
-    is_pynvml_available,
-    is_pyrsmi_available,
-    is_torch_available,
-)
+from ..import_utils import is_amdsmi_available, is_pynvml_available, is_torch_available
 from ..system_utils import is_nvidia_system, is_rocm_system
 
-if is_rocm_system() and is_pyrsmi_available():
-    from pyrsmi import rocml
-
-
 if is_nvidia_system() and is_pynvml_available():
-    import pynvml
+    import pynvml  # type: ignore
 
 if is_rocm_system() and is_amdsmi_available():
     import amdsmi  # type: ignore
@@ -346,14 +337,8 @@ def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connectio
                 "The library AMD SMI is required to track process-specific memory benchmark on AMD GPUs, but is not installed. "
                 "Please install the official and AMD maintained AMD SMI library from https://github.com/ROCm/amdsmi."
             )
-        if not is_pyrsmi_available():
-            raise ValueError(
-                "The library PyRSMI is required to track global-device memory benchmark on AMD GPUs, but is not installed. "
-                "Please install the official and AMD maintained PyRSMI library from https://github.com/ROCm/pyrsmi."
-            )
 
         amdsmi.amdsmi_init()
-        rocml.smi_initialize()
         permission_denied = False
         devices_handles = amdsmi.amdsmi_get_processor_handles()
 
@@ -367,12 +352,9 @@ def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connectio
                 device_handle = devices_handles[device_id]
 
                 try:
-                    if is_amdsmi_available():
-                        used_global_memory += amdsmi.amdsmi_get_gpu_memory_total(
-                            device_handle, mem_type=amdsmi.AmdSmiMemoryType.VRAM
-                        )
-                    elif is_pyrsmi_available():
-                        used_global_memory += rocml.smi_get_device_memory_used(device_id, type="VRAM")
+                    used_global_memory += amdsmi.amdsmi_get_gpu_memory_total(
+                        device_handle, mem_type=amdsmi.AmdSmiMemoryType.VRAM
+                    )
                 except Exception as e:
                     LOGGER.warning(f"Could not get memory usage for device {device_id}: {e}")
 
@@ -402,7 +384,6 @@ def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connectio
             stop = connection.poll(MEMORY_CONSUMPTION_SAMPLING_RATE)
 
         amdsmi.amdsmi_shut_down()
-        rocml.smi_shutdown()
 
     else:
         raise ValueError("Only NVIDIA and AMD ROCm GPUs are supported for VRAM tracking.")
