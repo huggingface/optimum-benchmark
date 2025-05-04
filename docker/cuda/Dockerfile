@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG CUDA_VERSION=12.8.1
+ARG CUDA_VERSION=12.6.3
 ARG UBUNTU_VERSION=22.04
 
 FROM nvidia/cuda:${CUDA_VERSION}-cudnn-devel-ubuntu${UBUNTU_VERSION}
@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install PyTorch
 ARG TORCH_VERSION=""
-ARG TORCH_CUDA=cu128
+ARG TORCH_CUDA=cu126
 ARG TORCH_RELEASE_TYPE=stable
 
 RUN if [ -n "${TORCH_VERSION}" ]; then \
@@ -42,9 +42,10 @@ else \
 fi
 
 # Install quantization libraries from source
-ENV CUDA_VERSION=12.8
+ENV CUDA_VERSION=12.6
 ENV TORCH_CUDA_ARCH_LIST="8.0 8.6 8.7 8.9 9.0"
 
+# TODO: update to 12.8.x when gptqmodel can compile to it
 RUN git clone https://github.com/casper-hansen/AutoAWQ_kernels.git && cd AutoAWQ_kernels && pip install --no-build-isolation --no-cache-dir .
 RUN git clone https://github.com/casper-hansen/AutoAWQ.git && cd AutoAWQ && pip install --no-build-isolation --no-cache-dir .
 RUN pip install -v gptqmodel --no-build-isolation --no-cache-dir
