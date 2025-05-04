@@ -4,7 +4,7 @@ from tempfile import TemporaryDirectory
 from typing import Any, Callable, Dict, List
 
 import torch
-from accelerate import Accelerator, init_empty_weights, init_on_device
+from accelerate import Accelerator, init_empty_weights
 from datasets import Dataset
 from safetensors.torch import save_file
 from transformers import Trainer, TrainerCallback, TrainerState, TrainingArguments

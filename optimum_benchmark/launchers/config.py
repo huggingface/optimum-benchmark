@@ -24,7 +24,7 @@ class LauncherConfig(ABC):
             raise ValueError(
                 "Device isolation is only supported on NVIDIA and ROCm systems. "
                 "Please set `device_isolation` to False or make sure your drivers "
-                "are correctly installed by running `nvidia-smi` or `rocm-smi`."
+                "are correctly installed by running `nvidia-smi` or `amd-smi`."
             )
 
         if self.device_isolation and self.device_isolation_action is None:

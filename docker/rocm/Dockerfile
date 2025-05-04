@@ -25,7 +25,8 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
     python3.10 python3-pip python3.10-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && apt-get autoremove -y && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 && \
-    pip install --no-cache-dir --upgrade pip setuptools wheel requests
+    pip install --no-cache-dir --upgrade pip setuptools wheel requests \
+    cd /opt/rocm/share/amd_smi && pip install .
 
 RUN apt-get update && apt-get upgrade -y && apt-get install -y hipsparse hipblas hipsolver rocthrust && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && apt-get autoremove -y
