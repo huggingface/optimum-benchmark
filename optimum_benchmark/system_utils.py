@@ -52,7 +52,7 @@ def is_nvidia_system():
 
 @functools.lru_cache(maxsize=1)
 def is_rocm_system():
-    return subprocess.call("amd-smi", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
+    return subprocess.call("rocm-smi", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
 
 
 if is_nvidia_system() and is_pynvml_available():

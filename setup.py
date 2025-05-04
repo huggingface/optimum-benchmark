@@ -1,4 +1,3 @@
-import importlib.util
 import os
 import re
 import subprocess
@@ -39,7 +38,7 @@ except Exception:
     IS_NVIDIA_SYSTEM = False
 
 try:
-    subprocess.run(["rocm-smi"], check=True)
+    subprocess.run(["amd-smi"], check=True)
     IS_ROCM_SYSTEM = True
 except Exception:
     IS_ROCM_SYSTEM = False
