@@ -137,10 +137,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             self.logger.info(f"\t+ Loading {self.quantization_config.quant_method}-quantized model")
             self.pretrained_model = self.automodel_loader.from_pretrained(
                 pretrained_model_name_or_path=self.config.model,
-                device_map=self.config.device_map or torch.device(self.config.device),
-                # quantized models are more compatible with device_map dispatcher than (to(device))
-                # using to(device) on quantized models sometimes leaves some layers on cpu or raises
-                # an error because the layers are already on the device
+                device_map=self.config.device_map or self.config.device,
                 **self.config.model_kwargs,
                 **self.automodel_kwargs,
             )
@@ -155,34 +152,19 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         else:
             self.logger.info("\t+ Loading Transformers model")
             self.pretrained_model = self.automodel_loader.from_pretrained(
-                pretrained_model_name_or_path=self.config.model, **self.config.model_kwargs, **self.automodel_kwargs
+                pretrained_model_name_or_path=self.config.model,
+                **self.config.model_kwargs,
+                **self.automodel_kwargs,
             )
             if self.config.device != "cpu":
                 self.logger.info(f"\t+ Moving Transformers model to device: {self.config.device}")
                 self.pretrained_model = self.pretrained_model.to(self.config.device)
 
     def load_transformers_model_with_no_weights(self) -> None:
-        original_model, self.config.model = self.config.model, self.no_weights_model
-
-        if self.config.deepspeed_inference or self.config.device_map is None or not self.is_quantized:
-            with init_empty_weights(include_buffers=False):
-                self.logger.info("\t+ Loading Transformers model on meta device for fast initialization")
-                self.pretrained_model = self.automodel_loader.from_pretrained(
-                    pretrained_model_name_or_path=self.config.model,
-                    **self.config.model_kwargs,
-                    **self.automodel_kwargs,
-                )
-            if self.config.deepspeed_inference:
-                self.logger.info("\t+ Materializing model on CPU for DeepSpeed Inference Engine")
-                self.pretrained_model.to_empty(device="cpu")
-            else:
-                self.logger.info(f"\t+ Materializing model on device: {self.config.device}")
-                self.pretrained_model.to_empty(device=self.config.device)
-        else:
-            with fast_weights_init():
-                self.load_transformers_model_from_pretrained()
-
-        self.config.model = original_model
+        with fast_weights_init():
+            original_model, self.config.model = self.config.model, self.no_weights_model
+            self.load_transformers_model_from_pretrained()
+            self.config.model = original_model
 
     def load_transformers_model(self):
         if self.config.deepspeed_inference and self.is_quantized:
@@ -342,7 +324,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
     def process_quantization_config(self) -> None:
         if self.is_gptq_quantized:
             try:
-                import gptqmodel_exllamav2_kernels  # noqa: F401
+                import gptqmodel_exllamav2_kernels  # noqa: F401 # type: ignore
             except ImportError:
                 raise ImportError(
                     "Tried to import `gptqmodel_exllamav2_kernels` but failed. "
@@ -352,7 +334,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         elif self.is_awq_quantized:
             try:
-                import exlv2_ext  # noqa: F401
+                import exlv2_ext  # noqa: F401 # type: ignore
             except ImportError:
                 raise ImportError(
                     "Tried to import `exlv2_ext` but failed. "
