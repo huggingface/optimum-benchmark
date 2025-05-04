@@ -39,7 +39,7 @@ except Exception:
     IS_NVIDIA_SYSTEM = False
 
 try:
-    subprocess.run(["amd-smi"], check=True)
+    subprocess.run(["rocm-smi"], check=True)
     IS_ROCM_SYSTEM = True
 except Exception:
     IS_ROCM_SYSTEM = False
