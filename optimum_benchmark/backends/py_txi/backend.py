@@ -60,7 +60,6 @@ class PyTXIBackend(Backend[PyTXIConfig]):
             # unlike Transformers, TXI won't accept any missing tensors so we need to materialize the model
             self.pretrained_model = self.automodel_loader.from_pretrained(
                 model_path,
-                _fast_init=False,
                 device_map="auto",
                 **self.config.model_kwargs,
             )

@@ -79,7 +79,7 @@ class TRTLLMBackend(Backend[TRTLLMConfig]):
         self.logger.info(f"\t+ Loading no weights model from {self.no_weights_model}")
         with fast_weights_init():
             self.pretrained_model = self.automodel_loader.from_pretrained(
-                self.no_weights_model, **self.config.model_kwargs, device_map="auto", _fast_init=False
+                self.no_weights_model, **self.config.model_kwargs, device_map="auto"
             )
         self.logger.info("\t+ Saving no weights model")
         self.pretrained_model.save_pretrained(save_directory=self.no_weights_model)

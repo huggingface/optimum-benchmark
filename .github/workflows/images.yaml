@@ -27,6 +27,7 @@ concurrency:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  BUILDX_CACHE_TTL: 604800 # Cache expiration in seconds (e.g., 7 days)
 
 jobs:
   publish:
@@ -58,6 +59,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          buildkitd-flags: --debug
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -86,4 +92,5 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           file: docker/${{ matrix.image_flavor }}/Dockerfile
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest-${{ matrix.image_flavor }}
+          cache-to: type=gha,mode=min,scope=docker-cache-${{ matrix.image_flavor }}
+          cache-from: type=gha,mode=max,scope=docker-cache-${{ matrix.image_flavor }}

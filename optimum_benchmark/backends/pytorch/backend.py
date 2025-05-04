@@ -144,7 +144,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
     def load_transformers_model_with_no_weights(self) -> None:
         original_model, self.config.model = self.config.model, self.no_weights_model
 
-        if self.config.deepspeed_inference:
+        if self.config.deepspeed_inference or self.config.device_map is None or not self.is_quantized:
             with init_empty_weights(include_buffers=False):
                 self.logger.info("\t+ Loading Transformers model on meta device for fast initialization")
                 self.pretrained_model = self.automodel_loader.from_pretrained(
@@ -152,15 +152,12 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                     **self.config.model_kwargs,
                     **self.automodel_kwargs,
                 )
-            self.pretrained_model.to_empty(device="cpu")
-        elif self.config.device_map is None and not self.is_quantized:
-            with init_on_device(device=torch.device(self.config.device), include_buffers=True):
-                self.logger.info("\t+ Loading Transformers model using device context manager for fast initialization")
-                self.pretrained_model = self.automodel_loader.from_pretrained(
-                    pretrained_model_name_or_path=self.no_weights_model,
-                    **self.config.model_kwargs,
-                    **self.automodel_kwargs,
-                )
+            if self.config.deepspeed_inference:
+                self.logger.info("\t+ Materializing model on CPU for DeepSpeed Inference Engine")
+                self.pretrained_model.to_empty(device="cpu")
+            else:
+                self.logger.info(f"\t+ Materializing model on device: {self.config.device}")
+                self.pretrained_model.to_empty(device=self.config.device)
         else:
             with fast_weights_init():
                 self.load_transformers_model_from_pretrained()
@@ -409,11 +406,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         if self.config.low_cpu_mem_usage is not None:
             kwargs["low_cpu_mem_usage"] = self.config.low_cpu_mem_usage
-
-        if self.config.no_weights:
-            # we use our own context manager to load the
-            # model with faster random weights generators
-            kwargs["_fast_init"] = False
 
         return kwargs
 
