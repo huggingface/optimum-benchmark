@@ -53,5 +53,3 @@ ENV GPTQMODEL_FORCE_BUILD=1
 ENV PYTORCH_ROCM_ARCH="gfx900;gfx906;gfx908;gfx90a;gfx1030;gfx1100"
 
 RUN pip install -v gptqmodel --no-build-isolation --no-cache-dir
-RUN git clone https://github.com/casper-hansen/AutoAWQ_kernels.git && cd AutoAWQ_kernels && pip install --no-build-isolation --no-cache-dir .
-RUN git clone https://github.com/casper-hansen/AutoAWQ.git && cd AutoAWQ && pip install --no-build-isolation --no-cache-dir .

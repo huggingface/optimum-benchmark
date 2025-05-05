@@ -48,5 +48,3 @@ ENV GPTQMODEL_FORCE_BUILD=1
 ENV TORCH_CUDA_ARCH_LIST="8.0 8.6 8.9 9.0"
 
 RUN pip install -v gptqmodel --no-build-isolation --no-cache-dir
-RUN git clone https://github.com/casper-hansen/AutoAWQ_kernels.git && cd AutoAWQ_kernels && pip install --no-build-isolation --no-cache-dir .
-RUN git clone https://github.com/casper-hansen/AutoAWQ.git && cd AutoAWQ && pip install --no-build-isolation --no-cache-dir .

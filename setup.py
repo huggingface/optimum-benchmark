@@ -69,7 +69,6 @@ EXTRAS_REQUIRE = {
     "vllm": ["vllm"],
     # optional dependencies
     "torchao": ["torchao"],
-    "autoawq": ["autoawq"],
     "gptqmodel": ["gptqmodel", "optimum"],
     "sentence-transformers": ["sentence-transformers"],
     "bitsandbytes": ["bitsandbytes"],
@@ -103,7 +102,7 @@ setup(
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
     ],
     keywords="benchmark, transformers, quantization, pruning, optimization, training, inference, onnx, onnx runtime, intel, "
-    "habana, graphcore, neural compressor, ipex, ipu, hpu, llm-swarm, py-txi, vllm, llama-cpp, autoawq, gptqmodel, "
+    "habana, graphcore, neural compressor, ipex, ipu, hpu, llm-swarm, py-txi, vllm, llama-cpp, gptqmodel, "
     "sentence-transformers, bitsandbytes, codecarbon, flash-attn, deepspeed, diffusers, timm, peft",
     long_description=open("README.md", "r", encoding="utf-8").read(),
     long_description_content_type="text/markdown",

@@ -12,14 +12,6 @@ WEIGHTS_CONFIGS = {
         "torch_dtype": "float16",
         "quantization_config": {},
     },
-    "4bit-awq-gemm": {
-        "torch_dtype": "float16",
-        "quantization_config": {
-            "quant_method": "awq",
-            "bits": 4,
-            "version": "gemm",
-        },
-    },
     "4bit-gptq-exllama-v2": {
         "torch_dtype": "float16",
         "quantization_config": {

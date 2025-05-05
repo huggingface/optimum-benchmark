@@ -332,16 +332,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                     "Please install it from source following the instructions at `https://github.com/ModelCloud/GPTQModel`."
                 )
 
-        elif self.is_awq_quantized:
-            try:
-                import exlv2_ext  # noqa: F401 # type: ignore
-            except ImportError:
-                raise ImportError(
-                    "Tried to import `exlv2_ext` but failed. "
-                    "This means that the AutoAWQ package is either not installed or not compiled with the right torch version. "
-                    "Please install it from source following the instructions at `https://github.com/casper-hansen/AutoAWQ`."
-                )
-
         self.logger.info("\t+ Processing AutoQuantization config")
         self.quantization_config = AutoQuantizationConfig.from_dict(
             dict(
@@ -365,17 +355,10 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         )
 
     @property
-    def is_awq_quantized(self) -> bool:
-        return self.config.quantization_scheme == "awq" or (
-            hasattr(self.pretrained_config, "quantization_config")
-            and self.pretrained_config.quantization_config.get("quant_method") == "awq"
-        )
-
-    @property
     def is_exllamav2(self) -> bool:
         return (
             self.is_quantized
-            and (self.is_gptq_quantized or self.is_awq_quantized)
+            and (self.is_gptq_quantized)
             and (
                 (
                     hasattr(self.pretrained_config, "quantization_config")
