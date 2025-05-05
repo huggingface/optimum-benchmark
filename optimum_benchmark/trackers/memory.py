@@ -267,7 +267,10 @@ def monitor_cpu_ram_memory(monitored_pid: int, connection: Connection):
     monitored_process = psutil.Process(monitored_pid)
 
     if monitored_process.is_running():
-        connection.send(0)
+        try:
+            connection.send(0)
+        except Exception:
+            exit(0)
 
     while monitored_process.is_running() and not stop:
         meminfo_attr = "memory_info" if hasattr(monitored_process, "memory_info") else "get_memory_info"
@@ -276,7 +279,10 @@ def monitor_cpu_ram_memory(monitored_pid: int, connection: Connection):
         stop = connection.poll(MEMORY_CONSUMPTION_SAMPLING_RATE)
 
     if monitored_process.is_running():
-        connection.send(max_used_memory / 1e6)  # convert to MB
+        try:
+            connection.send(max_used_memory / 1e6)  # convert to MB
+        except Exception:
+            exit(0)
 
     connection.close()
 
@@ -288,7 +294,10 @@ def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connectio
     monitored_process = psutil.Process(monitored_pid)
 
     if monitored_process.is_running():
-        connection.send(0)
+        try:
+            connection.send(0)
+        except Exception:
+            exit(0)
 
     if is_nvidia_system():
         if not is_pynvml_available():
@@ -389,7 +398,10 @@ def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connectio
         raise ValueError("Only NVIDIA and AMD ROCm GPUs are supported for VRAM tracking.")
 
     if monitored_process.is_running():
-        connection.send(max_used_global_memory / 1e6)  # convert to MB
-        connection.send(max_used_process_memory / 1e6)  # convert to MB
+        try:
+            connection.send(max_used_global_memory / 1e6)  # convert to MB
+            connection.send(max_used_process_memory / 1e6)  # convert to MB
+        except Exception:
+            exit(0)
 
     connection.close()

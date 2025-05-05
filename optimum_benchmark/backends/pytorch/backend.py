@@ -133,32 +133,16 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         self.tmpdir.cleanup()
 
     def load_transformers_model_from_pretrained(self) -> None:
-        if self.is_quantized:
-            self.logger.info(f"\t+ Loading {self.quantization_config.quant_method}-quantized model")
-            self.pretrained_model = self.automodel_loader.from_pretrained(
-                pretrained_model_name_or_path=self.config.model,
-                device_map=self.config.device_map or self.config.device,
-                **self.config.model_kwargs,
-                **self.automodel_kwargs,
-            )
-        elif self.config.device_map is not None:
-            self.logger.info(f"\t+ Loading Transformers model with device map: {self.config.device_map}")
-            self.pretrained_model = self.automodel_loader.from_pretrained(
-                pretrained_model_name_or_path=self.config.model,
-                device_map=self.config.device_map,
-                **self.config.model_kwargs,
-                **self.automodel_kwargs,
-            )
-        else:
-            self.logger.info("\t+ Loading Transformers model")
-            self.pretrained_model = self.automodel_loader.from_pretrained(
-                pretrained_model_name_or_path=self.config.model,
-                **self.config.model_kwargs,
-                **self.automodel_kwargs,
-            )
-            if self.config.device != "cpu":
-                self.logger.info(f"\t+ Moving Transformers model to device: {self.config.device}")
-                self.pretrained_model = self.pretrained_model.to(self.config.device)
+        self.logger.info("\t+ Loading Transformers model")
+        self.pretrained_model = self.automodel_loader.from_pretrained(
+            pretrained_model_name_or_path=self.config.model,
+            device_map=self.config.device_map,
+            **self.config.model_kwargs,
+            **self.automodel_kwargs,
+        )
+        if self.config.device_map is None and self.config.device != "cpu":
+            self.logger.info(f"\t+ Moving Transformers model to device: {self.config.device}")
+            self.pretrained_model = self.pretrained_model.to(self.config.device)
 
     def load_transformers_model_with_no_weights(self) -> None:
         with fast_weights_init():
@@ -292,9 +276,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
                 raise ValueError(f"Target {self.config.torch_compile_target} not supported")
 
     def create_no_weights_model(self) -> None:
-        if self.pretrained_config is None:
-            raise ValueError("Can't create no weights model without a pretrained config")
-
         self.no_weights_model = os.path.join(self.tmpdir.name, "no_weights_model")
         self.logger.info("\t+ Creating no weights model directory")
         os.makedirs(self.no_weights_model, exist_ok=True)
@@ -316,7 +297,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         if self.is_quantized:
             self.logger.info("\t+ Adding quantization config to no weights model's pretrained config")
             self.pretrained_config.quantization_config = self.quantization_config.to_dict()
-            # tricking from_pretrained to load the model as if it was quantized
 
         self.logger.info("\t+ Saving no weights model pretrained config")
         self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
