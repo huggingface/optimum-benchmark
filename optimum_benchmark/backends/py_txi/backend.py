@@ -42,7 +42,13 @@ class PyTXIBackend(Backend[PyTXIConfig]):
             shutil.rmtree(self.tmpdir.name, ignore_errors=True)
 
     def download_pretrained_model(self) -> None:
-        model_snapshot_folder = snapshot_download(self.config.model, **self.config.model_kwargs)
+        model_snapshot_folder = snapshot_download(
+            self.config.model,
+            revision=self.config.model_kwargs.get("revision", None),
+            cache_dir=self.config.model_kwargs.get("cache_dir", None),
+            force_download=self.config.model_kwargs.get("force_download", False),
+            local_files_only=self.config.model_kwargs.get("local_files_only", False),
+        )
 
         if self.config.task in TEXT_GENERATION_TASKS:
             self.generation_config.eos_token_id = None
@@ -52,26 +58,23 @@ class PyTXIBackend(Backend[PyTXIConfig]):
     def create_no_weights_model(self) -> None:
         model_path = Path(hf_hub_download(self.config.model, filename="config.json", cache_dir=self.tmpdir.name)).parent
         save_model(model=torch.nn.Linear(1, 1), filename=model_path / "model.safetensors", metadata={"format": "pt"})
-
         self.pretrained_processor.save_pretrained(save_directory=model_path)
         self.pretrained_config.save_pretrained(save_directory=model_path)
 
         with fast_weights_init():
             # unlike Transformers, TXI won't accept any missing tensors so we need to materialize the model
-            self.pretrained_model = self.automodel_loader.from_pretrained(
-                model_path,
-                device_map="auto",
-                **self.config.model_kwargs,
-            )
+            dummy = self.automodel_loader.from_pretrained(model_path, device_map="auto", **self.config.model_kwargs)
+            dummy.save_pretrained(model_path)
+            del dummy
 
-        save_model(model=self.pretrained_model, filename=model_path / "model.safetensors", metadata={"format": "pt"})
-        del self.pretrained_model
         torch.cuda.empty_cache()
 
         if self.config.task in TEXT_GENERATION_TASKS:
             self.generation_config.eos_token_id = None
             self.generation_config.pad_token_id = None
             self.generation_config.save_pretrained(save_directory=model_path)
+
+        self.no_weights_model = model_path.as_posix()
 
     def load_model_with_no_weights(self) -> None:
         self.config.volumes = {self.tmpdir.name: {"bind": "/data", "mode": "rw"}}

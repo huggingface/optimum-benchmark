@@ -1,12 +1,13 @@
-import os
+import shutil
 from collections import OrderedDict
+from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Dict
 
 import torch
-from huggingface_hub.constants import HUGGINGFACE_HUB_CACHE
+from huggingface_hub import hf_hub_download, snapshot_download
 from hydra.utils import get_class
-from safetensors.torch import save_file
+from safetensors.torch import save_model
 
 from ...task_utils import TEXT_GENERATION_TASKS
 from ..base import Backend
@@ -35,69 +36,59 @@ class TRTLLMBackend(Backend[TRTLLMConfig]):
             self.logger.info("\t+ Creating no weights model")
             self.create_no_weights_model()
             self.logger.info("\t+ Loading no weights model")
-            self.load_trtllm_with_no_weights()
+            self.load_model_with_no_weights()
         else:
             self.logger.info("\t+ Downloading pretrained model")
             self.download_pretrained_model()
-            if self.config.task in TEXT_GENERATION_TASKS:
-                self.logger.info("\t+ Preparing generation config")
-                self.prepare_generation_config()
             self.logger.info("\t+ Loading pretrained model")
-            self.load_trtllm_from_pretrained()
+            self.load_model_from_pretrained()
 
-        self.logger.info("\t+ Cleaning up backend temporary directory")
-        self.tmpdir.cleanup()
+        try:
+            self.tmpdir.cleanup()
+        except Exception:
+            shutil.rmtree(self.tmpdir.name, ignore_errors=True)
 
     def download_pretrained_model(self) -> None:
-        with torch.device("meta"):
-            self.automodel_loader.from_pretrained(self.config.model, **self.config.model_kwargs)
+        model_snapshot_folder = snapshot_download(
+            self.config.model,
+            revision=self.config.model_kwargs.get("revision", None),
+            cache_dir=self.config.model_kwargs.get("cache_dir", None),
+            force_download=self.config.model_kwargs.get("force_download", False),
+            local_files_only=self.config.model_kwargs.get("local_files_only", False),
+        )
 
-    def prepare_generation_config(self) -> None:
-        self.generation_config.eos_token_id = None
-        self.generation_config.pad_token_id = None
-        model_cache_folder = f"models/{self.config.model}".replace("/", "--")
-        model_cache_path = f"{HUGGINGFACE_HUB_CACHE}/{model_cache_folder}"
-        snapshot_file = f"{model_cache_path}/refs/{self.config.model_kwargs.get('revision', 'main')}"
-        snapshot_ref = open(snapshot_file, "r").read().strip()
-        model_snapshot_path = f"{model_cache_path}/snapshots/{snapshot_ref}"
-        self.generation_config.save_pretrained(save_directory=model_snapshot_path)
+        if self.config.task in TEXT_GENERATION_TASKS:
+            self.generation_config.eos_token_id = None
+            self.generation_config.pad_token_id = None
+            self.generation_config.save_pretrained(save_directory=model_snapshot_folder)
 
     def create_no_weights_model(self) -> None:
-        self.no_weights_model = os.path.join(self.tmpdir.name, "no_weights_model")
-        self.logger.info("\t+ Creating no weights model directory")
-        os.makedirs(self.no_weights_model, exist_ok=True)
-        self.logger.info("\t+ Creating no weights model state dict")
-        state_dict = torch.nn.Linear(1, 1).state_dict()
-        self.logger.info("\t+ Saving no weights model safetensors")
-        safetensor = os.path.join(self.no_weights_model, "model.safetensors")
-        save_file(tensors=state_dict, filename=safetensor, metadata={"format": "pt"})
-        self.logger.info("\t+ Saving no weights model pretrained config")
-        self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
-        self.logger.info("\t+ Saving no weights model pretrained processor")
-        self.pretrained_processor.save_pretrained(save_directory=self.no_weights_model)
-        # unlike Transformers, TRT-LLM won't accept any missing tensors so we need to materialize the model
-        self.logger.info(f"\t+ Loading no weights model from {self.no_weights_model}")
+        model_path = Path(hf_hub_download(self.config.model, filename="config.json", cache_dir=self.tmpdir.name)).parent
+        save_model(model=torch.nn.Linear(1, 1), filename=model_path / "model.safetensors", metadata={"format": "pt"})
+        self.pretrained_processor.save_pretrained(save_directory=model_path)
+        self.pretrained_config.save_pretrained(save_directory=model_path)
+
         with fast_weights_init():
-            self.pretrained_model = self.automodel_loader.from_pretrained(
-                self.no_weights_model, **self.config.model_kwargs, device_map="auto"
-            )
-        self.logger.info("\t+ Saving no weights model")
-        self.pretrained_model.save_pretrained(save_directory=self.no_weights_model)
-        del self.pretrained_model
+            # unlike Transformers, TXI won't accept any missing tensors so we need to materialize the model
+            dummy = self.automodel_loader.from_pretrained(model_path, device_map="auto", **self.config.model_kwargs)
+            dummy.save_pretrained(model_path)
+            del dummy
+
         torch.cuda.empty_cache()
 
         if self.config.task in TEXT_GENERATION_TASKS:
-            self.logger.info("\t+ Modifying generation config for fixed length generation")
             self.generation_config.eos_token_id = None
             self.generation_config.pad_token_id = None
-            self.generation_config.save_pretrained(save_directory=self.no_weights_model)
+            self.generation_config.save_pretrained(save_directory=model_path)
 
-    def load_trtllm_with_no_weights(self) -> None:
+        self.no_weights_model = model_path.as_posix()
+
+    def load_model_with_no_weights(self) -> None:
         original_model, self.config.model = self.config.model, self.no_weights_model
-        self.load_trtllm_from_pretrained()
+        self.load_model_from_pretrained()
         self.config.model = original_model
 
-    def load_trtllm_from_pretrained(self) -> None:
+    def load_model_from_pretrained(self) -> None:
         self.pretrained_model = self.trtllm_loader.from_pretrained(
             self.config.model,
             **self.config.model_kwargs,

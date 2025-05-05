@@ -5,8 +5,8 @@ defaults:
   - _inference_ # inherits from inference config
   - _no_weights_ # inherits from no weights config
   - _vllm_pp_ # inherits from vllm pp config
-  - _gpt2_ # inherits from gpt2 config
+  - _bloom_ # inherits from bloom config
   - _self_ # hydra 1.1 compatibility
   - override backend: vllm
 
-name: cuda_inference_vllm_gpt2_pp
+name: cuda_inference_vllm_bloom_pp

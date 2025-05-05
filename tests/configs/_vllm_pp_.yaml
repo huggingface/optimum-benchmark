@@ -2,6 +2,7 @@ backend:
   device_ids: 0,1
   serving_mode: online
   engine_args:
+    enforce_eager: true
     pipeline_parallel_size: 2
     distributed_executor_backend: mp
 

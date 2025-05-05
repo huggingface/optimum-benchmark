@@ -72,6 +72,7 @@ class TorchORTBackend(Backend[TorchORTConfig]):
         training_data_collator: Callable[[List[Dict[str, Any]]], Dict[str, Any]],
     ):
         self.logger.info(f"\t+ Wrapping training arguments with {ORTTrainingArguments.__name__}")
+        training_arguments["optim"] = training_arguments.pop("optim", "adamw_torch")
         training_arguments = ORTTrainingArguments(**training_arguments)
         self.logger.info(f"\t+ Wrapping model with {ORTTrainer.__name__}")
         trainer = ORTTrainer(
