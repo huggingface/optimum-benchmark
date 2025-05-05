@@ -41,7 +41,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        image_flavor: [cpu, cuda, cuda-ort, rocm]
+        image_flavor: [cpu, cuda, rocm]
 
     runs-on: ubuntu-latest
 

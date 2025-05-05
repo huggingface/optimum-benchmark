@@ -19,19 +19,15 @@ install:
 
 build_cpu_image:
 	docker build -t optimum-benchmark:latest-cpu -f docker/cpu/Dockerfile .
-	# docker build --build-arg IMAGE=optimum-benchmark:latest-cpu --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cpu docker/unroot
+	docker build --build-arg IMAGE=optimum-benchmark:latest-cpu --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cpu docker/unroot
 
 build_cuda_image:
 	docker build -t optimum-benchmark:latest-cuda -f docker/cuda/Dockerfile .
-	# docker build --build-arg IMAGE=optimum-benchmark:latest-cuda --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cuda docker/unroot
-
-build_cuda_ort_image:
-	docker build -t optimum-benchmark:latest-cuda-ort -f docker/cuda-ort/Dockerfile .
-	# docker build --build-arg IMAGE=optimum-benchmark:latest-cuda-ort --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cuda-ort docker/unroot
+	docker build --build-arg IMAGE=optimum-benchmark:latest-cuda --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cuda docker/unroot
 
 build_rocm_image:
 	docker build -t optimum-benchmark:latest-rocm -f docker/rocm/Dockerfile .
-	# docker build --build-arg IMAGE=optimum-benchmark:latest-rocm --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-rocm docker/unroot
+	docker build --build-arg IMAGE=optimum-benchmark:latest-rocm --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-rocm docker/unroot
 
 # Run docker
 
@@ -39,43 +35,51 @@ run_cpu_container:
 	docker run \
 	-it \
 	--rm \
+	--ipc host \
 	--pid host \
+	--shm-size 64G \
 	--volume $(PWD):/optimum-benchmark \
 	--workdir /optimum-benchmark \
-	optimum-benchmark:latest-cpu
+	ghcr.io/huggingface/optimum-benchmark:latest-cpu
 
 run_cuda_container:
 	docker run \
 	-it \
 	--rm \
+	--ipc host \
 	--pid host \
 	--gpus all \
 	--shm-size 64G \
 	--volume $(PWD):/optimum-benchmark \
 	--workdir /optimum-benchmark \
-	optimum-benchmark:latest-cuda
-
-run_cuda_ort_container:
-	docker run \
-	-it \
-	--rm \
-	--pid host \
-	--gpus all \
-	--shm-size 64G \
-	--volume $(PWD):/optimum-benchmark \
-	--workdir /optimum-benchmark \
-	optimum-benchmark:latest-cuda-ort
+	ghcr.io/huggingface/optimum-benchmark:latest-cuda
 
 run_rocm_container:
 	docker run \
 	-it \
 	--rm \
+	--ipc host \
+	--pid host \
 	--shm-size 64G \
 	--device /dev/kfd \
 	--device /dev/dri \
+	--group-add video \
 	--volume $(PWD):/optimum-benchmark \
 	--workdir /optimum-benchmark \
-	optimum-benchmark:latest-rocm
+	ghcr.io/huggingface/optimum-benchmark:latest-rocm
+
+run_vllm_container:
+	docker run \
+	-it \
+	--rm \
+	--ipc host \
+	--pid host \
+	--gpus all \
+	--shm-size 64G \
+	--volume $(PWD):/optimum-benchmark \
+	--workdir /optimum-benchmark \
+	--entrypoint /bin/bash \
+	vllm/vllm-openai:latest
 
 ## Install extras
 
@@ -107,16 +111,13 @@ install_cli_cpu_neural_compressor:
 	pip install -e .[testing,peft,timm,diffusers,neural-compressor]
 
 install_cli_cuda_pytorch:
-	pip install -e .[testing,timm,diffusers,peft,autoawq,gptqmodel,bitsandbytes,deepspeed]
-
-install_cli_rocm_pytorch:
-	pip install -e .[testing,timm,diffusers,peft,autoawq,gptqmodel]
-
-install_cli_cuda_torch_ort:
-	pip install -e .[testing,timm,diffusers,peft,torch-ort,deepspeed]
+	pip install -e .[testing,timm,diffusers,peft,gptqmodel,bitsandbytes,deepspeed]
 
 install_cli_cuda_onnxruntime:
 	pip install -e .[testing,timm,diffusers,peft,onnxruntime-gpu]
+
+install_cli_rocm_pytorch:
+	pip install -e .[testing,timm,diffusers,peft,gptqmodel]
 
 # Run tests
 
@@ -150,20 +151,17 @@ test_cli_cpu_neural_compressor:
 test_cli_cuda_onnxruntime:
 	pytest -s -k "cli and cuda and onnxruntime"
 
-test_cli_cuda_vllm:
-	pytest -s -k "cli and cuda and vllm"
+test_cli_cuda_vllm_single_gpu:
+	FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and vllm and not (tp or pp)"
+
+test_cli_cuda_vllm_multi_gpu:
+	FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and vllm and (tp or pp)"
 
 test_cli_cuda_pytorch_multi_gpu:
-	pytest -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed) and not awq"
+	pytest -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed)"
 
 test_cli_cuda_pytorch_single_gpu:
-	pytest -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not awq"
-
-test_cli_cuda_torch_ort_multi_gpu:
-	pytest -s -k "cli and cuda and torch-ort and (dp or ddp or device_map or deepspeed) and not peft"
-
-test_cli_cuda_torch_ort_single_gpu:
-	pytest -s -k "cli and cuda and torch-ort and not (dp or ddp or device_map or deepspeed) and not peft"
+	pytest -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed)"
 
 test_cli_rocm_pytorch_multi_gpu:
 	pytest -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed) and not bnb"

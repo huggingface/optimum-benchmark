@@ -6,7 +6,6 @@ from .backends import (
     OVConfig,
     PyTorchConfig,
     PyTXIConfig,
-    TorchORTConfig,
     TRTLLMConfig,
     VLLMConfig,
 )
@@ -32,7 +31,6 @@ __all__ = [
     "PyTorchConfig",
     "PyTXIConfig",
     "ScenarioConfig",
-    "TorchORTConfig",
     "TorchrunConfig",
     "TrainingConfig",
     "TRTLLMConfig",
