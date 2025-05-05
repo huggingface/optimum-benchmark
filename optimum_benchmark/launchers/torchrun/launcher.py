@@ -159,8 +159,12 @@ def entrypoint(worker: Callable[..., BenchmarkReport], worker_args: List[Any], l
         device = torch.device("cuda", rank)
         torch.cuda.set_device(device)
 
+    backend = None
+    if torch.mps.is_available():
+        backend = "gloo"
+
     logger.info("\t+ Initializing torch.distributed process group")
-    torch.distributed.init_process_group()
+    torch.distributed.init_process_group(backend=backend)
 
     try:
         report = worker(*worker_args)
