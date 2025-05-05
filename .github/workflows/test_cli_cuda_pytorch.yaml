@@ -48,7 +48,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed)"
+          pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not (bnb or awq or gptq)"
 
       - if: ${{
           (github.event_name == 'push') ||

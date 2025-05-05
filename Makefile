@@ -164,10 +164,10 @@ test_cli_cuda_pytorch_single_gpu:
 	pytest -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed)"
 
 test_cli_rocm_pytorch_multi_gpu:
-	pytest -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed) and not bnb"
+	pytest -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed)"
 
 test_cli_rocm_pytorch_single_gpu:
-	pytest -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not bnb"
+	pytest -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed)"
 
 test_cli_llama_cpp:
 	pytest -s -k "llama_cpp"

@@ -1,12 +1,10 @@
-import os
 from collections import OrderedDict
 from tempfile import TemporaryDirectory
 from typing import Any, Callable, Dict, List
 
 import torch
-from accelerate import Accelerator, init_empty_weights
+from accelerate import Accelerator
 from datasets import Dataset
-from safetensors.torch import save_file
 from transformers import Trainer, TrainerCallback, TrainerState, TrainingArguments
 from transformers.quantizers import AutoQuantizationConfig
 
@@ -156,8 +154,13 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         # Quantization
         if self.is_quantized:
-            self.logger.info("\t+ Processing quantization config")
-            self.process_quantization_config()
+            self.logger.info("\t+ Processing AutoQuantization config")
+            self.quantization_config = AutoQuantizationConfig.from_dict(
+                dict(
+                    getattr(self.pretrained_config, "quantization_config", {}),
+                    **self.config.quantization_config,
+                )
+            )
 
         # Model loading
         if self.config.no_weights:
@@ -275,51 +278,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             else:
                 raise ValueError(f"Target {self.config.torch_compile_target} not supported")
 
-    def create_no_weights_model(self) -> None:
-        self.no_weights_model = os.path.join(self.tmpdir.name, "no_weights_model")
-        self.logger.info("\t+ Creating no weights model directory")
-        os.makedirs(self.no_weights_model, exist_ok=True)
-        self.logger.info("\t+ Creating no weights model state dict")
-        state_dict = torch.nn.Linear(1, 1).state_dict()
-
-        if self.is_exllamav2:
-            self.logger.info("\t+ Adding g_idx to no weights model state dict")
-            with init_empty_weights(include_buffers=False):
-                meta_model = self.automodel_loader.from_config(self.pretrained_config)
-            for name, module in meta_model.named_modules():
-                if hasattr(module, "in_features"):
-                    state_dict[name + ".g_idx"] = torch.ones((module.in_features,), dtype=torch.int32)
-
-        self.logger.info("\t+ Saving no weights model safetensors")
-        safetensors = os.path.join(self.no_weights_model, "model.safetensors")
-        save_file(tensors=state_dict, filename=safetensors, metadata={"format": "pt"})
-
-        if self.is_quantized:
-            self.logger.info("\t+ Adding quantization config to no weights model's pretrained config")
-            self.pretrained_config.quantization_config = self.quantization_config.to_dict()
-
-        self.logger.info("\t+ Saving no weights model pretrained config")
-        self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
-
-    def process_quantization_config(self) -> None:
-        if self.is_gptq_quantized:
-            try:
-                import gptqmodel_exllamav2_kernels  # noqa: F401 # type: ignore
-            except ImportError:
-                raise ImportError(
-                    "Tried to import `gptqmodel_exllamav2_kernels` but failed. "
-                    "This means that the GPTQModel package is either not installed or not compiled with the right torch version. "
-                    "Please install it from source following the instructions at `https://github.com/ModelCloud/GPTQModel`."
-                )
-
-        self.logger.info("\t+ Processing AutoQuantization config")
-        self.quantization_config = AutoQuantizationConfig.from_dict(
-            dict(
-                getattr(self.pretrained_config, "quantization_config", {}),
-                **self.config.quantization_config,
-            )
-        )
-
     @property
     def is_quantized(self) -> bool:
         return self.config.quantization_scheme is not None or (
@@ -332,6 +290,13 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         return self.config.quantization_scheme == "gptq" or (
             hasattr(self.pretrained_config, "quantization_config")
             and self.pretrained_config.quantization_config.get("quant_method") == "gptq"
+        )
+
+    @property
+    def is_bnb_quantized(self) -> bool:
+        return self.config.quantization_scheme == "bnb" or (
+            hasattr(self.pretrained_config, "quantization_config")
+            and self.pretrained_config.quantization_config.get("quant_method") == "bnb"
         )
 
     @property
