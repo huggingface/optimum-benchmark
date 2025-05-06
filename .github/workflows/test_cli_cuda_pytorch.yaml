@@ -74,7 +74,7 @@ jobs:
 
     container:
       image: ghcr.io/huggingface/optimum-benchmark:latest-cuda
-      options: --ipc host --gpus all
+      options: --ipc host --gpus all --shm-size 16G
 
     steps:
       - name: Checkout
