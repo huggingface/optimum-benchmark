@@ -36,7 +36,7 @@ jobs:
       test_file: test_cli.py
       machine_type: single-gpu
       install_extras: testing,diffusers,timm,peft
-      pytest_keywords: cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed) and not (bnb or awq or gptq)
+      pytest_keywords: cli and cuda and pytorch and not (dp or tp or ddp or device_map or deepspeed) and not (bnb or awq or gptq)
 
   run_cli_rocm_pytorch_multi_gpu_tests:
     if: ${{
@@ -54,4 +54,4 @@ jobs:
       test_file: test_cli.py
       machine_type: multi-gpu
       install_extras: testing,diffusers,timm,peft
-      pytest_keywords: cli and cuda and pytorch and (dp or ddp or device_map)
+      pytest_keywords: cli and cuda and pytorch and (dp or tp or ddp or device_map)
