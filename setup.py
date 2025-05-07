@@ -15,9 +15,11 @@ except Exception as error:
 MIN_OPTIMUM_VERSION = "1.18.0"
 INSTALL_REQUIRES = [
     # HF dependencies
+    "huggingface-hub",
     "transformers",
     "accelerate",
     "datasets",
+    "hf_xet",
     # Hydra
     "hydra-core",
     "omegaconf",
@@ -54,7 +56,8 @@ if USE_ROCM:
 
 EXTRAS_REQUIRE = {
     "quality": ["ruff"],
-    "testing": ["pytest", "hydra-joblib-launcher"],
+    "tests": ["pytest", "hydra-joblib-launcher"],
+    "dev": ["ruff", "pytest", "hydra-joblib-launcher"],
     # optimum backends
     "ipex": [f"optimum[ipex]>={MIN_OPTIMUM_VERSION}"],
     "tensorrt-llm": [f"optimum[nvidia]>={MIN_OPTIMUM_VERSION}"],

@@ -160,7 +160,7 @@ def entrypoint(worker: Callable[..., BenchmarkReport], worker_args: List[Any], l
         torch.cuda.set_device(device)
 
     backend = None
-    if torch.mps.is_available():
+    if hasattr(torch.mps, "is_available") and torch.mps.is_available():
         backend = "gloo"
 
     logger.info("\t+ Initializing torch.distributed process group")

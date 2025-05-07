@@ -4,6 +4,8 @@ from typing import Any, Callable, Dict, List
 
 import torch
 from accelerate import Accelerator
+
+# from accelerate.utils import compile_regions
 from datasets import Dataset
 from transformers import Trainer, TrainerCallback, TrainerState, TrainingArguments
 from transformers.quantizers import AutoQuantizationConfig
@@ -35,47 +37,6 @@ if is_gptqmodel_available():
         # This is a workaround for a bug in gptqmodel where it tries to access EnumType
         # from the enum module, but it is not available in Python 3.10 and below.
         enum.EnumType = enum.EnumMeta
-
-
-def compile_regions(module: torch.nn.Module, **compile_kwargs) -> torch.nn.Module:
-    """
-    Performs a version of the regional compilation recipe where we target repeated blocks of the same class and compile
-    them sequentially to hit the compiler's cache. This allows us to speed up the compilation time / cold start of
-    models like LLMs and Transformers in general.
-    See: https://pytorch.org/tutorials/recipes/regional_compilation.html
-    Args:
-        module (`torch.nn.Module`):
-            The model to compile.
-        **compile_kwargs:
-            Additional keyword arguments to pass to `torch.compile()`.
-    """
-
-    def _compile_regions(module: torch.nn.Module, **compile_kwargs) -> torch.nn.Module:
-        if isinstance(module, torch.nn.ModuleList):
-            if all(isinstance(submodule, module[0].__class__) for submodule in module):
-                new_module = torch.nn.ModuleList()
-                for submodule in module:
-                    new_module.append(torch.compile(submodule, **compile_kwargs))
-            else:
-                new_module = torch.compile(module, **compile_kwargs)
-        elif module._modules:  # Non-leaf node
-            new_module = module.__class__.__new__(module.__class__)
-            new_module.__dict__.update(module.__dict__)
-            new_module._modules = {}
-            for name, submodule in module.named_children():
-                new_module.add_module(name, _compile_regions(submodule, **compile_kwargs))
-        else:  # Leaf node
-            new_module = torch.compile(module, **compile_kwargs)
-
-        return new_module
-
-    new_module = _compile_regions(module, **compile_kwargs)
-
-    if not hasattr(new_module, "_orig_mod"):
-        # Keeps a reference to the original module to decompile/unwrap it later
-        new_module.__dict__["_orig_mod"] = module
-
-    return new_module
 
 
 class PyTorchBackend(Backend[PyTorchConfig]):
@@ -134,7 +95,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         self.logger.info("\t+ Loading Transformers model")
         self.pretrained_model = self.automodel_loader.from_pretrained(
             pretrained_model_name_or_path=self.config.model,
-            device_map=self.config.device_map,
             **self.config.model_kwargs,
             **self.automodel_kwargs,
         )
@@ -144,7 +104,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
     def load_transformers_model_with_no_weights(self) -> None:
         with fast_weights_init():
-            original_model, self.config.model = self.config.model, self.no_weights_model
+            original_model, self.config.model = self.config.model, self.no_weights_model_path.as_posix()
             self.load_transformers_model_from_pretrained()
             self.config.model = original_model
 
@@ -165,7 +125,10 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         # Model loading
         if self.config.no_weights:
             self.logger.info("\t+ Creating no weights model")
-            self.create_no_weights_model()
+            if self.config.tp_plan is not None:
+                self.create_no_weights_model_slow()
+            else:
+                self.create_no_weights_model_fast()
             self.logger.info("\t+ Loading model with random weights")
             self.load_transformers_model_with_no_weights()
         else:
@@ -201,20 +164,17 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         # Torch compile
         if self.config.torch_compile:
-            if self.config.torch_compile_target == "forward":
+            if self.config.torch_compile_target == "model":
+                self.logger.info("\t+ Using torch.compile on model")
+                self.pretrained_model = torch.compile(self.pretrained_model, **self.config.torch_compile_config)
+            # elif self.config.torch_compile_target == "regions":
+            #     self.logger.info("\t+ Using torch.compile on regions")
+            #     self.pretrained_model = compile_regions(self.pretrained_model, **self.config.torch_compile_config)
+            elif self.config.torch_compile_target == "forward":
                 self.logger.info("\t+ Using torch.compile on forward")
                 self.pretrained_model.forward = torch.compile(
                     self.pretrained_model.forward, **self.config.torch_compile_config
                 )
-
-            elif self.config.torch_compile_target == "model":
-                self.logger.info("\t+ Using torch.compile on model")
-                self.pretrained_model = torch.compile(self.pretrained_model, **self.config.torch_compile_config)
-
-            elif self.config.torch_compile_target == "regions":
-                self.logger.info("\t+ Using torch.compile on regions")
-                self.pretrained_model = compile_regions(self.pretrained_model, **self.config.torch_compile_config)
-
             else:
                 raise ValueError(f"Target {self.config.torch_compile_target} not supported")
 
@@ -335,6 +295,12 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         if self.config.low_cpu_mem_usage is not None:
             kwargs["low_cpu_mem_usage"] = self.config.low_cpu_mem_usage
+
+        if self.config.device_map is not None:
+            kwargs["device_map"] = self.config.device_map
+
+        if self.config.tp_plan is not None:
+            kwargs["tp_plan"] = self.config.tp_plan
 
         return kwargs
 

@@ -5,6 +5,7 @@ launcher:
   nproc_per_node: 2
 
 backend:
+  tp_plan: auto
   device_ids: 0,1
   model: hf-internal-testing/tiny-random-LlamaForCausalLM
 

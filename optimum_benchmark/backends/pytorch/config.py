@@ -22,6 +22,7 @@ class PyTorchConfig(BackendConfig):
 
     # load options
     no_weights: bool = False
+    tp_plan: Optional[str] = None
     device_map: Optional[str] = None
     torch_dtype: Optional[str] = None
 
