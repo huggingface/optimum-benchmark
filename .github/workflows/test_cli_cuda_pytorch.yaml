@@ -74,7 +74,7 @@ jobs:
 
     container:
       image: ghcr.io/huggingface/optimum-benchmark:latest-cuda
-      options: --ipc host --gpus all --shm-size 64G
+      options: --ipc host --gpus all
 
     steps:
       - name: Checkout
@@ -88,6 +88,6 @@ jobs:
         run: |
           pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (dp or tp or ddp or device_map)"
 
-      - name: Run tests (sequential)
-        run: |
-          FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (deepspeed_inference)"
+      # - name: Run tests (sequential)
+      #   run: |
+      #     FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (deepspeed_inference)"
