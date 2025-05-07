@@ -57,6 +57,7 @@ if USE_ROCM:
 EXTRAS_REQUIRE = {
     "quality": ["ruff"],
     "tests": ["pytest", "hydra-joblib-launcher"],
+    "testing": ["pytest", "hydra-joblib-launcher"],
     "dev": ["ruff", "pytest", "hydra-joblib-launcher"],
     # optimum backends
     "ipex": [f"optimum[ipex]>={MIN_OPTIMUM_VERSION}"],
