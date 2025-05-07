@@ -88,6 +88,6 @@ jobs:
         run: |
           pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (dp or tp or ddp or device_map)"
 
-      # - name: Run tests (sequential)
-      #   run: |
-      #     FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (deepspeed_inference)"
+      - name: Run tests (sequential)
+        run: |
+          FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (deepspeed_inference)"
