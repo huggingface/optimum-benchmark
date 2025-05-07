@@ -1,4 +1,3 @@
-import importlib.util
 import os
 import re
 import subprocess
@@ -16,9 +15,11 @@ except Exception as error:
 MIN_OPTIMUM_VERSION = "1.18.0"
 INSTALL_REQUIRES = [
     # HF dependencies
+    "huggingface-hub",
     "transformers",
     "accelerate",
     "datasets",
+    "hf_xet",
     # Hydra
     "hydra-core",
     "omegaconf",
@@ -39,7 +40,7 @@ except Exception:
     IS_NVIDIA_SYSTEM = False
 
 try:
-    subprocess.run(["rocm-smi"], check=True)
+    subprocess.run(["amd-smi"], check=True)
     IS_ROCM_SYSTEM = True
 except Exception:
     IS_ROCM_SYSTEM = False
@@ -51,25 +52,19 @@ if USE_CUDA:
     INSTALL_REQUIRES.append("nvidia-ml-py")
 
 if USE_ROCM:
-    PYRSMI = "pyrsmi@git+https://github.com/ROCm/pyrsmi.git"
-    INSTALL_REQUIRES.append(PYRSMI)
-    if not importlib.util.find_spec("amdsmi"):
-        print(
-            "ROCm GPU detected without amdsmi installed. You won't be able to run process-specific VRAM tracking. "
-            "Please install amdsmi from https://github.com/ROCm/amdsmi to enable this feature."
-        )
-
+    INSTALL_REQUIRES.extend(["pyrsmi", "amdsmi"])
 
 EXTRAS_REQUIRE = {
     "quality": ["ruff"],
+    "tests": ["pytest", "hydra-joblib-launcher"],
     "testing": ["pytest", "hydra-joblib-launcher"],
+    "dev": ["ruff", "pytest", "hydra-joblib-launcher"],
     # optimum backends
     "ipex": [f"optimum[ipex]>={MIN_OPTIMUM_VERSION}"],
     "tensorrt-llm": [f"optimum[nvidia]>={MIN_OPTIMUM_VERSION}"],
     "openvino": [f"optimum[openvino,nncf]>={MIN_OPTIMUM_VERSION}"],
     "onnxruntime": [f"optimum[onnxruntime]>={MIN_OPTIMUM_VERSION}"],
     "onnxruntime-gpu": [f"optimum[onnxruntime-gpu]>={MIN_OPTIMUM_VERSION}"],
-    "torch-ort": ["torch-ort", "onnxruntime-training", f"optimum>={MIN_OPTIMUM_VERSION}"],
     # other backends
     "llama-cpp": ["llama-cpp-python"],
     "llm-swarm": ["llm-swarm"],
@@ -77,13 +72,12 @@ EXTRAS_REQUIRE = {
     "vllm": ["vllm"],
     # optional dependencies
     "torchao": ["torchao"],
-    "autoawq": ["autoawq"],
-    "auto-gptq": ["optimum", "auto-gptq"],
+    "gptqmodel": ["gptqmodel", "optimum"],
     "sentence-transformers": ["sentence-transformers"],
     "bitsandbytes": ["bitsandbytes"],
+    "deepspeed": ["deepspeed<0.16"],
     "codecarbon": ["codecarbon"],
     "flash-attn": ["flash-attn"],
-    "deepspeed": ["deepspeed"],
     "diffusers": ["diffusers"],
     "timm": ["timm"],
     "peft": ["peft"],
@@ -111,7 +105,7 @@ setup(
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
     ],
     keywords="benchmark, transformers, quantization, pruning, optimization, training, inference, onnx, onnx runtime, intel, "
-    "habana, graphcore, neural compressor, ipex, ipu, hpu, llm-swarm, py-txi, vllm, llama-cpp, auto-gptq, autoawq, "
+    "habana, graphcore, neural compressor, ipex, ipu, hpu, llm-swarm, py-txi, vllm, llama-cpp, gptqmodel, "
     "sentence-transformers, bitsandbytes, codecarbon, flash-attn, deepspeed, diffusers, timm, peft",
     long_description=open("README.md", "r", encoding="utf-8").read(),
     long_description_content_type="text/markdown",

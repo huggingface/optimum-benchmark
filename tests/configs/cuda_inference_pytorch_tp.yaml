@@ -2,11 +2,11 @@ defaults:
   # order of inheritance, last one overrides previous ones
   - _base_ # inherits from base config
   - _cuda_ # inherits from cuda config
-  - _training_ # inherits from training config
-  - _text_encoders_ # inherits from text encoders config
+  - _inference_ # inherits from inference config
   - _device_isolation_ # inherits from device isolation config
   - _no_weights_ # inherits from no weights config
+  - _tp_ # inherits from tensor parallel config
   - _self_ # hydra 1.1 compatibility
-  - override backend: torch-ort
+  - override backend: pytorch
 
-name: cuda_training_torch_ort_text_encoders
+name: cuda_inference_pytorch_tp

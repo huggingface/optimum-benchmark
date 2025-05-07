@@ -1,2 +1,2 @@
 backend:
-  model: "bigscience/bloom-560m"
+  model: bigscience/bloom-560m

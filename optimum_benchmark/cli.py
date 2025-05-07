@@ -19,7 +19,6 @@ from . import (
     ProcessConfig,
     PyTorchConfig,
     PyTXIConfig,
-    TorchORTConfig,
     TorchrunConfig,
     TrainingConfig,
     TRTLLMConfig,
@@ -39,7 +38,6 @@ cs.store(group="backend", name=IPEXConfig.name, node=IPEXConfig)
 cs.store(group="backend", name=OVConfig.name, node=OVConfig)
 cs.store(group="backend", name=PyTorchConfig.name, node=PyTorchConfig)
 cs.store(group="backend", name=ORTConfig.name, node=ORTConfig)
-cs.store(group="backend", name=TorchORTConfig.name, node=TorchORTConfig)
 cs.store(group="backend", name=TRTLLMConfig.name, node=TRTLLMConfig)
 cs.store(group="backend", name=PyTXIConfig.name, node=PyTXIConfig)
 cs.store(group="backend", name=VLLMConfig.name, node=VLLMConfig)

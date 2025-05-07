@@ -17,7 +17,7 @@ ARG UBUNTU_VERSION=22.04
 FROM ubuntu:${UBUNTU_VERSION}
 
 # Install necessary packages
-ENV DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 ENV PATH="/home/user/.local/bin:${PATH}"
 RUN apt-get update && apt-get install -y --no-install-recommends \
     sudo build-essential git bash-completion numactl \

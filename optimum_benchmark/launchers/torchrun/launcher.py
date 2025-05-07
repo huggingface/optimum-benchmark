@@ -11,10 +11,14 @@ import torch.distributed
 from torch.distributed.launcher.api import LaunchConfig, elastic_launch
 
 from ...benchmark.report import BenchmarkReport
+from ...import_utils import is_deepspeed_available
 from ...logging_utils import setup_logging
 from ...process_utils import sync_with_child, sync_with_parent
 from ..base import Launcher
 from .config import TorchrunConfig
+
+if is_deepspeed_available():
+    from deepspeed.comm import destroy_process_group, is_initialized
 
 
 class TorchrunLauncher(Launcher[TorchrunConfig]):
@@ -159,8 +163,12 @@ def entrypoint(worker: Callable[..., BenchmarkReport], worker_args: List[Any], l
         device = torch.device("cuda", rank)
         torch.cuda.set_device(device)
 
+    backend = None
+    if hasattr(torch.mps, "is_available") and torch.mps.is_available():
+        backend = "gloo"
+
     logger.info("\t+ Initializing torch.distributed process group")
-    torch.distributed.init_process_group()
+    torch.distributed.init_process_group(backend=backend)
 
     try:
         report = worker(*worker_args)
@@ -173,5 +181,10 @@ def entrypoint(worker: Callable[..., BenchmarkReport], worker_args: List[Any], l
     finally:
         logger.info("\t+ Destroying torch.distributed process group")
         torch.distributed.destroy_process_group()
+
+        if is_deepspeed_available() and is_initialized():
+            logger.info("\t+ Destroying deepspeed process group")
+            destroy_process_group()
+
         logger.info("\t+ Exiting rank process")
         return output

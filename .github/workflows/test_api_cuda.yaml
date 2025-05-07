@@ -58,7 +58,7 @@ jobs:
           }}
         name: Run examples
         run: |
-          pip install -e .[testing,torchao,autoawq,auto-gptq]
+          pip install -e .[testing,torchao,gptqmodel]
           pytest tests/test_examples.py -x -s -k "api and cuda and pytorch"
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}

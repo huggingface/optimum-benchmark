@@ -17,7 +17,7 @@ Optimum-Benchmark is a unified [multi-backend & multi-device](#backends--devices
 - 🥳 PyPI package is now available for installation: `pip install optimum-benchmark` 🎉 [check it out](https://pypi.org/project/optimum-benchmark/) !
 - Model loading latency/memory/energy tracking for all backends in the inference scenario 🚀
 - numactl support for Process and Torchrun launchers to control the NUMA nodes on which the benchmark runs.
-- 4 minimal docker images (`cpu`, `cuda`, `rocm`, `cuda-ort`) in [packages](https://github.com/huggingface/optimum-benchmark/pkgs/container/optimum-benchmark) for testing, benchmarking and reproducibility 🐳
+- 4 minimal docker images (`cpu`, `cuda`, `rocm`) in [packages](https://github.com/huggingface/optimum-benchmark/pkgs/container/optimum-benchmark) for testing, benchmarking and reproducibility 🐳
 - vLLM backend for benchmarking [vLLM](https://github.com/vllm-project/vllm)'s inference engine 🚀
 - Hosting the codebase of the [LLM-Perf Leaderboard](https://huggingface.co/spaces/optimum/llm-perf-leaderboard) 🥇
 - Py-TXI backend for benchmarking [Py-TXI](https://github.com/IlyasMoutawwakil/py-txi/tree/main) 🚀
@@ -58,7 +58,6 @@ Optimum-Benchmark is continuously and intensively tested on a variety of devices
 [![CLI_CUDA_PYTORCH](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_pytorch.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_pytorch.yaml)
 [![CLI_CUDA_PY_TXI](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_py_txi.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_py_txi.yaml)
 [![CLI_CUDA_TENSORRT_LLM](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_tensorrt_llm.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_tensorrt_llm.yaml)
-[![CLI_CUDA_TORCH_ORT](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_torch_ort.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_torch_ort.yaml)
 [![CLI_CUDA_VLLM](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_vllm.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cuda_vllm.yaml)
 [![CLI_MISC](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_misc.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_misc.yaml)
 [![CLI_ROCM_PYTORCH](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_rocm_pytorch.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_rocm_pytorch.yaml)
@@ -94,7 +93,6 @@ Depending on the backends you want to use, you can install `optimum-benchmark` w
 
 - PyTorch (default): `pip install optimum-benchmark`
 - OpenVINO: `pip install optimum-benchmark[openvino]`
-- Torch-ORT: `pip install optimum-benchmark[torch-ort]`
 - OnnxRuntime: `pip install optimum-benchmark[onnxruntime]`
 - TensorRT-LLM: `pip install optimum-benchmark[tensorrt-llm]`
 - OnnxRuntime-GPU: `pip install optimum-benchmark[onnxruntime-gpu]`
@@ -104,8 +102,7 @@ Depending on the backends you want to use, you can install `optimum-benchmark` w
 
 We also support the following extra extra dependencies:
 
-- autoawq
-- auto-gptq
+- gptqmodel
 - sentence-transformers
 - bitsandbytes
 - codecarbon
@@ -274,7 +271,6 @@ See [TrainingConfig](optimum_benchmark/scenarios/training/config.py) for more in
 - [x] Py-TXI backend for CPU and GPU (`backend=py-txi`, `backend.device=cpu` or `backend.device=cuda`)
 - [x] Neural Compressor backend for CPU (`backend=neural-compressor`, `backend.device=cpu`)
 - [x] TensorRT-LLM backend for CUDA (`backend=tensorrt-llm`, `backend.device=cuda`)
-- [x] Torch-ORT backend for CUDA (`backend=torch-ort`, `backend.device=cuda`)
 - [x] OpenVINO backend for CPU (`backend=openvino`, `backend.device=cpu`)
 - [x] OpenVINO backend for GPU (`backend=openvino`, `backend.device=gpu`)
 - [x] vLLM backend for CUDA (`backend=vllm`, `backend.device=cuda`)
@@ -304,7 +300,6 @@ For more information on the features of each backend, you can check their respec
 - [PyTXIConfig](optimum_benchmark/backends/py_txi/config.py)
 - [PyTorchConfig](optimum_benchmark/backends/pytorch/config.py)
 - [ORTConfig](optimum_benchmark/backends/onnxruntime/config.py)
-- [TorchORTConfig](optimum_benchmark/backends/torch_ort/config.py)
 - [TRTLLMConfig](optimum_benchmark/backends/tensorrt_llm/config.py)
 
 </details>

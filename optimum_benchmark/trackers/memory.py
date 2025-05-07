@@ -9,20 +9,11 @@ from typing import List, Literal, Optional, Union
 from rich.console import Console
 from rich.markdown import Markdown
 
-from ..import_utils import (
-    is_amdsmi_available,
-    is_pynvml_available,
-    is_pyrsmi_available,
-    is_torch_available,
-)
+from ..import_utils import is_amdsmi_available, is_pynvml_available, is_torch_available
 from ..system_utils import is_nvidia_system, is_rocm_system
 
-if is_rocm_system() and is_pyrsmi_available():
-    from pyrsmi import rocml
-
-
 if is_nvidia_system() and is_pynvml_available():
-    import pynvml
+    import pynvml  # type: ignore
 
 if is_rocm_system() and is_amdsmi_available():
     import amdsmi  # type: ignore
@@ -276,7 +267,10 @@ def monitor_cpu_ram_memory(monitored_pid: int, connection: Connection):
     monitored_process = psutil.Process(monitored_pid)
 
     if monitored_process.is_running():
-        connection.send(0)
+        try:
+            connection.send(0)
+        except Exception:
+            exit(0)
 
     while monitored_process.is_running() and not stop:
         meminfo_attr = "memory_info" if hasattr(monitored_process, "memory_info") else "get_memory_info"
@@ -285,7 +279,10 @@ def monitor_cpu_ram_memory(monitored_pid: int, connection: Connection):
         stop = connection.poll(MEMORY_CONSUMPTION_SAMPLING_RATE)
 
     if monitored_process.is_running():
-        connection.send(max_used_memory / 1e6)  # convert to MB
+        try:
+            connection.send(max_used_memory / 1e6)  # convert to MB
+        except Exception:
+            exit(0)
 
     connection.close()
 
@@ -297,7 +294,10 @@ def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connectio
     monitored_process = psutil.Process(monitored_pid)
 
     if monitored_process.is_running():
-        connection.send(0)
+        try:
+            connection.send(0)
+        except Exception:
+            exit(0)
 
     if is_nvidia_system():
         if not is_pynvml_available():
@@ -346,14 +346,8 @@ def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connectio
                 "The library AMD SMI is required to track process-specific memory benchmark on AMD GPUs, but is not installed. "
                 "Please install the official and AMD maintained AMD SMI library from https://github.com/ROCm/amdsmi."
             )
-        if not is_pyrsmi_available():
-            raise ValueError(
-                "The library PyRSMI is required to track global-device memory benchmark on AMD GPUs, but is not installed. "
-                "Please install the official and AMD maintained PyRSMI library from https://github.com/ROCm/pyrsmi."
-            )
 
         amdsmi.amdsmi_init()
-        rocml.smi_initialize()
         permission_denied = False
         devices_handles = amdsmi.amdsmi_get_processor_handles()
 
@@ -367,12 +361,9 @@ def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connectio
                 device_handle = devices_handles[device_id]
 
                 try:
-                    if is_amdsmi_available():
-                        used_global_memory += amdsmi.amdsmi_get_gpu_memory_total(
-                            device_handle, mem_type=amdsmi.AmdSmiMemoryType.VRAM
-                        )
-                    elif is_pyrsmi_available():
-                        used_global_memory += rocml.smi_get_device_memory_used(device_id, type="VRAM")
+                    used_global_memory += amdsmi.amdsmi_get_gpu_memory_total(
+                        device_handle, mem_type=amdsmi.AmdSmiMemoryType.VRAM
+                    )
                 except Exception as e:
                     LOGGER.warning(f"Could not get memory usage for device {device_id}: {e}")
 
@@ -402,13 +393,15 @@ def monitor_gpu_vram_memory(monitored_pid: int, device_ids: List[int], connectio
             stop = connection.poll(MEMORY_CONSUMPTION_SAMPLING_RATE)
 
         amdsmi.amdsmi_shut_down()
-        rocml.smi_shutdown()
 
     else:
         raise ValueError("Only NVIDIA and AMD ROCm GPUs are supported for VRAM tracking.")
 
     if monitored_process.is_running():
-        connection.send(max_used_global_memory / 1e6)  # convert to MB
-        connection.send(max_used_process_memory / 1e6)  # convert to MB
+        try:
+            connection.send(max_used_global_memory / 1e6)  # convert to MB
+            connection.send(max_used_process_memory / 1e6)  # convert to MB
+        except Exception:
+            exit(0)
 
     connection.close()

@@ -1,0 +1,5 @@
+backend:
+  serving_mode: offline
+  engine_args:
+    max_model_len: 512
+    enforce_eager: true

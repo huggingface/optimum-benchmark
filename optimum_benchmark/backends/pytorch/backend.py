@@ -1,16 +1,21 @@
-import os
 from collections import OrderedDict
 from tempfile import TemporaryDirectory
 from typing import Any, Callable, Dict, List
 
 import torch
-from accelerate import Accelerator, init_empty_weights, init_on_device
+from accelerate import Accelerator
+
+# from accelerate.utils import compile_regions
 from datasets import Dataset
-from safetensors.torch import save_file
 from transformers import Trainer, TrainerCallback, TrainerState, TrainingArguments
 from transformers.quantizers import AutoQuantizationConfig
 
-from ...import_utils import is_deepspeed_available, is_torch_distributed_available, is_zentorch_available
+from ...import_utils import (
+    is_deepspeed_available,
+    is_gptqmodel_available,
+    is_torch_distributed_available,
+    is_zentorch_available,
+)
 from ..base import Backend
 from ..peft_utils import apply_peft
 from ..transformers_utils import fast_weights_init
@@ -25,39 +30,13 @@ if is_torch_distributed_available():
 if is_zentorch_available():
     import zentorch  # type: ignore # noqa: F401
 
+if is_gptqmodel_available():
+    import enum
 
-# COMPILED_SUBMODULES = set()
-
-
-def regional_compilation(module: torch.nn.Module, **compile_kwargs) -> None:
-    if isinstance(module, torch.nn.ModuleList):
-        for name, submodule in module.named_children():
-            # if submodule.__class__.__name__ not in COMPILED_SUBMODULES:
-            #     print("Compiling leaf submodules of type", submodule.__class__.__name__)
-            #     COMPILED_SUBMODULES.add(submodule.__class__.__name__)
-            #     torch._dynamo.config.cache_size_limit += 1
-
-            # Compile the submodule
-            compiled_submodule = torch.compile(submodule, **compile_kwargs)
-            compiled_submodule.__dict__.pop("_parameters", None)
-            setattr(module, name, compiled_submodule)
-
-    elif module._modules:  # Non-leaf node
-        for name, submodule in module.named_children():
-            compiled_submodule = regional_compilation(submodule, **compile_kwargs)
-            setattr(module, name, compiled_submodule)
-
-    else:  # Leaf node
-        # if module.__class__.__name__ not in COMPILED_SUBMODULES:
-        #     print("Compiling leaf submodule of type", module.__class__.__name__)
-        #     COMPILED_SUBMODULES.add(module.__class__.__name__)
-        #     torch._dynamo.config.cache_size_limit += 1
-
-        # Compile the module
-        module = torch.compile(module, **compile_kwargs)
-        module.__dict__.pop("_parameters", None)
-
-    return module
+    if not hasattr(enum, "EnumType") and hasattr(enum, "EnumMeta"):
+        # This is a workaround for a bug in gptqmodel where it tries to access EnumType
+        # from the enum module, but it is not available in Python 3.10 and below.
+        enum.EnumType = enum.EnumMeta
 
 
 class PyTorchBackend(Backend[PyTorchConfig]):
@@ -113,59 +92,21 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         self.tmpdir.cleanup()
 
     def load_transformers_model_from_pretrained(self) -> None:
-        if self.is_quantized:
-            self.logger.info(f"\t+ Loading {self.quantization_config.quant_method}-quantized model")
-            self.pretrained_model = self.automodel_loader.from_pretrained(
-                pretrained_model_name_or_path=self.config.model,
-                device_map=self.config.device_map or torch.device(self.config.device),
-                # quantized models are more compatible with device_map dispatcher than (to(device))
-                # using to(device) on quantized models sometimes leaves some layers on cpu or raises
-                # an error because the layers are already on the device
-                **self.config.model_kwargs,
-                **self.automodel_kwargs,
-            )
-        elif self.config.device_map is not None:
-            self.logger.info(f"\t+ Loading Transformers model with device map: {self.config.device_map}")
-            self.pretrained_model = self.automodel_loader.from_pretrained(
-                pretrained_model_name_or_path=self.config.model,
-                device_map=self.config.device_map,
-                **self.config.model_kwargs,
-                **self.automodel_kwargs,
-            )
-        else:
-            self.logger.info("\t+ Loading Transformers model")
-            self.pretrained_model = self.automodel_loader.from_pretrained(
-                pretrained_model_name_or_path=self.config.model, **self.config.model_kwargs, **self.automodel_kwargs
-            )
-            if self.config.device != "cpu":
-                self.logger.info(f"\t+ Moving Transformers model to device: {self.config.device}")
-                self.pretrained_model = self.pretrained_model.to(self.config.device)
+        self.logger.info("\t+ Loading Transformers model")
+        self.pretrained_model = self.automodel_loader.from_pretrained(
+            pretrained_model_name_or_path=self.config.model,
+            **self.config.model_kwargs,
+            **self.automodel_kwargs,
+        )
+        if self.config.device_map is None and self.config.device != "cpu":
+            self.logger.info(f"\t+ Moving Transformers model to device: {self.config.device}")
+            self.pretrained_model = self.pretrained_model.to(self.config.device)
 
     def load_transformers_model_with_no_weights(self) -> None:
-        original_model, self.config.model = self.config.model, self.no_weights_model
-
-        if self.config.deepspeed_inference:
-            with init_empty_weights(include_buffers=False):
-                self.logger.info("\t+ Loading Transformers model on meta device for fast initialization")
-                self.pretrained_model = self.automodel_loader.from_pretrained(
-                    pretrained_model_name_or_path=self.config.model,
-                    **self.config.model_kwargs,
-                    **self.automodel_kwargs,
-                )
-            self.pretrained_model.to_empty(device="cpu")
-        elif self.config.device_map is None and not self.is_quantized:
-            with init_on_device(device=torch.device(self.config.device), include_buffers=True):
-                self.logger.info("\t+ Loading Transformers model using device context manager for fast initialization")
-                self.pretrained_model = self.automodel_loader.from_pretrained(
-                    pretrained_model_name_or_path=self.no_weights_model,
-                    **self.config.model_kwargs,
-                    **self.automodel_kwargs,
-                )
-        else:
-            with fast_weights_init():
-                self.load_transformers_model_from_pretrained()
-
-        self.config.model = original_model
+        with fast_weights_init():
+            original_model, self.config.model = self.config.model, self.no_weights_model_path.as_posix()
+            self.load_transformers_model_from_pretrained()
+            self.config.model = original_model
 
     def load_transformers_model(self):
         if self.config.deepspeed_inference and self.is_quantized:
@@ -173,13 +114,21 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         # Quantization
         if self.is_quantized:
-            self.logger.info("\t+ Processing quantization config")
-            self.process_quantization_config()
+            self.logger.info("\t+ Processing AutoQuantization config")
+            self.quantization_config = AutoQuantizationConfig.from_dict(
+                dict(
+                    getattr(self.pretrained_config, "quantization_config", {}),
+                    **self.config.quantization_config,
+                )
+            )
 
         # Model loading
         if self.config.no_weights:
             self.logger.info("\t+ Creating no weights model")
-            self.create_no_weights_model()
+            if self.config.tp_plan is not None:
+                self.create_no_weights_model_slow()
+            else:
+                self.create_no_weights_model_fast()
             self.logger.info("\t+ Loading model with random weights")
             self.load_transformers_model_with_no_weights()
         else:
@@ -215,21 +164,17 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         # Torch compile
         if self.config.torch_compile:
-            if self.config.torch_compile_target == "forward":
+            if self.config.torch_compile_target == "model":
+                self.logger.info("\t+ Using torch.compile on model")
+                self.pretrained_model = torch.compile(self.pretrained_model, **self.config.torch_compile_config)
+            # elif self.config.torch_compile_target == "regions":
+            #     self.logger.info("\t+ Using torch.compile on regions")
+            #     self.pretrained_model = compile_regions(self.pretrained_model, **self.config.torch_compile_config)
+            elif self.config.torch_compile_target == "forward":
                 self.logger.info("\t+ Using torch.compile on forward")
                 self.pretrained_model.forward = torch.compile(
                     self.pretrained_model.forward, **self.config.torch_compile_config
                 )
-
-            elif self.config.torch_compile_target == "model":
-                self.logger.info("\t+ Using torch.compile on model")
-                self.pretrained_model = torch.compile(self.pretrained_model, **self.config.torch_compile_config)
-
-            elif self.config.torch_compile_target == "regions":
-                # torch._dynamo.config.cache_size_limit = 0
-                self.logger.info("\t+ Using torch.compile on model regions (regional compilation)")
-                self.pretrained_model = regional_compilation(self.pretrained_model, **self.config.torch_compile_config)
-
             else:
                 raise ValueError(f"Target {self.config.torch_compile_target} not supported")
 
@@ -293,69 +238,6 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             else:
                 raise ValueError(f"Target {self.config.torch_compile_target} not supported")
 
-    def create_no_weights_model(self) -> None:
-        if self.pretrained_config is None:
-            raise ValueError("Can't create no weights model without a pretrained config")
-
-        self.no_weights_model = os.path.join(self.tmpdir.name, "no_weights_model")
-        self.logger.info("\t+ Creating no weights model directory")
-        os.makedirs(self.no_weights_model, exist_ok=True)
-        self.logger.info("\t+ Creating no weights model state dict")
-        state_dict = torch.nn.Linear(1, 1).state_dict()
-
-        if self.is_exllamav2:
-            self.logger.info("\t+ Adding g_idx to no weights model state dict")
-            with init_empty_weights(include_buffers=False):
-                meta_model = self.automodel_loader.from_config(self.pretrained_config)
-            for name, module in meta_model.named_modules():
-                if hasattr(module, "in_features"):
-                    state_dict[name + ".g_idx"] = torch.ones((module.in_features,), dtype=torch.int32)
-
-        self.logger.info("\t+ Saving no weights model safetensors")
-        safetensors = os.path.join(self.no_weights_model, "model.safetensors")
-        save_file(tensors=state_dict, filename=safetensors, metadata={"format": "pt"})
-
-        if self.is_quantized:
-            self.logger.info("\t+ Adding quantization config to no weights model's pretrained config")
-            self.pretrained_config.quantization_config = self.quantization_config.to_dict()
-            # tricking from_pretrained to load the model as if it was quantized
-
-        self.logger.info("\t+ Saving no weights model pretrained config")
-        self.pretrained_config.save_pretrained(save_directory=self.no_weights_model)
-
-    def process_quantization_config(self) -> None:
-        if self.is_gptq_quantized:
-            try:
-                import exllamav2_kernels  # noqa: F401
-            except ImportError:
-                raise ImportError(
-                    "Tried to import `exllamav2_kernels` but failed. "
-                    "This means that the AutoGPTQ package is either not installed or not compiled with the right torch version. "
-                    "Please install it from source following the instructions at `https://github.com/AutoGPTQ/AutoGPTQ`"
-                    "Or use `python scripts/install_quantization_libs.py --install-autogptq-from-source` in "
-                    "`optimum-benchmark` repository at `https://github.com/huggingface/optimum-benchmark`."
-                )
-
-        elif self.is_awq_quantized:
-            try:
-                import exlv2_ext  # noqa: F401
-            except ImportError:
-                raise ImportError(
-                    "Tried to import `exlv2_ext` but failed. "
-                    "This means that the AutoAWQ package is either not installed or not compiled with the right torch version. "
-                    "Please install it from source following the instructions at `https://github.com/casper-hansen/AutoAWQ`"
-                    "Or use `python scripts/install_quantization_libs.py --install-autoawq-from-source` in "
-                    "`optimum-benchmark` repository at `https://github.com/huggingface/optimum-benchmark`."
-                )
-
-        self.logger.info("\t+ Processing AutoQuantization config")
-        self.quantization_config = AutoQuantizationConfig.from_dict(
-            dict(
-                getattr(self.pretrained_config, "quantization_config", {}),
-                **self.config.quantization_config,
-            )
-        )
-
     @property
     def is_quantized(self) -> bool:
         return self.config.quantization_scheme is not None or (
@@ -371,17 +253,17 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         )
 
     @property
-    def is_awq_quantized(self) -> bool:
-        return self.config.quantization_scheme == "awq" or (
+    def is_bnb_quantized(self) -> bool:
+        return self.config.quantization_scheme == "bnb" or (
             hasattr(self.pretrained_config, "quantization_config")
-            and self.pretrained_config.quantization_config.get("quant_method") == "awq"
+            and self.pretrained_config.quantization_config.get("quant_method") == "bnb"
         )
 
     @property
     def is_exllamav2(self) -> bool:
         return (
             self.is_quantized
-            and (self.is_gptq_quantized or self.is_awq_quantized)
+            and (self.is_gptq_quantized)
             and (
                 (
                     hasattr(self.pretrained_config, "quantization_config")
@@ -414,10 +296,11 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         if self.config.low_cpu_mem_usage is not None:
             kwargs["low_cpu_mem_usage"] = self.config.low_cpu_mem_usage
 
-        if self.config.no_weights:
-            # we use our own context manager to load the
-            # model with faster random weights generators
-            kwargs["_fast_init"] = False
+        if self.config.device_map is not None:
+            kwargs["device_map"] = self.config.device_map
+
+        if self.config.tp_plan is not None:
+            kwargs["tp_plan"] = self.config.tp_plan
 
         return kwargs
 

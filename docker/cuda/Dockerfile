@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG CUDA_VERSION=12.4.1
+ARG CUDA_VERSION=12.8.1
 ARG UBUNTU_VERSION=22.04
 
 FROM nvidia/cuda:${CUDA_VERSION}-cudnn-devel-ubuntu${UBUNTU_VERSION}
@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install PyTorch
 ARG TORCH_VERSION=""
-ARG TORCH_CUDA=cu124
+ARG TORCH_CUDA=cu128
 ARG TORCH_RELEASE_TYPE=stable
 
 RUN if [ -n "${TORCH_VERSION}" ]; then \
@@ -42,8 +42,9 @@ else \
 fi
 
 # Install quantization libraries from source
-ENV CUDA_VERSION=12.4
-ENV TORCH_CUDA_ARCH_LIST="6.0 7.0 7.5 8.0 8.6 9.0+PTX"
+ENV MAX_JOBS=1
+ENV CUDA_VERSION=12.8
+ENV GPTQMODEL_FORCE_BUILD=1
+ENV TORCH_CUDA_ARCH_LIST="8.0 8.6 8.9 9.0"
 
-COPY scripts/install_quantization_libs.py /internal/install_quantization_libs.py
-RUN python internal/install_quantization_libs.py --install-autogptq-from-source --install-autoawq-from-source
+RUN pip install -v gptqmodel --no-build-isolation --no-cache-dir

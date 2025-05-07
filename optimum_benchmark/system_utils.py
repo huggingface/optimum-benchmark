@@ -1,3 +1,4 @@
+import functools
 import os
 import platform
 import re
@@ -44,25 +45,14 @@ def get_cpu_ram_mb():
 
 
 ## GPU related stuff
-try:
-    subprocess.check_output("nvidia-smi")
-    _nvidia_system = True
-except Exception:
-    _nvidia_system = False
-
-try:
-    subprocess.check_output("rocm-smi")
-    _rocm_system = True
-except Exception:
-    _rocm_system = False
-
-
+@functools.lru_cache(maxsize=1)
 def is_nvidia_system():
-    return _nvidia_system
+    return subprocess.call("nvidia-smi", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
 
 
+@functools.lru_cache(maxsize=1)
 def is_rocm_system():
-    return _rocm_system
+    return subprocess.call("rocm-smi", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
 
 
 if is_nvidia_system() and is_pynvml_available():

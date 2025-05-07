@@ -34,6 +34,7 @@ _llm_swarm_available = importlib.util.find_spec("llm_swarm") is not None
 _zentorch_available = importlib.util.find_spec("zentorch") is not None
 _vllm_available = importlib.util.find_spec("vllm") is not None
 _llama_cpp_available = importlib.util.find_spec("llama-cpp-python") is not None
+_gptqmodel_available = importlib.util.find_spec("gptqmodel") is not None
 
 
 def is_vllm_available():
@@ -134,6 +135,10 @@ def is_torch_distributed_available():
 
 def is_codecarbon_available():
     return _codecarbon_available
+
+
+def is_gptqmodel_available():
+    return _gptqmodel_available
 
 
 def torch_version():
@@ -264,7 +269,7 @@ def get_hf_libs_info():
         "optimum_benchmark_commit": get_git_revision_hash("optimum_benchmark"),
         "transformers_version": transformers_version() if is_transformers_available() else None,
         "transformers_commit": get_git_revision_hash("transformers"),
-        "accelerate_version": accelerate_version() if is_accelerate_available else None,
+        "accelerate_version": accelerate_version() if is_accelerate_available() else None,
         "accelerate_commit": get_git_revision_hash("accelerate"),
         "diffusers_version": diffusers_version() if is_diffusers_available() else None,
         "diffusers_commit": get_git_revision_hash("diffusers"),

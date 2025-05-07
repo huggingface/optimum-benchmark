@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG ROCM_VERSION=5.7.1
+ARG ROCM_VERSION=6.3.4
 ARG UBUNTU_VERSION=22.04
 
 FROM rocm/dev-ubuntu-${UBUNTU_VERSION}:${ROCM_VERSION}
@@ -21,17 +21,19 @@ FROM rocm/dev-ubuntu-${UBUNTU_VERSION}:${ROCM_VERSION}
 ENV PATH="/opt/rocm/bin:${PATH}"
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \ 
-    rocsparse-dev hipsparse-dev rocthrust-dev rocblas-dev hipblas-dev \
     sudo build-essential git bash-completion \
     python3.10 python3-pip python3.10-dev && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* && apt-get autoremove -y && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 && \
     pip install --no-cache-dir --upgrade pip setuptools wheel requests && \
     cd /opt/rocm/share/amd_smi && pip install .
 
+RUN apt-get update && apt-get upgrade -y && apt-get install -y hipsparse hipblas hipsolver rocthrust && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* && apt-get autoremove -y
+
 # Install PyTorch
 ARG TORCH_VERSION=""
-ARG TORCH_ROCM=rocm5.7
+ARG TORCH_ROCM=rocm6.3
 ARG TORCH_RELEASE_TYPE=stable
 
 RUN if [ -n "${TORCH_VERSION}" ]; then \
@@ -45,8 +47,9 @@ else \
 fi
 
 # Install quantization libraries from source
-ENV ROCM_VERSION=5.7
+ENV MAX_JOBS=1
+ENV ROCM_VERSION=6.3
+ENV GPTQMODEL_FORCE_BUILD=1
 ENV PYTORCH_ROCM_ARCH="gfx900;gfx906;gfx908;gfx90a;gfx1030;gfx1100"
 
-COPY scripts/install_quantization_libs.py /internal/install_quantization_libs.py
-RUN python internal/install_quantization_libs.py --install-autogptq-from-source --install-autoawq-from-source
+RUN pip install -v gptqmodel --no-build-isolation --no-cache-dir
