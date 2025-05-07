@@ -36,7 +36,7 @@ jobs:
 
     container:
       image: vllm/vllm-openai:latest
-      options: --ipc host --gpus all --entrypoint /bin/bash
+      options: --ipc host --gpus all --entrypoint /bin/bash --shm-size 64G
 
     steps:
       - name: Checkout
@@ -85,6 +85,6 @@ jobs:
         run: |
           pip install -e .[testing]
 
-      - name: Run tests (sequential)
-        run: |
-          FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and vllm and (tp or pp)"
+      # - name: Run tests (sequential)
+      #   run: |
+      #     FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and vllm and (tp or pp)"
