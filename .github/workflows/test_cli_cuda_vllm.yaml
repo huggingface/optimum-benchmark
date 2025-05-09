@@ -75,7 +75,7 @@ jobs:
 
     container:
       image: vllm/vllm-openai:latest
-      options: --entrypoint /bin/bash --ipc host --gpus all
+      options: --ipc host --gpus all --entrypoint /bin/bash
 
     steps:
       - name: Checkout
