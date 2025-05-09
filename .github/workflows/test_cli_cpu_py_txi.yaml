@@ -46,7 +46,7 @@ jobs:
           pip install uv
           uv pip install --upgrade pip
           uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-          uv pip install -e .[testing,py-txi] git+https://github.com/IlyasMoutawwakil/py-txi.git@update-versions
+          uv pip install -e .[testing,py-txi] git+https://github.com/IlyasMoutawwakil/py-txi.git
         env:
           UV_SYSTEM_PYTHON: 1
 
