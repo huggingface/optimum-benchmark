@@ -71,14 +71,14 @@ EXTRAS_REQUIRE = {
     "py-txi": ["py-txi"],
     "vllm": ["vllm"],
     # optional dependencies
-    "torchao": ["torchao"],
-    "gptqmodel": ["gptqmodel", "optimum"],
     "sentence-transformers": ["sentence-transformers"],
+    "gptqmodel": ["gptqmodel", "optimum"],
+    "codecarbon": ["codecarbon<3.0.0"],
     "bitsandbytes": ["bitsandbytes"],
     "deepspeed": ["deepspeed<0.16"],
-    "codecarbon": ["codecarbon"],
     "flash-attn": ["flash-attn"],
     "diffusers": ["diffusers"],
+    "torchao": ["torchao"],
     "timm": ["timm"],
     "peft": ["peft"],
 }
