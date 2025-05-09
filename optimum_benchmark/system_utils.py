@@ -181,8 +181,6 @@ def get_gpu_device_ids() -> str:
     elif is_rocm_system():
         if os.environ.get("ROCR_VISIBLE_DEVICES", None) is not None:
             device_ids = os.environ["ROCR_VISIBLE_DEVICES"]
-        elif os.environ.get("HIP_VISIBLE_DEVICES", None) is not None:
-            device_ids = os.environ["HIP_VISIBLE_DEVICES"]
         elif os.environ.get("CUDA_VISIBLE_DEVICES", None) is not None:
             device_ids = os.environ["CUDA_VISIBLE_DEVICES"]
         else:
