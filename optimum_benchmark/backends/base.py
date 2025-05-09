@@ -128,12 +128,13 @@ class Backend(Generic[BackendConfigT], ABC):
 
     def create_no_weights_model_slow(self) -> None:
         self.create_no_weights_model_fast()
-        model_path = self.no_weights_model_path
 
         with fast_weights_init():
             # unlike Transformers, TXI won't accept any missing tensors so we need to materialize the model
-            dummy = self.automodel_loader.from_pretrained(model_path, device_map="auto", **self.config.model_kwargs)
-            dummy.save_pretrained(model_path)
+            dummy = self.automodel_loader.from_pretrained(
+                self.no_weights_model_path, device_map="auto", **self.config.model_kwargs
+            )
+            dummy.save_pretrained(self.no_weights_model_path)
             del dummy
 
         torch.cuda.empty_cache()

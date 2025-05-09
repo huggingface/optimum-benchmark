@@ -39,7 +39,7 @@ class OVBackend(Backend[OVBackendConfig]):
 
         if self.config.no_weights:
             self.logger.info("\t+ Creating no weights OVModel")
-            self.create_no_weights_model()
+            self.create_no_weights_model_fast()
             self.logger.info("\t+ Loading no weights OVModel")
             self.load_ovmodel_with_no_weights()
         else:
@@ -69,7 +69,7 @@ class OVBackend(Backend[OVBackendConfig]):
 
     def load_ovmodel_with_no_weights(self) -> None:
         with fast_weights_init():
-            original_model, self.config.model = self.config.model, self.no_weights_model
+            original_model, self.config.model = self.config.model, self.no_weights_model_path.as_posix()
             original_export, self.config.export = self.config.export, True
             self.load_ovmodel_from_pretrained()
             self.config.export = original_export

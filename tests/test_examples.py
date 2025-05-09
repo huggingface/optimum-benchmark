@@ -8,15 +8,15 @@ from optimum_benchmark.logging_utils import run_subprocess_and_log_stream_output
 
 LOGGER = getLogger("test-examples")
 
+os.environ["TRANSFORMERS_IS_CI"] = "1"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 TEST_CONFIG_DIR = Path(__file__).parent.parent / "examples"
-
 TEST_CONFIG_NAMES = [
     config.split(".")[0]
     for config in os.listdir(TEST_CONFIG_DIR)
     if config.endswith(".yaml") and not (config.startswith("_") or config.endswith("_"))
 ]
-
 TEST_SCRIPT_PATHS = [
     str(TEST_CONFIG_DIR / filename) for filename in os.listdir(TEST_CONFIG_DIR) if filename.endswith(".py")
 ]

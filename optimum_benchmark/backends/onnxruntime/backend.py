@@ -67,7 +67,7 @@ class ORTBackend(Backend[ORTConfig]):
 
         if self.config.no_weights:
             self.logger.info("\t+ Creating no weights ORTModel")
-            self.create_no_weights_model()
+            self.create_no_weights_model_fast()
             self.logger.info("\t+ Loading no weights ORTModel")
             self.load_ortmodel_with_no_weights()
         else:
@@ -109,7 +109,7 @@ class ORTBackend(Backend[ORTConfig]):
 
     def load_ortmodel_with_no_weights(self) -> None:
         with fast_weights_init():
-            original_model, self.config.model = self.config.model, self.no_weights_model
+            original_model, self.config.model = self.config.model, self.no_weights_model_path.as_posix()
             original_export, self.config.export = self.config.export, True
             self.logger.info("\t+ Loading no weights ORTModel")
             self.load_ortmodel_from_pretrained()

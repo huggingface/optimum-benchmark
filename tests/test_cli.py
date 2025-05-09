@@ -9,6 +9,8 @@ from optimum_benchmark.logging_utils import run_subprocess_and_log_stream_output
 
 LOGGER = getLogger("test-cli")
 
+os.environ["TRANSFORMERS_IS_CI"] = "1"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 FORCE_SEQUENTIAL = os.environ.get("FORCE_SEQUENTIAL", "0") == "1"
 
