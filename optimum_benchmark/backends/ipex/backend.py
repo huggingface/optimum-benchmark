@@ -36,7 +36,7 @@ class IPEXBackend(Backend[IPEXConfig]):
 
         if self.config.no_weights:
             self.logger.info("\t+ Creating no weights IPEXModel")
-            self.create_no_weights_model()
+            self.create_no_weights_model_fast()
             self.logger.info("\t+ Loading no weights IPEXModel")
             self.load_ipexmodel_with_no_weights()
         else:
