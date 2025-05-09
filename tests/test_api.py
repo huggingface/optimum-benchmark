@@ -172,6 +172,16 @@ def test_api_push_to_hub_mixin():
 def test_api_latency_tracker(device, backend):
     tracker = LatencySessionTracker(device=device, backend=backend)
 
+    # Warmup
+    with tracker.session():
+        while tracker.elapsed() < 10:
+            with tracker.track():
+                time.sleep(1)
+
+    latency = tracker.get_latency()
+    latency.log()
+
+    # Elapsed
     with tracker.session():
         while tracker.elapsed() < 2:
             with tracker.track():
@@ -184,6 +194,7 @@ def test_api_latency_tracker(device, backend):
     assert latency.mean > 0.9
     assert len(latency.values) == 2
 
+    # Count
     with tracker.session():
         while tracker.count() < 2:
             with tracker.track():
