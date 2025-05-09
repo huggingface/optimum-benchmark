@@ -54,7 +54,7 @@ class IPEXBackend(Backend[IPEXConfig]):
 
     def load_ipexmodel_with_no_weights(self) -> None:
         with fast_weights_init():
-            original_model, self.config.model = self.config.model, self.no_weights_model
+            original_model, self.config.model = self.config.model, self.no_weights_model_path.as_posix()
             original_export, self.config.export = self.config.export, True
             self.load_ipexmodel_from_pretrained()
             self.config.export = original_export
