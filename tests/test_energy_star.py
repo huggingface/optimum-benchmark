@@ -8,9 +8,10 @@ from optimum_benchmark.logging_utils import run_subprocess_and_log_stream_output
 
 LOGGER = getLogger("test-cli")
 
+os.environ["TRANSFORMERS_IS_CI"] = "1"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 TEST_CONFIG_DIR = Path(__file__).parent.parent / "energy_star"
-
 TEST_CONFIG_NAMES = [
     config.split(".")[0]
     for config in os.listdir(TEST_CONFIG_DIR)

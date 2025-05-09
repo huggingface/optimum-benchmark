@@ -232,7 +232,7 @@ class LatencySessionTracker:
         self.start_events = []
         self.end_events = []
 
-        self.start_time = time.perf_counter()
+        self.start_time = time.time()
         yield
         self.start_time = None
 
@@ -245,7 +245,7 @@ class LatencySessionTracker:
     def elapsed(self):
         assert self.start_time is not None, "This method can only be called inside of a '.session()' context"
 
-        return time.perf_counter() - self.start_time
+        return time.time() - self.start_time
 
     @contextmanager
     def track(self):
@@ -320,7 +320,7 @@ class PerTokenLatencySessionTrackerLogitsProcessor:
         self.decode_start_events = []
         self.decode_end_events = []
 
-        self.start_time = time.perf_counter()
+        self.start_time = time.time()
         yield
         self.start_time = None
 
@@ -338,7 +338,7 @@ class PerTokenLatencySessionTrackerLogitsProcessor:
     def elapsed(self):
         assert self.start_time is not None, "This method can only be called inside of a '.session()' context"
 
-        return time.perf_counter() - self.start_time
+        return time.time() - self.start_time
 
     @contextmanager
     def track(self):
@@ -502,7 +502,7 @@ class PerStepLatencySessionTrackerPipelineCallback:
         self.per_step_end_events = []
         self.per_step_events = []
 
-        self.start_time = time.perf_counter()
+        self.start_time = time.time()
         yield
         self.start_time = None
 
@@ -515,7 +515,7 @@ class PerStepLatencySessionTrackerPipelineCallback:
     def elapsed(self):
         assert self.start_time is not None, "This method can only be called inside of a '.session()' context"
 
-        return time.perf_counter() - self.start_time
+        return time.time() - self.start_time
 
     @contextmanager
     def track(self):

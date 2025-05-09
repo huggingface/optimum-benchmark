@@ -2,6 +2,7 @@ import gc
 import os
 import time
 from importlib import reload
+from logging import getLogger
 from tempfile import TemporaryDirectory
 
 import pandas as pd
@@ -12,6 +13,11 @@ from optimum_benchmark import Benchmark, BenchmarkConfig, InferenceConfig, Proce
 from optimum_benchmark.import_utils import get_git_revision_hash
 from optimum_benchmark.system_utils import is_nvidia_system, is_rocm_system
 from optimum_benchmark.trackers import LatencySessionTracker, MemoryTracker
+
+LOGGER = getLogger("test-api")
+
+os.environ["TRANSFORMERS_IS_CI"] = "1"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 PUSH_REPO_ID = os.environ.get("PUSH_REPO_ID", "optimum-benchmark/local")
 
