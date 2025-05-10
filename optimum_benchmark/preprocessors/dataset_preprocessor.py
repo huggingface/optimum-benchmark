@@ -346,9 +346,6 @@ def image_to_text_preprocessing(
     if getattr(pretrained_processor.tokenizer, "pad_token", None) is None:
         pretrained_processor.tokenizer.pad_token = pretrained_processor.tokenizer.eos_token
 
-    if getattr(pretrained_processor.tokenizer, "eos_token", None) is None:
-        pretrained_processor.tokenizer.eos_token = pretrained_processor.tokenizer.pad_token
-
     def preprocess_function(examples):
         return pretrained_processor(images=examples[scenario_config.image_column_name])
 

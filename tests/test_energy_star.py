@@ -42,7 +42,7 @@ def test_cli_configs(config_name):
     elif config_name == "text_classification":
         model = "hf-internal-testing/tiny-random-BertModel"
     elif config_name == "summarization":
-        model = "hf-internal-testing/tiny-random-T5ForConditionalGeneration"
+        model = "hf-internal-testing/tiny-random-BartModel"
     elif config_name == "t5_question_answering":
         model = "hf-internal-testing/tiny-random-T5ForConditionalGeneration"
     elif config_name == "t5_summarization":
@@ -64,13 +64,16 @@ def test_cli_configs(config_name):
         TEST_CONFIG_DIR,
         "--config-name",
         config_name,
-        f"backend.model={model}",
-        f"backend.processor={model}",
+        "backend.device=cpu",
         "scenario.energy=true",
         "scenario.memory=true",
         "scenario.latency=true",
         "scenario.num_samples=2",
         "scenario.input_shapes.batch_size=2",
+        "+scenario.generate_kwargs.max_new_tokens=2",
+        "+scenario.generate_kwargs.min_new_tokens=2",
+        "launcher.device_isolation=false",
+        f"backend.model={model}",
     ]
 
     if ROCR_VISIBLE_DEVICES is not None:
