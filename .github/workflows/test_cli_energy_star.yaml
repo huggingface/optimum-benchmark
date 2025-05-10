@@ -1,4 +1,4 @@
-name: CLI CUDA Energy Star Tests
+name: CLI Energy Star Tests
 
 on:
   workflow_dispatch:
@@ -27,21 +27,26 @@ jobs:
       contains( github.event.pull_request.labels.*.name, 'energy_star')
       }}
 
-    runs-on:
-      group: aws-g5-4xlarge-plus
-
-    container:
-      image: ghcr.io/huggingface/optimum-benchmark:latest-cuda
-      options: --ipc host --gpus all
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install requirements
         run: |
-          pip install -e .[testing,diffusers,timm,codecarbon] librosa
+          pip install uv
+          uv pip install --upgrade pip
+          uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+          uv pip install -e .[testing,diffusers,timm,codecarbon] librosa
+        env:
+          UV_SYSTEM_PYTHON: 1
 
       - name: Run tests
         run: |
-          pytest tests/test_energy_star.py -x -s
+          pytest tests/test_energy_star.py -vvvv

@@ -27,8 +27,11 @@ jobs:
 
       - name: Install quality requirements
         run: |
-          pip install --upgrade pip
-          pip install ruff
+          pip install uv
+          uv pip install --upgrade pip
+          uv pip install ruff
+        env:
+          UV_SYSTEM_PYTHON: 1
 
       - name: Check style
         run: make quality
