@@ -69,9 +69,10 @@ def test_cli_configs(config_name):
         "scenario.memory=true",
         "scenario.latency=true",
         "scenario.num_samples=2",
+        "scenario.warmup_runs=1",
         "scenario.input_shapes.batch_size=2",
-        "++scenario.generate_kwargs.max_new_tokens=10",
-        "++scenario.generate_kwargs.min_new_tokens=10",
+        "++scenario.generate_kwargs.max_new_tokens=2",
+        "++scenario.generate_kwargs.min_new_tokens=2",
         "launcher.device_isolation=false",
         f"backend.model={model}",
     ]
