@@ -51,16 +51,16 @@ class ProcessLauncher(Launcher[ProcessConfig]):
             else:
                 raise RuntimeError("Could not synchronize with isolated process")
 
-            while not parent_connection.poll():
+            while isolated_process.is_alive() and not parent_connection.poll():
                 pass
 
-        if isolated_process.exitcode is not None and isolated_process.exitcode != 0:
+        if not isolated_process.is_alive() and isolated_process.exitcode is not None and isolated_process.exitcode != 0:
             raise RuntimeError(f"Isolated process exited with non-zero code {isolated_process.exitcode}")
 
         if parent_connection.poll():
             response_type = parent_connection.recv()
         else:
-            raise RuntimeError("Received no response from isolated process")
+            raise RuntimeError("Isolated process did not send any response")
 
         if response_type == "traceback":
             self.logger.error("\t+ Receiving traceback from isolated process")
