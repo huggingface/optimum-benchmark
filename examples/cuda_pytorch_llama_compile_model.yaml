@@ -20,7 +20,7 @@ backend:
   torch_dtype: bfloat16
   task: feature-extraction
   torch_compile_target: model
-  model: meta-llama/Llama-2-13b-hf
+  model: NousResearch/Llama-2-13b-hf
 
 scenario:
   input_shapes:
