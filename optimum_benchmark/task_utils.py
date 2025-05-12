@@ -104,6 +104,7 @@ TEXT_GENERATION_TASKS = [
 
 TEXT_EMBEDDING_TASKS = [
     "feature-extraction",
+    "sentence-similarity",
 ]
 
 SYNONYM_TASKS = {

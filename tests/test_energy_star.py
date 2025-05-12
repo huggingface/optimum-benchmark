@@ -61,7 +61,7 @@ def test_cli_configs(config_name):
     args = [
         "optimum-benchmark",
         "--config-dir",
-        TEST_CONFIG_DIR,
+        TEST_CONFIG_DIR.as_posix(),
         "--config-name",
         config_name,
         "backend.device=cpu",
