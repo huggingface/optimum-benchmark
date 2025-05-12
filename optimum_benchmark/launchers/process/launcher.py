@@ -10,7 +10,7 @@ import psutil
 
 from ...benchmark.report import BenchmarkReport
 from ...logging_utils import setup_logging
-from ...process_utils import sync_with_child, sync_with_parent
+from ...process_utils import receive_serializable, send_serializable, sync_with_child, sync_with_parent
 from ..base import Launcher
 from .config import ProcessConfig
 
@@ -57,21 +57,20 @@ class ProcessLauncher(Launcher[ProcessConfig]):
             raise RuntimeError(f"Isolated process exited with non-zero code {isolated_process.exitcode}")
 
         if parent_connection.poll():
-            response = parent_connection.recv()
+            response_type = parent_connection.recv()
         else:
             raise RuntimeError("Received no response from isolated process")
 
-        if "traceback" in response:
-            self.logger.error("\t+ Received traceback from isolated process")
-            raise ChildProcessError(response["traceback"])
-        elif "exception" in response:
-            self.logger.error("\t+ Received exception from isolated process")
-            raise ChildProcessError(response["exception"])
-        elif "report" in response:
-            self.logger.info("\t+ Received report from isolated process")
-            report = BenchmarkReport.from_dict(response["report"])
+        if response_type == "traceback":
+            self.logger.error("\t+ Receiving traceback from isolated process")
+            traceback_str = receive_serializable(parent_connection, self.logger)
+            raise ChildProcessError(traceback_str)
+        elif response_type == "report":
+            self.logger.info("\t+ Receiving report from isolated process")
+            report_dict = receive_serializable(parent_connection, self.logger)
+            report = BenchmarkReport.from_dict(report_dict)
         else:
-            raise RuntimeError(f"Received an unexpected response from isolated process: {response}")
+            raise RuntimeError(f"Received an unexpected response type from isolated process: {response_type}")
 
         return report
 
@@ -102,11 +101,13 @@ def target(
     try:
         report = worker(*worker_args)
     except Exception:
-        logger.error("\t+ Sending traceback to main process")
-        child_connection.send({"traceback": traceback.format_exc()})
+        logger.error("\t+ Sending traceback string to main process")
+        child_connection.send("traceback")
+        send_serializable(child_connection, traceback.format_exc(), logger)
     else:
-        logger.info("\t+ Sending report to main process")
-        child_connection.send({"report": report.to_dict()})
+        logger.info("\t+ Sending report dictionary to main process")
+        child_connection.send("report")
+        send_serializable(child_connection, report.to_dict(), logger)
     finally:
         logger.info("\t+ Exiting isolated process")
         child_connection.close()

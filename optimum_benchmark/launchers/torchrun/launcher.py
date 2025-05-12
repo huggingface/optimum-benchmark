@@ -11,14 +11,10 @@ import torch.distributed
 from torch.distributed.launcher.api import LaunchConfig, elastic_launch
 
 from ...benchmark.report import BenchmarkReport
-from ...import_utils import is_deepspeed_available
 from ...logging_utils import setup_logging
-from ...process_utils import sync_with_child, sync_with_parent
+from ...process_utils import receive_serializable, send_serializable, sync_with_child, sync_with_parent
 from ..base import Launcher
 from .config import TorchrunConfig
-
-if is_deepspeed_available():
-    from deepspeed.comm import destroy_process_group, is_initialized
 
 
 class TorchrunLauncher(Launcher[TorchrunConfig]):
@@ -81,27 +77,27 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             raise RuntimeError(f"Isolated process exited with non-zero code {isolated_process.exitcode}")
 
         if parent_connection.poll():
-            response = parent_connection.recv()
+            response_type = parent_connection.recv()
         else:
             raise RuntimeError("Isolated process did not send any response")
 
-        reports = []
+        if response_type == "traceback":
+            self.logger.error("\t+ Received traceback from isolated process")
+            traceback_str = receive_serializable(parent_connection, self.logger)
+            raise ChildProcessError(traceback_str)
+        elif response_type == "outputs":
+            self.logger.info("\t+ Received outputs from isolated process")
+            outputs = receive_serializable(parent_connection, self.logger)
 
-        for output in response:
-            if "traceback" in output:
-                if "rank" in output:
-                    self.logger.error(f"\t+ Received traceback from rank process [{output['rank']}]")
-                    raise ChildProcessError(output["traceback"])
-                else:
-                    self.logger.error("\t+ Received traceback from isolated process")
-                    raise ChildProcessError(output["traceback"])
+            reports = []
+            for rank, report_dict in outputs.items():
+                if isinstance(report_dict, str):
+                    self.logger.error(f"\t+ Received traceback from rank process {rank}")
+                    raise ChildProcessError(report_dict)
 
-            elif "report" in output:
-                self.logger.info(f"\t+ Received report from rank process [{output['rank']}]")
-                reports.append(BenchmarkReport.from_dict(output["report"]))
-
-            else:
-                raise RuntimeError(f"Received an unexpected response from isolated process: {output}")
+                self.logger.info(f"\t+ Received report from rank process {rank}")
+                report = BenchmarkReport.from_dict(report_dict)
+                reports.append(report)
 
         self.logger.info("\t+ Aggregating reports from all rank processes")
         report = BenchmarkReport.aggregate_across_processes(reports)
@@ -137,10 +133,12 @@ def target(
         outputs = elastic_agent_launcher(worker, worker_args, logger)
     except Exception:
         logger.error("\t+ Sending traceback to main process")
-        child_connection.send([{"traceback": traceback.format_exc()}])
+        child_connection.send("traceback")
+        send_serializable(child_connection, traceback.format_exc(), logger)
     else:
         logger.info("\t+ Sending outputs to main process")
-        child_connection.send(list(outputs.values()))
+        child_connection.send("outputs")
+        send_serializable(child_connection, outputs, logger)
     finally:
         logger.info("\t+ Exiting isolated process")
         child_connection.close()
@@ -174,17 +172,12 @@ def entrypoint(worker: Callable[..., BenchmarkReport], worker_args: List[Any], l
         report = worker(*worker_args)
     except Exception:
         logger.error("\t+ Benchmark failed with an exception")
-        output = {"rank": rank, "traceback": traceback.format_exc()}
+        output = traceback.format_exc()
     else:
         logger.info("\t+ Benchmark completed successfully")
-        output = {"rank": rank, "report": report.to_dict()}
+        output = report.to_dict()
     finally:
         logger.info("\t+ Destroying torch.distributed process group")
         torch.distributed.destroy_process_group()
-
-        if is_deepspeed_available() and is_initialized():
-            logger.info("\t+ Destroying deepspeed process group")
-            destroy_process_group()
-
         logger.info("\t+ Exiting rank process")
         return output
