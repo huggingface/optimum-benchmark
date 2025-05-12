@@ -1,7 +1,8 @@
-import json
 from logging import Logger
 from multiprocessing.connection import Connection
 from typing import Any, Callable, TypeVar
+
+import msgpack
 
 DeserializedType = TypeVar("DeserializedType")
 
@@ -21,7 +22,7 @@ def send_serializable(
     obj: Any,
     logger: Logger,
     chunk_size: int = 1_000_000,
-    serializer: Callable[[Any], str] = json.dumps,
+    serializer: Callable[[Any], bytes] = msgpack.packb,
 ) -> None:
     """Send any serializable object in chunks to avoid pipe buffer issues.
 
@@ -30,15 +31,14 @@ def send_serializable(
         obj: Any serializable object to send
         logger: Logger for debugging
         chunk_size: The size of each chunk in bytes
-        serializer: Function to serialize object to string (default: json.dumps)
+        serializer: Function to serialize object to bytes (default: msgpack.packb)
     """
-    serialized = serializer(obj)
-    encoded = serialized.encode("utf-8")
+    packed_data = serializer(obj)
 
-    logger.debug(f"Sending object of size {len(encoded)} bytes")
+    logger.debug(f"Sending object of size {len(packed_data)} bytes")
 
-    for i in range(0, len(serialized), chunk_size):
-        chunk = serialized[i : i + chunk_size]
+    for i in range(0, len(packed_data), chunk_size):
+        chunk = packed_data[i : i + chunk_size]
         connection.send(chunk)
         logger.debug(f"Sent chunk of size {len(chunk)} bytes")
 
@@ -48,14 +48,14 @@ def send_serializable(
 
 
 def receive_serializable(
-    connection: Connection, logger: Logger, deserializer: Callable[[str], DeserializedType] = json.loads
+    connection: Connection, logger: Logger, deserializer: Callable[[bytes], DeserializedType] = msgpack.unpackb
 ) -> DeserializedType:
     """Receive any serializable object in chunks to avoid pipe buffer issues.
 
     Args:
         connection: The connection to receive chunks from
         logger: Logger for debugging
-        deserializer: Function to deserialize string back to object (default: json.loads)
+        deserializer: Function to deserialize bytes back to object (default: msgpack.unpackb)
 
     Returns:
         The complete deserialized object
@@ -71,8 +71,8 @@ def receive_serializable(
         logger.debug(f"Received chunk of size {len(chunk)} bytes")
 
     logger.debug("Finished receiving object")
-    serialized_str = "".join(chunks)
-    obj = deserializer(serialized_str)
-    logger.debug(f"Received object of size {len(serialized_str)} bytes")
+    packed_data = b"".join(chunks)
+    obj = deserializer(packed_data)
+    logger.debug(f"Received object of size {len(packed_data)} bytes")
 
     return obj

@@ -29,6 +29,7 @@ INSTALL_REQUIRES = [
     "typing-extensions",
     "flatten_dict",
     "colorlog",
+    "msgpack",
     "pandas",
     "rich",
 ]
