@@ -1,8 +1,7 @@
+import pickle
 from logging import Logger
 from multiprocessing.connection import Connection
 from typing import Any, Callable, TypeVar
-
-import msgpack
 
 DeserializedType = TypeVar("DeserializedType")
 
@@ -22,7 +21,7 @@ def send_serializable(
     obj: Any,
     logger: Logger,
     chunk_size: int = 1_000_000,
-    serializer: Callable[[Any], bytes] = msgpack.packb,
+    serializer: Callable[[Any], bytes] = pickle.dumps,
 ) -> None:
     """Send any serializable object in chunks to avoid pipe buffer issues.
 
@@ -31,14 +30,14 @@ def send_serializable(
         obj: Any serializable object to send
         logger: Logger for debugging
         chunk_size: The size of each chunk in bytes
-        serializer: Function to serialize object to bytes (default: msgpack.packb)
+        serializer: Function to serialize object to bytes (default: pickle.dumps)
     """
-    packed_data = serializer(obj)
+    serialized = serializer(obj)
 
-    logger.debug(f"Sending object of size {len(packed_data)} bytes")
+    logger.debug(f"Sending object of size {len(serialized)} bytes")
 
-    for i in range(0, len(packed_data), chunk_size):
-        chunk = packed_data[i : i + chunk_size]
+    for i in range(0, len(serialized), chunk_size):
+        chunk = serialized[i : i + chunk_size]
         connection.send(chunk)
         logger.debug(f"Sent chunk of size {len(chunk)} bytes")
 
@@ -48,14 +47,14 @@ def send_serializable(
 
 
 def receive_serializable(
-    connection: Connection, logger: Logger, deserializer: Callable[[bytes], DeserializedType] = msgpack.unpackb
+    connection: Connection, logger: Logger, deserializer: Callable[[bytes], DeserializedType] = pickle.loads
 ) -> DeserializedType:
     """Receive any serializable object in chunks to avoid pipe buffer issues.
 
     Args:
         connection: The connection to receive chunks from
         logger: Logger for debugging
-        deserializer: Function to deserialize bytes back to object (default: msgpack.unpackb)
+        deserializer: Function to deserialize bytes back to object (default: pickle.loads)
 
     Returns:
         The complete deserialized object
@@ -71,8 +70,8 @@ def receive_serializable(
         logger.debug(f"Received chunk of size {len(chunk)} bytes")
 
     logger.debug("Finished receiving object")
-    packed_data = b"".join(chunks)
-    obj = deserializer(packed_data)
-    logger.debug(f"Received object of size {len(packed_data)} bytes")
+    serialized_data = b"".join(chunks)
+    obj = deserializer(serialized_data)
+    logger.debug(f"Received object of size {len(serialized_data)} bytes")
 
     return obj
