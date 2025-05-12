@@ -51,9 +51,10 @@ class ProcessLauncher(Launcher[ProcessConfig]):
             else:
                 raise RuntimeError("Could not synchronize with isolated process")
 
-            isolated_process.join()
+            while not parent_connection.poll():
+                pass
 
-        if isolated_process.exitcode != 0:
+        if isolated_process.exitcode is not None and isolated_process.exitcode != 0:
             raise RuntimeError(f"Isolated process exited with non-zero code {isolated_process.exitcode}")
 
         if parent_connection.poll():
