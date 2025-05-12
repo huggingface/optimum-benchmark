@@ -17,7 +17,6 @@ TEXT_GENERATION_DEFAULT_KWARGS = {
     "num_return_sequences": 1,
     "max_new_tokens": 100,
     "min_new_tokens": 100,
-    "temperature": 1.0,
     "do_sample": False,
     "use_cache": True,
     "num_beams": 1,

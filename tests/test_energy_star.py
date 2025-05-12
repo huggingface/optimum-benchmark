@@ -71,7 +71,6 @@ def test_cli_configs(config_name):
         "scenario.num_samples=2",
         "scenario.warmup_runs=2",
         "scenario.input_shapes.batch_size=2",
-        "++scenario.generate_kwargs.do_sample=false",
         "++scenario.generate_kwargs.max_new_tokens=2",
         "++scenario.generate_kwargs.min_new_tokens=2",
         "++scenario.call_kwargs.num_inference_steps=2",
