@@ -71,9 +71,10 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             else:
                 raise RuntimeError("Could not synchronize with isolated process")
 
-            isolated_process.join()
+            while isolated_process.is_alive() and not parent_connection.poll():
+                pass
 
-        if isolated_process.exitcode != 0:
+        if not isolated_process.is_alive() and isolated_process.exitcode is not None and isolated_process.exitcode != 0:
             raise RuntimeError(f"Isolated process exited with non-zero code {isolated_process.exitcode}")
 
         if parent_connection.poll():

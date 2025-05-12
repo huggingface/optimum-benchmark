@@ -8,10 +8,10 @@ from typing import Any, ClassVar, Dict, Generic, Optional
 
 import datasets.utils.logging as datasets_logging
 import transformers.utils.logging as transformers_logging
-from huggingface_hub import hf_hub_download, snapshot_download
 from safetensors.torch import save_model
 from transformers import GenerationConfig, PretrainedConfig, PreTrainedModel, TrainerState, set_seed
 
+from ..hub_utils import HF_API
 from ..import_utils import is_torch_available
 from ..task_utils import TEXT_GENERATION_TASKS
 from .config import BackendConfigT
@@ -100,7 +100,7 @@ class Backend(Generic[BackendConfigT], ABC):
         set_seed(self.config.seed)
 
     def download_pretrained_model(self) -> None:
-        model_snapshot_folder = snapshot_download(
+        model_snapshot_folder = HF_API.snapshot_download(
             self.config.model,
             revision=self.config.model_kwargs.get("revision", None),
             cache_dir=self.config.model_kwargs.get("cache_dir", None),
@@ -114,7 +114,9 @@ class Backend(Generic[BackendConfigT], ABC):
             self.generation_config.save_pretrained(save_directory=model_snapshot_folder)
 
     def create_no_weights_model_fast(self) -> None:
-        model_path = Path(hf_hub_download(self.config.model, filename="config.json", cache_dir=self.tmpdir.name)).parent
+        model_path = Path(
+            HF_API.hf_hub_download(self.config.model, filename="config.json", cache_dir=self.tmpdir.name)
+        ).parent
         save_model(model=torch.nn.Linear(1, 1), filename=model_path / "model.safetensors", metadata={"format": "pt"})
         self.pretrained_processor.save_pretrained(save_directory=model_path)
         self.pretrained_config.save_pretrained(save_directory=model_path)

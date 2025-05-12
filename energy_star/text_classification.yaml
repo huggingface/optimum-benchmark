@@ -18,7 +18,6 @@ backend:
   no_weights: true
   task: text-classification
   model: lvwerra/distilbert-imdb
-  processor: lvwerra/distilbert-imdb
 
 scenario:
   dataset_name: EnergyStarAI/text_classification

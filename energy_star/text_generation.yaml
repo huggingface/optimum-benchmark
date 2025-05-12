@@ -18,7 +18,6 @@ backend:
   no_weights: true
   task: text-generation
   model: facebook/opt-125m
-  processor: facebook/opt-125m
 
 scenario:
   dataset_name: EnergyStarAI/text_generation

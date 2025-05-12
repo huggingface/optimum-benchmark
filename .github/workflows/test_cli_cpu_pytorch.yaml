@@ -43,9 +43,12 @@ jobs:
 
       - name: Install requirements
         run: |
-          pip install --upgrade pip
-          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-          pip install -e .[testing,diffusers,timm,peft]
+          pip install uv
+          uv pip install --upgrade pip
+          uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+          uv pip install -e .[testing,diffusers,timm,peft]
+        env:
+          UV_SYSTEM_PYTHON: 1
 
       - name: Run tests
         run: pytest tests/test_cli.py -s -k "cli and cpu and pytorch"

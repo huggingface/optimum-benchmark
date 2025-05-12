@@ -27,17 +27,55 @@ CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", None)
 
 @pytest.mark.parametrize("config_name", TEST_CONFIG_NAMES)
 def test_cli_configs(config_name):
+    if config_name == "automatic_speech_recognition":
+        model = "optimum-internal-testing/tiny-random-whisper"
+    elif config_name == "image_classification":
+        model = "hf-internal-testing/tiny-random-ViTModel"
+    elif config_name == "image_to_text":
+        model = "hf-internal-testing/tiny-random-Blip2Model"
+    elif config_name == "object_detection":
+        model = "hf-internal-testing/tiny-random-DetrModel"
+    elif config_name == "question_answering":
+        model = "hf-internal-testing/tiny-random-BertModel"
+    elif config_name == "sentence_similarity":
+        model = "hf-internal-testing/tiny-random-BertModel"
+    elif config_name == "text_classification":
+        model = "hf-internal-testing/tiny-random-BertModel"
+    elif config_name == "summarization":
+        model = "hf-internal-testing/tiny-random-BartModel"
+    elif config_name == "t5_question_answering":
+        model = "hf-internal-testing/tiny-random-T5ForConditionalGeneration"
+    elif config_name == "t5_summarization":
+        model = "hf-internal-testing/tiny-random-T5ForConditionalGeneration"
+    elif config_name == "t5_text_classification":
+        model = "hf-internal-testing/tiny-random-T5ForConditionalGeneration"
+    elif config_name == "t5_text_generation":
+        model = "hf-internal-testing/tiny-random-T5ForConditionalGeneration"
+    elif config_name == "text_generation":
+        model = "hf-internal-testing/tiny-random-LlamaForCausalLM"
+    elif config_name == "text_to_image":
+        model = "hf-internal-testing/tiny-stable-diffusion-torch"
+    else:
+        raise ValueError(f"Unknown config name: {config_name}")
+
     args = [
         "optimum-benchmark",
         "--config-dir",
-        TEST_CONFIG_DIR,
+        TEST_CONFIG_DIR.as_posix(),
         "--config-name",
         config_name,
+        "backend.device=cpu",
         "scenario.energy=true",
         "scenario.memory=true",
         "scenario.latency=true",
         "scenario.num_samples=2",
+        "scenario.warmup_runs=2",
         "scenario.input_shapes.batch_size=2",
+        "++scenario.generate_kwargs.max_new_tokens=10",
+        "++scenario.generate_kwargs.min_new_tokens=10",
+        "++scenario.call_kwargs.num_inference_steps=2",
+        "launcher.device_isolation=false",
+        f"backend.model={model}",
     ]
 
     if ROCR_VISIBLE_DEVICES is not None:

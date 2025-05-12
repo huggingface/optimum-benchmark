@@ -2,8 +2,7 @@ import json
 import os
 from typing import Optional
 
-import huggingface_hub
-
+from .hub_utils import HF_API
 from .import_utils import is_diffusers_available, is_torch_available, is_transformers_available
 
 TASKS_TO_AUTO_MODEL_CLASS_NAMES = {
@@ -105,6 +104,7 @@ TEXT_GENERATION_TASKS = [
 
 TEXT_EMBEDDING_TASKS = [
     "feature-extraction",
+    "sentence-similarity",
 ]
 
 SYNONYM_TASKS = {
@@ -145,7 +145,7 @@ def map_from_synonym_library(library: str) -> str:
 
 def is_hf_hub_repo(model_name_or_path: str, token: Optional[str] = None) -> bool:
     try:
-        return huggingface_hub.repo_exists(model_name_or_path, token=token)
+        return HF_API.repo_exists(model_name_or_path, token=token)
     except Exception:
         return False
 
@@ -164,7 +164,7 @@ def get_repo_config(
     if is_hf_hub_repo(model_name_or_path, token=token):
         config = json.load(
             open(
-                huggingface_hub.hf_hub_download(
+                HF_API.hf_hub_download(
                     repo_id=model_name_or_path,
                     filename=config_name,
                     cache_dir=cache_dir,
@@ -189,7 +189,7 @@ def get_repo_config(
 
 def get_repo_files(model_name_or_path: str, token: Optional[str] = None, revision: Optional[str] = None):
     if is_hf_hub_repo(model_name_or_path, token=token):
-        repo_files = huggingface_hub.list_repo_files(model_name_or_path, revision=revision, token=token)
+        repo_files = HF_API.list_repo_files(model_name_or_path, revision=revision, token=token)
     elif is_local_dir_repo(model_name_or_path):
         repo_files = os.listdir(model_name_or_path)
     else:

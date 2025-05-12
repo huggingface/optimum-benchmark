@@ -23,7 +23,6 @@ def feature_extraction_preprocessing(
         dataset = dataset.select(range(scenario_config.num_samples))
 
     if getattr(pretrained_processor, "pad_token", None) is None:
-        # Add a pad token if the tokenizer doesn't have one
         pretrained_processor.pad_token = pretrained_processor.eos_token
 
     padding = scenario_config.input_shapes["batch_size"] != 1
@@ -62,7 +61,6 @@ def summarization_preprocessing(
         dataset = dataset.select(range(scenario_config.num_samples))
 
     if getattr(pretrained_processor, "pad_token", None) is None:
-        # Add a pad token if the tokenizer doesn't have one
         pretrained_processor.pad_token = pretrained_processor.eos_token
 
     padding = scenario_config.input_shapes["batch_size"] != 1
@@ -101,7 +99,6 @@ def text_classification_preprocessing(
         dataset = dataset.select(range(scenario_config.num_samples))
 
     if getattr(pretrained_processor, "pad_token", None) is None:
-        # Add a pad token if the tokenizer doesn't have one
         pretrained_processor.pad_token = pretrained_processor.eos_token
 
     padding = scenario_config.input_shapes["batch_size"] != 1
@@ -145,7 +142,6 @@ def question_answering_preprocessing(
         dataset = dataset.select(range(scenario_config.num_samples))
 
     if getattr(pretrained_processor, "pad_token", None) is None:
-        # Add a pad token if the tokenizer doesn't have one
         pretrained_processor.pad_token = pretrained_processor.eos_token
 
     padding = scenario_config.input_shapes["batch_size"] != 1
@@ -281,7 +277,6 @@ def text_generation_preprocessing(
         dataset = dataset.select(range(scenario_config.num_samples))
 
     if getattr(pretrained_processor, "pad_token", None) is None:
-        # Add a pad token if the tokenizer doesn't have one
         pretrained_processor.pad_token = pretrained_processor.eos_token
 
     padding = scenario_config.input_shapes["batch_size"] != 1
@@ -319,7 +314,6 @@ def image_preprocessing(
         dataset = dataset.filter(lambda example: example[scenario_config.image_column_name] != "")
 
     if scenario_config.num_samples != -1:
-        # Add a pad token if the tokenizer doesn't have one
         dataset = dataset.select(range(scenario_config.num_samples))
 
     def preprocess_function(examples: Dict[str, List[Image]]):
@@ -350,12 +344,7 @@ def image_to_text_preprocessing(
         dataset = dataset.select(range(scenario_config.num_samples))
 
     if getattr(pretrained_processor.tokenizer, "pad_token", None) is None:
-        # Add a pad token if the tokenizer doesn't have one
         pretrained_processor.tokenizer.pad_token = pretrained_processor.tokenizer.eos_token
-
-    if getattr(pretrained_processor.tokenizer, "eos_token", None) is None:
-        # Add an eos token if the tokenizer doesn't have one
-        pretrained_processor.tokenizer.eos_token = pretrained_processor.tokenizer.pad_token
 
     def preprocess_function(examples):
         return pretrained_processor(images=examples[scenario_config.image_column_name])
@@ -384,8 +373,6 @@ def automatic_speech_recognition_preprocessing(
     if scenario_config.num_samples != -1:
         dataset = dataset.select(range(scenario_config.num_samples))
 
-    if getattr(pretrained_processor.tokenizer, "pad_token", None) is None:
-        # Add a pad token if the tokenizer doesn't have one
         pretrained_processor.tokenizer.pad_token = pretrained_processor.tokenizer.eos_token
 
     def preprocess_function(examples: Dict[str, Dict[str, np.ndarray]]):
@@ -434,7 +421,6 @@ def sentence_similarity_preprocessing(
         dataset = dataset.select(range(scenario_config.num_samples))
 
     if getattr(pretrained_processor, "pad_token", None) is None:
-        # Add a pad token if the tokenizer doesn't have one
         pretrained_processor.pad_token = pretrained_processor.eos_token
 
     padding = scenario_config.input_shapes["batch_size"] != 1
