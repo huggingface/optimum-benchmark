@@ -31,9 +31,13 @@ def test_cli_configs(config_name):
         model = "hf-internal-testing/tiny-random-BertModel"
     elif config_name == "cpu_ipex_llama":
         model = "hf-internal-testing/tiny-random-LlamaForCausalLM"
+    elif config_name == "cpu_llama_cpp_text_generation":
+        model = "TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF"
+    elif config_name == "cpu_llama_cpp_embedding":
+        model = "nomic-ai/nomic-embed-text-v1.5-GGUF"
     elif config_name == "cpu_onnxruntime_static_quant_vit":
         model = "hf-internal-testing/tiny-random-ViTModel"
-    elif config_name == "cpu_openvino_8bit":
+    elif config_name == "cpu_openvino_8bit_bert":
         model = "hf-internal-testing/tiny-random-BertModel"
     elif config_name == "cpu_openvino_diffusion":
         model = "hf-internal-testing/tiny-stable-diffusion-torch"
@@ -43,10 +47,6 @@ def test_cli_configs(config_name):
         model = "hf-internal-testing/tiny-random-LlamaForCausalLM"
     elif config_name == "cuda_pytorch_vlm":
         model = "hf-internal-testing/tiny-random-Qwen2VLForConditionalGeneration"
-    elif config_name == "cpu_llama_cpp_text_generation":
-        model = "TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF"
-    elif config_name == "cpu_llama_cpp_embedding":
-        model = "nomic-ai/nomic-embed-text-v1.5-GGUF"
     elif config_name in ["cuda_tgi_llama", "cuda_trt_llama", "cuda_vllm_llama"]:
         model = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
     else:

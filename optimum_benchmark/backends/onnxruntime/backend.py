@@ -295,9 +295,9 @@ class ORTBackend(Backend[ORTConfig]):
             if isinstance(value, torch.Tensor):
                 inputs[key] = value.to(self.config.device)
 
-        for key in list(inputs.keys()):
-            if hasattr(self.pretrained_model, "input_names") and key not in self.pretrained_model.input_names:
-                inputs.pop(key)
+        for input_name in list(inputs.keys()):
+            if hasattr(self.pretrained_model, "input_names") and input_name not in self.pretrained_model.input_names:
+                inputs.pop(input_name)
 
         return inputs
 
