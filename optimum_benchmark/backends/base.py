@@ -118,8 +118,11 @@ class Backend(Generic[BackendConfigT], ABC):
             HF_API.hf_hub_download(self.config.model, filename="config.json", cache_dir=self.tmpdir.name)
         ).parent
         save_model(model=torch.nn.Linear(1, 1), filename=model_path / "model.safetensors", metadata={"format": "pt"})
-        self.pretrained_processor.save_pretrained(save_directory=model_path)
-        self.pretrained_config.save_pretrained(save_directory=model_path)
+
+        if self.pretrained_processor is not None:
+            self.pretrained_processor.save_pretrained(save_directory=model_path)
+        if self.pretrained_config is not None:
+            self.pretrained_config.save_pretrained(save_directory=model_path)
 
         if self.config.task in TEXT_GENERATION_TASKS:
             self.generation_config.eos_token_id = None

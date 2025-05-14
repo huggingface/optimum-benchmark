@@ -6,7 +6,7 @@ defaults:
   - _base_
   - _self_
 
-name: openvino_static_quant
+name: cpu_openvino_8bit_bert
 
 backend:
   device: cpu

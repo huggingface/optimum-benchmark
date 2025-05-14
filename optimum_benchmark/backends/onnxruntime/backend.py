@@ -197,6 +197,7 @@ class ORTBackend(Backend[ORTConfig]):
             one_external_file=True,
             file_suffix="",
         )
+
         if self.pretrained_processor is not None:
             self.pretrained_processor.save_pretrained(self.optimized_model)
         if self.pretrained_config is not None:
@@ -278,7 +279,6 @@ class ORTBackend(Backend[ORTConfig]):
 
         if self.pretrained_processor is not None:
             self.pretrained_processor.save_pretrained(self.quantized_model)
-
         if self.pretrained_config is not None:
             self.pretrained_config.save_pretrained(self.quantized_model)
 
@@ -295,9 +295,9 @@ class ORTBackend(Backend[ORTConfig]):
             if isinstance(value, torch.Tensor):
                 inputs[key] = value.to(self.config.device)
 
-        for key in list(inputs.keys()):
-            if hasattr(self.pretrained_model, "input_names") and key not in self.pretrained_model.input_names:
-                inputs.pop(key)
+        for input_name in list(inputs.keys()):
+            if hasattr(self.pretrained_model, "input_names") and input_name not in self.pretrained_model.input_names:
+                inputs.pop(input_name)
 
         return inputs
 
