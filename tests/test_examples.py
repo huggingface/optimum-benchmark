@@ -59,12 +59,14 @@ def test_cli_configs(config_name):
         "--config-name",
         config_name,
         "scenario.warmup_runs=1",
-        "scenario.input_shapes.batch_size=1",
+        "scenario.input_shapes.batch_size=2",
         "++scenario.input_shapes.sequence_length=16",
         "++scenario.generate_kwargs.max_new_tokens=16",
         "++scenario.generate_kwargs.min_new_tokens=16",
         "++scenario.call_kwargs.num_inference_steps=4",
         f"backend.model={model}",
+        "++backend.reshape_kwargs.batch_size=2",
+        "++backend.reshape_kwargs.sequence_length=16",
     ]
 
     if ROCR_VISIBLE_DEVICES is not None:
