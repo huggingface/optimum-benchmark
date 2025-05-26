@@ -54,11 +54,13 @@ if USE_CUDA:
 if USE_ROCM:
     INSTALL_REQUIRES.extend(["pyrsmi", "amdsmi"])
 
+DEV_REQUIRE = ["ruff", "mock", "hydra-joblib-launcher"]
+
 EXTRAS_REQUIRE = {
     "quality": ["ruff"],
-    "tests": ["pytest", "hydra-joblib-launcher"],
-    "testing": ["pytest", "hydra-joblib-launcher"],
-    "dev": ["ruff", "pytest", "hydra-joblib-launcher"],
+    "dev": DEV_REQUIRE,
+    "tests": DEV_REQUIRE,
+    "testing": DEV_REQUIRE,
     # optimum backends
     "ipex": [f"optimum[ipex]>={MIN_OPTIMUM_VERSION}"],
     "tensorrt-llm": [f"optimum[nvidia]>={MIN_OPTIMUM_VERSION}"],

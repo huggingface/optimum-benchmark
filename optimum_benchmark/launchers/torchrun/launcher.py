@@ -125,6 +125,7 @@ def target(
     log_level = os.environ.get("LOG_LEVEL", "INFO")
     log_to_file = os.environ.get("LOG_TO_FILE", "1") == "1"
     setup_logging(level=log_level, to_file=log_to_file, prefix="ISOLATED-PROCESS")
+    file_based_comm_threshold = int(os.environ.get("FILE_BASED_COMM_THRESHOLD", "1_000_000"))
 
     if main_process.is_running():
         sync_with_parent(child_connection)
@@ -138,14 +139,12 @@ def target(
     except Exception:
         logger.error("\t+ Sending traceback string to main process")
         str_traceback = traceback.format_exc()
-        if len(str_traceback) <= 1_000_000:
-            logger.info(f"\t+ Traceback string is small enough ({len(str_traceback)} bytes), sending it directly")
+        traceback_size = len(str_traceback)
+        if traceback_size <= file_based_comm_threshold:
+            logger.info(f"\t+ Sending traceback string directly ({traceback_size} bytes)")
             child_connection.send(str_traceback)
         else:
-            logger.warning(
-                f"\t+ Traceback string is too large ({len(str_traceback)} bytes), "
-                "sending it through file-based communication protocol"
-            )
+            logger.warning(f"\t+ Sending traceback string ({traceback_size} bytes) through file-based communication")
             temp_file_path = os.path.join(tempfile.gettempdir(), f"optimum_benchmark_{os.getpid()}.txt")
             with open(temp_file_path, "wb") as f:
                 pickle.dump(str_traceback, f)
@@ -153,14 +152,12 @@ def target(
 
     else:
         logger.info("\t+ Sending outputs to main process")
-        if len(str(outputs)) <= 1_000_000:
-            logger.info(f"\t+ Report dictionary is small enough ({len(str(outputs))} bytes), sending it directly")
+        outputs_size = len(str(outputs))
+        if outputs_size <= file_based_comm_threshold:
+            logger.info(f"\t+ Sending outputs directly ({outputs_size} bytes)")
             child_connection.send(outputs)
         else:
-            logger.warning(
-                f"\t+ Report dictionary is too large ({len(str(outputs))} bytes), "
-                "sending it through file-based communication protocol"
-            )
+            logger.warning(f"\t+ Sending outputs ({outputs_size} bytes) through file-based communication")
             temp_file_path = os.path.join(tempfile.gettempdir(), f"optimum_benchmark_{os.getpid()}.pkl")
             with open(temp_file_path, "wb") as f:
                 pickle.dump(outputs, f)

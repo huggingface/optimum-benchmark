@@ -3,6 +3,7 @@ import sys
 from logging import getLogger
 from pathlib import Path
 
+import mock
 import pytest
 
 from optimum_benchmark.logging_utils import run_subprocess_and_log_stream_output
@@ -132,7 +133,8 @@ def test_cli_numactl(launcher):
 
 
 @pytest.mark.parametrize("launcher", ["process", "torchrun"])
-def test_cli_100_000_iterations(launcher):
+@mock.patch.dict(os.environ, {"FILE_BASED_COMM_THRESHOLD": "1"})
+def test_cli_file_based_comm(launcher):
     args = [
         "optimum-benchmark",
         "--config-dir",
@@ -146,10 +148,8 @@ def test_cli_100_000_iterations(launcher):
         "backend.task=text-classification",
         "backend.device=cpu",
         # input shapes
-        "+scenario.input_shapes.sequence_length=1",
+        "+scenario.input_shapes.sequence_length=16",
         "+scenario.input_shapes.batch_size=1",
-        # number of iterations
-        "scenario.iterations=100000",
     ]
 
     popen = run_subprocess_and_log_stream_output(LOGGER, args)
