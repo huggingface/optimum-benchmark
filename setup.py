@@ -54,7 +54,7 @@ if USE_CUDA:
 if USE_ROCM:
     INSTALL_REQUIRES.extend(["pyrsmi", "amdsmi"])
 
-DEV_REQUIRE = ["ruff", "mock", "hydra-joblib-launcher"]
+DEV_REQUIRE = ["ruff", "pytest", "mock", "hydra-joblib-launcher"]
 
 EXTRAS_REQUIRE = {
     "quality": ["ruff"],
