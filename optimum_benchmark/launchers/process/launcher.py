@@ -1,4 +1,6 @@
 import os
+import pickle
+import tempfile
 import traceback
 from contextlib import ExitStack
 from logging import Logger
@@ -10,7 +12,7 @@ import psutil
 
 from ...benchmark.report import BenchmarkReport
 from ...logging_utils import setup_logging
-from ...process_utils import receive_serializable, send_serializable, sync_with_child, sync_with_parent
+from ...process_utils import sync_with_child, sync_with_parent
 from ..base import Launcher
 from .config import ProcessConfig
 
@@ -58,20 +60,21 @@ class ProcessLauncher(Launcher[ProcessConfig]):
             raise RuntimeError(f"Isolated process exited with non-zero code {isolated_process.exitcode}")
 
         if parent_connection.poll():
-            response_type = parent_connection.recv()
+            response = parent_connection.recv()
         else:
             raise RuntimeError("Isolated process did not send any response")
 
-        if response_type == "traceback":
-            self.logger.error("\t+ Receiving traceback from isolated process")
-            traceback_str = receive_serializable(parent_connection, self.logger)
-            raise ChildProcessError(traceback_str)
-        elif response_type == "report":
-            self.logger.info("\t+ Receiving report from isolated process")
-            report_dict = receive_serializable(parent_connection, self.logger)
-            report = BenchmarkReport.from_dict(report_dict)
+        if isinstance(response, str) and response.startswith(tempfile.gettempdir()):
+            response = pickle.load(open(response, "rb"))
+
+        if isinstance(response, str):
+            self.logger.error("\t+ Received traceback from isolated process")
+            raise ChildProcessError(response)
+        elif isinstance(response, dict):
+            self.logger.info("\t+ Received report dictionary from isolated process")
+            report = BenchmarkReport.from_dict(response)
         else:
-            raise RuntimeError(f"Received an unexpected response type from isolated process: {response_type}")
+            raise RuntimeError(f"Received an unexpected response from isolated process: {response}")
 
         return report
 
@@ -103,12 +106,32 @@ def target(
         report = worker(*worker_args)
     except Exception:
         logger.error("\t+ Sending traceback string to main process")
-        child_connection.send("traceback")
-        send_serializable(child_connection, traceback.format_exc(), logger)
+        str_traceback = traceback.format_exc()
+        if len(str_traceback) <= 1_000_000:
+            logger.info(f"\t+ Traceback string is small enough ({len(str_traceback)} bytes), sending it directly")
+            child_connection.send(str_traceback)
+        else:
+            logger.warning(
+                f"\t+ Traceback string is too large ({len(str_traceback)} bytes), "
+                "sending it through file-based communication protocol"
+            )
+            temp_file_path = os.path.join(tempfile.gettempdir(), f"optimum_benchmark_{os.getpid()}.txt")
+            with open(temp_file_path, "wb") as f:
+                pickle.dump(str_traceback, f)
+            child_connection.send(temp_file_path)
+
     else:
         logger.info("\t+ Sending report dictionary to main process")
-        child_connection.send("report")
-        send_serializable(child_connection, report.to_dict(), logger)
+        report_dict = report.to_dict()
+        if len(str(report_dict)) <= 1_000_000:
+            logger.info(f"\t+ Report dictionary is small enough ({len(str(report_dict))} bytes), sending it directly")
+            child_connection.send(report_dict)
+        else:
+            logger.warning(
+                f"\t+ Report dictionary is too large ({len(str(report_dict))} bytes), "
+                "sending it through file-based communication protocol"
+            )
+
     finally:
         logger.info("\t+ Exiting isolated process")
         child_connection.close()
