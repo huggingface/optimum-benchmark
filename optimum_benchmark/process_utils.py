@@ -63,30 +63,23 @@ def receive_serializable(
     file_path = connection.recv()
     logger.debug(f"Received file path: {file_path}")
 
-    try:
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"Transfer file not found: {file_path}")
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"Transfer file not found: {file_path}")
 
-        file_size = os.path.getsize(file_path)
-        logger.debug(f"Loading object from file of size {file_size} bytes")
+    file_size = os.path.getsize(file_path)
+    logger.debug(f"Loading object from file of size {file_size} bytes")
 
-        with open(file_path, "rb") as f:
-            try:
-                obj = deserializer(f)
-            except TypeError:
-                obj = deserializer(f.read())
-
-        logger.debug("Successfully loaded object from file")
-        connection.send("file_received")
-
-        return obj
-    except Exception as e:
-        logger.error(f"Error reading transfer file: {e}")
-        raise
-    finally:
+    with open(file_path, "rb") as f:
         try:
-            if os.path.exists(file_path):
-                os.unlink(file_path)
-                logger.debug(f"Deleted temporary file: {file_path}")
-        except Exception as e:
-            logger.warning(f"Failed to delete temporary file {file_path}: {e}")
+            obj = deserializer(f)
+        except TypeError:
+            obj = deserializer(f.read())
+
+    try:
+        if os.path.exists(file_path):
+            os.unlink(file_path)
+            logger.debug(f"Deleted temporary file: {file_path}")
+    except Exception as e:
+        logger.warning(f"Failed to delete temporary file {file_path}: {e}")
+
+    return obj
