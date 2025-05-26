@@ -1,4 +1,6 @@
 import os
+import pickle
+import tempfile
 import traceback
 from contextlib import ExitStack
 from logging import Logger
@@ -12,7 +14,7 @@ from torch.distributed.launcher.api import LaunchConfig, elastic_launch
 
 from ...benchmark.report import BenchmarkReport
 from ...logging_utils import setup_logging
-from ...process_utils import receive_serializable, send_serializable, sync_with_child, sync_with_parent
+from ...process_utils import sync_with_child, sync_with_parent
 from ..base import Launcher
 from .config import TorchrunConfig
 
@@ -78,20 +80,20 @@ class TorchrunLauncher(Launcher[TorchrunConfig]):
             raise RuntimeError(f"Isolated process exited with non-zero code {isolated_process.exitcode}")
 
         if parent_connection.poll():
-            response_type = parent_connection.recv()
+            response = parent_connection.recv()
         else:
             raise RuntimeError("Isolated process did not send any response")
 
-        if response_type == "traceback":
-            self.logger.error("\t+ Received traceback from isolated process")
-            traceback_str = receive_serializable(parent_connection, self.logger)
-            raise ChildProcessError(traceback_str)
-        elif response_type == "outputs":
-            self.logger.info("\t+ Received outputs from isolated process")
-            outputs = receive_serializable(parent_connection, self.logger)
+        if isinstance(response, str) and response.startswith(tempfile.gettempdir()):
+            response = pickle.load(open(response, "rb"))
 
+        if isinstance(response, str):
+            self.logger.error("\t+ Received traceback from isolated process")
+            raise ChildProcessError(response)
+        elif isinstance(response, dict):
+            self.logger.info("\t+ Received outputs from isolated process")
             reports = []
-            for rank, report_dict in outputs.items():
+            for rank, report_dict in response.items():
                 if isinstance(report_dict, str):
                     self.logger.error(f"\t+ Received traceback from rank process {rank}")
                     raise ChildProcessError(report_dict)
@@ -123,6 +125,7 @@ def target(
     log_level = os.environ.get("LOG_LEVEL", "INFO")
     log_to_file = os.environ.get("LOG_TO_FILE", "1") == "1"
     setup_logging(level=log_level, to_file=log_to_file, prefix="ISOLATED-PROCESS")
+    file_based_comm_threshold = int(os.environ.get("FILE_BASED_COMM_THRESHOLD", "1_000_000"))
 
     if main_process.is_running():
         sync_with_parent(child_connection)
@@ -132,14 +135,34 @@ def target(
     try:
         elastic_agent_launcher = elastic_launch(config=config, entrypoint=entrypoint)
         outputs = elastic_agent_launcher(worker, worker_args, logger)
+
     except Exception:
-        logger.error("\t+ Sending traceback to main process")
-        child_connection.send("traceback")
-        send_serializable(child_connection, traceback.format_exc(), logger)
+        logger.error("\t+ Sending traceback string to main process")
+        str_traceback = traceback.format_exc()
+        traceback_size = len(str_traceback)
+        if traceback_size <= file_based_comm_threshold:
+            logger.info(f"\t+ Sending traceback string directly ({traceback_size} bytes)")
+            child_connection.send(str_traceback)
+        else:
+            logger.warning(f"\t+ Sending traceback string ({traceback_size} bytes) through file-based communication")
+            temp_file_path = os.path.join(tempfile.gettempdir(), f"optimum_benchmark_{os.getpid()}.txt")
+            with open(temp_file_path, "wb") as f:
+                pickle.dump(str_traceback, f)
+            child_connection.send(temp_file_path)
+
     else:
         logger.info("\t+ Sending outputs to main process")
-        child_connection.send("outputs")
-        send_serializable(child_connection, outputs, logger)
+        outputs_size = len(str(outputs))
+        if outputs_size <= file_based_comm_threshold:
+            logger.info(f"\t+ Sending outputs directly ({outputs_size} bytes)")
+            child_connection.send(outputs)
+        else:
+            logger.warning(f"\t+ Sending outputs ({outputs_size} bytes) through file-based communication")
+            temp_file_path = os.path.join(tempfile.gettempdir(), f"optimum_benchmark_{os.getpid()}.pkl")
+            with open(temp_file_path, "wb") as f:
+                pickle.dump(outputs, f)
+            child_connection.send(temp_file_path)
+
     finally:
         logger.info("\t+ Exiting isolated process")
         child_connection.close()

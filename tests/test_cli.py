@@ -3,6 +3,7 @@ import sys
 from logging import getLogger
 from pathlib import Path
 
+import mock
 import pytest
 
 from optimum_benchmark.logging_utils import run_subprocess_and_log_stream_output
@@ -67,7 +68,7 @@ def test_cli_exit_code_0(launcher):
         "name=test",
         "launcher=" + launcher,
         # compatible task and model
-        "backend.model=google-bert/bert-base-uncased",
+        "backend.model=hf-internal-testing/tiny-random-BertModel",
         "backend.task=text-classification",
         "backend.device=cpu",
         # input shapes
@@ -90,10 +91,10 @@ def test_cli_exit_code_1(launcher):
         TEST_CONFIG_DIR,
         "--config-name",
         "_base_",
-        "name=test",
+        "name=misc_test",
         "launcher=" + launcher,
         # incompatible task and model to trigger an error
-        "backend.model=google-bert/bert-base-uncased",
+        "backend.model=hf-internal-testing/tiny-random-BertModel",
         "backend.task=image-classification",
         "backend.device=cpu",
         # input shapes
@@ -116,15 +117,42 @@ def test_cli_numactl(launcher):
         TEST_CONFIG_DIR,
         "--config-name",
         "_base_",
-        "name=test",
+        "name=misc_test",
         "launcher=" + launcher,
         "launcher.numactl=True",
-        "backend.model=google-bert/bert-base-uncased",
+        "backend.model=hf-internal-testing/tiny-random-BertModel",
         "backend.task=text-classification",
         "backend.device=cpu",
         # input shapes
-        "+scenario.input_shapes.batch_size=1",
         "+scenario.input_shapes.sequence_length=16",
+        "+scenario.input_shapes.batch_size=1",
+    ]
+
+    popen = run_subprocess_and_log_stream_output(LOGGER, args)
+    assert popen.returncode == 0
+
+
+@pytest.mark.parametrize("launcher", ["process", "torchrun"])
+@mock.patch.dict(os.environ, {"FILE_BASED_COMM_THRESHOLD": "1"})
+def test_cli_file_based_comm(launcher):
+    if launcher == "torchrun" and sys.platform == "win32":
+        pytest.skip("torchrun is not supported on Windows")
+
+    args = [
+        "optimum-benchmark",
+        "--config-dir",
+        TEST_CONFIG_DIR,
+        "--config-name",
+        "_base_",
+        "name=misc_test",
+        "launcher=" + launcher,
+        # compatible task and model
+        "backend.model=hf-internal-testing/tiny-random-BertModel",
+        "backend.task=text-classification",
+        "backend.device=cpu",
+        # input shapes
+        "+scenario.input_shapes.sequence_length=16",
+        "+scenario.input_shapes.batch_size=1",
     ]
 
     popen = run_subprocess_and_log_stream_output(LOGGER, args)
