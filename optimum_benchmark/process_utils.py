@@ -1,7 +1,10 @@
+import os
 import pickle
+import tempfile
+import uuid
 from logging import Logger
 from multiprocessing.connection import Connection
-from typing import Any, Callable, TypeVar
+from typing import Any, Callable, Optional, TypeVar
 
 DeserializedType = TypeVar("DeserializedType")
 
@@ -17,61 +20,73 @@ def sync_with_child(parent_connection: Connection) -> None:
 
 
 def send_serializable(
-    connection: Connection,
-    obj: Any,
-    logger: Logger,
-    chunk_size: int = 1_000_000,
-    serializer: Callable[[Any], bytes] = pickle.dumps,
+    connection: Connection, obj: Any, logger: Logger, serializer: Callable[[Any], bytes] = pickle.dumps
 ) -> None:
-    """Send any serializable object in chunks to avoid pipe buffer issues.
+    """Send any serializable object via temporary file to avoid pipe buffer issues.
 
     Args:
-        connection: The connection to send chunks to
+        connection: The connection to send file path to
         obj: Any serializable object to send
         logger: Logger for debugging
-        chunk_size: The size of each chunk in bytes
         serializer: Function to serialize object to bytes (default: pickle.dumps)
     """
-    serialized = serializer(obj)
 
-    logger.debug(f"Sending object of size {len(serialized)} bytes")
+    unique_id = str(uuid.uuid4())
+    temp_file_path = os.path.join(tempfile.gettempdir(), f"transfer_{unique_id}.pickle")
 
-    for i in range(0, len(serialized), chunk_size):
-        chunk = serialized[i : i + chunk_size]
-        connection.send(chunk)
-        logger.debug(f"Sent chunk of size {len(chunk)} bytes")
+    logger.debug(f"Serializing object to temporary file: {temp_file_path}")
+    with open(temp_file_path, "wb") as f:
+        serializer(obj, f)
 
-    logger.debug("Finished sending object")
-    connection.send(None)  # End of transmission
-    logger.debug("Sent end of transmission signal")
+    file_size = os.path.getsize(temp_file_path)
+    logger.debug(f"Serialized object to file of size {file_size} bytes")
+
+    connection.send(temp_file_path)
+    logger.debug(f"Sent temporary file path: {temp_file_path}")
 
 
 def receive_serializable(
     connection: Connection, logger: Logger, deserializer: Callable[[bytes], DeserializedType] = pickle.loads
 ) -> DeserializedType:
-    """Receive any serializable object in chunks to avoid pipe buffer issues.
+    """Receive any serializable object via temporary file to avoid pipe buffer issues.
 
     Args:
-        connection: The connection to receive chunks from
+        connection: The connection to receive file path from
         logger: Logger for debugging
         deserializer: Function to deserialize bytes back to object (default: pickle.loads)
+                      Note: This should accept a file object if passed
 
     Returns:
         The complete deserialized object
     """
-    logger.debug("Receiving object")
-    chunks = []
+    logger.debug("Waiting to receive file path")
+    file_path = connection.recv()
+    logger.debug(f"Received file path: {file_path}")
 
-    while True:
-        chunk = connection.recv()
-        if chunk is None:  # End of transmission
-            break
-        chunks.append(chunk)
-        logger.debug(f"Received chunk of size {len(chunk)} bytes")
+    try:
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"Transfer file not found: {file_path}")
 
-    logger.debug("Finished receiving object")
-    serialized_data = b"".join(chunks)
-    obj = deserializer(serialized_data)
-    logger.debug(f"Received object of size {len(serialized_data)} bytes")
+        file_size = os.path.getsize(file_path)
+        logger.debug(f"Loading object from file of size {file_size} bytes")
 
-    return obj
+        with open(file_path, "rb") as f:
+            try:
+                obj = deserializer(f)
+            except TypeError:
+                obj = deserializer(f.read())
+
+        logger.debug("Successfully loaded object from file")
+        connection.send("file_received")
+
+        return obj
+    except Exception as e:
+        logger.error(f"Error reading transfer file: {e}")
+        raise
+    finally:
+        try:
+            if os.path.exists(file_path):
+                os.unlink(file_path)
+                logger.debug(f"Deleted temporary file: {file_path}")
+        except Exception as e:
+            logger.warning(f"Failed to delete temporary file {file_path}: {e}")
