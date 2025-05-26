@@ -135,6 +135,9 @@ def test_cli_numactl(launcher):
 @pytest.mark.parametrize("launcher", ["process", "torchrun"])
 @mock.patch.dict(os.environ, {"FILE_BASED_COMM_THRESHOLD": "1"})
 def test_cli_file_based_comm(launcher):
+    if launcher == "torchrun" and sys.platform == "win32":
+        pytest.skip("torchrun is not supported on Windows")
+
     args = [
         "optimum-benchmark",
         "--config-dir",
