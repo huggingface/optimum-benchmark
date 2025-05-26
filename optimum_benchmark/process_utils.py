@@ -4,7 +4,7 @@ import tempfile
 import uuid
 from logging import Logger
 from multiprocessing.connection import Connection
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, Callable, TypeVar
 
 DeserializedType = TypeVar("DeserializedType")
 
