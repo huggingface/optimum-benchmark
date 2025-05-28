@@ -50,14 +50,8 @@ jobs:
         run: |
           pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and not (dp or tp or ddp or device_map or deepspeed) and not (bnb or awq or gptq)"
 
-      - if: ${{
-          (github.event_name == 'push') ||
-          (github.event_name == 'workflow_dispatch') ||
-          contains( github.event.pull_request.labels.*.name, 'examples')
-          }}
-        name: Run examples
+      - name: Run examples
         run: |
-          pip install accelerate@git+https://github.com/huggingface/accelerate.git
           pytest tests/test_examples.py -x -s -k "cli and cuda and pytorch"
 
   run_cli_cuda_pytorch_multi_gpu_tests:

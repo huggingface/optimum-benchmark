@@ -55,16 +55,3 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PUSH_REPO_ID: optimum-benchmark/cpu
-
-      # no examples for now
-      # - if: ${{
-      #     (github.event_name == 'push') ||
-      #     (github.event_name == 'workflow_dispatch') ||
-      #     contains( github.event.pull_request.labels.*.name, 'examples')
-      #     }}
-      #   name: Run examples
-      #   run: |
-      #     pytest tests/test_examples.py -s -k "api and cpu"
-      #   env:
-      #     HF_TOKEN: ${{ secrets.HF_TOKEN }}
-      #     PUSH_REPO_ID: optimum-benchmark/cpu
