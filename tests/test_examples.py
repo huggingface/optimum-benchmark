@@ -64,7 +64,7 @@ def test_cli_configs(config_name):
         "++scenario.generate_kwargs.max_new_tokens=16",
         "++scenario.generate_kwargs.min_new_tokens=16",
         "++scenario.call_kwargs.num_inference_steps=4",
-        f"backend.model={model}",
+        "backend.model=" + model,
         "++backend.reshape_kwargs.batch_size=1",
         "++backend.reshape_kwargs.sequence_length=16",
     ]
