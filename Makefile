@@ -9,12 +9,23 @@ GROUP_ID := $(shell id -g)
 	quality style check-format check-lint format lint-fix \
 	test test-verbose test-coverage \
 	test-api-cpu test-api-cuda test-api-rocm \
-	test-cli-cpu-pytorch test-cli-cpu-openvino test-cli-cpu-onnxruntime test-cli-cpu-ipex test-cli-cpu-llama-cpp \
+	test-api-misc \
+	test-api-cpu-examples test-api-cuda-examples test-api-rocm-examples \
+	test-cli-cpu-pytorch test-cli-cpu-openvino test-cli-cpu-py-txi test-cli-cpu-onnxruntime test-cli-cpu-ipex test-cli-cpu-llama-cpp \
+	test-cli-cpu-pytorch-examples test-cli-cpu-openvino-examples test-cli-cpu-onnxruntime-examples test-cli-cpu-ipex-examples test-cli-cpu-llama-cpp-examples \
 	test-cli-cuda-pytorch-single test-cli-cuda-pytorch-multi \
-	test-cli-cuda-onnxruntime test-cli-cuda-tensorrt-llm \
 	test-cli-cuda-vllm-single test-cli-cuda-vllm-multi \
+	test-cli-cuda-tensorrt-llm-single test-cli-cuda-tensorrt-llm-multi \
+	test-cli-cuda-onnxruntime \
+	test-cli-cuda-pytorch-single-examples test-cli-cuda-pytorch-multi-examples \
+	test-cli-cuda-onnxruntime-examples \
+	test-cli-cuda-vllm-single-examples test-cli-cuda-vllm-multi-examples \
+	test-cli-cuda-tensorrt-llm-single-examples test-cli-cuda-tensorrt-llm-multi-examples \
 	test-cli-rocm-pytorch-single test-cli-rocm-pytorch-multi \
-	test-cli-mps-pytorch \
+	test-cli-rocm-pytorch-examples \
+	test-cli-mps-pytorch test-cli-mps-pytorch-examples \
+	test-cli-misc \
+	test-energy-star \
 	build-cpu-image build-cuda-image build-rocm-image \
 	run-cpu-container run-cuda-container run-rocm-container \
 	run-trt-llm-container run-vllm-container
@@ -207,23 +218,27 @@ test-api-rocm-examples:
 ### CPU tests
 test-cli-cpu-pytorch:
 	uv sync --dev
-	uv run pytest -s -k "cli and cpu and pytorch"
+	uv run pytest tests/test_cli.py -s -k "cli and cpu and pytorch"
 
 test-cli-cpu-openvino:
 	uv sync --dev --extra openvino
-	uv run pytest -s -k "cli and cpu and openvino"
+	uv run pytest tests/test_cli.py -s -k "cli and cpu and openvino"
+
+test-cli-cpu-py-txi:
+	uv sync --dev --extra py-txi
+	uv run pytest tests/test_cli.py -s -k "cli and cpu and (tgi or tei)"
 
 test-cli-cpu-onnxruntime:
 	uv sync --dev --extra onnxruntime
-	uv run pytest -s -k "cli and cpu and onnxruntime"
+	uv run pytest tests/test_cli.py -s -k "cli and cpu and onnxruntime"
 
-test-cpu-ipex:
+test-cli-cpu-ipex:
 	uv sync --dev --extra ipex
-	uv run pytest -s -k "cli and cpu and ipex"
+	uv run pytest tests/test_cli.py -s -k "cli and cpu and ipex"
 
-test-cpu-llama-cpp:
+test-cli-cpu-llama-cpp:
 	uv sync --dev --extra llama-cpp
-	uv run pytest -s -k "llama_cpp"
+	uv run pytest tests/test_cli.py -s -k "llama_cpp"
 
 ### CPU examples
 test-cli-cpu-pytorch-examples:
@@ -238,22 +253,26 @@ test-cli-cpu-onnxruntime-examples:
 	uv sync --dev --extra onnxruntime
 	uv run pytest tests/test_examples.py -s -k "cli and cpu and onnxruntime"
 
-test-cli-cpu-ipex-examples:
-	uv sync --dev --extra ipex
-	uv run pytest tests/test_examples.py -s -k "cli and cpu and ipex"
+test-cli-cpu-py-txi-examples:
+	uv sync --dev --extra py-txi
+	uv run pytest tests/test_examples.py -s -k "cli and cpu and (tgi or tei)"
 
 test-cli-cpu-llama-cpp-examples:
 	uv sync --dev --extra llama-cpp
 	uv run pytest tests/test_examples.py -s -k "cli and cpu and llama-cpp"
 
+test-cli-cpu-ipex-examples:
+	uv sync --dev --extra ipex
+	uv run pytest tests/test_examples.py -s -k "cli and cpu and ipex"
+
 ### CUDA tests
 test-cli-cuda-pytorch-single:
 	uv sync --dev --extra bitsandbytes --extra deepspeed
-	uv run pytest -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed)"
+	uv run pytest tests/test_cli.py -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed)"
 
 test-cli-cuda-pytorch-multi:
 	uv sync --dev --extra bitsandbytes --extra deepspeed
-	uv run pytest -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed)"
+	uv run pytest tests/test_cli.py -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed)"
 
 test-cli-cuda-vllm-single:
 	uv sync --dev --extra vllm
@@ -273,7 +292,11 @@ test-cli-cuda-tensorrt-llm-multi:
 
 test-cli-cuda-onnxruntime:
 	uv sync --dev --extra onnxruntime-gpu
-	uv run pytest -s -k "cli and cuda and onnxruntime"
+	uv run pytest tests/test_cli.py -s -k "cli and cuda and onnxruntime"
+
+test-cli-cuda-py-txi:
+	uv sync --dev --extra py-txi
+	uv run pytest tests/test_cli.py -s -k "cli and cuda and (tgi or tei)"
 
 ### CUDA examples
 test-cli-cuda-pytorch-single-examples:
@@ -304,15 +327,20 @@ test-cli-cuda-tensorrt-llm-multi-examples:
 	uv sync --dev --extra tensorrt-llm
 	FORCE_SEQUENTIAL=1 uv run pytest tests/test_examples.py -s -k "cli and cuda and tensorrt_llm and (tp or pp)"
 
+test-cli-cuda-py-txi-examples:
+	uv sync --dev --extra py-txi
+	FORCE_SEQUENTIAL=1 uv run pytest tests/test_examples.py -s -k "cli and cuda and (tgi or tei)"
+
 ### ROCm tests
 test-cli-rocm-pytorch-single:
 	uv sync --dev
-	uv run pytest -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed)"
+	uv run pytest tests/test_cli.py -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed)"
 
 test-cli-rocm-pytorch-multi:
 	uv sync --dev
-	uv run pytest -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed)"
+	uv run pytest tests/test_cli.py -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed)"
 
+### ROCm examples
 test-cli-rocm-pytorch-examples:
 	uv sync --dev
 	uv run pytest tests/test_examples.py -s -k "cli and rocm and pytorch"
@@ -320,8 +348,9 @@ test-cli-rocm-pytorch-examples:
 ### MPS tests
 test-cli-mps-pytorch:
 	uv sync --dev
-	uv run pytest -s -k "cli and mps and pytorch"
+	uv run pytest tests/test_cli.py -s -k "cli and mps and pytorch"
 
+### MPS examples
 test-cli-mps-pytorch-examples:
 	uv sync --dev
 	uv run pytest tests/test_examples.py -s -k "cli and mps and pytorch"
@@ -331,7 +360,7 @@ test-cli-misc:
 	uv sync --dev
 	uv run pytest tests/test_cli.py -s -k "cli and not (cpu or cuda or rocm or mps)"
 
-### Energy Star tests/examples
+### Energy Star
 test-energy-star:
 	uv sync --dev
 	uv run pytest tests/test_energy_star.py -vvvv

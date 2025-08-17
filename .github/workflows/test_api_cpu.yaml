@@ -51,7 +51,7 @@ jobs:
 
       - name: Run examples
         run: |
-          make examples-api-cpu
+          make test-api-cpu-examples
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PUSH_REPO_ID: optimum-benchmark/cpu
