@@ -143,14 +143,14 @@ install-mps-pytorch:
 install-rocm-pytorch:
 	uv sync
 
+install-cuda-tensorrt-llm:
+	uv sync
+
 install-cuda-pytorch:
 	uv sync --extra bitsandbytes --extra deepspeed
 
 install-cuda-onnxruntime:
 	uv sync --extra onnxruntime-gpu
-
-install-cuda-tensorrt-llm:
-	uv sync --extra tensorrt-llm
 
 install-cuda-vllm:
 	uv sync --extra vllm
@@ -283,11 +283,11 @@ test-cli-cuda-vllm-multi:
 	FORCE_SEQUENTIAL=1 uv run pytest tests/test_cli.py -s -k "cli and cuda and vllm and (tp or pp)"
 
 test-cli-cuda-tensorrt-llm-single:
-	uv sync --dev --extra tensorrt-llm
+	uv sync --dev
 	FORCE_SEQUENTIAL=1 uv run pytest tests/test_cli.py -s -k "cli and cuda and tensorrt_llm and not (tp or pp)"
 
 test-cli-cuda-tensorrt-llm-multi:
-	uv sync --dev --extra tensorrt-llm
+	uv sync --dev
 	FORCE_SEQUENTIAL=1 uv run pytest tests/test_cli.py -s -k "cli and cuda and tensorrt_llm and (tp or pp)"
 
 test-cli-cuda-onnxruntime:
@@ -320,11 +320,11 @@ test-cli-cuda-vllm-multi-examples:
 	FORCE_SEQUENTIAL=1 uv run pytest tests/test_examples.py -s -k "cli and cuda and vllm and (tp or pp)"
 
 test-cli-cuda-tensorrt-llm-single-examples:
-	uv sync --dev --extra tensorrt-llm
+	uv sync --dev
 	FORCE_SEQUENTIAL=1 uv run pytest tests/test_examples.py -s -k "cli and cuda and tensorrt_llm and not (tp or pp)"
 
 test-cli-cuda-tensorrt-llm-multi-examples:
-	uv sync --dev --extra tensorrt-llm
+	uv sync --dev
 	FORCE_SEQUENTIAL=1 uv run pytest tests/test_examples.py -s -k "cli and cuda and tensorrt_llm and (tp or pp)"
 
 test-cli-cuda-py-txi-examples:

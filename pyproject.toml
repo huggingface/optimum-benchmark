@@ -85,11 +85,10 @@ optimum-benchmark = "optimum_benchmark.cli:main"
 
 [project.optional-dependencies]
 # optimum backends
-ipex = ["optimum[ipex]>=1.18.0"]
-tensorrt-llm = ["optimum-nvidia"]
-openvino = ["optimum[openvino,nncf]>=1.18.0"]
-onnxruntime = ["optimum[onnxruntime]>=1.18.0"]
-onnxruntime-gpu = ["optimum[onnxruntime-gpu]>=1.18.0"]
+ipex = ["optimum-intel[ipex]>=1.25.0"]
+openvino = ["optimum-intel[openvino,nncf]>=1.25.0"]
+onnxruntime-gpu = ["optimum[onnxruntime-gpu]>=1.27.0"]
+onnxruntime = ["optimum[onnxruntime]>=1.27.0"]
 # other backends
 llama-cpp = ["llama-cpp-python"]
 py-txi = ["py-txi"]
