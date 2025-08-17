@@ -59,7 +59,6 @@ class VLLMBackend(Backend[VLLMConfig]):
         return {
             "model": self.config.model,
             "tokenizer": self.config.processor,
-            "device": self.config.device,
             **self.config.engine_args,
         }
 

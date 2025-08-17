@@ -5,30 +5,25 @@ USER_ID := $(shell id -u)
 GROUP_ID := $(shell id -g)
 
 # All targets are phony (don't create files)
-.PHONY: help setup install install-dev clean lock update \
-	quality style check-format check-lint format lint-fix \
-	test test-verbose test-coverage \
-	test-api-cpu test-api-cuda test-api-rocm \
-	test-api-misc \
-	test-api-cpu-examples test-api-cuda-examples test-api-rocm-examples \
-	test-cli-cpu-pytorch test-cli-cpu-openvino test-cli-cpu-py-txi test-cli-cpu-onnxruntime test-cli-cpu-ipex test-cli-cpu-llama-cpp \
-	test-cli-cpu-pytorch-examples test-cli-cpu-openvino-examples test-cli-cpu-onnxruntime-examples test-cli-cpu-ipex-examples test-cli-cpu-llama-cpp-examples \
-	test-cli-cuda-pytorch-single test-cli-cuda-pytorch-multi \
-	test-cli-cuda-vllm-single test-cli-cuda-vllm-multi \
-	test-cli-cuda-tensorrt-llm-single test-cli-cuda-tensorrt-llm-multi \
-	test-cli-cuda-onnxruntime \
-	test-cli-cuda-pytorch-single-examples test-cli-cuda-pytorch-multi-examples \
-	test-cli-cuda-onnxruntime-examples \
-	test-cli-cuda-vllm-single-examples test-cli-cuda-vllm-multi-examples \
-	test-cli-cuda-tensorrt-llm-single-examples test-cli-cuda-tensorrt-llm-multi-examples \
-	test-cli-rocm-pytorch-single test-cli-rocm-pytorch-multi \
-	test-cli-rocm-pytorch-examples \
-	test-cli-mps-pytorch test-cli-mps-pytorch-examples \
-	test-cli-misc \
-	test-energy-star \
-	build-cpu-image build-cuda-image build-rocm-image \
-	run-cpu-container run-cuda-container run-rocm-container \
-	run-trt-llm-container run-vllm-container
+.PHONY: help setup install install-dev \
+	install-cpu-pytorch install-cpu-openvino install-cpu-onnxruntime \
+	install-cpu-ipex install-cpu-llama-cpp install-mps-pytorch \
+	install-rocm-pytorch install-cuda-pytorch install-cuda-onnxruntime \
+	install-cuda-tensorrt-llm install-cuda-vllm lock update clean \
+	test test-verbose test-coverage test-api-cpu test-api-cuda test-api-rocm \
+	test-api-misc test-api-cpu-examples test-api-cuda-examples test-api-rocm-examples \
+	test-cli-cpu-pytorch test-cli-cpu-openvino test-cli-cpu-py-txi \
+	test-cli-cpu-onnxruntime test-cli-cpu-ipex test-cli-cpu-llama-cpp \
+	test-cli-cpu-pytorch-examples test-cli-cpu-openvino-examples \
+	test-cli-cpu-onnxruntime-examples test-cli-cpu-py-txi-examples \
+	test-cli-cpu-llama-cpp-examples test-cli-cuda-pytorch-single \
+	test-cli-cuda-pytorch-multi test-cli-cuda-vllm-single \
+	test-cli-cuda-vllm-multi test-cli-cuda-tensorrt-llm-single \
+	test-cli-cuda-tensorrt-llm-multi test-cli-cuda-onnxruntime \
+	test-cli-cuda-py-txi test-cli-rocm-pytorch-single \
+	test-cli-rocm-pytorch-multi test-cli-rocm-pytorch-single-examples \
+	test-cli-rocm-pytorch-multi-examples test-cli-mps-pytorch \
+	test-cli-mps-pytorch-examples test-energy-star build-docker clean-docker
 
 # Help target
 help:
@@ -66,23 +61,40 @@ help:
 	@echo "  test-coverage       - Run tests with coverage report"
 	@echo ""
 	@echo "🎯 Backend-Specific Testing:"
-	@echo "  test-api-cpu               - Test API for CPU backend"
-	@echo "  test-api-cuda              - Test API for CUDA backend"
-	@echo "  test-api-rocm              - Test API for ROCm backend"
-	@echo "  test-cli-cpu-pytorch           - Test CPU PyTorch backend"
-	@echo "  test-cli-cpu-openvino          - Test CPU OpenVINO backend"
-	@echo "  test-cli-cpu-onnxruntime       - Test CPU ONNXRuntime backend"
-	@echo "  test-cli-cpu-ipex              - Test CPU Intel Extension for PyTorch"
-	@echo "  test-cli-cpu-llama-cpp         - Test CPU LLaMA-CPP backend"
-	@echo "  test-cli-cuda-pytorch-single   - Test CUDA PyTorch (single GPU)"
-	@echo "  test-cli-cuda-pytorch-multi    - Test CUDA PyTorch (multi GPU)"
-	@echo "  test-cli-cuda-onnxruntime      - Test CUDA ONNXRuntime backend"
-	@echo "  test-cli-cuda-tensorrt-llm     - Test CUDA TensorRT-LLM backend"
-	@echo "  test-cli-cuda-vllm-single      - Test CUDA vLLM (single GPU)"
-	@echo "  test-cli-cuda-vllm-multi       - Test CUDA vLLM (multi GPU)"
-	@echo "  test-cli-rocm-pytorch-single   - Test ROCm PyTorch backend (single GPU)"
-	@echo "  test-cli-rocm-pytorch-multi    - Test ROCm PyTorch backend (multi GPU)"
-	@echo "  test-cli-mps-pytorch           - Test MPS PyTorch backend"
+	@echo "  test-api-cpu                          - Test API for CPU backend"
+	@echo "  test-api-cuda                         - Test API for CUDA backend"
+	@echo "  test-api-rocm                         - Test API for ROCm backend"
+	@echo "  test-api-misc                         - Test API for miscellaneous backends"
+	@echo "  test-api-cpu-examples                 - Test API examples for CPU backend"
+	@echo "  test-api-cuda-examples                - Test API examples for CUDA backend"
+	@echo "  test-api-rocm-examples                - Test API examples for ROCm backend"
+	@echo "  test-cli-cpu-pytorch                  - Test CLI for CPU PyTorch backend"
+	@echo "  test-cli-cpu-openvino                 - Test CLI for CPU OpenVINO backend"
+	@echo "  test-cli-cpu-py-txi                   - Test CLI for CPU Py-TXI backend"
+	@echo "  test-cli-cpu-onnxruntime              - Test CLI for CPU ONNXRuntime backend"
+	@echo "  test-cli-cpu-ipex                     - Test CLI for CPU Intel Extension for PyTorch"
+	@echo "  test-cli-cpu-llama-cpp                - Test CLI for CPU LLaMA-CPP backend"
+	@echo "  test-cli-cpu-pytorch-examples         - Test CLI examples for CPU PyTorch backend"
+	@echo "  test-cli-cpu-openvino-examples        - Test CLI examples for CPU OpenVINO backend"
+	@echo "  test-cli-cpu-onnxruntime-examples     - Test CLI examples for CPU ONNXRuntime backend"
+	@echo "  test-cli-cpu-py-txi-examples          - Test CLI examples for CPU Py-TXI backend"
+	@echo "  test-cli-cpu-llama-cpp-examples       - Test CLI examples for CPU LLaMA-CPP backend"
+	@echo "  test-cli-cuda-pytorch-single          - Test CLI for single GPU CUDA PyTorch backend"
+	@echo "  test-cli-cuda-pytorch-multi           - Test CLI for multi GPU CUDA PyTorch backend"
+	@echo "  test-cli-cuda-vllm-single             - Test CLI for single GPU CUDA vLLM backend"
+	@echo "  test-cli-cuda-vllm-multi              - Test CLI for multi GPU CUDA vLLM backend"
+	@echo "  test-cli-cuda-tensorrt-llm-single     - Test CLI for single GPU CUDA TensorRT-LLM backend"
+	@echo "  test-cli-cuda-tensorrt-llm-multi      - Test CLI for multi GPU CUDA TensorRT-LLM backend"
+	@echo "  test-cli-cuda-onnxruntime             - Test CLI for CUDA ONNXRuntime backend"
+	@echo "  test-cli-cuda-py-txi                  - Test CLI for CUDA Py-TXI backend"
+	@echo "  test-cli-rocm-pytorch-single          - Test CLI for single GPU ROCm PyTorch backend"
+	@echo "  test-cli-rocm-pytorch-multi           - Test CLI for multi GPU ROCm PyTorch backend"
+	@echo "  test-cli-rocm-pytorch-single-examples - Test CLI examples for single GPU ROCm PyTorch backend"
+	@echo "  test-cli-rocm-pytorch-multi-examples  - Test CLI examples for multi GPU ROCm PyTorch backend"
+	@echo "  test-cli-mps-pytorch                  - Test CLI for MPS (Apple Silicon) PyTorch backend"
+	@echo "  test-cli-mps-pytorch-examples         - Test CLI examples for MPS (Apple Silicon) PyTorch backend"
+	@echo "  test-cli-misc                         - Test CLI for miscellaneous backends"
+	@echo "  test-energy-star                      - Run Energy Star tests"
 	@echo ""
 	@echo "📦 Dependencies:"
 	@echo "  lock                - Update lock file"
@@ -144,7 +156,7 @@ install-rocm-pytorch:
 	uv sync
 
 install-cuda-tensorrt-llm:
-	uv sync
+	uv sync --extra tensorrt-llm
 
 install-cuda-pytorch:
 	uv sync --extra bitsandbytes --extra deepspeed
@@ -226,7 +238,7 @@ test-cli-cpu-openvino:
 
 test-cli-cpu-py-txi:
 	uv sync --dev --extra py-txi
-	uv run pytest tests/test_cli.py -s -k "cli and cpu and (tgi or tei)"
+	uv run pytest tests/test_cli.py -s -k "cli and cpu and (tgi or tei or txi)"
 
 test-cli-cpu-onnxruntime:
 	uv sync --dev --extra onnxruntime
@@ -255,7 +267,7 @@ test-cli-cpu-onnxruntime-examples:
 
 test-cli-cpu-py-txi-examples:
 	uv sync --dev --extra py-txi
-	uv run pytest tests/test_examples.py -s -k "cli and cpu and (tgi or tei)"
+	uv run pytest tests/test_examples.py -s -k "cli and cpu and (tgi or tei or txi)"
 
 test-cli-cpu-llama-cpp-examples:
 	uv sync --dev --extra llama-cpp
@@ -283,11 +295,11 @@ test-cli-cuda-vllm-multi:
 	FORCE_SEQUENTIAL=1 uv run pytest tests/test_cli.py -s -k "cli and cuda and vllm and (tp or pp)"
 
 test-cli-cuda-tensorrt-llm-single:
-	uv sync --dev
+	uv sync --dev --extra tensorrt-llm
 	FORCE_SEQUENTIAL=1 uv run pytest tests/test_cli.py -s -k "cli and cuda and tensorrt_llm and not (tp or pp)"
 
 test-cli-cuda-tensorrt-llm-multi:
-	uv sync --dev
+	uv sync --dev --extra tensorrt-llm
 	FORCE_SEQUENTIAL=1 uv run pytest tests/test_cli.py -s -k "cli and cuda and tensorrt_llm and (tp or pp)"
 
 test-cli-cuda-onnxruntime:
@@ -296,7 +308,7 @@ test-cli-cuda-onnxruntime:
 
 test-cli-cuda-py-txi:
 	uv sync --dev --extra py-txi
-	uv run pytest tests/test_cli.py -s -k "cli and cuda and (tgi or tei)"
+	uv run pytest tests/test_cli.py -s -k "cli and cuda and (tgi or tei or txi)"
 
 ### CUDA examples
 test-cli-cuda-pytorch-single-examples:
@@ -320,16 +332,16 @@ test-cli-cuda-vllm-multi-examples:
 	FORCE_SEQUENTIAL=1 uv run pytest tests/test_examples.py -s -k "cli and cuda and vllm and (tp or pp)"
 
 test-cli-cuda-tensorrt-llm-single-examples:
-	uv sync --dev
+	uv sync --dev --extra tensorrt-llm
 	FORCE_SEQUENTIAL=1 uv run pytest tests/test_examples.py -s -k "cli and cuda and tensorrt_llm and not (tp or pp)"
 
 test-cli-cuda-tensorrt-llm-multi-examples:
-	uv sync --dev
+	uv sync --dev --extra tensorrt-llm
 	FORCE_SEQUENTIAL=1 uv run pytest tests/test_examples.py -s -k "cli and cuda and tensorrt_llm and (tp or pp)"
 
 test-cli-cuda-py-txi-examples:
 	uv sync --dev --extra py-txi
-	FORCE_SEQUENTIAL=1 uv run pytest tests/test_examples.py -s -k "cli and cuda and (tgi or tei)"
+	FORCE_SEQUENTIAL=1 uv run pytest tests/test_examples.py -s -k "cli and cuda and (tgi or tei or txi)"
 
 ### ROCm tests
 test-cli-rocm-pytorch-single:
@@ -367,7 +379,7 @@ test-cli-misc:
 ### Energy Star
 test-energy-star:
 	uv sync --dev
-	uv run pytest tests/test_energy_star.py -vvvv
+	uv run pytest tests/test_energy_star.py -s
 
 # Build docker
 build-cpu-image:

@@ -1,4 +1,4 @@
-name: CLI Energy Star Tests
+name: Energy Star Tests
 
 on:
   workflow_dispatch:
