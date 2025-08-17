@@ -509,7 +509,7 @@ wheels = [
 
 [[package]]
 name = "codecarbon"
-version = "2.8.4"
+version = "3.0.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "arrow" },
@@ -519,6 +519,7 @@ dependencies = [
     { name = "prometheus-client" },
     { name = "psutil" },
     { name = "py-cpuinfo" },
+    { name = "pydantic" },
     { name = "pynvml" },
     { name = "questionary" },
     { name = "rapidfuzz" },
@@ -526,9 +527,9 @@ dependencies = [
     { name = "rich" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bb/3e/ae97b76536b2d6b5a7fab9d3b84454387d2e4464ea5a4a3541e34a1e9189/codecarbon-2.8.4.tar.gz", hash = "sha256:5b14227e56356553240a4577dbfe06244f44d4e0d4c6257d55ad9723864e8092", size = 490488, upload-time = "2025-04-15T09:20:31.602Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/10/1e/cab62e273ab8bfb6f7b8467b5ec4d2955ca98d9fa437b3b12e5e68ced94e/codecarbon-3.0.4.tar.gz", hash = "sha256:4292fede09e44753b1185a8b91c53e1ed9108692733f612f32c44cab779dcc8c", size = 296194, upload-time = "2025-07-15T09:13:27.353Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/22/ad/cc4554312b8a1ef621ffbf515ce8f42120006de6e57b303cc49620eca555/codecarbon-2.8.4-py3-none-any.whl", hash = "sha256:47532904fd66b6fe288cf821b0cf48157fa363870ec26ff006aed2343465c8f5", size = 517583, upload-time = "2025-04-15T09:20:30.245Z" },
+    { url = "https://files.pythonhosted.org/packages/cc/d6/d5847cafa3b9a471e56ffe78b0a246b2384795ab4b75169a7032c4f0ae60/codecarbon-3.0.4-py3-none-any.whl", hash = "sha256:6f47dd6fa52fd25936b632bf22f85e7df0e8def683d68df55487e0f4e8bd688c", size = 277676, upload-time = "2025-07-15T09:13:25.627Z" },
 ]
 
 [[package]]
@@ -895,9 +896,10 @@ wheels = [
 
 [[package]]
 name = "deepspeed"
-version = "0.15.4"
+version = "0.17.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "einops" },
     { name = "hjson" },
     { name = "msgpack" },
     { name = "ninja" },
@@ -909,7 +911,7 @@ dependencies = [
     { name = "torch" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/34/c5/dfa824defc1919289a00cbb722aee92cee85ce1e11f7349779235dbe4810/deepspeed-0.15.4.tar.gz", hash = "sha256:60e7c044b7fc386cdad1206212d22b6963ea551f656ed51f7cb34b299459bf2c", size = 1403058, upload-time = "2024-11-08T16:31:30.123Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/84/b3/02d000bfd0d6f0ba3f5dac487e4151b3e9b4b3ee71336882102dc9ad79ad/deepspeed-0.17.4.tar.gz", hash = "sha256:d8254ce983734d14a23b8b73937338de82475b146a1bbcdf5fb4e30295e0ddb7", size = 1561345, upload-time = "2025-07-31T20:49:04.786Z" }
 
 [[package]]
 name = "deprecated"
@@ -2935,7 +2937,7 @@ requires-dist = [
     { name = "codecarbon", marker = "extra == 'codecarbon'" },
     { name = "colorlog" },
     { name = "datasets" },
-    { name = "deepspeed", marker = "extra == 'deepspeed'", specifier = "<0.16" },
+    { name = "deepspeed", marker = "extra == 'deepspeed'" },
     { name = "diffusers", marker = "extra == 'diffusers'" },
     { name = "flash-attn", marker = "extra == 'flash-attn'" },
     { name = "flatten-dict" },
@@ -5061,7 +5063,7 @@ name = "triton"
 version = "3.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "filelock", marker = "python_full_version < '3.13'" },
+    { name = "filelock" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/98/29/69aa56dc0b2eb2602b553881e34243475ea2afd9699be042316842788ff5/triton-3.1.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6b0dd10a925263abbe9fa37dcde67a5e9b2383fc269fdf59f5657cac38c5d1d8", size = 209460013, upload-time = "2024-10-14T16:05:32.106Z" },
