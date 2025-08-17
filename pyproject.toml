@@ -55,10 +55,10 @@ classifiers = [
 requires-python = ">=3.10"
 dependencies = [
     # HF dependencies
+    "datasets >= 4.0.0",
     "huggingface-hub",
     "transformers",
     "accelerate",
-    "datasets",
     "hf_xet",
     # Hydra
     "hydra-core",
