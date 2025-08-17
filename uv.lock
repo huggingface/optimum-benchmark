@@ -2602,7 +2602,7 @@ dev = [
     { name = "ruff" },
     { name = "setuptools" },
     { name = "timm" },
-    { name = "torchcodec" },
+    { name = "torchcodec", marker = "sys_platform != 'win32'" },
 ]
 
 [package.metadata]
@@ -2656,7 +2656,7 @@ dev = [
     { name = "ruff" },
     { name = "setuptools" },
     { name = "timm" },
-    { name = "torchcodec" },
+    { name = "torchcodec", marker = "sys_platform != 'win32'" },
 ]
 
 [[package]]

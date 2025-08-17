@@ -268,11 +268,11 @@ test-cli-cpu-ipex-examples:
 ### CUDA tests
 test-cli-cuda-pytorch-single:
 	uv sync --dev --extra bitsandbytes --extra deepspeed
-	uv run pytest tests/test_cli.py -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed)"
+	uv run pytest tests/test_cli.py -s -k "cli and cuda and pytorch and not (tp or dp or ddp or device_map or deepspeed)"
 
 test-cli-cuda-pytorch-multi:
 	uv sync --dev --extra bitsandbytes --extra deepspeed
-	uv run pytest tests/test_cli.py -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed)"
+	uv run pytest tests/test_cli.py -s -k "cli and cuda and pytorch and (tp or dp or ddp or device_map or deepspeed)"
 
 test-cli-cuda-vllm-single:
 	uv sync --dev --extra vllm
@@ -301,11 +301,11 @@ test-cli-cuda-py-txi:
 ### CUDA examples
 test-cli-cuda-pytorch-single-examples:
 	uv sync --dev --extra bitsandbytes --extra deepspeed
-	uv run pytest tests/test_examples.py -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed)"
+	uv run pytest tests/test_examples.py -s -k "cli and cuda and pytorch and not (tp or dp or ddp or device_map or deepspeed)"
 
 test-cli-cuda-pytorch-multi-examples:
 	uv sync --dev --extra bitsandbytes --extra deepspeed
-	uv run pytest tests/test_examples.py -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed)"
+	uv run pytest tests/test_examples.py -s -k "cli and cuda and pytorch and (tp or dp or ddp or device_map or deepspeed)"
 
 test-cli-cuda-onnxruntime-examples:
 	uv sync --dev --extra onnxruntime-gpu
@@ -334,16 +334,20 @@ test-cli-cuda-py-txi-examples:
 ### ROCm tests
 test-cli-rocm-pytorch-single:
 	uv sync --dev
-	uv run pytest tests/test_cli.py -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed)"
+	uv run pytest tests/test_cli.py -s -k "cli and cuda and pytorch and not (tp or dp or ddp or device_map or deepspeed)"
 
 test-cli-rocm-pytorch-multi:
 	uv sync --dev
-	uv run pytest tests/test_cli.py -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed)"
+	uv run pytest tests/test_cli.py -s -k "cli and cuda and pytorch and (tp or dp or ddp or device_map or deepspeed)"
 
 ### ROCm examples
-test-cli-rocm-pytorch-examples:
+test-cli-rocm-pytorch-single-examples:
 	uv sync --dev
-	uv run pytest tests/test_examples.py -s -k "cli and rocm and pytorch"
+	uv run pytest tests/test_examples.py -s -k "cli and rocm and pytorch and not (tp or dp or ddp or device_map or deepspeed)"
+
+test-cli-rocm-pytorch-multi-examples:
+	uv sync --dev
+	uv run pytest tests/test_examples.py -s -k "cli and rocm and pytorch and (tp or dp or ddp or device_map or deepspeed)"
 
 ### MPS tests
 test-cli-mps-pytorch:
