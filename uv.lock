@@ -2481,6 +2481,18 @@ codecarbon = [
 deepspeed = [
     { name = "deepspeed" },
 ]
+dev = [
+    { name = "codecarbon" },
+    { name = "diffusers" },
+    { name = "hydra-joblib-launcher" },
+    { name = "librosa" },
+    { name = "mock" },
+    { name = "peft" },
+    { name = "pytest" },
+    { name = "ruff" },
+    { name = "timm" },
+    { name = "torchcodec", marker = "sys_platform != 'win32'" },
+]
 diffusers = [
     { name = "diffusers" },
 ]
@@ -2546,9 +2558,11 @@ requires-dist = [
     { name = "accelerate" },
     { name = "bitsandbytes", marker = "extra == 'bitsandbytes'" },
     { name = "codecarbon", marker = "extra == 'codecarbon'" },
+    { name = "codecarbon", marker = "extra == 'dev'" },
     { name = "colorlog" },
     { name = "datasets", specifier = ">=4.0.0" },
     { name = "deepspeed", marker = "extra == 'deepspeed'" },
+    { name = "diffusers", marker = "extra == 'dev'" },
     { name = "diffusers", marker = "extra == 'diffusers'" },
     { name = "flash-attn", marker = "extra == 'flash-attn'" },
     { name = "flatten-dict" },
@@ -2556,8 +2570,11 @@ requires-dist = [
     { name = "hf-xet" },
     { name = "huggingface-hub" },
     { name = "hydra-core" },
+    { name = "hydra-joblib-launcher", marker = "extra == 'dev'" },
     { name = "intel-extension-for-pytorch", marker = "extra == 'ipex'", specifier = ">=2.8.0" },
+    { name = "librosa", marker = "extra == 'dev'" },
     { name = "llama-cpp-python", marker = "extra == 'llama-cpp'" },
+    { name = "mock", marker = "extra == 'dev'" },
     { name = "nvidia-ml-py" },
     { name = "omegaconf" },
     { name = "optimum", marker = "extra == 'gptqmodel'" },
@@ -2566,19 +2583,24 @@ requires-dist = [
     { name = "optimum-intel", extras = ["ipex"], marker = "extra == 'ipex'", specifier = ">=1.25.0" },
     { name = "optimum-intel", extras = ["nncf", "openvino"], marker = "extra == 'openvino'", specifier = ">=1.25.0" },
     { name = "pandas" },
+    { name = "peft", marker = "extra == 'dev'" },
     { name = "peft", marker = "extra == 'peft'" },
     { name = "psutil" },
     { name = "py-txi", marker = "extra == 'py-txi'" },
+    { name = "pytest", marker = "extra == 'dev'" },
     { name = "rich" },
+    { name = "ruff", marker = "extra == 'dev'" },
     { name = "sentence-transformers", marker = "extra == 'sentence-transformers'" },
+    { name = "timm", marker = "extra == 'dev'" },
     { name = "timm", marker = "extra == 'timm'" },
     { name = "torch", marker = "extra == 'ipex'", specifier = ">=2.8.0" },
     { name = "torchao", marker = "extra == 'torchao'" },
+    { name = "torchcodec", marker = "sys_platform != 'win32' and extra == 'dev'" },
     { name = "transformers" },
     { name = "typing-extensions" },
     { name = "vllm", marker = "extra == 'vllm'" },
 ]
-provides-extras = ["bitsandbytes", "codecarbon", "deepspeed", "diffusers", "flash-attn", "gptqmodel", "ipex", "llama-cpp", "onnxruntime", "onnxruntime-gpu", "openvino", "peft", "py-txi", "sentence-transformers", "timm", "torchao", "vllm"]
+provides-extras = ["bitsandbytes", "codecarbon", "deepspeed", "dev", "diffusers", "flash-attn", "gptqmodel", "ipex", "llama-cpp", "onnxruntime", "onnxruntime-gpu", "openvino", "peft", "py-txi", "sentence-transformers", "timm", "torchao", "vllm"]
 
 [package.metadata.requires-dev]
 dev = [

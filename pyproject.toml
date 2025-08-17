@@ -84,6 +84,18 @@ Issues = "https://github.com/huggingface/optimum-benchmark/issues"
 optimum-benchmark = "optimum_benchmark.cli:main"
 
 [project.optional-dependencies]
+dev = [
+    "ruff",
+    "mock",
+    "peft",
+    "timm",
+    "pytest",
+    "librosa",
+    "diffusers",
+    "codecarbon",
+    "hydra-joblib-launcher",
+    "torchcodec ; sys_platform != 'win32'",
+]
 # optimum backends
 ipex = [
     "torch>=2.8.0",
