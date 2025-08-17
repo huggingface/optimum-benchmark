@@ -55,7 +55,7 @@ jobs:
 
       - name: Run examples
         run: |
-          make run-cli-cuda-tensorrt-llm-single-examples
+          make test-cli-cuda-tensorrt-llm-single-examples
 
   cli_cuda_tensorrt_llm_multi_gpu_tests:
     if: ${{
@@ -88,4 +88,4 @@ jobs:
 
       - name: Run examples
         run: |
-          make run-cli-cuda-tensorrt-llm-multi-examples
+          make test-cli-cuda-tensorrt-llm-multi-examples

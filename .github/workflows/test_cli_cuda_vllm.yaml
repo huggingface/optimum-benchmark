@@ -55,7 +55,7 @@ jobs:
 
       - name: Run examples
         run: |
-          make run-cli-cuda-vllm-single-examples
+          make test-cli-cuda-vllm-single-examples
 
   run_cli_cuda_vllm_multi_gpu_tests:
     if: ${{
@@ -88,4 +88,4 @@ jobs:
 
       - name: Run examples
         run: |
-          make run-cli-cuda-vllm-multi-examples
+          make test-cli-cuda-vllm-multi-examples

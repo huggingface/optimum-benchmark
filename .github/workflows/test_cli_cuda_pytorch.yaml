@@ -55,7 +55,7 @@ jobs:
 
       - name: Run examples
         run: |
-          make run-cli-cuda-pytorch-single-examples
+          make test-cli-cuda-pytorch-single-examples
 
   run_cli_cuda_pytorch_multi_gpu_tests:
     if: ${{
@@ -88,4 +88,4 @@ jobs:
 
       - name: Run examples
         run: |
-          make run-cli-cuda-pytorch-multi-examples
+          make test-cli-cuda-pytorch-multi-examples

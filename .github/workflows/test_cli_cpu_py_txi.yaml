@@ -49,4 +49,4 @@ jobs:
 
       - name: Run examples
         run: |
-          make run-cli-cpu-py-txi-examples
+          make test-cli-cpu-py-txi-examples

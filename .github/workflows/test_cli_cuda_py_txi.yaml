@@ -50,4 +50,4 @@ jobs:
 
       - name: Run examples
         run: |
-          make run-cli-cuda-py-txi-examples
+          make test-cli-cuda-py-txi-examples

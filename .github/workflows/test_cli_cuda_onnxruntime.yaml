@@ -54,4 +54,4 @@ jobs:
 
       - name: Run examples
         run: |
-          make run-cli-cuda-onnxruntime-examples
+          make test-cli-cuda-onnxruntime-examples
