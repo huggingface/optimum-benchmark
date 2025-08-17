@@ -16,7 +16,6 @@ class IPEXConfig(BackendConfig):
     no_weights: bool = False
 
     # ipexmodel kwargs
-    export: Optional[bool] = None
     torch_dtype: Optional[str] = None
 
     def __post_init__(self):

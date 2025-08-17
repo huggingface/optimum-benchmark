@@ -68,9 +68,9 @@ EXTRAS_REQUIRE = {
     "onnxruntime": [f"optimum[onnxruntime]>={MIN_OPTIMUM_VERSION}"],
     "onnxruntime-gpu": [f"optimum[onnxruntime-gpu]>={MIN_OPTIMUM_VERSION}"],
     # other backends
+    "py-txi": ["py-txi@git+https://github.com/IlyasMoutawwakil/py-txi.git"],
     "llama-cpp": ["llama-cpp-python"],
     "llm-swarm": ["llm-swarm"],
-    "py-txi": ["py-txi"],
     "vllm": ["vllm"],
     # optional dependencies
     "sentence-transformers": ["sentence-transformers"],

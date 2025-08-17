@@ -71,17 +71,6 @@ class VLLMBackend(Backend[VLLMConfig]):
 
         return inputs
 
-    def batch_offline_engine_generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> Any:
-        for i, prompt in enumerate(inputs["prompts"]):
-            self.pretrained_model.add_request(
-                prompt=prompt,
-                request_id=str(i),
-                params=self.get_sampling_params(kwargs),
-            )
-
-        while self.pretrained_model.has_unfinished_requests():
-            self.pretrained_model.step()
-
     def get_sampling_params(self, kwargs: Dict[str, Any]) -> SamplingParams:
         return SamplingParams(
             ignore_eos=True,
@@ -93,8 +82,19 @@ class VLLMBackend(Backend[VLLMConfig]):
             logits_processors=kwargs.get("logits_processors", None),
         )
 
+    def batch_offline_engine_generate(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> Any:
+        for i, prompt in enumerate(inputs["prompts"]):
+            self.pretrained_model.add_request(
+                prompt=prompt,
+                request_id=str(i),
+                params=self.get_sampling_params(kwargs),
+            )
+
+        while self.pretrained_model.has_unfinished_requests():
+            self.pretrained_model.step()
+
     async def single_online_engine_generate(self, prompt: str, request_id: str, kwargs: Dict[str, Any]) -> Any:
-        stream = await self.pretrained_model.add_request(
+        stream = self.pretrained_model.add_request(
             prompt=prompt,
             request_id=request_id,
             params=self.get_sampling_params(kwargs),
