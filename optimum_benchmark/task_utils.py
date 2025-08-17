@@ -66,25 +66,30 @@ if is_transformers_available() and is_torch_available():
 TASKS_TO_PIPELINE_TYPES_TO_PIPELINE_CLASS_NAMES = {}
 
 if is_diffusers_available():
-    import diffusers
+    try:
+        import diffusers.pipelines.auto_pipeline  # type: ignore # noqa: F401
+    except Exception as e:
+        if "GlmModel" in str(e):
+            transformers.GlmModel = None
+        else:
+            raise e
 
-    if hasattr(diffusers, "pipelines") and hasattr(diffusers.pipelines, "auto_pipeline"):
-        from diffusers.pipelines.auto_pipeline import (
-            AUTO_IMAGE2IMAGE_PIPELINES_MAPPING,
-            AUTO_INPAINT_PIPELINES_MAPPING,
-            AUTO_TEXT2IMAGE_PIPELINES_MAPPING,
-        )
+    from diffusers.pipelines.auto_pipeline import (
+        AUTO_IMAGE2IMAGE_PIPELINES_MAPPING,
+        AUTO_INPAINT_PIPELINES_MAPPING,
+        AUTO_TEXT2IMAGE_PIPELINES_MAPPING,
+    )
 
-        TASKS_TO_PIPELINE_TYPES_TO_PIPELINE_CLASS_NAMES = {
-            "inpainting": AUTO_INPAINT_PIPELINES_MAPPING.copy(),
-            "text-to-image": AUTO_TEXT2IMAGE_PIPELINES_MAPPING.copy(),
-            "image-to-image": AUTO_IMAGE2IMAGE_PIPELINES_MAPPING.copy(),
-        }
+    TASKS_TO_PIPELINE_TYPES_TO_PIPELINE_CLASS_NAMES = {
+        "inpainting": AUTO_INPAINT_PIPELINES_MAPPING.copy(),
+        "text-to-image": AUTO_TEXT2IMAGE_PIPELINES_MAPPING.copy(),
+        "image-to-image": AUTO_IMAGE2IMAGE_PIPELINES_MAPPING.copy(),
+    }
 
-        for task_name, pipeline_mapping in TASKS_TO_PIPELINE_TYPES_TO_PIPELINE_CLASS_NAMES.items():
-            for pipeline_type, pipeline_class in pipeline_mapping.items():
-                # diffusers does not have a mappings with just class names
-                TASKS_TO_PIPELINE_TYPES_TO_PIPELINE_CLASS_NAMES[task_name][pipeline_type] = pipeline_class.__name__
+    for task_name, pipeline_mapping in TASKS_TO_PIPELINE_TYPES_TO_PIPELINE_CLASS_NAMES.items():
+        for pipeline_type, pipeline_class in pipeline_mapping.items():
+            # diffusers does not have a mappings with just class names
+            TASKS_TO_PIPELINE_TYPES_TO_PIPELINE_CLASS_NAMES[task_name][pipeline_type] = pipeline_class.__name__
 
 
 IMAGE_DIFFUSION_TASKS = [

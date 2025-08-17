@@ -1,3 +1,97 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "optimum-benchmark"
+dynamic = ["version"]
+description = "Optimum-Benchmark is a unified multi-backend utility for benchmarking Transformers, Timm, Diffusers and Sentence-Transformers with full support of Optimum's hardware optimizations & quantization schemes."
+readme = "README.md"
+license = "Apache-2.0"
+authors = [
+    {name = "HuggingFace Inc. Special Ops Team"}
+]
+keywords = [
+    "benchmark", "transformers", "quantization", "pruning", "optimization", 
+    "training", "inference", "onnx", "onnx runtime", "intel", "habana", 
+    "graphcore", "neural compressor", "ipex", "ipu", "hpu", "llm-swarm", 
+    "py-txi", "vllm", "llama-cpp", "gptqmodel", "sentence-transformers", 
+    "bitsandbytes", "codecarbon", "flash-attn", "deepspeed", "diffusers", 
+    "timm", "peft"
+]
+classifiers = [
+    "Intended Audience :: Education",
+    "Intended Audience :: Developers",
+    "Operating System :: POSIX :: Linux",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+requires-python = ">=3.10"
+dependencies = [
+    # HF dependencies
+    "huggingface-hub",
+    "transformers",
+    "accelerate",
+    "datasets",
+    "hf_xet",
+    # Hydra
+    "hydra-core",
+    "omegaconf",
+    # CPU
+    "psutil",
+    # Reporting
+    "typing-extensions",
+    "flatten_dict",
+    "colorlog",
+    "pandas",
+    "rich",
+    # GPU
+    "nvidia-ml-py3",
+]
+
+[project.urls]
+Homepage = "https://github.com/huggingface/optimum-benchmark"
+Repository = "https://github.com/huggingface/optimum-benchmark"
+Issues = "https://github.com/huggingface/optimum-benchmark/issues"
+
+[project.scripts]
+optimum-benchmark = "optimum_benchmark.cli:main"
+
+[project.optional-dependencies]
+# optimum backends
+ipex = ["optimum[ipex]>=1.18.0"]
+tensorrt-llm = ["optimum-nvidia"]
+openvino = ["optimum[openvino,nncf]>=1.18.0"]
+onnxruntime = ["optimum[onnxruntime]>=1.18.0"]
+onnxruntime-gpu = ["optimum[onnxruntime-gpu]>=1.18.0"]
+# other backends
+llama-cpp = ["llama-cpp-python"]
+py-txi = ["py-txi"]
+vllm = ["vllm"]
+# optional dependencies
+sentence-transformers = ["sentence-transformers"]
+gptqmodel = ["gptqmodel", "optimum"]
+codecarbon = ["codecarbon<3.0.0"]
+bitsandbytes = ["bitsandbytes"]
+deepspeed = ["deepspeed<0.16"]
+flash-attn = ["flash-attn"]
+diffusers = ["diffusers"]
+torchao = ["torchao"]
+timm = ["timm"]
+peft = ["peft"]
+
+[tool.hatch.version]
+path = "optimum_benchmark/version.py"
+pattern = '__version__ = "(?P<version>[^"]+)"'
+
+[tool.hatch.build.targets.wheel]
+packages = ["optimum_benchmark"]
+
 [tool.ruff]
 line-length = 120
 lint.ignore = ["C901", "E501"]
@@ -14,3 +108,7 @@ log_cli = true
 log_cli_level = "INFO"
 log_cli_date_format = "%Y-%m-%d %H:%M:%S"
 log_cli_format = "[PYTEST-PROCESS][%(asctime)s][%(name)s][%(levelname)s] - %(message)s"
+
+[tool.uv]
+dev-dependencies = ["ruff", "pytest", "mock", "hydra-joblib-launcher", "diffusers", "peft", "timm", "codecarbon"]
+
