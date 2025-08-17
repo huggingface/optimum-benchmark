@@ -85,7 +85,7 @@ optimum-benchmark = "optimum_benchmark.cli:main"
 
 [project.optional-dependencies]
 # optimum backends
-ipex = ["optimum-intel[ipex]>=1.25.0"]
+ipex = ["optimum-intel[ipex]>=1.25.0", "intel-extension-for-pytorch>=2.8.0", "torch>=2.8.0"]
 openvino = ["optimum-intel[openvino,nncf]>=1.25.0"]
 onnxruntime-gpu = ["optimum[onnxruntime-gpu]>=1.27.0"]
 onnxruntime = ["optimum[onnxruntime]>=1.27.0"]

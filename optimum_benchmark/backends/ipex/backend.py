@@ -1,3 +1,4 @@
+import os
 from collections import OrderedDict
 from tempfile import TemporaryDirectory
 from typing import Any, Dict
@@ -16,6 +17,9 @@ if is_accelerate_available():
 
 if is_torch_distributed_available():
     import torch.distributed
+
+if not hasattr(os, "exit"):
+    os.exit = os._exit
 
 
 class IPEXBackend(Backend[IPEXConfig]):
