@@ -55,7 +55,7 @@ classifiers = [
 requires-python = ">=3.10"
 dependencies = [
     # HF dependencies
-    "datasets >= 4.0.0",
+    "datasets>=4.0.0",
     "huggingface-hub",
     "transformers",
     "accelerate",
@@ -72,7 +72,7 @@ dependencies = [
     "pandas",
     "rich",
     # GPU
-    "nvidia-ml-py3",
+    "nvidia-ml-py",
 ]
 
 [project.urls]
@@ -101,8 +101,8 @@ vllm = ["vllm"]
 sentence-transformers = ["sentence-transformers"]
 gptqmodel = ["gptqmodel", "optimum"]
 bitsandbytes = ["bitsandbytes"]
-flash-attn = ["flash-attn"]
 codecarbon = ["codecarbon"]
+flash-attn = ["flash-attn"]
 diffusers = ["diffusers"]
 deepspeed = ["deepspeed"]
 torchao = ["torchao"]
@@ -143,7 +143,6 @@ dev-dependencies = [
     "librosa",
     "diffusers",
     "codecarbon",
-    "setuptools",
     "hydra-joblib-launcher",
     "torchcodec ; sys_platform != 'win32'",
 ]
