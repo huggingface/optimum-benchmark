@@ -19,6 +19,10 @@ concurrency:
   cancel-in-progress: true
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
+env:
+  UV_SYSTEM_PYTHON: 1
+  UV_TORCH_BACKEND: auto
+
 jobs:
   run_api_cpu_tests:
     if: ${{
@@ -35,36 +39,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Install dependencies
-        run: |
-          pip install uv
-          uv pip install --upgrade pip
-          uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-          uv pip install -e .[testing,timm,diffusers,codecarbon]
-        env:
-          UV_SYSTEM_PYTHON: 1
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
 
       - name: Run tests
         run: |
-          pytest tests/test_api.py -s -k "api and cpu"
+          make test-api-cpu
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PUSH_REPO_ID: optimum-benchmark/cpu
 
-      # no examples for now
-      # - if: ${{
-      #     (github.event_name == 'push') ||
-      #     (github.event_name == 'workflow_dispatch') ||
-      #     contains( github.event.pull_request.labels.*.name, 'examples')
-      #     }}
-      #   name: Run examples
-      #   run: |
-      #     pytest tests/test_examples.py -s -k "api and cpu"
-      #   env:
-      #     HF_TOKEN: ${{ secrets.HF_TOKEN }}
-      #     PUSH_REPO_ID: optimum-benchmark/cpu
+      - name: Run examples
+        run: |
+          make examples-api-cpu
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          PUSH_REPO_ID: optimum-benchmark/cpu

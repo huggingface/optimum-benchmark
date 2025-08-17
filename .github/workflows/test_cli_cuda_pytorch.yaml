@@ -19,6 +19,10 @@ concurrency:
   cancel-in-progress: true
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
+env:
+  UV_SYSTEM_PYTHON: 1
+  UV_TORCH_BACKEND: auto
+
 jobs:
   run_cli_cuda_pytorch_single_gpu_tests:
     if: ${{
@@ -42,23 +46,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          pip install -e .[testing,diffusers,timm,peft,bitsandbytes,gptqmodel]
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
 
       - name: Run tests
         run: |
-          pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and not (dp or tp or ddp or device_map or deepspeed) and not (bnb or awq or gptq)"
+          make test-cli-cuda-pytorch-single
 
-      - if: ${{
-          (github.event_name == 'push') ||
-          (github.event_name == 'workflow_dispatch') ||
-          contains( github.event.pull_request.labels.*.name, 'examples')
-          }}
-        name: Run examples
+      - name: Run examples
         run: |
-          pip install accelerate@git+https://github.com/huggingface/accelerate.git
-          pytest tests/test_examples.py -x -s -k "cli and cuda and pytorch"
+          make run-cli-cuda-pytorch-single-examples
 
   run_cli_cuda_pytorch_multi_gpu_tests:
     if: ${{
@@ -82,14 +79,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          pip install -e .[testing,diffusers,timm,peft,deepspeed]
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
 
-      - name: Run tests (parallel)
+      - name: Run tests
         run: |
-          pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (dp or tp or ddp or device_map)"
+          make test-cli-cuda-pytorch-multi
 
-      - name: Run tests (sequential)
+      - name: Run examples
         run: |
-          FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and pytorch and (deepspeed_inference)"
+          make run-cli-cuda-pytorch-multi-examples

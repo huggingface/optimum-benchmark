@@ -110,46 +110,39 @@ style:
 	uv run ruff check --fix .
 	@echo "✅ Code fixes applied!"
 
-# Dependencies
-install:
-	uv sync
-
-install-dev:
-	uv sync --dev
-
 # Backend-specific installations
 install-cpu-pytorch:
-	uv sync --torch-backend=cpu
+	uv sync
 
 install-cpu-openvino:
-	uv sync --extra openvino --torch-backend=cpu
+	uv sync --extra openvino
 
 install-cpu-onnxruntime:
-	uv sync --extra onnxruntime --torch-backend=cpu
+	uv sync --extra onnxruntime
 
 install-cpu-llama-cpp:
-	uv sync --extra llama-cpp --torch-backend=cpu
+	uv sync --extra llama-cpp
 
 install-cpu-ipex:
-	uv sync --extra ipex --torch-backend=cpu
+	uv sync --extra ipex
 
 install-mps-pytorch:
-	uv sync --torch-backend=auto
+	uv sync
 
 install-rocm-pytorch:
-	uv sync --extra gptqmodel --torch-backend=auto
+	uv sync
 
 install-cuda-pytorch:
-	uv sync --extra gptqmodel --extra bitsandbytes --extra deepspeed --torch-backend=auto
+	uv sync --extra bitsandbytes --extra deepspeed
 
 install-cuda-onnxruntime:
-	uv sync --extra onnxruntime-gpu --torch-backend=auto
+	uv sync --extra onnxruntime-gpu
 
 install-cuda-tensorrt-llm:
-	uv sync --extra tensorrt-llm --torch-backend=auto
+	uv sync --extra tensorrt-llm
 
 install-cuda-vllm:
-	uv sync --extra vllm --torch-backend=auto
+	uv sync --extra vllm
 
 lock:
 	uv lock
@@ -179,28 +172,11 @@ clean:
 	rm -f *.json
 	@echo "✅ Cleanup complete!"
 
-# Additional development targets
-check-format:
-	uv run ruff format --check .
-
-check-lint:
-	uv run ruff check .
-
-format:
-	uv run ruff format .
-
-lint-fix:
-	uv run ruff check --fix .
-
 # Testing
 ## API tests
 test-api-cpu:
 	uv sync --dev
 	uv run pytest tests/test_api.py -s -k "api and cpu"
-
-test-api-misc:
-	uv sync --dev
-	uv run pytest tests/test_api.py -s -k "api and misc"
 
 test-api-cuda:
 	uv sync --dev
@@ -210,13 +186,22 @@ test-api-rocm:
 	uv sync --dev
 	uv run pytest tests/test_api.py -s -k "api and rocm"
 
+test-api-misc:
+	uv sync --dev
+	uv run pytest tests/test_api.py -s -k "api and not (cpu or cuda or rocm or mps)"
+
+## API examples
+test-api-cpu-examples:
+	uv sync --dev
+	uv run pytest tests/test_examples.py -s -k "api and cpu and pytorch"
+
 test-api-cuda-examples:
-	uv sync --dev --extra gptqmodel --extra torchao
-	uv run pytest tests/test_examples.py -x -s -k "api and cuda and pytorch"
+	uv sync --dev --extra torchao
+	uv run pytest tests/test_examples.py -s -k "api and cuda and pytorch"
 
 test-api-rocm-examples:
-	uv sync --dev --extra gptqmodel --extra torchao
-	uv run pytest tests/test_examples.py -x -s -k "api and rocm and pytorch"
+	uv sync --dev --extra torchao
+	uv run pytest tests/test_examples.py -s -k "api and rocm and pytorch"
 
 ## CLI tests
 ### CPU tests
@@ -240,47 +225,118 @@ test-cpu-llama-cpp:
 	uv sync --dev --extra llama-cpp
 	uv run pytest -s -k "llama_cpp"
 
+### CPU examples
+test-cli-cpu-pytorch-examples:
+	uv sync --dev
+	uv run pytest tests/test_examples.py -s -k "cli and cpu and pytorch"
+
+test-cli-cpu-openvino-examples:
+	uv sync --dev --extra openvino
+	uv run pytest tests/test_examples.py -s -k "cli and cpu and openvino"
+
+test-cli-cpu-onnxruntime-examples:
+	uv sync --dev --extra onnxruntime
+	uv run pytest tests/test_examples.py -s -k "cli and cpu and onnxruntime"
+
+test-cli-cpu-ipex-examples:
+	uv sync --dev --extra ipex
+	uv run pytest tests/test_examples.py -s -k "cli and cpu and ipex"
+
+test-cli-cpu-llama-cpp-examples:
+	uv sync --dev --extra llama-cpp
+	uv run pytest tests/test_examples.py -s -k "cli and cpu and llama-cpp"
+
 ### CUDA tests
 test-cli-cuda-pytorch-single:
-	uv sync --dev --extra gptqmodel --extra bitsandbytes --extra deepspeed
+	uv sync --dev --extra bitsandbytes --extra deepspeed
 	uv run pytest -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed)"
 
 test-cli-cuda-pytorch-multi:
-	uv sync --dev --extra gptqmodel --extra bitsandbytes --extra deepspeed
+	uv sync --dev --extra bitsandbytes --extra deepspeed
 	uv run pytest -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed)"
 
 test-cli-cuda-vllm-single:
 	uv sync --dev --extra vllm
-	FORCE_SEQUENTIAL=1 uv run pytest tests/test_cli.py -x -s -k "cli and cuda and vllm and not (tp or pp)"
+	FORCE_SEQUENTIAL=1 uv run pytest tests/test_cli.py -s -k "cli and cuda and vllm and not (tp or pp)"
 
 test-cli-cuda-vllm-multi:
 	uv sync --dev --extra vllm
-	FORCE_SEQUENTIAL=1 uv run pytest tests/test_cli.py -x -s -k "cli and cuda and vllm and (tp or pp)"
+	FORCE_SEQUENTIAL=1 uv run pytest tests/test_cli.py -s -k "cli and cuda and vllm and (tp or pp)"
+
+test-cli-cuda-tensorrt-llm-single:
+	uv sync --dev --extra tensorrt-llm
+	FORCE_SEQUENTIAL=1 uv run pytest tests/test_cli.py -s -k "cli and cuda and tensorrt_llm and not (tp or pp)"
+
+test-cli-cuda-tensorrt-llm-multi:
+	uv sync --dev --extra tensorrt-llm
+	FORCE_SEQUENTIAL=1 uv run pytest tests/test_cli.py -s -k "cli and cuda and tensorrt_llm and (tp or pp)"
 
 test-cli-cuda-onnxruntime:
 	uv sync --dev --extra onnxruntime-gpu
 	uv run pytest -s -k "cli and cuda and onnxruntime"
 
-test-cli-cuda-tensorrt-llm:
+### CUDA examples
+test-cli-cuda-pytorch-single-examples:
+	uv sync --dev --extra bitsandbytes --extra deepspeed
+	uv run pytest tests/test_examples.py -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed)"
+
+test-cli-cuda-pytorch-multi-examples:
+	uv sync --dev --extra bitsandbytes --extra deepspeed
+	uv run pytest tests/test_examples.py -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed)"
+
+test-cli-cuda-onnxruntime-examples:
+	uv sync --dev --extra onnxruntime-gpu
+	uv run pytest tests/test_examples.py -s -k "cli and cuda and onnxruntime"
+
+test-cli-cuda-vllm-single-examples:
+	uv sync --dev --extra vllm
+	FORCE_SEQUENTIAL=1 uv run pytest tests/test_examples.py -s -k "cli and cuda and vllm and not (tp or pp)"
+
+test-cli-cuda-vllm-multi-examples:
+	uv sync --dev --extra vllm
+	FORCE_SEQUENTIAL=1 uv run pytest tests/test_examples.py -s -k "cli and cuda and vllm and (tp or pp)"
+
+test-cli-cuda-tensorrt-llm-single-examples:
 	uv sync --dev --extra tensorrt-llm
-	uv run pytest -s -k "cli and cuda and tensorrt"
+	FORCE_SEQUENTIAL=1 uv run pytest tests/test_examples.py -s -k "cli and cuda and tensorrt_llm and not (tp or pp)"
+
+test-cli-cuda-tensorrt-llm-multi-examples:
+	uv sync --dev --extra tensorrt-llm
+	FORCE_SEQUENTIAL=1 uv run pytest tests/test_examples.py -s -k "cli and cuda and tensorrt_llm and (tp or pp)"
 
 ### ROCm tests
 test-cli-rocm-pytorch-single:
-	uv sync --dev --extra gptqmodel
+	uv sync --dev
 	uv run pytest -s -k "cli and cuda and pytorch and not (dp or ddp or device_map or deepspeed)"
 
 test-cli-rocm-pytorch-multi:
-	uv sync --dev --extra gptqmodel
+	uv sync --dev
 	uv run pytest -s -k "cli and cuda and pytorch and (dp or ddp or device_map or deepspeed)"
+
+test-cli-rocm-pytorch-examples:
+	uv sync --dev
+	uv run pytest tests/test_examples.py -s -k "cli and rocm and pytorch"
 
 ### MPS tests
 test-cli-mps-pytorch:
 	uv sync --dev
 	uv run pytest -s -k "cli and mps and pytorch"
 
-# Build docker
+test-cli-mps-pytorch-examples:
+	uv sync --dev
+	uv run pytest tests/test_examples.py -s -k "cli and mps and pytorch"
 
+### MISC CLI tests
+test-cli-misc:
+	uv sync --dev
+	uv run pytest tests/test_cli.py -s -k "cli and not (cpu or cuda or rocm or mps)"
+
+### Energy Star tests/examples
+test-energy-star:
+	uv sync --dev
+	uv run pytest tests/test_energy_star.py -vvvv
+
+# Build docker
 build-cpu-image:
 	docker build -t optimum-benchmark:latest-cpu -f docker/cpu/Dockerfile .
 	docker build --build-arg IMAGE=optimum-benchmark:latest-cpu --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-cpu docker/unroot
@@ -294,7 +350,6 @@ build-rocm-image:
 	docker build --build-arg IMAGE=optimum-benchmark:latest-rocm --build-arg USER_ID=$(USER_ID) --build-arg GROUP_ID=$(GROUP_ID) -t optimum-benchmark:latest-rocm docker/unroot
 
 # Run docker
-
 run-cpu-container:
 	docker run \
 	-it \

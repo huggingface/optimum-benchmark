@@ -19,6 +19,10 @@ concurrency:
   cancel-in-progress: true
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
+env:
+  UV_SYSTEM_PYTHON: 1
+  UV_TORCH_BACKEND: auto
+
 jobs:
   run_cli_cuda_onnxruntime_tests:
     if: ${{
@@ -41,19 +45,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          pip install -e .[testing,onnxruntime-gpu,diffusers,timm]
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
 
       - name: Run tests
         run: |
-          pytest tests/test_cli.py -x -s -k "cli and cuda and onnxruntime"
+          make test-cli-cuda-onnxruntime
 
-      # no examples for now
-      # - if: ${{
-      #     (github.event_name == 'push') ||
-      #     (github.event_name == 'workflow_dispatch') ||
-      #     contains( github.event.pull_request.labels.*.name, 'examples')
-      #     }}
-      #   name: Run examples
-      #   run: pytest tests/test_examples.py -x -s -k "cli and cuda and onnxruntime"
+      - name: Run examples
+        run: |
+          make run-cli-cuda-onnxruntime-examples

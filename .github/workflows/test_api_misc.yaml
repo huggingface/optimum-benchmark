@@ -19,6 +19,10 @@ concurrency:
   cancel-in-progress: true
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
+env:
+  UV_SYSTEM_PYTHON: 1
+  UV_TORCH_BACKEND: auto
+
 jobs:
   run_api_misc_tests:
     if: ${{
@@ -43,23 +47,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python }}
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
         with:
-          python-version: ${{ matrix.python }}
-
-      - name: Install requirements
-        run: |
-          pip install uv
-          uv pip install --upgrade pip
-          uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-          uv pip install -e .[testing,timm,diffusers,codecarbon]
-        env:
-          UV_SYSTEM_PYTHON: 1
+          python-version: ${{ matrix.python-version }}
 
       - name: Run tests
         run: |
-          pytest tests/test_api.py -s -k "api and not (cpu or cuda or rocm or mps)"
+          make test-api-misc
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PUSH_REPO_ID: optimum-benchmark/misc-${{ matrix.os }}-${{ matrix.python }}
