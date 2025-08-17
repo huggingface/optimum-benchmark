@@ -97,19 +97,31 @@ dev = [
     "torchcodec ; sys_platform != 'win32'",
 ]
 # optimum backends
-openvino = ["optimum-intel[openvino]>=1.25.0"]
-onnxruntime = ["optimum[onnxruntime]>=1.27.0"]
-onnxruntime-gpu = ["optimum[onnxruntime-gpu]>=1.27.0"]
-tensorrt-llm = [
-    "optimum-nvidia; extra != 'ipex' and extra != 'openvino' and extra != 'onnxruntime-gpu' and extra != 'onnxruntime' and extra != 'vllm' and extra != 'llama-cpp'",
+openvino = [
+    "optimum[openvino]>=1.27.0; extra != 'onnxruntime' and extra != 'onnxruntime-gpu' and extra != 'ipex' and extra != 'tensorrt-llm' and extra != 'vllm' and extra != 'llama-cpp' and extra != 'py-txi'",
+]
+onnxruntime = [
+    "optimum[onnxruntime]>=1.27.0; extra != 'openvino' and extra != 'onnxruntime-gpu' and extra != 'ipex' and extra != 'tensorrt-llm' and extra != 'vllm' and extra != 'llama-cpp' and extra != 'py-txi'",
+]
+onnxruntime-gpu = [
+    "optimum[onnxruntime-gpu]>=1.27.0; extra != 'openvino' and extra != 'onnxruntime' and extra != 'ipex' and extra != 'tensorrt-llm' and extra != 'vllm' and extra != 'llama-cpp' and extra != 'py-txi'",
 ]
 ipex = [
-    "optimum-intel[ipex]>=1.25.0; extra != 'openvino' and extra != 'onnxruntime-gpu' and extra != 'onnxruntime' and extra != 'tensorrt-llm' and extra != 'vllm' and extra != 'llama-cpp'",
+    "optimum[ipex]>=1.27.0; extra != 'openvino' and extra != 'onnxruntime' and extra != 'onnxruntime-gpu' and extra != 'tensorrt-llm' and extra != 'vllm' and extra != 'llama-cpp' and extra != 'py-txi'",
+]
+tensorrt-llm = [
+    "optimum-nvidia; extra != 'openvino' and extra != 'onnxruntime' and extra != 'onnxruntime-gpu' and extra != 'ipex' and extra != 'vllm' and extra != 'llama-cpp' and extra != 'py-txi'",
 ]
 # other backends
-llama-cpp = ["llama-cpp-python"]
-py-txi = ["py-txi"]
-vllm = ["vllm"]
+vllm = [
+    "vllm; extra != 'openvino' and extra != 'onnxruntime' and extra != 'onnxruntime-gpu' and extra != 'ipex' and extra != 'tensorrt-llm' and extra != 'llama-cpp' and extra != 'py-txi'",
+]
+llama-cpp = [
+    "llama-cpp-python; extra != 'openvino' and extra != 'onnxruntime' and extra != 'onnxruntime-gpu' and extra != 'ipex' and extra != 'tensorrt-llm' and extra != 'vllm' and extra != 'py-txi'",
+]
+py-txi = [
+    "py-txi; extra != 'openvino' and extra != 'onnxruntime' and extra != 'onnxruntime-gpu' and extra != 'ipex' and extra != 'tensorrt-llm' and extra != 'vllm' and extra != 'llama-cpp'",
+]
 # optional dependencies
 sentence-transformers = ["sentence-transformers"]
 gptqmodel = ["gptqmodel", "optimum"]
@@ -153,7 +165,6 @@ dev-dependencies = [
     "peft",
     "timm",
     "pytest",
-    "librosa",
     "diffusers",
     "codecarbon",
     "hydra-joblib-launcher",

@@ -159,7 +159,7 @@ install-cuda-tensorrt-llm:
 	uv sync --extra tensorrt-llm
 
 install-cuda-pytorch:
-	uv sync --extra bitsandbytes --extra deepspeed
+	uv sync --extra deepspeed
 
 install-cuda-onnxruntime:
 	uv sync --extra onnxruntime-gpu
@@ -279,11 +279,11 @@ test-cli-cpu-ipex-examples:
 
 ### CUDA tests
 test-cli-cuda-pytorch-single:
-	uv sync --dev --extra bitsandbytes --extra deepspeed
-	uv run pytest tests/test_cli.py -s -k "cli and cuda and pytorch and not (tp or dp or ddp or device_map or deepspeed)"
+	uv sync --dev
+	uv run pytest tests/test_cli.py -s -k "cli and cuda and pytorch and not (tp or dp or ddp or device_map or deepspeed) and not (bnb or gptq)"
 
 test-cli-cuda-pytorch-multi:
-	uv sync --dev --extra bitsandbytes --extra deepspeed
+	uv sync --dev --extra deepspeed
 	uv run pytest tests/test_cli.py -s -k "cli and cuda and pytorch and (tp or dp or ddp or device_map or deepspeed)"
 
 test-cli-cuda-vllm-single:
@@ -302,21 +302,21 @@ test-cli-cuda-tensorrt-llm-multi:
 	uv sync --dev --extra tensorrt-llm
 	FORCE_SEQUENTIAL=1 uv run pytest tests/test_cli.py -s -k "cli and cuda and tensorrt_llm and (tp or pp)"
 
+test-cli-cuda-py-txi:
+	uv sync --dev --extra py-txi
+	FORCE_SEQUENTIAL=1 uv run pytest tests/test_cli.py -s -k "cli and cuda and (tgi or tei or txi)"
+
 test-cli-cuda-onnxruntime:
 	uv sync --dev --extra onnxruntime-gpu
 	uv run pytest tests/test_cli.py -s -k "cli and cuda and onnxruntime"
 
-test-cli-cuda-py-txi:
-	uv sync --dev --extra py-txi
-	uv run pytest tests/test_cli.py -s -k "cli and cuda and (tgi or tei or txi)"
-
 ### CUDA examples
 test-cli-cuda-pytorch-single-examples:
-	uv sync --dev --extra bitsandbytes --extra deepspeed
-	uv run pytest tests/test_examples.py -s -k "cli and cuda and pytorch and not (tp or dp or ddp or device_map or deepspeed)"
+	uv sync --dev
+	uv run pytest tests/test_examples.py -s -k "cli and cuda and pytorch and not (tp or dp or ddp or device_map or deepspeed) and not (bnb or gptq)"
 
 test-cli-cuda-pytorch-multi-examples:
-	uv sync --dev --extra bitsandbytes --extra deepspeed
+	uv sync --dev --extra deepspeed
 	uv run pytest tests/test_examples.py -s -k "cli and cuda and pytorch and (tp or dp or ddp or device_map or deepspeed)"
 
 test-cli-cuda-onnxruntime-examples:
