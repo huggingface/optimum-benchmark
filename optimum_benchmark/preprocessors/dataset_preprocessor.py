@@ -293,7 +293,7 @@ def text_generation_preprocessing(
         )
     def reasoning_tokenize_function(examples):
         return pretrained_processor.apply_chat_template(
-            [{"role": "user", "content": examples[scenario_config.text_column_name]}],
+            [[{"role": "user", "content": examples[scenario_config.text_column_name]}]],
             truncation=scenario_config.truncation,
             max_length=max_length - new_tokens,
             padding=padding,
