@@ -2,8 +2,10 @@ import json
 import os
 from typing import Optional
 
+from packaging import version
+
 from .hub_utils import HF_API
-from .import_utils import is_diffusers_available, is_torch_available, is_transformers_available
+from .import_utils import diffusers_version, is_diffusers_available, is_torch_available, is_transformers_available
 
 TASKS_TO_AUTO_MODEL_CLASS_NAMES = {
     # text processing
@@ -65,7 +67,7 @@ if is_transformers_available() and is_torch_available():
 
 TASKS_TO_PIPELINE_TYPES_TO_PIPELINE_CLASS_NAMES = {}
 
-if is_diffusers_available():
+if is_diffusers_available() and version.parse(diffusers_version()) >= version.parse("0.20.0"):
     try:
         import diffusers.pipelines.auto_pipeline  # type: ignore # noqa: F401
     except Exception as e:

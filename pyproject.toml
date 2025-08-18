@@ -91,10 +91,6 @@ dev = [
     "codecarbon",
     "hydra-joblib-launcher",
     "torchcodec ; sys_platform != 'win32'",
-    "peft; extra != 'tensorrt-llm' and extra != 'vllm'",
-    "timm; extra != 'tensorrt-llm' and extra != 'vllm'",
-    "librosa; extra != 'tensorrt-llm' and extra != 'vllm'",
-    "diffusers; extra != 'tensorrt-llm' and extra != 'vllm'",
 ]
 # optimum backends
 ipex = ["optimum[ipex]>=1.27.0"]
@@ -150,12 +146,12 @@ log_cli_format = "[PYTEST-PROCESS][%(asctime)s][%(name)s][%(levelname)s] - %(mes
 dev-dependencies = [
     "ruff",
     "mock",
+    "peft",
+    "timm",
     "pytest",
+    "librosa",
+    "diffusers",
     "codecarbon",
     "hydra-joblib-launcher",
     "torchcodec ; sys_platform != 'win32'",
-    "peft; extra != 'tensorrt-llm' and extra != 'vllm'",
-    "timm; extra != 'tensorrt-llm' and extra != 'vllm'",
-    "librosa; extra != 'tensorrt-llm' and extra != 'vllm'",
-    "diffusers; extra != 'tensorrt-llm' and extra != 'vllm'",
 ]
