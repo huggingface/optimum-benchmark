@@ -34,7 +34,7 @@ class EnergyStarConfig(ScenarioConfig):
     dataset_prefix1: str = field(default="", metadata={"help": "Prefix to add to text2textgeneration input."})
     dataset_prefix2: str = field(default="", metadata={"help": "Prefix to add to text2textgeneration input."})
     t5_task: str = field(default="", metadata={"help": "Task for categorizing text2textgeneration tasks."})
-    reasoning: bool = field(default=False, metadata={"help": "To activate reasoning mode"})
+    reasoning: Union[bool, str] = field(default=False, metadata={"help": "To activate reasoning mode"})
 
     # image dataset options
     image_column_name: str = field(default="image", metadata={"help": "Name of the column with the image input."})
