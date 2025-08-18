@@ -292,14 +292,15 @@ def text_generation_preprocessing(
             padding=padding,
         )
     def reasoning_tokenize_function(examples):
-        chat_input= pretrained_processor.apply_chat_template(
+        return pretrained_processor.apply_chat_template(
             [{"role": "user", "content": examples[scenario_config.text_column_name]}],
             truncation=scenario_config.truncation,
             max_length=max_length - new_tokens,
             padding=padding,
             add_generation_prompt=True,
             enable_thinking=True,
-            return_dict=True,
+            tokenize= True,
+            return_dict=True)
 
     if scenario_config.reasoning == True:
         dataset = dataset.map(
