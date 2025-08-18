@@ -17,7 +17,7 @@ backend:
   device_ids: 0
   no_weights: true
   task: text-generation
-  model: Qwen/Qwen3-30B-A3B
+  model: google/gemma-3-270m-it
 
 scenario:
   dataset_name: EnergyStarAI/text_generation
