@@ -93,7 +93,7 @@ class VLLMBackend(Backend[VLLMConfig]):
             self.pretrained_model.step()
 
     async def single_online_engine_generate(self, prompt: str, request_id: str, kwargs: Dict[str, Any]) -> Any:
-        stream = self.pretrained_model.add_request(
+        stream = await self.pretrained_model.add_request(
             prompt=prompt,
             request_id=request_id,
             params=self.get_sampling_params(kwargs),

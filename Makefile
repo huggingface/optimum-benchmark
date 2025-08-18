@@ -110,7 +110,7 @@ help:
 	@echo "  run-cpu-container      - Run CPU Docker container"
 	@echo "  run-cuda-container     - Run CUDA Docker container"
 	@echo "  run-rocm-container     - Run ROCm Docker container"
-	@echo "  run-trt-llm-container  - Run TensorRT-LLM Docker container"
+	@echo "  run-tensorrt-llm-container  - Run TensorRT-LLM Docker container"
 	@echo "  run-vllm-container     - Run vLLM Docker container"
 
 # Development setup
@@ -155,9 +155,6 @@ install-mps-pytorch:
 install-rocm-pytorch:
 	uv sync
 
-install-cuda-tensorrt-llm:
-	uv sync --extra tensorrt-llm
-
 install-cuda-pytorch:
 	uv sync --extra deepspeed
 
@@ -165,7 +162,10 @@ install-cuda-onnxruntime:
 	uv sync --extra onnxruntime-gpu
 
 install-cuda-vllm:
-	uv sync --extra vllm
+	UV_SYSTEM_PYTHON=1 uv pip install -e .[dev,vllm]
+
+install-cuda-tensorrt-llm:
+	UV_SYSTEM_PYTHON=1 uv pip install -e .[dev,tensorrt-llm]
 
 lock:
 	uv lock
@@ -193,6 +193,8 @@ clean:
 	rm -rf **/__pycache__/
 	rm -rf **/*.pyc
 	rm -f *.json
+	rm -rf trainer_output/
+	rm -rf *.log
 	@echo "✅ Cleanup complete!"
 
 # Testing
@@ -287,20 +289,22 @@ test-cli-cuda-pytorch-multi:
 	uv run pytest tests/test_cli.py -s -k "cli and cuda and pytorch and (tp or dp or ddp or device_map or deepspeed)"
 
 test-cli-cuda-vllm-single:
-	uv sync --dev --extra vllm
-	FORCE_SEQUENTIAL=1 uv run pytest tests/test_cli.py -s -k "cli and cuda and vllm and not (tp or pp)"
+	pip install uv --upgrade
+	UV_SYSTEM_PYTHON=1 uv pip install -e .[dev,vllm]
+	FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -s -k "cli and cuda and vllm and not (tp or pp)"
 
 test-cli-cuda-vllm-multi:
-	uv sync --dev --extra vllm
-	FORCE_SEQUENTIAL=1 uv run pytest tests/test_cli.py -s -k "cli and cuda and vllm and (tp or pp)"
+	pip install uv --upgrade
+	UV_SYSTEM_PYTHON=1 uv pip install -e .[dev,vllm]
+	FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -s -k "cli and cuda and vllm and (tp or pp)"
 
 test-cli-cuda-tensorrt-llm-single:
-	uv sync --dev --extra tensorrt-llm
-	FORCE_SEQUENTIAL=1 uv run pytest tests/test_cli.py -s -k "cli and cuda and tensorrt_llm and not (tp or pp)"
+	UV_SYSTEM_PYTHON=1 uv pip install -e .[dev,tensorrt-llm]
+	FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -s -k "cli and cuda and tensorrt_llm and not (tp or pp)"
 
 test-cli-cuda-tensorrt-llm-multi:
-	uv sync --dev --extra tensorrt-llm
-	FORCE_SEQUENTIAL=1 uv run pytest tests/test_cli.py -s -k "cli and cuda and tensorrt_llm and (tp or pp)"
+	UV_SYSTEM_PYTHON=1 uv pip install -e .[dev,tensorrt-llm]
+	FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -s -k "cli and cuda and tensorrt_llm and (tp or pp)"
 
 test-cli-cuda-py-txi:
 	uv sync --dev --extra py-txi
@@ -319,29 +323,29 @@ test-cli-cuda-pytorch-multi-examples:
 	uv sync --dev --extra deepspeed
 	uv run pytest tests/test_examples.py -s -k "cli and cuda and pytorch and (tp or dp or ddp or device_map or deepspeed)"
 
-test-cli-cuda-onnxruntime-examples:
-	uv sync --dev --extra onnxruntime-gpu
-	uv run pytest tests/test_examples.py -s -k "cli and cuda and onnxruntime"
-
 test-cli-cuda-vllm-single-examples:
-	uv sync --dev --extra vllm
+	UV_SYSTEM_PYTHON=1 uv pip install -e .[dev,vllm]
 	FORCE_SEQUENTIAL=1 uv run pytest tests/test_examples.py -s -k "cli and cuda and vllm and not (tp or pp)"
 
 test-cli-cuda-vllm-multi-examples:
-	uv sync --dev --extra vllm
+	UV_SYSTEM_PYTHON=1 uv pip install -e .[dev,vllm]
 	FORCE_SEQUENTIAL=1 uv run pytest tests/test_examples.py -s -k "cli and cuda and vllm and (tp or pp)"
 
 test-cli-cuda-tensorrt-llm-single-examples:
-	uv sync --dev --extra tensorrt-llm
+	UV_SYSTEM_PYTHON=1 uv pip install -e .[dev,tensorrt-llm]
 	FORCE_SEQUENTIAL=1 uv run pytest tests/test_examples.py -s -k "cli and cuda and tensorrt_llm and not (tp or pp)"
 
 test-cli-cuda-tensorrt-llm-multi-examples:
-	uv sync --dev --extra tensorrt-llm
+	UV_SYSTEM_PYTHON=1 uv pip install -e .[dev,tensorrt-llm]
 	FORCE_SEQUENTIAL=1 uv run pytest tests/test_examples.py -s -k "cli and cuda and tensorrt_llm and (tp or pp)"
 
 test-cli-cuda-py-txi-examples:
 	uv sync --dev --extra py-txi
 	FORCE_SEQUENTIAL=1 uv run pytest tests/test_examples.py -s -k "cli and cuda and (tgi or tei or txi)"
+
+test-cli-cuda-onnxruntime-examples:
+	uv sync --dev --extra onnxruntime-gpu
+	uv run pytest tests/test_examples.py -s -k "cli and cuda and onnxruntime"
 
 ### ROCm tests
 test-cli-rocm-pytorch-single:
@@ -432,7 +436,7 @@ run-rocm-container:
 	--workdir /optimum-benchmark \
 	ghcr.io/huggingface/optimum-benchmark:latest-rocm
 
-run-trt-llm-container:
+run-tensorrt-llm-container:
 	docker run \
 	-it \
 	--rm \

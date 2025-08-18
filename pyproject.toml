@@ -97,31 +97,19 @@ dev = [
     "torchcodec ; sys_platform != 'win32'",
 ]
 # optimum backends
-openvino = [
-    "optimum[openvino]>=1.27.0; extra != 'onnxruntime' and extra != 'onnxruntime-gpu' and extra != 'ipex' and extra != 'tensorrt-llm' and extra != 'vllm' and extra != 'llama-cpp' and extra != 'py-txi'",
-]
-onnxruntime = [
-    "optimum[onnxruntime]>=1.27.0; extra != 'openvino' and extra != 'onnxruntime-gpu' and extra != 'ipex' and extra != 'tensorrt-llm' and extra != 'vllm' and extra != 'llama-cpp' and extra != 'py-txi'",
-]
-onnxruntime-gpu = [
-    "optimum[onnxruntime-gpu]>=1.27.0; extra != 'openvino' and extra != 'onnxruntime' and extra != 'ipex' and extra != 'tensorrt-llm' and extra != 'vllm' and extra != 'llama-cpp' and extra != 'py-txi'",
-]
-ipex = [
-    "optimum[ipex]>=1.27.0; extra != 'openvino' and extra != 'onnxruntime' and extra != 'onnxruntime-gpu' and extra != 'tensorrt-llm' and extra != 'vllm' and extra != 'llama-cpp' and extra != 'py-txi'",
-]
+ipex = ["optimum[ipex]>=1.27.0"]
+openvino = ["optimum[openvino]>=1.27.0"]
+onnxruntime = ["optimum[onnxruntime]>=1.27.0"]
+onnxruntime-gpu = ["optimum[onnxruntime-gpu]>=1.27.0"]
+# other backends
 tensorrt-llm = [
     "optimum-nvidia; extra != 'openvino' and extra != 'onnxruntime' and extra != 'onnxruntime-gpu' and extra != 'ipex' and extra != 'vllm' and extra != 'llama-cpp' and extra != 'py-txi'",
 ]
-# other backends
 vllm = [
     "vllm; extra != 'openvino' and extra != 'onnxruntime' and extra != 'onnxruntime-gpu' and extra != 'ipex' and extra != 'tensorrt-llm' and extra != 'llama-cpp' and extra != 'py-txi'",
 ]
-llama-cpp = [
-    "llama-cpp-python; extra != 'openvino' and extra != 'onnxruntime' and extra != 'onnxruntime-gpu' and extra != 'ipex' and extra != 'tensorrt-llm' and extra != 'vllm' and extra != 'py-txi'",
-]
-py-txi = [
-    "py-txi; extra != 'openvino' and extra != 'onnxruntime' and extra != 'onnxruntime-gpu' and extra != 'ipex' and extra != 'tensorrt-llm' and extra != 'vllm' and extra != 'llama-cpp'",
-]
+llama-cpp = ["llama-cpp-python"]
+py-txi = ["py-txi"]
 # optional dependencies
 sentence-transformers = ["sentence-transformers"]
 gptqmodel = ["gptqmodel", "optimum"]

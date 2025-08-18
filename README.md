@@ -111,14 +111,14 @@ pip install -e .
 Depending on the backends you want to use, you can install `optimum-benchmark` with the following extras:
 
 #### With uv:
-- PyTorch (default): `uv sync`
+- PyTorch: `uv sync`
 - vLLM: `uv sync --extra vllm`
 - IPEX: `uv sync --extra ipex`
 - OpenVINO: `uv sync --extra openvino`
 - OnnxRuntime: `uv sync --extra onnxruntime`
 - TensorRT-LLM: `uv sync --extra tensorrt-llm`
-- OnnxRuntime-GPU: `uv sync --extra onnxruntime-gpu`
 - Py-TXI (TGI & TEI): `uv sync --extra py-txi`
+- OnnxRuntime-GPU: `uv sync --extra onnxruntime-gpu`
 
 #### With pip:
 - PyTorch (default): `pip install optimum-benchmark`
