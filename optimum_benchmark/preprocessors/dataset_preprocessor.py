@@ -303,12 +303,14 @@ def text_generation_preprocessing(
         )
     if scenario_config.reasoning == True:
         dataset = dataset.map(
+            lambda x: {
             function=reasoning_tokenize_function,
-            desc="Running tokenizer on dataset",
+            desc="Running reasoning tokenizer on dataset",
             remove_columns=dataset.features,
             writer_batch_size=50,
             batched=True,
-        ).with_format("torch")
+        }).with_format("torch")
+
     else:
         dataset = dataset.map(
             function=tokenize_function,
