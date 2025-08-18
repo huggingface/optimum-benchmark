@@ -296,10 +296,9 @@ def text_generation_preprocessing(
             [{"role": "user", "content": examples[scenario_config.text_column_name]}],
             truncation=scenario_config.truncation,
             max_length=max_length - new_tokens,
-            return_token_type_ids=False,
             padding=padding,
             add_generation_prompt=True,
-            enable_thinking=True
+            tokenize=True,
             )}
 
     if scenario_config.reasoning == True:
