@@ -37,10 +37,6 @@ jobs:
     runs-on:
       group: aws-g5-4xlarge-plus
 
-    container:
-      image: ghcr.io/huggingface/optimum-benchmark:latest-cuda
-      options: --ipc host --gpus all
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
