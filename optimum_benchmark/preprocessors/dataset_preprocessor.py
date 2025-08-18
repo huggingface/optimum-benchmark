@@ -293,13 +293,13 @@ def text_generation_preprocessing(
         )
     def reasoning_tokenize_function(examples):
         return pretrained_processor.apply_chat_template(
-            [[{"role": "user", "content": examples[scenario_config.text_column_name]}]],
+            [{"role": "user", "content": examples[scenario_config.text_column_name]}],
             truncation=scenario_config.truncation,
             max_length=max_length - new_tokens,
             padding=padding,
             add_generation_prompt=True,
             enable_thinking=True,
-            tokenize= True,
+            tokenize=True,
             return_dict=True)
 
     if scenario_config.reasoning == True:
@@ -307,8 +307,6 @@ def text_generation_preprocessing(
             function=reasoning_tokenize_function,
             desc="Running reasoning tokenizer on dataset",
             remove_columns=dataset.features,
-            writer_batch_size=50,
-            batched=False,
         ).with_format("torch")
 
     else:
