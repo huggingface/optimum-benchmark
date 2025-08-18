@@ -67,6 +67,11 @@ jobs:
     runs-on:
       group: aws-g5-12xlarge-plus
 
+    # need the devel image for deepspeed compilation
+    container:
+      image: docker pull nvidia/cuda:12.8.1-devel-ubuntu22.04
+      options: --ipc host --gpus all
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4

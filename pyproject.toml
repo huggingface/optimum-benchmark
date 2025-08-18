@@ -87,14 +87,14 @@ optimum-benchmark = "optimum_benchmark.cli:main"
 dev = [
     "ruff",
     "mock",
-    "peft",
-    "timm",
     "pytest",
-    "librosa",
-    "diffusers",
     "codecarbon",
     "hydra-joblib-launcher",
     "torchcodec ; sys_platform != 'win32'",
+    "peft; extra != 'tensorrt-llm' and extra != 'vllm'",
+    "timm; extra != 'tensorrt-llm' and extra != 'vllm'",
+    "librosa; extra != 'tensorrt-llm' and extra != 'vllm'",
+    "diffusers; extra != 'tensorrt-llm' and extra != 'vllm'",
 ]
 # optimum backends
 ipex = ["optimum[ipex]>=1.27.0"]
@@ -103,7 +103,6 @@ onnxruntime = ["optimum[onnxruntime]>=1.27.0"]
 onnxruntime-gpu = ["optimum[onnxruntime-gpu]>=1.27.0"]
 # other backends
 tensorrt-llm = [
-    "optimum-nvidia; extra != 'openvino' and extra != 'onnxruntime' and extra != 'onnxruntime-gpu' and extra != 'ipex' and extra != 'vllm' and extra != 'llama-cpp' and extra != 'py-txi'",
     "huggingface-hub<0.26.0; extra != 'openvino' and extra != 'onnxruntime' and extra != 'onnxruntime-gpu' and extra != 'ipex' and extra != 'vllm' and extra != 'llama-cpp' and extra != 'py-txi'",
 ]
 vllm = [
@@ -151,11 +150,12 @@ log_cli_format = "[PYTEST-PROCESS][%(asctime)s][%(name)s][%(levelname)s] - %(mes
 dev-dependencies = [
     "ruff",
     "mock",
-    "peft",
-    "timm",
     "pytest",
-    "diffusers",
     "codecarbon",
     "hydra-joblib-launcher",
     "torchcodec ; sys_platform != 'win32'",
+    "peft; extra != 'tensorrt-llm' and extra != 'vllm'",
+    "timm; extra != 'tensorrt-llm' and extra != 'vllm'",
+    "librosa; extra != 'tensorrt-llm' and extra != 'vllm'",
+    "diffusers; extra != 'tensorrt-llm' and extra != 'vllm'",
 ]
