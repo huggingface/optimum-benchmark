@@ -308,7 +308,7 @@ def text_generation_preprocessing(
             desc="Running reasoning tokenizer on dataset",
             remove_columns=dataset.features,
             writer_batch_size=50,
-            batched=True,
+            batched=False,
         ).with_format("torch")
 
     else:
