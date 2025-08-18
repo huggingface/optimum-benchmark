@@ -17,13 +17,14 @@ backend:
   device_ids: 0
   no_weights: true
   task: text-generation
-  model: facebook/opt-125m
+  model: google/gemma-3-270m-it
 
 scenario:
   dataset_name: EnergyStarAI/text_generation
   text_column_name: text
   num_samples: 1000
   truncation: True
+  reasoning : True
 
   input_shapes:
     batch_size: 1
