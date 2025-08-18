@@ -109,11 +109,12 @@ py-txi = ["py-txi"]
 # optional dependencies
 sentence-transformers = ["sentence-transformers"]
 gptqmodel = ["gptqmodel", "optimum"]
+deepspeed = ["deepspeed<0.16.0"]
 bitsandbytes = ["bitsandbytes"]
 codecarbon = ["codecarbon"]
 flash-attn = ["flash-attn"]
 diffusers = ["diffusers"]
-deepspeed = ["deepspeed"]
+
 torchao = ["torchao"]
 timm = ["timm"]
 peft = ["peft"]

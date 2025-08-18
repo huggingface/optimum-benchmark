@@ -768,10 +768,9 @@ wheels = [
 
 [[package]]
 name = "deepspeed"
-version = "0.17.4"
+version = "0.15.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "einops" },
     { name = "hjson" },
     { name = "msgpack" },
     { name = "ninja" },
@@ -783,7 +782,7 @@ dependencies = [
     { name = "torch" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/84/b3/02d000bfd0d6f0ba3f5dac487e4151b3e9b4b3ee71336882102dc9ad79ad/deepspeed-0.17.4.tar.gz", hash = "sha256:d8254ce983734d14a23b8b73937338de82475b146a1bbcdf5fb4e30295e0ddb7", size = 1561345, upload-time = "2025-07-31T20:49:04.786Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/34/c5/dfa824defc1919289a00cbb722aee92cee85ce1e11f7349779235dbe4810/deepspeed-0.15.4.tar.gz", hash = "sha256:60e7c044b7fc386cdad1206212d22b6963ea551f656ed51f7cb34b299459bf2c", size = 1403058, upload-time = "2024-11-08T16:31:30.123Z" }
 
 [[package]]
 name = "deprecated"
@@ -2462,7 +2461,7 @@ requires-dist = [
     { name = "codecarbon", marker = "extra == 'dev'" },
     { name = "colorlog" },
     { name = "datasets", specifier = ">=4.0.0" },
-    { name = "deepspeed", marker = "extra == 'deepspeed'" },
+    { name = "deepspeed", marker = "extra == 'deepspeed'", specifier = "<0.16.0" },
     { name = "diffusers", marker = "extra == 'diffusers'" },
     { name = "flash-attn", marker = "extra == 'flash-attn'" },
     { name = "flatten-dict" },
