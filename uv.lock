@@ -2473,6 +2473,7 @@ requires-dist = [
     { name = "gptqmodel", marker = "extra == 'gptqmodel'" },
     { name = "hf-xet" },
     { name = "huggingface-hub" },
+    { name = "huggingface-hub", marker = "extra != 'ipex' and extra != 'llama-cpp' and extra != 'onnxruntime' and extra != 'onnxruntime-gpu' and extra != 'openvino' and extra != 'py-txi' and extra == 'tensorrt-llm' and extra != 'vllm'", specifier = "<0.26.0" },
     { name = "hydra-core" },
     { name = "hydra-joblib-launcher", marker = "extra == 'dev'" },
     { name = "librosa", marker = "extra == 'dev'" },

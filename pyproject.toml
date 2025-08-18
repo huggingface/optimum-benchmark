@@ -104,6 +104,7 @@ onnxruntime-gpu = ["optimum[onnxruntime-gpu]>=1.27.0"]
 # other backends
 tensorrt-llm = [
     "optimum-nvidia; extra != 'openvino' and extra != 'onnxruntime' and extra != 'onnxruntime-gpu' and extra != 'ipex' and extra != 'vllm' and extra != 'llama-cpp' and extra != 'py-txi'",
+    "huggingface-hub<0.26.0; extra != 'openvino' and extra != 'onnxruntime' and extra != 'onnxruntime-gpu' and extra != 'ipex' and extra != 'vllm' and extra != 'llama-cpp' and extra != 'py-txi'",
 ]
 vllm = [
     "vllm; extra != 'openvino' and extra != 'onnxruntime' and extra != 'onnxruntime-gpu' and extra != 'ipex' and extra != 'tensorrt-llm' and extra != 'llama-cpp' and extra != 'py-txi'",
