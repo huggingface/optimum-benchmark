@@ -97,14 +97,10 @@ openvino = ["optimum[openvino]>=1.27.0"]
 onnxruntime = ["optimum[onnxruntime]>=1.27.0"]
 onnxruntime-gpu = ["optimum[onnxruntime-gpu]>=1.27.0"]
 # other backends
-tensorrt-llm = [
-    "huggingface-hub<0.26.0; extra != 'openvino' and extra != 'onnxruntime' and extra != 'onnxruntime-gpu' and extra != 'ipex' and extra != 'vllm' and extra != 'llama-cpp' and extra != 'py-txi'",
-]
-vllm = [
-    "vllm; extra != 'openvino' and extra != 'onnxruntime' and extra != 'onnxruntime-gpu' and extra != 'ipex' and extra != 'tensorrt-llm' and extra != 'llama-cpp' and extra != 'py-txi'",
-]
+tensorrt-llm = ["huggingface-hub<0.26.0"]
 llama-cpp = ["llama-cpp-python"]
 py-txi = ["py-txi"]
+vllm = ["vllm"]
 # optional dependencies
 sentence-transformers = ["sentence-transformers"]
 gptqmodel = ["gptqmodel", "optimum"]
@@ -155,6 +151,17 @@ dev-dependencies = [
     "hydra-joblib-launcher",
     "torchcodec ; sys_platform != 'win32'",
 ]
-
+conflicts = [
+    [
+        { extra = "ipex" },
+        { extra = "openvino" },
+        { extra = "onnxruntime" },
+        { extra = "tensorrt-llm" },
+        { extra = "onnxruntime-gpu" },
+        { extra = "llama-cpp" },
+        { extra = "py-txi" },
+        { extra = "vllm" },
+    ],
+]
 [tool.uv.sources]
 py-txi = { git = "https://github.com/IlyasMoutawwakil/py-txi" }
