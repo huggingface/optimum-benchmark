@@ -17,7 +17,7 @@ backend:
   device_ids: 0
   no_weights: true
   task: text-generation
-  model: Qwen/Qwen3-4B-Thinking-2507
+  model: openai/gpt-oss-20b
   torch_dtype: bfloat16
 
 scenario:
@@ -25,7 +25,8 @@ scenario:
   text_column_name: text
   num_samples: 1000
   truncation: True
-  reasoning : True
+  reasoning: True
+  reasoning_params: "'reasoning_params' = 'high'"
 
   input_shapes:
     batch_size: 1
