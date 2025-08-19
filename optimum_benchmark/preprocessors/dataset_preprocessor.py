@@ -300,7 +300,6 @@ def text_generation_preprocessing(
             padding=padding,
             add_generation_prompt=True,
             enable_thinking=True,
-            return_tensors="pt",
             tokenize=True,
             return_dict=True,
             **scenario_config.reasoning_params,
