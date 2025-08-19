@@ -92,8 +92,8 @@ dev = [
     "torchcodec ; sys_platform != 'win32'",
 ]
 # optimum backends
-ipex = ["optimum-intel[ipex]>=1.25.0"]
-openvino = ["optimum-intel[openvino]>=1.25.0"]
+ipex = ["optimum[ipex]>=1.27.0"]
+openvino = ["optimum[openvino]>=1.27.0"]
 onnxruntime = ["optimum[onnxruntime]>=1.27.0"]
 onnxruntime-gpu = ["optimum[onnxruntime-gpu]>=1.27.0"]
 # other backends
