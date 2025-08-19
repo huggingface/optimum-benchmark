@@ -6,24 +6,21 @@ GROUP_ID := $(shell id -g)
 
 # All targets are phony (don't create files)
 .PHONY: help setup install install-dev \
-	install-cpu-pytorch install-cpu-openvino install-cpu-onnxruntime \
-	install-cpu-ipex install-cpu-llama-cpp install-mps-pytorch \
-	install-rocm-pytorch install-cuda-pytorch install-cuda-onnxruntime \
-	install-cuda-tensorrt-llm install-cuda-vllm lock update clean \
-	test test-verbose test-coverage test-api-cpu test-api-cuda test-api-rocm \
-	test-api-misc test-api-cpu-examples test-api-cuda-examples test-api-rocm-examples \
-	test-cli-cpu-pytorch test-cli-cpu-openvino test-cli-cpu-py-txi \
-	test-cli-cpu-onnxruntime test-cli-cpu-ipex test-cli-cpu-llama-cpp \
-	test-cli-cpu-pytorch-examples test-cli-cpu-openvino-examples \
-	test-cli-cpu-onnxruntime-examples test-cli-cpu-py-txi-examples \
-	test-cli-cpu-llama-cpp-examples test-cli-cuda-pytorch-single \
-	test-cli-cuda-pytorch-multi test-cli-cuda-vllm-single \
-	test-cli-cuda-vllm-multi test-cli-cuda-tensorrt-llm-single \
-	test-cli-cuda-tensorrt-llm-multi test-cli-cuda-onnxruntime \
-	test-cli-cuda-py-txi test-cli-rocm-pytorch-single \
-	test-cli-rocm-pytorch-multi test-cli-rocm-pytorch-single-examples \
-	test-cli-rocm-pytorch-multi-examples test-cli-mps-pytorch \
-	test-cli-mps-pytorch-examples test-energy-star build-docker clean-docker
+	install-pytorch install-ipex install-vllm install-openvino install-llama-cpp install-onnxruntime install-onnxruntime-gpu \
+	lock update clean quality style check-format check-lint format lint-fix \
+	test test-verbose test-coverage \
+	test-api-cpu test-api-cuda test-api-rocm test-api-misc \
+	test-api-cpu-examples test-api-cuda-examples test-api-rocm-examples \
+	test-cli-cpu-pytorch test-cli-cpu-openvino test-cli-cpu-py-txi test-cli-cpu-onnxruntime test-cli-cpu-ipex test-cli-cpu-llama-cpp \
+	test-cli-cpu-pytorch-examples test-cli-cpu-openvino-examples test-cli-cpu-onnxruntime-examples test-cli-cpu-py-txi-examples test-cli-cpu-llama-cpp-examples \
+	test-cli-cuda-pytorch-single test-cli-cuda-pytorch-multi \
+	test-cli-cuda-vllm-single test-cli-cuda-vllm-multi \
+	test-cli-cuda-tensorrt-llm-single test-cli-cuda-tensorrt-llm-multi \
+	test-cli-cuda-onnxruntime test-cli-cuda-py-txi \
+	test-cli-rocm-pytorch-single test-cli-rocm-pytorch-multi \
+	test-cli-rocm-pytorch-single-examples test-cli-rocm-pytorch-multi-examples \
+	test-cli-mps-pytorch test-cli-mps-pytorch-examples \
+	test-energy-star build-cpu-image build-cuda-image build-rocm-image run-cpu-container run-cuda-container run-rocm-container run-tensorrt-llm-container run-vllm-container
 
 # Help target
 help:
@@ -35,17 +32,13 @@ help:
 	@echo "  install-dev         - Install development dependencies"
 	@echo ""
 	@echo "🎯 Backend-Specific Installation:"
-	@echo "  install-cpu-pytorch        - Install for CPU PyTorch backend"
-	@echo "  install-cpu-openvino       - Install for CPU OpenVINO backend"
-	@echo "  install-cpu-onnxruntime    - Install for CPU ONNXRuntime backend"
-	@echo "  install-cpu-ipex           - Install for CPU Intel Extension for PyTorch"
-	@echo "  install-cpu-llama-cpp      - Install for CPU LLaMA-CPP backend"
-	@echo "  install-cuda-pytorch       - Install for CUDA PyTorch backend"
-	@echo "  install-cuda-onnxruntime   - Install for CUDA ONNXRuntime backend"
-	@echo "  install-cuda-tensorrt-llm  - Install for CUDA TensorRT-LLM backend"
-	@echo "  install-cuda-vllm          - Install for CUDA vLLM backend"
-	@echo "  install-rocm-pytorch       - Install for ROCm PyTorch backend"
-	@echo "  install-mps-pytorch        - Install for MPS (Apple Silicon) PyTorch backend"
+	@echo "  install-pytorch         - Install CPU PyTorch backend"
+	@echo "  install-ipex            - Install CPU IPEX backend"
+	@echo "  install-vllm            - Install vLLM backend"
+	@echo "  install-openvino        - Install CPU OpenVINO backend"
+	@echo "  install-llama-cpp       - Install CPU LLaMA-CPP backend"
+	@echo "  install-onnxruntime     - Install CPU ONNXRuntime backend"
+	@echo "  install-onnxruntime-gpu - Install GPU ONNXRuntime backend"
 	@echo ""
 	@echo "🔍 Code Quality:"
 	@echo "  quality             - Run quality checks (linting and formatting)"
@@ -173,21 +166,22 @@ update:
 # Clean up
 clean:
 	@echo "Cleaning up build artifacts..."
-	rm -rf build/
 	rm -rf dist/
-	rm -rf sweeps/
 	rm -rf runs/
-	rm -rf *.egg-info/
-	rm -rf .pytest_cache/
+	rm -rf build/
+	rm -rf sweeps/
+	rm -rf outputs/
+	rm -rf external_repos/
+	rm -rf trainer_output/
+	rm -rf optimum_benchmark.egg-info/
+	rm -rf .venv/
+	rm -rf .pytype/
 	rm -rf .ruff_cache/
 	rm -rf .mypy_cache/
-	rm -rf .pytype/
-	rm -rf .venv/
-	rm -rf external_repos/
+	rm -rf .pytest_cache/
 	rm -rf **/__pycache__/
 	rm -rf **/*.pyc
-	rm -f *.json
-	rm -rf trainer_output/
+	rm -rf *.json
 	rm -rf *.log
 	@echo "✅ Cleanup complete!"
 
@@ -287,7 +281,7 @@ test-cli-cuda-onnxruntime-examples:
 	uv run --extra onnxruntime-gpu pytest tests/test_examples.py -s -v -k "cli and cuda and onnxruntime"
 
 test-cli-cuda-pytorch-single-examples:
-	uv run --extra bitsandbytes --extra gptqmodel pytest tests/test_examples.py -s -v -k "cli and cuda and pytorch and not (tp or dp or ddp or device_map or deepspeed)"
+	uv run pytest tests/test_examples.py -s -v -k "cli and cuda and pytorch and not (tp or dp or ddp or device_map or deepspeed)"
 
 test-cli-cuda-pytorch-multi-examples:
 	FORCE_SEQUENTIAL=1 uv run --extra deepspeed pytest tests/test_examples.py -s -v -k "cli and cuda and pytorch and (tp or dp or ddp or device_map or deepspeed)"
