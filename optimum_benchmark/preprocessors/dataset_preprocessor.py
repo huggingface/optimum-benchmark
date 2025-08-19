@@ -295,7 +295,7 @@ def text_generation_preprocessing(
         return pretrained_processor.apply_chat_template(
             [{"role": "user", "content": examples[scenario_config.text_column_name]}],
             truncation=scenario_config.truncation,
-            max_length=max_length - new_tokens,
+            max_length= 2048 - new_tokens,
             padding=padding,
             add_generation_prompt=True,
             enable_thinking=True,
