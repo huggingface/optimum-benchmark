@@ -300,7 +300,8 @@ def text_generation_preprocessing(
             add_generation_prompt=True,
             enable_thinking=True,
             tokenize=True,
-            return_dict=True)
+            return_dict=True,
+            scenario_config.reasoning_params)
 
     if scenario_config.reasoning == True:
         dataset = dataset.map(
