@@ -19,6 +19,10 @@ concurrency:
   cancel-in-progress: true
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
+env:
+  UV_SYSTEM_PYTHON: 1
+  UV_TORCH_BACKEND: auto
+
 jobs:
   run_api_cuda_tests:
     if: ${{
@@ -32,29 +36,23 @@ jobs:
     runs-on:
       group: aws-g5-4xlarge-plus
 
-    container:
-      image: ghcr.io/huggingface/optimum-benchmark:latest-cuda
-      options: --ipc host --gpus all
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          pip install -e .[testing,timm,diffusers,codecarbon]
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
 
       - name: Run tests
         run: |
-          pytest tests/test_api.py -x -s -k "api and cuda"
+          make test-api-cuda
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PUSH_REPO_ID: optimum-benchmark/cuda
 
       - name: Run examples
         run: |
-          pip install -e .[testing,torchao,gptqmodel]
-          pytest tests/test_examples.py -x -s -k "api and cuda"
+          make test-api-cuda-examples
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PUSH_REPO_ID: optimum-benchmark/cuda

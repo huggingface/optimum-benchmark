@@ -11,6 +11,7 @@ from transformers import Trainer, TrainerCallback, TrainerState, TrainingArgumen
 from transformers.quantizers import AutoQuantizationConfig
 
 from ...import_utils import (
+    is_accelerate_available,
     is_deepspeed_available,
     is_gptqmodel_available,
     is_torch_distributed_available,
@@ -20,6 +21,9 @@ from ..base import Backend
 from ..peft_utils import apply_peft
 from ..transformers_utils import fast_weights_init
 from .config import PyTorchConfig
+
+if is_accelerate_available():
+    from accelerate.utils import compile_regions
 
 if is_deepspeed_available():
     import deepspeed  # type: ignore
@@ -167,9 +171,9 @@ class PyTorchBackend(Backend[PyTorchConfig]):
             if self.config.torch_compile_target == "model":
                 self.logger.info("\t+ Using torch.compile on model")
                 self.pretrained_model = torch.compile(self.pretrained_model, **self.config.torch_compile_config)
-            # elif self.config.torch_compile_target == "regions":
-            #     self.logger.info("\t+ Using torch.compile on regions")
-            #     self.pretrained_model = compile_regions(self.pretrained_model, **self.config.torch_compile_config)
+            elif self.config.torch_compile_target == "regions":
+                self.logger.info("\t+ Using accelerate.utils.compile_regions on model")
+                self.pretrained_model = compile_regions(self.pretrained_model, **self.config.torch_compile_config)
             elif self.config.torch_compile_target == "forward":
                 self.logger.info("\t+ Using torch.compile on forward")
                 self.pretrained_model.forward = torch.compile(
@@ -309,7 +313,9 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         return (
             is_torch_distributed_available()
             and torch.distributed.is_initialized()
+            # we don't split between processes if tp (native or deepspeed) is used
             and not self.config.deepspeed_inference
+            and self.config.tp_plan is None
         )
 
     def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:

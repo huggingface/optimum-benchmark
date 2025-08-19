@@ -19,6 +19,10 @@ concurrency:
   cancel-in-progress: true
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
+env:
+  UV_SYSTEM_PYTHON: 1
+  UV_TORCH_BACKEND: auto
+
 jobs:
   run_cli_cuda_py_txi_tests:
     if: ${{
@@ -37,24 +41,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Install requirements
-        run: |
-          pip install uv
-          uv pip install --upgrade pip
-          uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-          uv pip install -e .[testing,py-txi]
-        env:
-          UV_SYSTEM_PYTHON: 1
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
 
       - name: Run tests
         run: |
-          FORCE_SEQUENTIAL=1 pytest tests/test_cli.py -x -s -k "cli and cuda and py_txi"
+          make test-cli-cuda-py-txi
 
       - name: Run examples
         run: |
-          FORCE_SEQUENTIAL=1 pytest tests/test_examples.py -x -s -k "cli and cuda and (tgi or tei)"
+          make test-cli-cuda-py-txi-examples

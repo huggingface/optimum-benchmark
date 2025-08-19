@@ -66,13 +66,32 @@ Optimum-Benchmark is continuously and intensively tested on a variety of devices
 
 ### Installation 📥
 
-You can install the latest released version of `optimum-benchmark` on PyPI:
+#### Using uv (Recommended)
+
+[uv](https://docs.astral.sh/uv/) is a fast Python package manager that we recommend for installing and managing dependencies:
+
+```bash
+# Install uv if you haven't already
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install from PyPI
+uv add optimum-benchmark
+
+# Or install from source
+git clone https://github.com/huggingface/optimum-benchmark.git
+cd optimum-benchmark
+uv sync
+```
+
+#### Using pip
+
+You can also install using traditional pip:
 
 ```bash
 pip install optimum-benchmark
 ```
 
-or you can install the latest version from the main branch on GitHub:
+or install the latest version from the main branch:
 
 ```bash
 pip install git+https://github.com/huggingface/optimum-benchmark.git
@@ -91,6 +110,17 @@ pip install -e .
 
 Depending on the backends you want to use, you can install `optimum-benchmark` with the following extras:
 
+#### With uv:
+- PyTorch: `uv sync`
+- vLLM: `uv sync --extra vllm`
+- IPEX: `uv sync --extra ipex`
+- OpenVINO: `uv sync --extra openvino`
+- OnnxRuntime: `uv sync --extra onnxruntime`
+- TensorRT-LLM: `uv sync --extra tensorrt-llm`
+- Py-TXI (TGI & TEI): `uv sync --extra py-txi`
+- OnnxRuntime-GPU: `uv sync --extra onnxruntime-gpu`
+
+#### With pip:
 - PyTorch (default): `pip install optimum-benchmark`
 - OpenVINO: `pip install optimum-benchmark[openvino]`
 - OnnxRuntime: `pip install optimum-benchmark[onnxruntime]`
@@ -100,7 +130,7 @@ Depending on the backends you want to use, you can install `optimum-benchmark` w
 - vLLM: `pip install optimum-benchmark[vllm]`
 - IPEX: `pip install optimum-benchmark[ipex]`
 
-We also support the following extra extra dependencies:
+We also support the following extra dependencies:
 
 - gptqmodel
 - sentence-transformers
