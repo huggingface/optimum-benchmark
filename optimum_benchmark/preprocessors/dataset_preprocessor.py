@@ -292,13 +292,34 @@ def text_generation_preprocessing(
             padding=padding,
         )
 
-    dataset = dataset.map(
-        function=tokenize_function,
-        desc="Running tokenizer on dataset",
-        remove_columns=dataset.features,
-        writer_batch_size=50,
-        batched=True,
-    ).with_format("torch")
+    def reasoning_tokenize_function(examples):
+        return pretrained_processor.apply_chat_template(
+            [{"role": "user", "content": examples[scenario_config.text_column_name]}],
+            truncation=scenario_config.truncation,
+            max_length=min(max_length, 2048) - new_tokens,
+            padding=padding,
+            add_generation_prompt=True,
+            enable_thinking=True,
+            tokenize=True,
+            return_dict=True,
+            **scenario_config.reasoning_params,
+        )
+
+    if scenario_config.reasoning:
+        dataset = dataset.map(
+            function=reasoning_tokenize_function,
+            desc="Running reasoning tokenizer on dataset",
+            remove_columns=dataset.features,
+        ).with_format("torch")
+
+    else:
+        dataset = dataset.map(
+            function=tokenize_function,
+            desc="Running tokenizer on dataset",
+            remove_columns=dataset.features,
+            writer_batch_size=50,
+            batched=True,
+        ).with_format("torch")
 
     return dataset
 
