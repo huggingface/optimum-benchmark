@@ -29,3 +29,8 @@ scenario:
   generate_kwargs:
     max_new_tokens: 32
     min_new_tokens: 32
+
+hydra:
+  job:
+    env_set:
+      VLLM_USE_V1: 0

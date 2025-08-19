@@ -243,6 +243,11 @@ class EnergyTracker:
 
         emission_data: EmissionsData = self.emission_tracker.stop_task()
 
+        if emission_data is None:
+            raise ValueError(
+                "Energy tracking failed. Please ensure that the codecarbon library is properly installed and configured."
+            )
+
         with open(f"{task_name}_codecarbon.json", "w") as f:
             LOGGER.info(f"\t\t+ Saving codecarbon emission data to {task_name}_codecarbon.json")
             json.dump(asdict(emission_data), f, indent=4)

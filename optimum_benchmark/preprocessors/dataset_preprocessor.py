@@ -397,21 +397,9 @@ def automatic_speech_recognition_preprocessing(
         pretrained_processor.tokenizer.pad_token = pretrained_processor.tokenizer.eos_token
 
     def preprocess_function(examples: Dict[str, Dict[str, np.ndarray]]):
-        audio = [audio["array"] for audio in examples[scenario_config.audio_column_name]]
+        audios = [audio["array"] for audio in examples[scenario_config.audio_column_name]]
         sampling_rates = examples[scenario_config.audio_column_name][0]["sampling_rate"]
-
-        if "seamless_m4t" in pretrained_config.model_type:
-            outputs = pretrained_processor(audios=audio, sampling_rate=sampling_rates)
-        else:
-            outputs = pretrained_processor(audio=audio, sampling_rate=sampling_rates)
-
-        # The processor may add an extra dimension so we squeeze it
-        for key, value in outputs.items():
-            if isinstance(value, list) and len(value) == 1:
-                outputs[key] = value[0]
-            elif isinstance(value, np.ndarray) and value.shape[0] == 1:
-                outputs[key] = value.squeeze(0)
-
+        outputs = pretrained_processor(audios, sampling_rate=sampling_rates)
         return outputs
 
     dataset = dataset.map(
