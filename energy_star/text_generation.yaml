@@ -26,7 +26,8 @@ scenario:
   num_samples: 1000
   truncation: True
   reasoning: True
-  reasoning_params: { "reasoning_params": "high" }
+  reasoning_params:
+    reasoning_params: "high"
 
   input_shapes:
     batch_size: 1
