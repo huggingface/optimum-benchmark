@@ -14,10 +14,11 @@ launcher:
 
 backend:
   device: cuda
-  device_ids: 0
+  device_ids: 0,1
   no_weights: true
   task: text-generation
   model: openai/gpt-oss-20b
+  torch_dtype: bfloat16
 
 scenario:
   dataset_name: EnergyStarAI/text_generation
