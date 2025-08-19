@@ -113,18 +113,61 @@ setup:
 	uv sync --dev
 	@echo "✅ Project setup complete!"
 
-# Code quality
+# Run quality checks
 quality:
 	@echo "Running quality checks..."
 	uv run ruff format --check .
 	uv run ruff check .
 	@echo "✅ All quality checks passed!"
 
+# Apply code style fixes
 style:
 	@echo "Fixing code issues..."
 	uv run ruff format .
 	uv run ruff check --fix .
 	@echo "✅ Code fixes applied!"
+
+# Install dependencies and update the lock file
+update:
+	@echo "Updating dependencies..."
+	uv lock --upgrade
+	uv sync
+	@echo "✅ Dependencies updated!"
+
+# Build the project and create wheels
+build:
+	@echo "Building the project..."
+	uv build
+	@echo "✅ Build complete!"
+
+# Release the project to PyPI
+release:
+	@echo "Releasing the project to PyPI..."
+	uv build
+	uv run twine upload dist/*
+	@echo "✅ Release complete!"
+
+# Clean up
+clean:
+	@echo "Cleaning up build artifacts..."
+	rm -rf dist/
+	rm -rf runs/
+	rm -rf build/
+	rm -rf sweeps/
+	rm -rf outputs/
+	rm -rf external_repos/
+	rm -rf trainer_output/
+	rm -rf optimum_benchmark.egg-info/
+	rm -rf .venv/
+	rm -rf .pytype/
+	rm -rf .ruff_cache/
+	rm -rf .mypy_cache/
+	rm -rf .pytest_cache/
+	rm -rf **/__pycache__/
+	rm -rf **/*.pyc
+	rm -rf *.json
+	rm -rf *.log
+	@echo "✅ Cleanup complete!"
 
 # Backend-specific installations
 install-pytorch:
@@ -150,40 +193,6 @@ install-onnxruntime-gpu:
 
 install-tensorrt-llm:
 	UV_SYSTEM_PYTHON=1 uv pip install -e .[dev,tensorrt-llm]
-
-lock:
-	@echo "Updating lock file..."
-	uv lock --upgrade
-	uv sync
-	@echo "✅ Lock file updated!"
-
-update:
-	@echo "Updating dependencies..."
-	uv lock --upgrade
-	uv sync
-	@echo "✅ Dependencies updated!"
-
-# Clean up
-clean:
-	@echo "Cleaning up build artifacts..."
-	rm -rf dist/
-	rm -rf runs/
-	rm -rf build/
-	rm -rf sweeps/
-	rm -rf outputs/
-	rm -rf external_repos/
-	rm -rf trainer_output/
-	rm -rf optimum_benchmark.egg-info/
-	rm -rf .venv/
-	rm -rf .pytype/
-	rm -rf .ruff_cache/
-	rm -rf .mypy_cache/
-	rm -rf .pytest_cache/
-	rm -rf **/__pycache__/
-	rm -rf **/*.pyc
-	rm -rf *.json
-	rm -rf *.log
-	@echo "✅ Cleanup complete!"
 
 # Testing
 ## API tests
