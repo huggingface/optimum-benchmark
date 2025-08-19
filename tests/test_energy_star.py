@@ -32,7 +32,7 @@ def test_cli_configs(config_name):
     elif config_name == "image_classification":
         model = "hf-internal-testing/tiny-random-ViTModel"
     elif config_name == "image_to_text":
-        model = "hf-internal-testing/tiny-random-Blip2Model"
+        model = "hf-internal-testing/tiny-random-BlipModel"
     elif config_name == "object_detection":
         model = "hf-internal-testing/tiny-random-DetrModel"
     elif config_name == "question_answering":

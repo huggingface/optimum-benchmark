@@ -45,10 +45,11 @@ classifiers = [
     "Intended Audience :: Developers",
     "Operating System :: POSIX :: Linux",
     "Intended Audience :: Science/Research",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: Apache Software License",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 requires-python = ">=3.10"
@@ -88,11 +89,15 @@ dev = [
     "mock",
     "pytest",
     "codecarbon",
+    "torchcodec",
     "hydra-joblib-launcher",
-    "torchcodec ; sys_platform != 'win32'",
 ]
 # optimum backends
-ipex = ["optimum[ipex]>=1.27.0"]
+ipex = [
+    "torch==2.8",
+    "optimum[ipex]>=1.27.0",
+    "intel-extension-for-pytorch==2.8",
+]
 openvino = ["optimum[openvino]>=1.27.0"]
 onnxruntime = ["optimum[onnxruntime]>=1.27.0"]
 onnxruntime-gpu = ["optimum[onnxruntime-gpu]>=1.27.0"]
@@ -148,8 +153,9 @@ dev-dependencies = [
     "librosa",
     "diffusers",
     "codecarbon",
+    "torchcodec",
     "hydra-joblib-launcher",
-    "torchcodec ; sys_platform != 'win32'",
+
 ]
 conflicts = [
     [
