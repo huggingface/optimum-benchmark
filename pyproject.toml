@@ -89,8 +89,8 @@ dev = [
     "mock",
     "pytest",
     "codecarbon",
-    "torchcodec",
     "hydra-joblib-launcher",
+    "torchcodec ; sys_platform != 'win32'",
 ]
 # optimum backends
 ipex = [
@@ -153,9 +153,8 @@ dev-dependencies = [
     "librosa",
     "diffusers",
     "codecarbon",
-    "torchcodec",
     "hydra-joblib-launcher",
-
+    "torchcodec ; sys_platform != 'win32'",
 ]
 conflicts = [
     [
