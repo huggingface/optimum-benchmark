@@ -50,7 +50,3 @@ class VLLMConfig(BackendConfig):
 
         if self.engine_args.get("disable_log_stats", None) is None:
             self.engine_args["disable_log_stats"] = True
-
-        if self.serving_mode == "online":
-            if self.engine_args.get("disable_log_requests", None) is None:
-                self.engine_args["disable_log_requests"] = True
