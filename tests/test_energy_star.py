@@ -51,10 +51,10 @@ def test_cli_configs(config_name):
         model = "hf-internal-testing/tiny-random-T5ForConditionalGeneration"
     elif config_name == "t5_text_generation":
         model = "hf-internal-testing/tiny-random-T5ForConditionalGeneration"
-    elif config_name == "text_generation":
-        model = "hf-internal-testing/tiny-random-LlamaForCausalLM"
     elif config_name == "text_to_image":
         model = "hf-internal-testing/tiny-stable-diffusion-torch"
+    elif config_name == "text_generation":
+        model = "tiny-random/gpt-oss"
     else:
         raise ValueError(f"Unknown config name: {config_name}")
 
@@ -75,6 +75,7 @@ def test_cli_configs(config_name):
         "++scenario.generate_kwargs.min_new_tokens=16",
         "++scenario.call_kwargs.num_inference_steps=4",
         "launcher.device_isolation=false",
+        "backend.device_map=null",
         f"backend.model={model}",
     ]
 
