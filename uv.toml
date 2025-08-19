@@ -1,0 +1,15 @@
+# UV package manager configuration for optimum-benchmark
+
+# Use the latest stable Python
+python-preference = "only-managed"
+
+# Resolution strategy
+resolution = "highest"
+
+# Enable preview features
+preview = true
+
+# Extra build dependencies for specific packages
+[extra-build-dependencies]
+flash-attn = ["torch"]
+gptqmodel = ["torch"]
