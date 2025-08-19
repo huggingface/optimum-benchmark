@@ -14,7 +14,7 @@ launcher:
 
 backend:
   device: cuda
-  device_ids: 0
+  device_ids: 0,1
   no_weights: false
   task: text-generation
   model: openai/gpt-oss-20b
