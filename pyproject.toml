@@ -156,3 +156,6 @@ dev-dependencies = [
     "hydra-joblib-launcher",
     "torchcodec ; sys_platform != 'win32'",
 ]
+
+[tool.uv.sources]
+py-txi = { git = "https://github.com/IlyasMoutawwakil/py-txi" }

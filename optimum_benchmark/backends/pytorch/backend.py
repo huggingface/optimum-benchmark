@@ -313,7 +313,9 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         return (
             is_torch_distributed_available()
             and torch.distributed.is_initialized()
+            # we don't split between processes if tp (native or deepspeed) is used
             and not self.config.deepspeed_inference
+            and self.config.tp_plan is None
         )
 
     def prepare_inputs(self, inputs: Dict[str, Any]) -> Dict[str, Any]:

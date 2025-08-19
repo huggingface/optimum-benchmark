@@ -286,7 +286,7 @@ test-cli-cuda-pytorch-single:
 
 test-cli-cuda-pytorch-multi:
 	uv sync --dev --extra deepspeed
-	uv run pytest tests/test_cli.py -s -k "cli and cuda and pytorch and (tp or dp or ddp or device_map or deepspeed)"
+	FORCE_SEQUENTIAL=1 uv run pytest tests/test_cli.py -s -k "cli and cuda and pytorch and (tp or dp or ddp or device_map or deepspeed)"
 
 test-cli-cuda-py-txi:
 	uv sync --dev --extra py-txi
@@ -360,7 +360,7 @@ test-cli-rocm-pytorch-single:
 
 test-cli-rocm-pytorch-multi:
 	uv sync --dev
-	uv run pytest tests/test_cli.py -s -k "cli and cuda and pytorch and (tp or dp or ddp or device_map or deepspeed)"
+	FORCE_SEQUENTIAL=1 uv run pytest tests/test_cli.py -s -k "cli and cuda and pytorch and (tp or dp or ddp or device_map or deepspeed)"
 
 ### ROCm examples
 test-cli-rocm-pytorch-single-examples:
