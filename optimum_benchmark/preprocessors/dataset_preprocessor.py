@@ -291,6 +291,7 @@ def text_generation_preprocessing(
             return_token_type_ids=False,
             padding=padding,
         )
+
     def reasoning_tokenize_function(examples):
         return pretrained_processor.apply_chat_template(
             [{"role": "user", "content": examples[scenario_config.text_column_name]}],
@@ -303,9 +304,9 @@ def text_generation_preprocessing(
             tokenize=True,
             return_dict=True,
             **scenario_config.reasoning_params,
-            )
+        )
 
-    if scenario_config.reasoning == True:
+    if scenario_config.reasoning:
         dataset = dataset.map(
             function=reasoning_tokenize_function,
             desc="Running reasoning tokenizer on dataset",
