@@ -28,7 +28,7 @@ scenario:
   truncation: True
   reasoning: True
   reasoning_params:
-    reasoning_effort: high
+    reasoning_effort: low
 
   input_shapes:
     batch_size: 1
