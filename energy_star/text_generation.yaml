@@ -17,7 +17,7 @@ backend:
   device_ids: 0
   no_weights: False
   task: text-generation
-  model: openai/gpt-oss-20b
+  model: Qwen/Qwen3-30B-A3B
   torch_dtype: bfloat16
   device_map: auto
 
@@ -28,7 +28,7 @@ scenario:
   truncation: True
   reasoning: True
   reasoning_params:
-    reasoning_effort: low
+    enable_thinking: True
 
   input_shapes:
     batch_size: 1
