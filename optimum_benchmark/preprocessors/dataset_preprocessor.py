@@ -287,7 +287,7 @@ def text_generation_preprocessing(
         return pretrained_processor(
             examples[scenario_config.text_column_name],
             truncation=scenario_config.truncation,
-            max_length=max_length - new_tokens,
+            max_length=min(max_length, 2048) - new_tokens,
             return_token_type_ids=False,
             padding=padding,
         )
