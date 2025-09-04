@@ -12,14 +12,14 @@ from . import (
     EnergyStarConfig,
     InferenceConfig,
     InlineConfig,
-    IpexConfig,
+    IPEXConfig,
     LlamaCppConfig,
     ONNXRuntimeConfig,
     OpenVINOConfig,
     ProcessConfig,
     PyTorchConfig,
     PyTXIConfig,
-    TensorRTLLMConfig,
+    TRTLLMConfig,
     TorchrunConfig,
     TrainingConfig,
     VLLMConfig,
@@ -34,11 +34,11 @@ cs = ConfigStore.instance()
 # benchmark configuration
 cs.store(name="benchmark", node=BenchmarkConfig)
 # backends configurations
-cs.store(group="backend", name=IpexConfig.name, node=IpexConfig)
+cs.store(group="backend", name=IPEXConfig.name, node=IPEXConfig)
 cs.store(group="backend", name=OpenVINOConfig.name, node=OpenVINOConfig)
 cs.store(group="backend", name=PyTorchConfig.name, node=PyTorchConfig)
 cs.store(group="backend", name=ONNXRuntimeConfig.name, node=ONNXRuntimeConfig)
-cs.store(group="backend", name=TensorRTLLMConfig.name, node=TensorRTLLMConfig)
+cs.store(group="backend", name=TRTLLMConfig.name, node=TRTLLMConfig)
 cs.store(group="backend", name=PyTXIConfig.name, node=PyTXIConfig)
 cs.store(group="backend", name=VLLMConfig.name, node=VLLMConfig)
 cs.store(group="backend", name=LlamaCppConfig.name, node=LlamaCppConfig)

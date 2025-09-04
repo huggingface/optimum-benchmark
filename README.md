@@ -325,12 +325,12 @@ See [TrainingConfig](optimum_benchmark/scenarios/training/config.py) for more in
 For more information on the features of each backend, you can check their respective configuration files:
 
 - [VLLMConfig](optimum_benchmark/backends/vllm/config.py)
-- [IpexConfig](optimum_benchmark/backends/ipex/config.py)
+- [IPEXConfig](optimum_benchmark/backends/ipex/config.py)
 - [OpenVINOConfig](optimum_benchmark/backends/openvino/config.py)
 - [PyTXIConfig](optimum_benchmark/backends/py_txi/config.py)
 - [PyTorchConfig](optimum_benchmark/backends/pytorch/config.py)
 - [ONNXRuntimeConfig](optimum_benchmark/backends/onnxruntime/config.py)
-- [TensorRTLLMConfig](optimum_benchmark/backends/tensorrt_llm/config.py)
+- [TRTLLMConfig](optimum_benchmark/backends/tensorrt_llm/config.py)
 
 </details>
 

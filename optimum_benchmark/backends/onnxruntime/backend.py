@@ -27,8 +27,8 @@ from ..base import Backend
 from ..transformers_utils import fast_weights_init
 from .config import ONNXRuntimeConfig
 from .utils import (
+    TASKS_TO_ONNXRUNTIME_PIPELINES,
     TASKS_TO_ORTMODELS,
-    TASKS_TO_ORTPIPELINES,
     format_calibration_config,
     format_quantization_config,
 )
@@ -40,7 +40,7 @@ if is_torch_distributed_available():
     import torch.distributed
 
 
-class ORTBackend(Backend[ONNXRuntimeConfig]):
+class ONNXRuntimeBackend(Backend[ONNXRuntimeConfig]):
     NAME: str = "onnxruntime"
 
     def __init__(self, config: ONNXRuntimeConfig) -> None:
@@ -49,11 +49,11 @@ class ORTBackend(Backend[ONNXRuntimeConfig]):
         if self.config.library != "diffusers" and self.config.task in TASKS_TO_ORTMODELS:
             self.ort_model_loader = get_class(TASKS_TO_ORTMODELS[self.config.task])
             self.logger.info(f"Using ORTModel class {self.ort_model_loader.__name__}")
-        elif self.config.library == "diffusers" and self.config.task in TASKS_TO_ORTPIPELINES:
-            self.ort_model_loader = get_class(TASKS_TO_ORTPIPELINES[self.config.task])
+        elif self.config.library == "diffusers" and self.config.task in TASKS_TO_ONNXRUNTIME_PIPELINES:
+            self.ort_model_loader = get_class(TASKS_TO_ONNXRUNTIME_PIPELINES[self.config.task])
             self.logger.info(f"Using ORTDiffusionPipeline class {self.ort_model_loader.__name__}")
         else:
-            raise NotImplementedError(f"ORTBackend does not support task {self.config.task}")
+            raise NotImplementedError(f"ONNXRuntimeBackend does not support task {self.config.task}")
 
     def validate_execution_provider(self) -> None:
         if not self.pretrained_model.providers[0] == self.config.provider:

@@ -1,12 +1,12 @@
 from .backends import (
     BackendConfig,
-    IpexConfig,
+    IPEXConfig,
     LlamaCppConfig,
     ONNXRuntimeConfig,
     OpenVINOConfig,
     PyTorchConfig,
     PyTXIConfig,
-    TensorRTLLMConfig,
+    TRTLLMConfig,
     VLLMConfig,
 )
 from .benchmark.base import Benchmark
@@ -22,7 +22,7 @@ __all__ = [
     "BenchmarkReport",
     "EnergyStarConfig",
     "InferenceConfig",
-    "IpexConfig",
+    "IPEXConfig",
     "InlineConfig",
     "LauncherConfig",
     "ONNXRuntimeConfig",
@@ -33,7 +33,7 @@ __all__ = [
     "ScenarioConfig",
     "TorchrunConfig",
     "TrainingConfig",
-    "TensorRTLLMConfig",
+    "TRTLLMConfig",
     "VLLMConfig",
     "LlamaCppConfig",
 ]

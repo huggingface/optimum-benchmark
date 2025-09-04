@@ -30,7 +30,7 @@ DEVICE_PROVIDER_MAP = {"cpu": "CPUExecutionProvider", "cuda": "CUDAExecutionProv
 class ONNXRuntimeConfig(BackendConfig):
     name: str = "onnxruntime"
     version: Optional[str] = onnxruntime_version()
-    _target_: str = "optimum_benchmark.backends.onnxruntime.backend.ORTBackend"
+    _target_: str = "optimum_benchmark.backends.onnxruntime.backend.ONNXRuntimeBackend"
 
     # load options
     no_weights: bool = False
@@ -73,7 +73,7 @@ class ONNXRuntimeConfig(BackendConfig):
         super().__post_init__()
 
         if self.device not in ["cpu", "cuda"]:
-            raise ValueError(f"ORTBackend only supports CPU and CUDA devices, got {self.device}")
+            raise ValueError(f"ONNXRuntimeBackend only supports CPU and CUDA devices, got {self.device}")
 
         if not self.no_weights and not self.export and self.torch_dtype is not None:
             raise NotImplementedError("Can't convert an exported model's weights to a different dtype.")
