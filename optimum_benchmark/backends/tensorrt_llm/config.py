@@ -8,7 +8,7 @@ SUPPORTED_DTYPES = [None, "float16", "bfloat16", "float32"]
 
 
 @dataclass
-class TrtllmConfig(BackendConfig):
+class TensorRTLLMConfig(BackendConfig):
     name: str = "tensorrt-llm"
     version: Optional[str] = tesnorrt_llm_version()
     _target_: str = "optimum_benchmark.backends.tensorrt_llm.backend.TRTLLMBackend"

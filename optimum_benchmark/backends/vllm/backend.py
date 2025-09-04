@@ -10,14 +10,14 @@ from vllm.sampling_params import SamplingParams
 
 from ...task_utils import TEXT_GENERATION_TASKS
 from ..base import Backend
-from .config import VllmConfig
+from .config import VLLMConfig
 
 
-class VLLMBackend(Backend[VllmConfig]):
+class VLLMBackend(Backend[VLLMConfig]):
     NAME: str = "vllm"
     pretrained_model: Union[LLMEngine, AsyncLLMEngine]
 
-    def __init__(self, config: VllmConfig) -> None:
+    def __init__(self, config: VLLMConfig) -> None:
         super().__init__(config)
 
         if self.config.task not in TEXT_GENERATION_TASKS:

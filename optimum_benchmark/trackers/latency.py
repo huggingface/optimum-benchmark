@@ -173,7 +173,7 @@ class LatencyTracker:
         self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
 
         if self.is_pytorch_cuda:
-            LOGGER.info("\t\t+ Tracking latency using Pytorch CUDA events")
+            LOGGER.info("\t\t+ Tracking latency using PyTorch CUDA events")
         else:
             LOGGER.info("\t\t+ Tracking latency using CPU performance counter")
 
@@ -216,7 +216,7 @@ class LatencySessionTracker:
         self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
 
         if self.is_pytorch_cuda:
-            LOGGER.info("\t\t+ Tracking latency using Pytorch CUDA events")
+            LOGGER.info("\t\t+ Tracking latency using PyTorch CUDA events")
         else:
             LOGGER.info("\t\t+ Tracking latency using CPU performance counter")
 
@@ -294,7 +294,7 @@ class PerTokenLatencySessionTrackerLogitsProcessor:
         self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
 
         if self.is_pytorch_cuda:
-            LOGGER.info("\t\t+ Tracking latency using Pytorch CUDA events")
+            LOGGER.info("\t\t+ Tracking latency using PyTorch CUDA events")
         else:
             LOGGER.info("\t\t+ Tracking latency using CPU performance counter")
 
@@ -480,7 +480,7 @@ class PerStepLatencySessionTrackerPipelineCallback:
         self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
 
         if self.is_pytorch_cuda:
-            LOGGER.info("\t\t+ Tracking latency using Pytorch CUDA events")
+            LOGGER.info("\t\t+ Tracking latency using PyTorch CUDA events")
         else:
             LOGGER.info("\t\t+ Tracking latency using CPU performance counter")
 
@@ -603,7 +603,7 @@ class StepLatencyTrackerTrainerCallback(TrainerCallback):
         self.is_pytorch_cuda = (self.backend, self.device) == ("pytorch", "cuda")
 
         if self.is_pytorch_cuda:
-            LOGGER.info("\t\t+ Tracking latency using Pytorch CUDA events")
+            LOGGER.info("\t\t+ Tracking latency using PyTorch CUDA events")
         else:
             LOGGER.info("\t\t+ Tracking latency using CPU performance counter")
 

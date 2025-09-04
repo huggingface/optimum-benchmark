@@ -1,4 +1,4 @@
-name: CLI CPU Pytorch tests
+name: CLI CPU PyTorch tests
 
 on:
   workflow_dispatch:

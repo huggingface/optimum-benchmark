@@ -144,11 +144,11 @@ class MemoryTracker:
             self.num_pytorch_devices = torch.cuda.device_count()
             if len(self.device_ids) != self.num_pytorch_devices:
                 raise ValueError(
-                    "The number of target GPU devices and Pytorch's GPU device count do not match. "
+                    "The number of target GPU devices and PyTorch's GPU device count do not match. "
                     f"Got {len(self.device_ids)} and {self.num_pytorch_devices} respectively."
                 )
 
-            LOGGER.info(f"\t\t+ Tracking Allocated/Reserved memory of {self.num_pytorch_devices} Pytorch CUDA devices")
+            LOGGER.info(f"\t\t+ Tracking Allocated/Reserved memory of {self.num_pytorch_devices} PyTorch CUDA devices")
 
         self.max_ram_memory = None
         self.max_global_vram_memory = None

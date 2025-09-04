@@ -20,7 +20,7 @@ from ...import_utils import (
 from ..base import Backend
 from ..peft_utils import apply_peft
 from ..transformers_utils import fast_weights_init
-from .config import PytorchConfig
+from .config import PyTorchConfig
 
 if is_accelerate_available():
     from accelerate.utils import compile_regions
@@ -43,10 +43,10 @@ if is_gptqmodel_available():
         enum.EnumType = enum.EnumMeta
 
 
-class PyTorchBackend(Backend[PytorchConfig]):
+class PyTorchBackend(Backend[PyTorchConfig]):
     NAME = "pytorch"
 
-    def __init__(self, config: PytorchConfig):
+    def __init__(self, config: PyTorchConfig):
         super().__init__(config)
 
         # Threads

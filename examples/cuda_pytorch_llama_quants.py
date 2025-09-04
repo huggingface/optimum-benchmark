@@ -1,6 +1,6 @@
 import os
 
-from optimum_benchmark import Benchmark, BenchmarkConfig, InferenceConfig, ProcessConfig, PytorchConfig
+from optimum_benchmark import Benchmark, BenchmarkConfig, InferenceConfig, ProcessConfig, PyTorchConfig
 from optimum_benchmark.logging_utils import setup_logging
 
 BENCHMARK_NAME = "cuda_pytorch_llama"
@@ -35,7 +35,7 @@ WEIGHTS_CONFIGS = {
 
 def run_benchmark(weight_config: str):
     launcher_config = ProcessConfig(device_isolation=True, device_isolation_action="warn")
-    backend_config = PytorchConfig(
+    backend_config = PyTorchConfig(
         model=MODEL,
         device="cuda",
         device_ids="0",

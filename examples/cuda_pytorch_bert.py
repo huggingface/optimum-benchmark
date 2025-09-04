@@ -1,6 +1,6 @@
 import os
 
-from optimum_benchmark import Benchmark, BenchmarkConfig, InferenceConfig, ProcessConfig, PytorchConfig
+from optimum_benchmark import Benchmark, BenchmarkConfig, InferenceConfig, ProcessConfig, PyTorchConfig
 from optimum_benchmark.logging_utils import setup_logging
 
 BENCHMARK_NAME = "cuda_pytorch_bert"
@@ -14,7 +14,7 @@ if __name__ == "__main__":
     setup_logging(level=level, to_file=to_file, prefix="MAIN-PROCESS")
 
     launcher_config = ProcessConfig(device_isolation=True, device_isolation_action="warn")
-    backend_config = PytorchConfig(device="cuda", device_ids="0", no_weights=True, model=MODEL)
+    backend_config = PyTorchConfig(device="cuda", device_ids="0", no_weights=True, model=MODEL)
     scenario_config = InferenceConfig(memory=True, latency=True, input_shapes={"batch_size": 1, "sequence_length": 128})
     benchmark_config = BenchmarkConfig(
         name=BENCHMARK_NAME,

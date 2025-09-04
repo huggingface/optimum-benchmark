@@ -27,7 +27,7 @@ DEVICE_PROVIDER_MAP = {"cpu": "CPUExecutionProvider", "cuda": "CUDAExecutionProv
 
 
 @dataclass
-class OnnxruntimeConfig(BackendConfig):
+class ONNXRuntimeConfig(BackendConfig):
     name: str = "onnxruntime"
     version: Optional[str] = onnxruntime_version()
     _target_: str = "optimum_benchmark.backends.onnxruntime.backend.ORTBackend"

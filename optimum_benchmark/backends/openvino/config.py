@@ -6,7 +6,7 @@ from ..config import BackendConfig
 
 
 @dataclass
-class OpenvinoConfig(BackendConfig):
+class OpenVINOConfig(BackendConfig):
     name: str = "openvino"
     version: Optional[str] = openvino_version()
     _target_: str = "optimum_benchmark.backends.openvino.backend.OVBackend"

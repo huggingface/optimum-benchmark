@@ -115,17 +115,17 @@ Depending on the backends you want to use, you can install `optimum-benchmark` w
 - vLLM: `uv sync --extra vllm`
 - IPEX: `uv sync --extra ipex`
 - OpenVINO: `uv sync --extra openvino`
-- OnnxRuntime: `uv sync --extra onnxruntime`
+- ONNXRuntime: `uv sync --extra onnxruntime`
 - TensorRT-LLM: `uv sync --extra tensorrt-llm`
 - Py-TXI (TGI & TEI): `uv sync --extra py-txi`
-- OnnxRuntime-GPU: `uv sync --extra onnxruntime-gpu`
+- ONNXRuntime-GPU: `uv sync --extra onnxruntime-gpu`
 
 #### With pip:
 - PyTorch (default): `pip install optimum-benchmark`
 - OpenVINO: `pip install optimum-benchmark[openvino]`
-- OnnxRuntime: `pip install optimum-benchmark[onnxruntime]`
+- ONNXRuntime: `pip install optimum-benchmark[onnxruntime]`
 - TensorRT-LLM: `pip install optimum-benchmark[tensorrt-llm]`
-- OnnxRuntime-GPU: `pip install optimum-benchmark[onnxruntime-gpu]`
+- ONNXRuntime-GPU: `pip install optimum-benchmark[onnxruntime-gpu]`
 - Py-TXI (TGI & TEI): `pip install optimum-benchmark[py-txi]`
 - vLLM: `pip install optimum-benchmark[vllm]`
 - IPEX: `pip install optimum-benchmark[ipex]`
@@ -151,7 +151,7 @@ You can run benchmarks from the Python API, using the `Benchmark` class and its 
 Here's an example of how to run an isolated benchmark using the `pytorch` backend, `torchrun` launcher and `inference` scenario with latency and memory tracking enabled.
 
 ```python
-from optimum_benchmark import Benchmark, BenchmarkConfig, TorchrunConfig, InferenceConfig, PytorchConfig
+from optimum_benchmark import Benchmark, BenchmarkConfig, TorchrunConfig, InferenceConfig, PyTorchConfig
 from optimum_benchmark.logging_utils import setup_logging
 
 setup_logging(level="INFO", handlers=["console"])
@@ -159,7 +159,7 @@ setup_logging(level="INFO", handlers=["console"])
 if __name__ == "__main__":
     launcher_config = TorchrunConfig(nproc_per_node=2)
     scenario_config = InferenceConfig(latency=True, memory=True)
-    backend_config = PytorchConfig(model="gpt2", device="cuda", device_ids="0,1", no_weights=True)
+    backend_config = PyTorchConfig(model="gpt2", device="cuda", device_ids="0,1", no_weights=True)
     benchmark_config = BenchmarkConfig(
         name="pytorch_gpt2",
         scenario=scenario_config,
@@ -291,13 +291,13 @@ See [TrainingConfig](optimum_benchmark/scenarios/training/config.py) for more in
 
 ### Backends & Devices 📱
 
-- [x] Pytorch backend for CPU (`backend=pytorch`, `backend.device=cpu`)
-- [x] Pytorch backend for CUDA (`backend=pytorch`, `backend.device=cuda`, `backend.device_ids=0,1`)
-- [ ] Pytorch backend for Habana Gaudi Processor (`backend=pytorch`, `backend.device=hpu`, `backend.device_ids=0,1`)
-- [x] OnnxRuntime backend for CPUExecutionProvider (`backend=onnxruntime`, `backend.device=cpu`)
-- [x] OnnxRuntime backend for CUDAExecutionProvider (`backend=onnxruntime`, `backend.device=cuda`)
-- [x] OnnxRuntime backend for ROCMExecutionProvider (`backend=onnxruntime`, `backend.device=cuda`, `backend.provider=ROCMExecutionProvider`)
-- [x] OnnxRuntime backend for TensorrtExecutionProvider (`backend=onnxruntime`, `backend.device=cuda`, `backend.provider=TensorrtExecutionProvider`)
+- [x] PyTorch backend for CPU (`backend=pytorch`, `backend.device=cpu`)
+- [x] PyTorch backend for CUDA (`backend=pytorch`, `backend.device=cuda`, `backend.device_ids=0,1`)
+- [ ] PyTorch backend for Habana Gaudi Processor (`backend=pytorch`, `backend.device=hpu`, `backend.device_ids=0,1`)
+- [x] ONNXRuntime backend for CPUExecutionProvider (`backend=onnxruntime`, `backend.device=cpu`)
+- [x] ONNXRuntime backend for CUDAExecutionProvider (`backend=onnxruntime`, `backend.device=cuda`)
+- [x] ONNXRuntime backend for ROCMExecutionProvider (`backend=onnxruntime`, `backend.device=cuda`, `backend.provider=ROCMExecutionProvider`)
+- [x] ONNXRuntime backend for TensorrtExecutionProvider (`backend=onnxruntime`, `backend.device=cuda`, `backend.provider=TensorrtExecutionProvider`)
 - [x] Py-TXI backend for CPU and GPU (`backend=py-txi`, `backend.device=cpu` or `backend.device=cuda`)
 - [x] Neural Compressor backend for CPU (`backend=neural-compressor`, `backend.device=cpu`)
 - [x] TensorRT-LLM backend for CUDA (`backend=tensorrt-llm`, `backend.device=cuda`)
@@ -324,13 +324,13 @@ See [TrainingConfig](optimum_benchmark/scenarios/training/config.py) for more in
 
 For more information on the features of each backend, you can check their respective configuration files:
 
-- [VllmConfig](optimum_benchmark/backends/vllm/config.py)
+- [VLLMConfig](optimum_benchmark/backends/vllm/config.py)
 - [IpexConfig](optimum_benchmark/backends/ipex/config.py)
-- [OpenvinoConfig](optimum_benchmark/backends/openvino/config.py)
-- [PytxiConfig](optimum_benchmark/backends/py_txi/config.py)
-- [PytorchConfig](optimum_benchmark/backends/pytorch/config.py)
-- [OnnxruntimeConfig](optimum_benchmark/backends/onnxruntime/config.py)
-- [TrtllmConfig](optimum_benchmark/backends/tensorrt_llm/config.py)
+- [OpenVINOConfig](optimum_benchmark/backends/openvino/config.py)
+- [PyTXIConfig](optimum_benchmark/backends/py_txi/config.py)
+- [PyTorchConfig](optimum_benchmark/backends/pytorch/config.py)
+- [ONNXRuntimeConfig](optimum_benchmark/backends/onnxruntime/config.py)
+- [TensorRTLLMConfig](optimum_benchmark/backends/tensorrt_llm/config.py)
 
 </details>
 

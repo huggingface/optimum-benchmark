@@ -1,4 +1,4 @@
-name: CLI CPU OnnxRuntime Tests
+name: CLI CPU ONNXRuntime Tests
 
 on:
   workflow_dispatch:

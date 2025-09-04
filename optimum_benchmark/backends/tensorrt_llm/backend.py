@@ -6,14 +6,14 @@ from typing import Any, Dict
 from hydra.utils import get_class
 
 from ..base import Backend
-from .config import TrtllmConfig
+from .config import TensorRTLLMConfig
 from .utils import MODEL_TYPE_TO_TRTLLMMODELS
 
 
-class TRTLLMBackend(Backend[TrtllmConfig]):
+class TRTLLMBackend(Backend[TensorRTLLMConfig]):
     NAME = "tensorrt-llm"
 
-    def __init__(self, config: TrtllmConfig):
+    def __init__(self, config: TensorRTLLMConfig):
         super().__init__(config)
 
         if self.config.model_type in MODEL_TYPE_TO_TRTLLMMODELS:

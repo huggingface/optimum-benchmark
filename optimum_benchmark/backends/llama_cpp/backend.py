@@ -4,15 +4,15 @@ from typing import Any, Dict
 from llama_cpp import Llama
 
 from ..base import Backend
-from .config import LlamacppConfig
+from .config import LlamaCppConfig
 
 
-class LlamaCppBackend(Backend[LlamacppConfig]):
+class LlamaCppBackend(Backend[LlamaCppConfig]):
     NAME: str = "llama_cpp"
 
     pretrained_model: Llama
 
-    def __init__(self, config: LlamacppConfig) -> None:
+    def __init__(self, config: LlamaCppConfig) -> None:
         super().__init__(config)
 
     def load(self) -> None:

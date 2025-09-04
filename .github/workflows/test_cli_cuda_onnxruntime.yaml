@@ -1,4 +1,4 @@
-name: CLI CUDA OnnxRuntime Tests
+name: CLI CUDA ONNXRuntime Tests
 
 on:
   workflow_dispatch:
