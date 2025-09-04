@@ -19,9 +19,9 @@ from . import (
     ProcessConfig,
     PyTorchConfig,
     PyTXIConfig,
+    TensorRTLLMConfig,
     TorchrunConfig,
     TrainingConfig,
-    TensorRTLLMConfig,
     VLLMConfig,
 )
 from .logging_utils import setup_logging
