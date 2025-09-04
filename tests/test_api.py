@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 import torch
 
-from optimum_benchmark import Benchmark, BenchmarkConfig, InferenceConfig, ProcessConfig, PyTorchConfig, TrainingConfig
+from optimum_benchmark import Benchmark, BenchmarkConfig, InferenceConfig, ProcessConfig, PytorchConfig, TrainingConfig
 from optimum_benchmark.import_utils import get_git_revision_hash
 from optimum_benchmark.system_utils import is_nvidia_system, is_rocm_system
 from optimum_benchmark.trackers import LatencySessionTracker, MemoryTracker
@@ -94,7 +94,7 @@ def test_api_launch(device, scenario, library, task, model):
 
     no_weights = False if library != "transformers" else True
 
-    backend_config = PyTorchConfig(
+    backend_config = PytorchConfig(
         device=device,
         device_ids=device_ids,
         no_weights=no_weights,
@@ -122,7 +122,7 @@ def test_api_launch(device, scenario, library, task, model):
 def test_api_push_to_hub_mixin():
     benchmark_name = "test_api_push_to_hub_mixin"
 
-    backend_config = PyTorchConfig(model="google-bert/bert-base-uncased", device="cpu")
+    backend_config = PytorchConfig(model="google-bert/bert-base-uncased", device="cpu")
     launcher_config = ProcessConfig(device_isolation=False)
     scenario_config = InferenceConfig(
         duration=1,

@@ -25,7 +25,7 @@ from ...generators.dataset_generator import DatasetGenerator
 from ...import_utils import is_accelerate_available, is_torch_distributed_available
 from ..base import Backend
 from ..transformers_utils import fast_weights_init
-from .config import ORTConfig
+from .config import OnnxruntimeConfig
 from .utils import (
     TASKS_TO_ORTMODELS,
     TASKS_TO_ORTPIPELINES,
@@ -40,10 +40,10 @@ if is_torch_distributed_available():
     import torch.distributed
 
 
-class ORTBackend(Backend[ORTConfig]):
+class ORTBackend(Backend[OnnxruntimeConfig]):
     NAME: str = "onnxruntime"
 
-    def __init__(self, config: ORTConfig) -> None:
+    def __init__(self, config: OnnxruntimeConfig) -> None:
         super().__init__(config)
 
         if self.config.library != "diffusers" and self.config.task in TASKS_TO_ORTMODELS:

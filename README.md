@@ -151,7 +151,7 @@ You can run benchmarks from the Python API, using the `Benchmark` class and its 
 Here's an example of how to run an isolated benchmark using the `pytorch` backend, `torchrun` launcher and `inference` scenario with latency and memory tracking enabled.
 
 ```python
-from optimum_benchmark import Benchmark, BenchmarkConfig, TorchrunConfig, InferenceConfig, PyTorchConfig
+from optimum_benchmark import Benchmark, BenchmarkConfig, TorchrunConfig, InferenceConfig, PytorchConfig
 from optimum_benchmark.logging_utils import setup_logging
 
 setup_logging(level="INFO", handlers=["console"])
@@ -159,7 +159,7 @@ setup_logging(level="INFO", handlers=["console"])
 if __name__ == "__main__":
     launcher_config = TorchrunConfig(nproc_per_node=2)
     scenario_config = InferenceConfig(latency=True, memory=True)
-    backend_config = PyTorchConfig(model="gpt2", device="cuda", device_ids="0,1", no_weights=True)
+    backend_config = PytorchConfig(model="gpt2", device="cuda", device_ids="0,1", no_weights=True)
     benchmark_config = BenchmarkConfig(
         name="pytorch_gpt2",
         scenario=scenario_config,
@@ -324,13 +324,13 @@ See [TrainingConfig](optimum_benchmark/scenarios/training/config.py) for more in
 
 For more information on the features of each backend, you can check their respective configuration files:
 
-- [VLLMConfig](optimum_benchmark/backends/vllm/config.py)
-- [IPEXConfig](optimum_benchmark/backends/ipex/config.py)
-- [OVConfig](optimum_benchmark/backends/openvino/config.py)
-- [PyTXIConfig](optimum_benchmark/backends/py_txi/config.py)
-- [PyTorchConfig](optimum_benchmark/backends/pytorch/config.py)
-- [ORTConfig](optimum_benchmark/backends/onnxruntime/config.py)
-- [TRTLLMConfig](optimum_benchmark/backends/tensorrt_llm/config.py)
+- [VllmConfig](optimum_benchmark/backends/vllm/config.py)
+- [IpexConfig](optimum_benchmark/backends/ipex/config.py)
+- [OpenvinoConfig](optimum_benchmark/backends/openvino/config.py)
+- [PytxiConfig](optimum_benchmark/backends/py_txi/config.py)
+- [PytorchConfig](optimum_benchmark/backends/pytorch/config.py)
+- [OnnxruntimeConfig](optimum_benchmark/backends/onnxruntime/config.py)
+- [TrtllmConfig](optimum_benchmark/backends/tensorrt_llm/config.py)
 
 </details>
 

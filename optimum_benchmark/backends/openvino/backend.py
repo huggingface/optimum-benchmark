@@ -8,7 +8,7 @@ from hydra.utils import get_class
 from ...import_utils import is_accelerate_available, is_torch_distributed_available
 from ..base import Backend
 from ..transformers_utils import fast_weights_init
-from .config import OVConfig as OVBackendConfig
+from .config import OpenvinoConfig
 from .utils import TASKS_TO_OVMODELS, TASKS_TO_OVPIPELINES
 
 if is_accelerate_available():
@@ -18,10 +18,10 @@ if is_torch_distributed_available():
     import torch.distributed
 
 
-class OVBackend(Backend[OVBackendConfig]):
+class OVBackend(Backend[OpenvinoConfig]):
     NAME: str = "openvino"
 
-    def __init__(self, config: OVBackendConfig) -> None:
+    def __init__(self, config: OpenvinoConfig) -> None:
         super().__init__(config)
 
         if self.config.library != "diffusers" and self.config.task in TASKS_TO_OVMODELS:

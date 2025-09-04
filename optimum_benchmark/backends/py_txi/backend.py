@@ -6,14 +6,14 @@ from py_txi import TEI, TGI, TEIConfig, TGIConfig
 
 from ...task_utils import TEXT_EMBEDDING_TASKS, TEXT_GENERATION_TASKS
 from ..base import Backend
-from .config import PyTXIConfig
+from .config import PytxiConfig
 
 
-class PyTXIBackend(Backend[PyTXIConfig]):
+class PyTXIBackend(Backend[PytxiConfig]):
     NAME: str = "py-txi"
     pretrained_model: Union[TEI, TGI]
 
-    def __init__(self, config: PyTXIConfig) -> None:
+    def __init__(self, config: PytxiConfig) -> None:
         super().__init__(config)
 
     def load(self) -> None:

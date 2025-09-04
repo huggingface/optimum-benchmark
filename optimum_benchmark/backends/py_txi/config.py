@@ -9,7 +9,7 @@ from ..config import BackendConfig
 
 
 @dataclass
-class PyTXIConfig(BackendConfig):
+class PytxiConfig(BackendConfig):
     name: str = "py-txi"
     version: Optional[str] = py_txi_version()
     _target_: str = "optimum_benchmark.backends.py_txi.backend.PyTXIBackend"

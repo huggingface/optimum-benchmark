@@ -6,7 +6,7 @@ from ..config import BackendConfig
 
 
 @dataclass
-class VLLMConfig(BackendConfig):
+class VllmConfig(BackendConfig):
     name: str = "vllm"
     version: Optional[str] = vllm_version()
     _target_: str = "optimum_benchmark.backends.vllm.backend.VLLMBackend"

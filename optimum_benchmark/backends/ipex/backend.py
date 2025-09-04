@@ -9,7 +9,7 @@ from hydra.utils import get_class
 from ...import_utils import is_accelerate_available, is_torch_distributed_available
 from ..base import Backend
 from ..transformers_utils import fast_weights_init
-from .config import IPEXConfig
+from .config import IpexConfig
 from .utils import TASKS_TO_IPEXMODELS
 
 if is_accelerate_available():
@@ -22,10 +22,10 @@ if not hasattr(os, "exit"):
     os.exit = os._exit
 
 
-class IPEXBackend(Backend[IPEXConfig]):
+class IPEXBackend(Backend[IpexConfig]):
     NAME: str = "ipex"
 
-    def __init__(self, config: IPEXConfig) -> None:
+    def __init__(self, config: IpexConfig) -> None:
         super().__init__(config)
 
         if self.config.task in TASKS_TO_IPEXMODELS:

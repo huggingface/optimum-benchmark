@@ -8,7 +8,7 @@ TORCH_DTYPES = ["bfloat16", "float16", "float32", "auto"]
 
 
 @dataclass
-class IPEXConfig(BackendConfig):
+class IpexConfig(BackendConfig):
     name: str = "ipex"
     version: Optional[str] = ipex_version()
     _target_: str = "optimum_benchmark.backends.ipex.backend.IPEXBackend"

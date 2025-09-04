@@ -12,17 +12,17 @@ from . import (
     EnergyStarConfig,
     InferenceConfig,
     InlineConfig,
-    IPEXConfig,
-    LlamaCppConfig,
-    ORTConfig,
-    OVConfig,
+    IpexConfig,
+    LlamacppConfig,
+    OnnxruntimeConfig,
+    OpenvinoConfig,
     ProcessConfig,
-    PyTorchConfig,
-    PyTXIConfig,
+    PytorchConfig,
+    PytxiConfig,
     TorchrunConfig,
     TrainingConfig,
-    TRTLLMConfig,
-    VLLMConfig,
+    TrtllmConfig,
+    VllmConfig,
 )
 from .logging_utils import setup_logging
 
@@ -34,14 +34,14 @@ cs = ConfigStore.instance()
 # benchmark configuration
 cs.store(name="benchmark", node=BenchmarkConfig)
 # backends configurations
-cs.store(group="backend", name=IPEXConfig.name, node=IPEXConfig)
-cs.store(group="backend", name=OVConfig.name, node=OVConfig)
-cs.store(group="backend", name=PyTorchConfig.name, node=PyTorchConfig)
-cs.store(group="backend", name=ORTConfig.name, node=ORTConfig)
-cs.store(group="backend", name=TRTLLMConfig.name, node=TRTLLMConfig)
-cs.store(group="backend", name=PyTXIConfig.name, node=PyTXIConfig)
-cs.store(group="backend", name=VLLMConfig.name, node=VLLMConfig)
-cs.store(group="backend", name=LlamaCppConfig.name, node=LlamaCppConfig)
+cs.store(group="backend", name=IpexConfig.name, node=IpexConfig)
+cs.store(group="backend", name=OpenvinoConfig.name, node=OpenvinoConfig)
+cs.store(group="backend", name=PytorchConfig.name, node=PytorchConfig)
+cs.store(group="backend", name=OnnxruntimeConfig.name, node=OnnxruntimeConfig)
+cs.store(group="backend", name=TrtllmConfig.name, node=TrtllmConfig)
+cs.store(group="backend", name=PytxiConfig.name, node=PytxiConfig)
+cs.store(group="backend", name=VllmConfig.name, node=VllmConfig)
+cs.store(group="backend", name=LlamacppConfig.name, node=LlamacppConfig)
 # scenarios configurations
 cs.store(group="scenario", name=TrainingConfig.name, node=TrainingConfig)
 cs.store(group="scenario", name=InferenceConfig.name, node=InferenceConfig)

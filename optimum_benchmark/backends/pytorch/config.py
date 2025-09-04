@@ -15,7 +15,7 @@ LOGGER = getLogger(__name__)
 
 
 @dataclass
-class PyTorchConfig(BackendConfig):
+class PytorchConfig(BackendConfig):
     name: str = "pytorch"
     version: Optional[str] = torch_version()
     _target_: str = "optimum_benchmark.backends.pytorch.backend.PyTorchBackend"

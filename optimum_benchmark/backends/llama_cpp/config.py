@@ -6,7 +6,7 @@ from ..config import BackendConfig
 
 
 @dataclass
-class LlamaCppConfig(BackendConfig):
+class LlamacppConfig(BackendConfig):
     name: str = "llama_cpp"
     version: Optional[str] = llama_cpp_version()
     _target_: str = "optimum_benchmark.backends.llama_cpp.backend.LlamaCppBackend"

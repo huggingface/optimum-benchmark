@@ -1,21 +1,21 @@
 from .config import BackendConfig
-from .ipex.config import IPEXConfig
-from .llama_cpp.config import LlamaCppConfig
-from .onnxruntime.config import ORTConfig
-from .openvino.config import OVConfig
-from .py_txi.config import PyTXIConfig
-from .pytorch.config import PyTorchConfig
-from .tensorrt_llm.config import TRTLLMConfig
-from .vllm.config import VLLMConfig
+from .ipex.config import IpexConfig
+from .llama_cpp.config import LlamacppConfig
+from .onnxruntime.config import OnnxruntimeConfig
+from .openvino.config import OpenvinoConfig
+from .py_txi.config import PytxiConfig
+from .pytorch.config import PytorchConfig
+from .tensorrt_llm.config import TrtllmConfig
+from .vllm.config import VllmConfig
 
 __all__ = [
-    "PyTorchConfig",
-    "ORTConfig",
-    "IPEXConfig",
-    "OVConfig",
-    "TRTLLMConfig",
-    "PyTXIConfig",
+    "PytorchConfig",
+    "OnnxruntimeConfig",
+    "IpexConfig",
+    "OpenvinoConfig",
+    "TrtllmConfig",
+    "PytxiConfig",
     "BackendConfig",
-    "VLLMConfig",
-    "LlamaCppConfig",
+    "VllmConfig",
+    "LlamacppConfig",
 ]
