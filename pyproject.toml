@@ -163,8 +163,6 @@ conflicts = [
         { extra = "onnxruntime" },
         { extra = "tensorrt-llm" },
         { extra = "onnxruntime-gpu" },
-        { extra = "llama-cpp" },
-        { extra = "py-txi" },
         { extra = "vllm" },
     ],
 ]
