@@ -9,7 +9,7 @@ from optimum_benchmark import (
     BenchmarkConfig,
     InferenceConfig,
     IPEXConfig,
-    OVConfig,
+    OpenVINOConfig,
     ProcessConfig,
     PyTorchConfig,
 )
@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     backends = {
         "ipex": IPEXConfig(device="cpu", no_weights=True, model=MODEL),
-        "openvino": OVConfig(device="cpu", no_weights=True, model=MODEL),
+        "openvino": OpenVINOConfig(device="cpu", no_weights=True, model=MODEL),
         "pytorch-compile": PyTorchConfig(device="cpu", no_weights=True, model=MODEL, torch_compile=True),
         "pytorch-compile-openvino": PyTorchConfig(
             device="cpu", no_weights=True, model=MODEL, torch_compile=True, torch_compile_config={"backend": "openvino"}
