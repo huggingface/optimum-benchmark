@@ -72,12 +72,27 @@ Optimum-Benchmark is continuously and intensively tested on a variety of devices
 
 ```bash
 # Install uv if you haven't already
-curl -LsSf https://astral.sh/uv/install.sh | sh
+pip install uv
 
-# Install from PyPI
+# Add optimum-benchmark to your uv project
 uv add optimum-benchmark
 
-# Or install from source
+# Or run optimum-benchmark with uv as a command without installing it 
+# (automaticlly installs and runs it in an isolated virtual environment)
+uv run optimum-benchmark --config-dir examples/ --config-name cuda_pytorch_bert
+
+# Or run optimum-benchmark with uv script without installing it
+# (automaticlly installs and runs it in an isolated virtual environment)
+uv run script.py
+script.py:
+# /// script
+# dependencies = [
+#   "optimum-benchmark",
+# ]
+# ///
+# [...]
+
+# Or clone the repository and create an environment with optimum-benchmark installed for development
 git clone https://github.com/huggingface/optimum-benchmark.git
 cd optimum-benchmark
 uv sync
@@ -110,15 +125,15 @@ pip install -e .
 
 Depending on the backends you want to use, you can install `optimum-benchmark` with the following extras:
 
-#### With uv:
-- PyTorch: `uv sync`
-- vLLM: `uv sync --extra vllm`
-- IPEX: `uv sync --extra ipex`
-- OpenVINO: `uv sync --extra openvino`
-- ONNXRuntime: `uv sync --extra onnxruntime`
-- TensorRT-LLM: `uv sync --extra tensorrt-llm`
-- Py-TXI (TGI & TEI): `uv sync --extra py-txi`
-- ONNXRuntime-GPU: `uv sync --extra onnxruntime-gpu`
+#### With uv (Recommended):
+- PyTorch (default): `uv add optimum-benchmark`
+- OpenVINO: `uv add optimum-benchmark --extra openvino`
+- ONNXRuntime: `uv add optimum-benchmark --extra onnxruntime`
+- TensorRT-LLM: `uv add optimum-benchmark --extra tensorrt-llm`
+- ONNXRuntime-GPU: `uv add optimum-benchmark --extra onnxruntime-gpu`
+- Py-TXI (TGI & TEI): `uv add optimum-benchmark --extra py-txi`
+- vLLM: `uv add optimum-benchmark --extra vllm`
+- IPEX: `uv add optimum-benchmark --extra ipex`
 
 #### With pip:
 - PyTorch (default): `pip install optimum-benchmark`
@@ -146,15 +161,20 @@ We also support the following extra dependencies:
 
 ### Running benchmarks using the Python API 🧪
 
-You can run benchmarks from the Python API, using the `Benchmark` class and its `launch` method. It takes a `BenchmarkConfig` object as input, runs the benchmark in an isolated process and returns a `BenchmarkReport` object containing the benchmark results.
-
+You can run benchmarks from the Python API as simple python scripts. This is especially cool when used with [`uv` scripts](https://docs.astral.sh/uv/guides/scripts/).
 Here's an example of how to run an isolated benchmark using the `pytorch` backend, `torchrun` launcher and `inference` scenario with latency and memory tracking enabled.
 
 ```python
+# /// script
+# dependencies = [
+#   "optimum-benchmark",
+# ]
+# ///
+
 from optimum_benchmark import Benchmark, BenchmarkConfig, TorchrunConfig, InferenceConfig, PyTorchConfig
 from optimum_benchmark.logging_utils import setup_logging
 
-setup_logging(level="INFO", handlers=["console"])
+setup_logging(level="INFO")
 
 if __name__ == "__main__":
     launcher_config = TorchrunConfig(nproc_per_node=2)
@@ -167,29 +187,22 @@ if __name__ == "__main__":
         backend=backend_config,
     )
     benchmark_report = Benchmark.launch(benchmark_config)
-
-    # convert artifacts to a dictionary or dataframe
-    benchmark_config.to_dict() # or benchmark_config.to_dataframe()
-
-    # save artifacts to disk as json or csv files
-    benchmark_report.save_csv("benchmark_report.csv") # or benchmark_report.save_json("benchmark_report.json")
-
     # push artifacts to the hub
-    benchmark_config.push_to_hub("IlyasMoutawwakil/pytorch_gpt2") # or benchmark_config.push_to_hub("IlyasMoutawwakil/pytorch_gpt2")
+    benchmark_config.push_to_hub("IlyasMoutawwakil/pytorch_gpt2") # or benchmark_config.save_json("pytorch_gpt2/benchmark_config.json")
+    benchmark_report.push_to_hub("IlyasMoutawwakil/pytorch_gpt2") # or benchmark_report.save_json("pytorch_gpt2/benchmark_report.json")
 
-    # or merge them into a single artifact
+    # merge them into a single artifact and push to the hub
     benchmark = Benchmark(config=benchmark_config, report=benchmark_report)
-    benchmark.save_json("benchmark.json") # or benchmark.save_csv("benchmark.csv")
-    benchmark.push_to_hub("IlyasMoutawwakil/pytorch_gpt2")
-
-    # load artifacts from the hub
-    benchmark = Benchmark.from_hub("IlyasMoutawwakil/pytorch_gpt2") # or Benchmark.from_hub("IlyasMoutawwakil/pytorch_gpt2")
-
-    # or load them from disk
-    benchmark = Benchmark.load_json("benchmark.json") # or Benchmark.load_csv("benchmark_report.csv")
+    benchmark.push_to_hub("IlyasMoutawwakil/pytorch_gpt2") # or benchmark.save_json("pytorch_gpt2/benchmark.json")
 ```
 
-If you're on VSCode, you can hover over the configuration classes to see the available parameters and their descriptions. You can also see the available parameters in the [Features](#features-) section below.
+Running the above with `uv` will automatically runs it in an isolated virtual environment with `optimum-benchmark` installed, and it's as simple as:
+
+```bash
+uv run script.py
+```
+
+You can also see the available parameters of different configuration classes in the [Features](#features-) section below.
 
 ### Running benchmarks using the Hydra CLI 🧪
 

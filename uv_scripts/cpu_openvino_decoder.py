@@ -1,14 +1,22 @@
 # /// script
 # dependencies = [
-#   "optimum-benchmark[openvoino]",
+#   "optimum-benchmark[openvino,ipex]",
 # ]
 # ///
 
-from optimum_benchmark import Benchmark, BenchmarkConfig, InferenceConfig, OpenVINOConfig, ProcessConfig, PyTorchConfig
+from optimum_benchmark import (
+    Benchmark,
+    BenchmarkConfig,
+    InferenceConfig,
+    IPEXConfig,
+    OVConfig,
+    ProcessConfig,
+    PyTorchConfig,
+)
 from optimum_benchmark.logging_utils import setup_logging
 
 MODEL = "gpt2"  # could be any decoder model / LLM
-setup_logging(level="INFO", prefix="MAIN-PROCESS")
+setup_logging(level="INFO", to_file=True, prefix="MAIN-PROCESS")
 
 if __name__ == "__main__":
     launcher_config = ProcessConfig()
@@ -19,8 +27,8 @@ if __name__ == "__main__":
     )
 
     backends = {
-        "openvino": OpenVINOConfig(device="cpu", no_weights=True, model=MODEL),
-        "pytorch": PyTorchConfig(device="cpu", no_weights=True, model=MODEL),
+        "ipex": IPEXConfig(device="cpu", no_weights=True, model=MODEL),
+        "openvino": OVConfig(device="cpu", no_weights=True, model=MODEL),
         "pytorch-compile": PyTorchConfig(device="cpu", no_weights=True, model=MODEL, torch_compile=True),
         "pytorch-compile-openvino": PyTorchConfig(
             device="cpu", no_weights=True, model=MODEL, torch_compile=True, torch_compile_config={"backend": "openvino"}
