@@ -6,10 +6,10 @@ from ..config import BackendConfig
 
 
 @dataclass
-class OVConfig(BackendConfig):
+class OpenVINOConfig(BackendConfig):
     name: str = "openvino"
     version: Optional[str] = openvino_version()
-    _target_: str = "optimum_benchmark.backends.openvino.backend.OVBackend"
+    _target_: str = "optimum_benchmark.backends.openvino.backend.OpenVINOBackend"
 
     no_weights: bool = False
 
@@ -17,6 +17,7 @@ class OVConfig(BackendConfig):
     export: Optional[bool] = None
     use_cache: Optional[bool] = None
     use_merged: Optional[bool] = None
+    torch_dtype: Optional[str] = None
     load_in_8bit: Optional[bool] = None
     load_in_4bit: Optional[bool] = None
     ov_config: Dict[str, Any] = field(default_factory=dict)
@@ -32,10 +33,15 @@ class OVConfig(BackendConfig):
 
         self.device = self.device.lower()
         if self.device not in ["cpu", "gpu"]:
-            raise ValueError(f"OVBackend only supports CPU devices, got {self.device}")
+            raise ValueError(f"OpenVINOBackend only supports CPU devices, got {self.device}")
+
+        if self.torch_dtype not in [None, "float16", "bfloat16", "float32"]:
+            raise ValueError(
+                f"torch_dtype should be one of None, 'float16', 'bfloat16' or 'float32', got {self.torch_dtype}"
+            )
 
         if self.intra_op_num_threads is not None:
-            raise NotImplementedError("OVBackend does not support intra_op_num_threads. Please use the ov_config")
+            raise NotImplementedError("OpenVINOBackend does not support intra_op_num_threads. Please use the ov_config")
 
         if self.inter_op_num_threads is not None:
-            raise NotImplementedError("OVBackend does not support inter_op_num_threads. Please use the ov_config")
+            raise NotImplementedError("OpenVINOBackend does not support inter_op_num_threads. Please use the ov_config")

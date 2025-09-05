@@ -1,4 +1,4 @@
-name: CLI CUDA Pytorch Tests
+name: CLI CUDA PyTorch Tests
 
 on:
   workflow_dispatch:

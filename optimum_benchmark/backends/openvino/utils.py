@@ -1,4 +1,4 @@
-TASKS_TO_OVMODELS = {
+TASKS_TO_OPENVINO_MODELS = {
     "fill-mask": "optimum.intel.openvino.OVModelForMaskedLM",
     "text-generation": "optimum.intel.openvino.OVModelForCausalLM",
     "text2text-generation": "optimum.intel.openvino.OVModelForSeq2SeqLM",
@@ -10,7 +10,7 @@ TASKS_TO_OVMODELS = {
     "audio-classification": "optimum.intel.openvino.OVModelForAudioClassification",
     "pix2struct": "optimum.intel.openvino.OVModelForPix2Struct",
 }
-TASKS_TO_OVPIPELINES = {
+TASKS_TO_OPENVINO_PIPELINES = {
     "inpainting": "optimum.intel.openvino.OVPipelineForInpainting",
     "text-to-image": "optimum.intel.openvino.OVPipelineForText2Image",
     "image-to-image": "optimum.intel.openvino.OVPipelineForImage2Image",

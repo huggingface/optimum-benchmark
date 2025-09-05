@@ -8,8 +8,8 @@ from hydra.utils import get_class
 from ...import_utils import is_accelerate_available, is_torch_distributed_available
 from ..base import Backend
 from ..transformers_utils import fast_weights_init
-from .config import OVConfig as OVBackendConfig
-from .utils import TASKS_TO_OVMODELS, TASKS_TO_OVPIPELINES
+from .config import OpenVINOConfig
+from .utils import TASKS_TO_OPENVINO_MODELS, TASKS_TO_OPENVINO_PIPELINES
 
 if is_accelerate_available():
     from accelerate import Accelerator
@@ -18,20 +18,20 @@ if is_torch_distributed_available():
     import torch.distributed
 
 
-class OVBackend(Backend[OVBackendConfig]):
+class OpenVINOBackend(Backend[OpenVINOConfig]):
     NAME: str = "openvino"
 
-    def __init__(self, config: OVBackendConfig) -> None:
+    def __init__(self, config: OpenVINOConfig) -> None:
         super().__init__(config)
 
-        if self.config.library != "diffusers" and self.config.task in TASKS_TO_OVMODELS:
-            self.ovmodel_class = get_class(TASKS_TO_OVMODELS[self.config.task])
+        if self.config.library != "diffusers" and self.config.task in TASKS_TO_OPENVINO_MODELS:
+            self.ovmodel_class = get_class(TASKS_TO_OPENVINO_MODELS[self.config.task])
             self.logger.info(f"\t+ Using OVModel class {self.ovmodel_class.__name__}")
-        elif self.config.library == "diffusers" and self.config.task in TASKS_TO_OVPIPELINES:
-            self.ovmodel_class = get_class(TASKS_TO_OVPIPELINES[self.config.task])
+        elif self.config.library == "diffusers" and self.config.task in TASKS_TO_OPENVINO_PIPELINES:
+            self.ovmodel_class = get_class(TASKS_TO_OPENVINO_PIPELINES[self.config.task])
             self.logger.info(f"\t+ Using OVDiffusionPipeline class {self.ovmodel_class.__name__}")
         else:
-            raise NotImplementedError(f"OVBackend does not support task {self.config.task}")
+            raise NotImplementedError(f"OpenVINOBackend does not support task {self.config.task}")
 
     def load(self) -> None:
         self.logger.info("\t+ Creating backend temporary directory")

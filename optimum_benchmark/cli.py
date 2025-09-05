@@ -14,8 +14,8 @@ from . import (
     InlineConfig,
     IPEXConfig,
     LlamaCppConfig,
-    ORTConfig,
-    OVConfig,
+    ONNXRuntimeConfig,
+    OpenVINOConfig,
     ProcessConfig,
     PyTorchConfig,
     PyTXIConfig,
@@ -35,9 +35,9 @@ cs = ConfigStore.instance()
 cs.store(name="benchmark", node=BenchmarkConfig)
 # backends configurations
 cs.store(group="backend", name=IPEXConfig.name, node=IPEXConfig)
-cs.store(group="backend", name=OVConfig.name, node=OVConfig)
+cs.store(group="backend", name=OpenVINOConfig.name, node=OpenVINOConfig)
 cs.store(group="backend", name=PyTorchConfig.name, node=PyTorchConfig)
-cs.store(group="backend", name=ORTConfig.name, node=ORTConfig)
+cs.store(group="backend", name=ONNXRuntimeConfig.name, node=ONNXRuntimeConfig)
 cs.store(group="backend", name=TRTLLMConfig.name, node=TRTLLMConfig)
 cs.store(group="backend", name=PyTXIConfig.name, node=PyTXIConfig)
 cs.store(group="backend", name=VLLMConfig.name, node=VLLMConfig)
