@@ -26,7 +26,7 @@ scenario:
   text_column_name: text
   num_samples: 1000
   truncation: True
-  iterations: 10
+  iterations: 1
   reasoning: True
   reasoning_params:
     reasoning_effort: high
