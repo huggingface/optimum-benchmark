@@ -17,7 +17,7 @@ backend:
   device_ids: 0
   no_weights: False
   task: text-generation
-  model: openai/gpt-oss-20b
+  model: HuggingFaceTB/SmolLM3-3B
   torch_dtype: bfloat16
   device_map: auto
 
@@ -28,8 +28,6 @@ scenario:
   truncation: True
   iterations: 1
   reasoning: True
-  reasoning_params:
-    reasoning_effort: low
 
   input_shapes:
     batch_size: 1
