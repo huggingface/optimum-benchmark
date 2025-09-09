@@ -29,7 +29,7 @@ scenario:
   iterations: 1
   reasoning: True
   reasoning_params:
-    reasoning_effort: high
+    reasoning_effort: medium
 
   input_shapes:
     batch_size: 1
