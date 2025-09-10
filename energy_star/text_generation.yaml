@@ -17,7 +17,7 @@ backend:
   device_ids: 0
   no_weights: False
   task: text-generation
-  model: openai/gpt-oss-20b
+  model: google/gemma-3-4b-it/discussions
   torch_dtype: bfloat16
   device_map: auto
 
@@ -28,8 +28,6 @@ scenario:
   truncation: True
   iterations: 10
   reasoning: True
-  reasoning_params:
-    reasoning_effort: medium
 
   input_shapes:
     batch_size: 1
