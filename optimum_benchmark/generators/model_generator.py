@@ -154,11 +154,6 @@ class Idefics2Generator(BaseGenerator):
         dummy["attention_mask"] = self.attention_mask()
         dummy["pixel_attention_mask"] = self.pixel_attention_mask()
 
-        print("input_ids", dummy["input_ids"].shape)
-        print("pixel_values", dummy["pixel_values"].shape)
-        print("attention_mask", dummy["attention_mask"].shape)
-        print("pixel_attention_mask", dummy["pixel_attention_mask"].shape)
-
         if self.with_labels:
             dummy["labels"] = self.input_ids()
 
@@ -252,8 +247,67 @@ class Qwen2VLGenerator(BaseGenerator):
         return dummy
 
 
+class SmolVLMGenerator(BaseGenerator):
+    def input_ids(self):
+        self.assert_not_missing_shapes(
+            ["batch_size", "sequence_length", "num_images", "height", "width", "image_token_id", "image_seq_len"]
+        )
+
+        text_tokens = self.generate_random_integers(
+            min_value=0,
+            max_value=self.shapes.get("vocab_size", DEFAULT_VOCAB_SIZE),
+            shape=(self.shapes["batch_size"], self.shapes["sequence_length"]),
+        )
+
+        image_tokens = self.generate_constant_integers(
+            value=self.shapes["image_token_id"],
+            shape=(self.shapes["batch_size"], self.shapes["num_images"] * self.shapes["image_seq_len"]),
+        )
+
+        return torch.cat((text_tokens, image_tokens), dim=1)
+
+    def attention_mask(self):
+        self.assert_not_missing_shapes(["batch_size", "sequence_length", "num_images", "image_seq_len"])
+
+        return self.generate_constant_integers(
+            value=1,  # no sparsity
+            shape=(
+                self.shapes["batch_size"],
+                self.shapes["sequence_length"] + self.shapes["num_images"] * self.shapes["image_seq_len"],
+            ),
+        )
+
+    def pixel_values(self):
+        self.assert_not_missing_shapes(["batch_size", "num_images", "num_channels", "height", "width"])
+
+        return self.generate_random_floats(
+            min_value=0,
+            max_value=1,
+            shape=(
+                self.shapes["batch_size"],
+                self.shapes["num_images"],
+                self.shapes["num_channels"],
+                self.shapes["height"],
+                self.shapes["width"],
+            ),
+        )
+
+    def __call__(self):
+        dummy = {}
+
+        dummy["input_ids"] = self.input_ids()
+        dummy["pixel_values"] = self.pixel_values()
+        dummy["attention_mask"] = self.attention_mask()
+
+        if self.with_labels:
+            dummy["labels"] = self.input_ids()
+
+        return dummy
+
+
 MODEL_TYPE_TO_GENERATORS = {
     "idefics": IdeficsGenerator,
+    "smolvlm": SmolVLMGenerator,
     "idefics2": Idefics2Generator,
     "qwen2_vl": Qwen2VLGenerator,
 }

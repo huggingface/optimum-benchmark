@@ -62,15 +62,23 @@ def get_transformers_pretrained_processor(model: str, **kwargs) -> Optional["Pre
     try:
         # sometimes contains information about the model's input shapes that are not available in the config
         return AutoProcessor.from_pretrained(model, **kwargs)
+    except ImportError:
+        raise
     except Exception:
         try:
             return AutoFeatureExtractor.from_pretrained(model, **kwargs)
+        except ImportError:
+            raise
         except Exception:
             try:
                 return AutoImageProcessor.from_pretrained(model, **kwargs)
+            except ImportError:
+                raise
             except Exception:
                 try:
                     return AutoTokenizer.from_pretrained(model, **kwargs)
+                except ImportError:
+                    raise
                 except Exception:
                     return None
 
