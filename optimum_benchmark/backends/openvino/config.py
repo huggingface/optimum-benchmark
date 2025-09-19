@@ -20,7 +20,8 @@ class OpenVINOConfig(BackendConfig):
     torch_dtype: Optional[str] = None
     load_in_8bit: Optional[bool] = None
     load_in_4bit: Optional[bool] = None
-    ov_config: Dict[str, Any] = field(default_factory=dict)
+    ov_config: Optional[Dict[str, Any]] = None
+    quantization_config: Optional[Dict[str, Any]] = None
 
     # compilation options
     half: bool = False

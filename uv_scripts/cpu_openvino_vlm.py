@@ -1,6 +1,7 @@
 # /// script
 # dependencies = [
-#   "optimum-benchmark[openvino]",
+#   "optimum-benchmark[openvino]==0.7",
+#   "transformers==4.53",
 #   "torchvision",
 #   "num2words",
 # ]
@@ -16,24 +17,25 @@ if __name__ == "__main__":
     launcher_config = ProcessConfig()
     scenario_config = InferenceConfig(
         latency=True,
-        input_shapes={
-            # text
-            "batch_size": 1,
-            "sequence_length": 16,
-            # image
-            "num_images": 1,
-        },
+        input_shapes={"batch_size": 1, "sequence_length": 16, "num_images": 1},
         generate_kwargs={"max_new_tokens": 16, "min_new_tokens": 16},
     )
 
+    model = "HuggingFaceTB/SmolVLM2-500M-Video-Instruct"
     backend_configs = {
-        "pytorch": PyTorchConfig(device="cpu", model="HuggingFaceTB/SmolVLM2-500M-Video-Instruct"),
-        "openvino": OpenVINOConfig(device="cpu", model="echarlaix/SmolVLM2-500M-Video-Instruct-openvino"),
+        "pytorch": PyTorchConfig(device="cpu", model=model, no_weights=True),
+        "openvino": OpenVINOConfig(device="cpu", model=model, no_weights=True),
         "openvino-8bit-woq": OpenVINOConfig(
-            device="cpu", model="echarlaix/SmolVLM2-500M-Video-Instruct-openvino-8bit-woq"
+            device="cpu",
+            model=model,
+            no_weights=True,
+            quantization_config={"bits": 8, "weight_only": True, "num_samples": 1},
         ),
         "openvino-8bit-static": OpenVINOConfig(
-            device="cpu", model="echarlaix/SmolVLM2-500M-Video-Instruct-openvino-8bit-static"
+            device="cpu",
+            model=model,
+            no_weights=True,
+            quantization_config={"n_bits": 8, "weight_only": False, "num_samples": 1},
         ),
     }
 
