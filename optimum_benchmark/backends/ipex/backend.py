@@ -50,11 +50,12 @@ class IPEXBackend(Backend[IPEXConfig]):
         self.tmpdir.cleanup()
 
     def load_ipexmodel_from_pretrained(self) -> None:
-        self.pretrained_model = self.ipexmodel_class.from_pretrained(
-            self.config.model,
-            **self.config.model_kwargs,
-            **self.ipexmodel_kwargs,
-        )
+        with torch.device(self.config.device):
+            self.pretrained_model = self.ipexmodel_class.from_pretrained(
+                self.config.model,
+                **self.config.model_kwargs,
+                **self.ipexmodel_kwargs,
+            )
 
     def load_ipexmodel_with_no_weights(self) -> None:
         with fast_weights_init():
@@ -79,6 +80,10 @@ class IPEXBackend(Backend[IPEXConfig]):
         if self.split_between_processes:
             with Accelerator().split_between_processes(inputs=inputs, apply_padding=False) as process_inputs:
                 inputs = process_inputs
+
+        for key, value in inputs.items():
+            if isinstance(value, torch.Tensor):
+                inputs[key] = value.to(self.config.device)
 
         return inputs
 

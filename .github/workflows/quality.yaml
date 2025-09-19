@@ -14,7 +14,7 @@ concurrency:
 
 env:
   UV_SYSTEM_PYTHON: 1
-  UV_TORCH_BACKEND: auto
+  UV_TORCH_BACKEND: cpu
 
 jobs:
   quality:

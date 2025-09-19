@@ -23,8 +23,8 @@ class IPEXConfig(BackendConfig):
 
         self.device = self.device.lower()
 
-        if self.device not in ["cpu", "gpu"]:
-            raise ValueError(f"IPEXBackend only supports CPU devices, got {self.device}")
+        if self.device not in ["cpu", "xpu"]:
+            raise ValueError(f"IPEXBackend only supports CPU and XPU devices. Got {self.device} instead.")
 
         if self.model_kwargs.get("torch_dtype", None) is not None:
             raise ValueError(

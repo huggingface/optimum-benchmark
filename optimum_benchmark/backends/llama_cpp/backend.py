@@ -27,10 +27,7 @@ class LlamaCppBackend(Backend[LlamaCppConfig]):
         Load the pretrained model from the given model name (normally GGUF, GGML)
         """
 
-        self.pretrained_model = Llama.from_pretrained(
-            self.config.model,
-            **self.llama_cpp_kwargs,
-        )
+        self.pretrained_model = Llama.from_pretrained(self.config.model, **self.llama_cpp_kwargs)
 
     @property
     def llama_cpp_kwargs(self) -> Dict[str, Any]:
