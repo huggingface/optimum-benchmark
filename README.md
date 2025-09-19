@@ -4,7 +4,6 @@
 
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/optimum-benchmark)](https://pypi.org/project/optimum-benchmark/)
 [![PyPI - Version](https://img.shields.io/pypi/v/optimum-benchmark)](https://pypi.org/project/optimum-benchmark/)
-[![PyPI - Downloads](https://img.shields.io/pypi/dm/optimum-benchmark)](https://pypi.org/project/optimum-benchmark/)
 [![PyPI - Implementation](https://img.shields.io/pypi/implementation/optimum-benchmark)](https://pypi.org/project/optimum-benchmark/)
 [![PyPI - Format](https://img.shields.io/pypi/format/optimum-benchmark)](https://pypi.org/project/optimum-benchmark/)
 [![PyPI - License](https://img.shields.io/pypi/l/optimum-benchmark)](https://pypi.org/project/optimum-benchmark/)
