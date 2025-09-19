@@ -52,7 +52,7 @@ if __name__ == "__main__":
     for config_name, benchmark_report in results.items():
         print("-" * 80)
         print(f"Results for {config_name}:")
-        print("- Prefill Metrics:")
+        print("- Prefill Metrics:")  # prefill = the processing of the input (text + image) to produce the first token
         benchmark_report.prefill.log()
-        print("- Decode Metrics:")
+        print("- Decode Metrics:")  # decode = the processing of subsequent tokens
         benchmark_report.decode.log()
