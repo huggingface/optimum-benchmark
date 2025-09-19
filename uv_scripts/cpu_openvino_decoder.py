@@ -50,5 +50,7 @@ if __name__ == "__main__":
     for backend_name, benchmark_report in results.items():
         print("-" * 80)
         print(f"Results for {backend_name}:")
-        print("- Decode Metrics:")
+        print("- Prefill Metrics:")  # prefill = the processing of the text input to produce the first token
+        benchmark_report.prefill.log()
+        print("- Decode Metrics:")  # decode = the processing of subsequent tokens
         benchmark_report.decode.log()
