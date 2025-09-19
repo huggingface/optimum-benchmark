@@ -43,6 +43,11 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v6
 
+      - name: Pull images
+        run: |
+          docker pull ghcr.io/huggingface/text-generation-inference:3.3-intel-latest
+          docker pull ghcr.io/huggingface/text-embedding-inference:cpu-1.8
+
       - name: Run tests
         run: |
           make test-cli-cpu-py-txi
