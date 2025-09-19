@@ -1,6 +1,8 @@
 # /// script
 # dependencies = [
 #   "optimum-benchmark[openvino]",
+#   "torchvision",
+#   "num2words",
 # ]
 # ///
 
@@ -25,8 +27,8 @@ if __name__ == "__main__":
     )
 
     backend_configs = {
-        "pytorch": PyTorchConfig(device="cpu", model="HuggingFaceTB/SmolVLM2-256M-Video-Instruct"),
-        "openvino": OpenVINOConfig(device="cpu", model="HuggingFaceTB/SmolVLM2-256M-Video-Instruct"),
+        "pytorch": PyTorchConfig(device="cpu", model="HuggingFaceTB/SmolVLM2-500M-Video-Instruct"),
+        "openvino": OpenVINOConfig(device="cpu", model="echarlaix/SmolVLM2-500M-Video-Instruct-openvino"),
         "openvino-8bit-woq": OpenVINOConfig(
             device="cpu", model="echarlaix/SmolVLM2-500M-Video-Instruct-openvino-8bit-woq"
         ),
@@ -38,7 +40,7 @@ if __name__ == "__main__":
     results = {}
     for config_name, backend_config in backend_configs.items():
         benchmark_config = BenchmarkConfig(
-            name=f"{config_name}_vlm",
+            name=f"{config_name}",
             launcher=launcher_config,
             scenario=scenario_config,
             backend=backend_config,
@@ -46,3 +48,11 @@ if __name__ == "__main__":
         benchmark_report = Benchmark.launch(benchmark_config)
         benchmark_report.save_json(f"{config_name}_vlm_benchmark_report.json")
         results[config_name] = benchmark_report
+
+    for config_name, benchmark_report in results.items():
+        print("-" * 80)
+        print(f"Results for {config_name}:")
+        print("- Prefill Metrics:")
+        benchmark_report.prefill.log()
+        print("- Decode Metrics:")
+        benchmark_report.decode.log()
