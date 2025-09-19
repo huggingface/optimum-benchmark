@@ -7,6 +7,7 @@ TASKS_TO_OPENVINO_MODELS = {
     "token-classification": "optimum.intel.openvino.OVModelForTokenClassification",
     "question-answering": "optimum.intel.openvino.OVModelForQuestionAnswering",
     "image-classification": "optimum.intel.openvino.OVModelForImageClassification",
+    "image-text-to-text": "optimum.intel.openvino.OVModelForVisualCausalLM",
     "audio-classification": "optimum.intel.openvino.OVModelForAudioClassification",
     "pix2struct": "optimum.intel.openvino.OVModelForPix2Struct",
 }
