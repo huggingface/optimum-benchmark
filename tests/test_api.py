@@ -163,7 +163,7 @@ def test_api_push_to_hub_mixin():
 
         # Hugging Face Hub API
         artifact.push_to_hub(repo_id=PUSH_REPO_ID, subfolder=benchmark_name)
-        from_hub_artifact = artifact.__class__.from_pretrained(repo_id=PUSH_REPO_ID, subfolder=benchmark_name)
+        from_hub_artifact = artifact.__class__.from_hub(repo_id=PUSH_REPO_ID, subfolder=benchmark_name)
         assert from_hub_artifact.to_dict() == artifact.to_dict()
 
 

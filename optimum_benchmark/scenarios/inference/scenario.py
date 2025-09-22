@@ -241,6 +241,7 @@ class InferenceScenario(Scenario[InferenceConfig]):
         with self.memory_tracker.track():
             self.backend.generate(self.inputs, self.config.generate_kwargs)
 
+        self.report.generate.memory = self.memory_tracker.get_max_memory()
         self.report.decode.memory = self.memory_tracker.get_max_memory()
 
     def run_image_diffusion_memory_tracking(self):

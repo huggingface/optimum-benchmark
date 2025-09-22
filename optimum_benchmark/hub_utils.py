@@ -110,9 +110,7 @@ class PushToHubMixin:
             )
 
     @classmethod
-    def from_pretrained(
-        cls, repo_id: str, filename: Optional[str] = None, subfolder: Optional[str] = None, **kwargs
-    ) -> Self:
+    def from_hub(cls, repo_id: str, filename: Optional[str] = None, subfolder: Optional[str] = None, **kwargs) -> Self:
         filename = str(filename or cls.default_filename)
         subfolder = str(subfolder or cls.default_subfolder)
 
