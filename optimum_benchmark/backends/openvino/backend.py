@@ -88,6 +88,9 @@ class OpenVINOBackend(Backend[OpenVINOConfig]):
         if self.config.use_merged is not None:
             kwargs["use_merged"] = self.config.use_merged
 
+        if self.config.torch_dtype is not None:
+            kwargs["torch_dtype"] = getattr(torch, self.config.torch_dtype)
+
         if self.config.load_in_8bit is not None:
             kwargs["load_in_8bit"] = self.config.load_in_8bit
 
@@ -114,6 +117,13 @@ class OpenVINOBackend(Backend[OpenVINOConfig]):
         for key in list(inputs.keys()):
             if hasattr(self.pretrained_model, "input_names") and key not in self.pretrained_model.input_names:
                 inputs.pop(key)
+
+        for key, value in inputs.items():
+            if isinstance(value, torch.Tensor):
+                value = value.to(device=self.pretrained_model.device)
+                if self.config.torch_dtype is not None and value.dtype.is_floating_point:
+                    value = value.to(dtype=getattr(torch, self.config.torch_dtype))
+                inputs[key] = value
 
         return inputs
 

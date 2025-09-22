@@ -67,7 +67,7 @@ class PyTorchConfig(BackendConfig):
             )
 
         if self.torch_dtype is not None and self.torch_dtype not in TORCH_DTYPES:
-            raise ValueError(f"`torch_dtype` must be one of {TORCH_DTYPES}. Got {self.torch_dtype} instead.")
+            raise ValueError(f"`torch_dtype` should be one of None or {TORCH_DTYPES}, got {self.torch_dtype}")
 
         if self.autocast_dtype is not None and self.autocast_dtype not in AMP_DTYPES:
             raise ValueError(f"`autocast_dtype` must be one of {AMP_DTYPES}. Got {self.autocast_dtype} instead.")

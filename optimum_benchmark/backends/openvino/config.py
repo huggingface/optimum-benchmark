@@ -4,6 +4,8 @@ from typing import Any, Dict, Optional
 from ...import_utils import openvino_version
 from ..config import BackendConfig
 
+TORCH_DTYPES = ["bfloat16", "float16", "float32", "auto"]
+
 
 @dataclass
 class OpenVINOConfig(BackendConfig):
@@ -36,10 +38,14 @@ class OpenVINOConfig(BackendConfig):
         if self.device not in ["cpu", "gpu"]:
             raise ValueError(f"OpenVINOBackend only supports CPU devices, got {self.device}")
 
-        if self.torch_dtype not in [None, "float16", "bfloat16", "float32"]:
+        if self.model_kwargs.get("torch_dtype", None) is not None:
             raise ValueError(
-                f"torch_dtype should be one of None, 'float16', 'bfloat16' or 'float32', got {self.torch_dtype}"
+                "`torch_dtype` is an explicit argument in the OpenVINO backend config. "
+                "Please remove it from the `model_kwargs` and set it in the backend config directly."
             )
+
+        if self.torch_dtype is not None and self.torch_dtype not in TORCH_DTYPES:
+            raise ValueError(f"torch_dtype should be one of None or {TORCH_DTYPES}, got {self.torch_dtype}")
 
         if self.intra_op_num_threads is not None:
             raise NotImplementedError("OpenVINOBackend does not support intra_op_num_threads. Please use the ov_config")

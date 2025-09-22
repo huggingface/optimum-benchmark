@@ -21,9 +21,9 @@ from optimum_benchmark import (
 )
 from optimum_benchmark.logging_utils import setup_logging
 
-if __name__ == "__main__":
-    setup_logging(level="INFO", to_file=True, prefix="OPTIMUM-BENCHMARK")
+setup_logging(level="INFO", to_file=False, prefix="MAIN-PROCESS")
 
+if __name__ == "__main__":
     launcher_config = ProcessConfig()
     scenario_config = InferenceConfig(
         memory=True,
@@ -57,16 +57,16 @@ if __name__ == "__main__":
             scenario=scenario_config,
             backend=backend_config,
         )
-        benchmark_report = Benchmark.launch(benchmark_config)
-        # benchmark_report.to_json(f"{config_name}_report.json")
-        benchmark_report.push_to_hub(repo_id="IlyasMoutawwakil/vlm_benchmark", filename=f"{config_name}_report")
+        report = Benchmark.launch(benchmark_config)
+        report.save_json(f"{config_name}_report.json")
+        # report.push_to_hub(repo_id="IlyasMoutawwakil/vlm_benchmark", filename=f"{config_name}_report")
 
     backend_reports = {}
     for config_name in backend_configs.keys():
-        # backend_reports[config_name] = BenchmarkReport.from_json(f"{config_name}_report.json")
-        backend_reports[config_name] = BenchmarkReport.from_hub(
-            repo_id="IlyasMoutawwakil/vlm_benchmark", filename=f"{config_name}_report"
-        )
+        backend_reports[config_name] = BenchmarkReport.from_json(f"{config_name}_report.json")
+        # backend_reports[config_name] = BenchmarkReport.from_hub(
+        #     repo_id="IlyasMoutawwakil/vlm_benchmark", filename=f"{config_name}_report"
+        # )
 
     _, ax = plt.subplots()
     ax.boxplot(
