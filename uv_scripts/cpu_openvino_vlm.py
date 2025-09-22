@@ -1,6 +1,6 @@
 # /// script
 # dependencies = [
-#   "optimum-benchmark[openvino]@git+https://github.com/huggingface/optimum-benchmark.git@main",
+#   "optimum-benchmark[openvino]@git+https://github.com/huggingface/optimum-benchmark.git@ov-quant",
 #   "optimum-intel@git+https://github.com/huggingface/optimum-intel.git@main",
 #   "transformers==4.55.*",
 #   "torchvision",
@@ -9,6 +9,7 @@
 # ///
 
 import matplotlib.pyplot as plt
+from huggingface_hub import upload_file
 
 from optimum_benchmark import (
     Benchmark,
@@ -33,7 +34,7 @@ if __name__ == "__main__":
     )
 
     model = "HuggingFaceTB/SmolVLM2-500M-Video-Instruct"
-    backend_configs = {
+    configs = {
         "pytorch": PyTorchConfig(device="cpu", model=model, no_weights=True),
         "openvino": OpenVINOConfig(device="cpu", model=model, no_weights=True),
         "openvino-8bit-woq": OpenVINOConfig(
@@ -50,28 +51,28 @@ if __name__ == "__main__":
         ),
     }
 
-    for config_name, backend_config in backend_configs.items():
+    for config_name, backend_config in configs.items():
         benchmark_config = BenchmarkConfig(
             name=f"{config_name}",
             launcher=launcher_config,
             scenario=scenario_config,
             backend=backend_config,
         )
-        report = Benchmark.launch(benchmark_config)
-        report.save_json(f"{config_name}_report.json")
-        # report.push_to_hub(repo_id="IlyasMoutawwakil/vlm_benchmark", filename=f"{config_name}_report")
+        benchmark_report = Benchmark.launch(benchmark_config)
+        benchmark_report.push_to_hub(repo_id="IlyasMoutawwakil/vlm_benchmark", filename=f"{config_name}_report")
+        benchmark_config.push_to_hub(repo_id="IlyasMoutawwakil/vlm_benchmark", filename=f"{config_name}_config")
 
-    backend_reports = {}
-    for config_name in backend_configs.keys():
-        backend_reports[config_name] = BenchmarkReport.from_json(f"{config_name}_report.json")
-        # backend_reports[config_name] = BenchmarkReport.from_hub(
-        #     repo_id="IlyasMoutawwakil/vlm_benchmark", filename=f"{config_name}_report"
-        # )
+    reports = {}
+    for config_name in configs.keys():
+        reports[config_name] = BenchmarkReport.from_hub(
+            repo_id="IlyasMoutawwakil/vlm_benchmark", filename=f"{config_name}_report"
+        )
 
+    # Plotting results
     _, ax = plt.subplots()
     ax.boxplot(
-        [backend_reports[config_name].prefill.latency.values for config_name in backend_reports.keys()],
-        tick_labels=backend_reports.keys(),
+        [reports[config_name].prefill.latency.values for config_name in reports.keys()],
+        tick_labels=reports.keys(),
         showfliers=False,
     )
     plt.xticks(rotation=10)
@@ -82,8 +83,8 @@ if __name__ == "__main__":
 
     _, ax = plt.subplots()
     ax.boxplot(
-        [backend_reports[config_name].per_token.latency.values for config_name in backend_reports.keys()],
-        tick_labels=backend_reports.keys(),
+        [reports[config_name].per_token.latency.values for config_name in reports.keys()],
+        tick_labels=reports.keys(),
         showfliers=False,
     )
     plt.xticks(rotation=10)
@@ -94,8 +95,8 @@ if __name__ == "__main__":
 
     _, ax = plt.subplots()
     ax.bar(
-        list(backend_reports.keys()),
-        [backend_reports[config_name].generate.memory.max_ram for config_name in backend_reports.keys()],
+        list(reports.keys()),
+        [reports[config_name].generate.memory.max_ram for config_name in reports.keys()],
         color=["C0", "C1", "C2", "C3", "C4", "C5"],
     )
     plt.xticks(rotation=10)
@@ -103,3 +104,45 @@ if __name__ == "__main__":
     ax.set_ylabel("RAM (MB)")
     ax.set_xlabel("Configurations")
     plt.savefig("max_ram_barplot.png")
+
+    _, ax = plt.subplots()
+    ax.bar(
+        list(reports.keys()),
+        [reports[config_name].decode.throughput.value for config_name in reports.keys()],
+        color=["C0", "C1", "C2", "C3", "C4", "C5"],
+    )
+    plt.xticks(rotation=10)
+    ax.set_xlabel("Configurations")
+    ax.set_title("Decoding Throughput")
+    ax.set_ylabel("Throughput (tokens/s)")
+    plt.savefig("decode_throughput_barplot.png")
+
+    # Uploading plots to hub
+    upload_file(
+        path_or_fileobj="prefill_latencies_boxplot.png",
+        path_in_repo="prefill_latencies_boxplot.png",
+        repo_id="IlyasMoutawwakil/vlm_benchmark",
+        repo_type="dataset",
+        token=True,
+    )
+    upload_file(
+        path_or_fileobj="per_token_latencies_boxplot.png",
+        path_in_repo="per_token_latencies_boxplot.png",
+        repo_id="IlyasMoutawwakil/vlm_benchmark",
+        repo_type="dataset",
+        token=True,
+    )
+    upload_file(
+        path_or_fileobj="max_ram_barplot.png",
+        path_in_repo="max_ram_barplot.png",
+        repo_id="IlyasMoutawwakil/vlm_benchmark",
+        repo_type="dataset",
+        token=True,
+    )
+    upload_file(
+        path_or_fileobj="decode_throughput_barplot.png",
+        path_in_repo="decode_throughput_barplot.png",
+        repo_id="IlyasMoutawwakil/vlm_benchmark",
+        repo_type="dataset",
+        token=True,
+    )
