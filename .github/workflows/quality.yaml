@@ -13,7 +13,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
 
 env:
-  UV_SYSTEM_PYTHON: 1
   UV_TORCH_BACKEND: cpu
 
 jobs:
@@ -26,6 +25,8 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
 
       - name: Run quality checks
         run: |

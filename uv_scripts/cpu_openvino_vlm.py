@@ -1,6 +1,6 @@
 # /// script
 # dependencies = [
-#   "optimum-benchmark[openvino]@git+https://github.com/huggingface/optimum-benchmark.git@ov-quant",
+#   "optimum-benchmark[openvino]@git+https://github.com/huggingface/optimum-benchmark.git@main",
 #   "optimum-intel@git+https://github.com/huggingface/optimum-intel.git@main",
 #   "transformers==4.55.*",
 #   "torchvision",
