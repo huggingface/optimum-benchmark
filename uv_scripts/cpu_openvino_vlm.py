@@ -2,7 +2,7 @@
 # dependencies = [
 #   "optimum-benchmark[openvino]@git+https://github.com/huggingface/optimum-benchmark.git@main",
 #   "optimum-intel@git+https://github.com/huggingface/optimum-intel.git@main",
-#   "transformers==4.55",
+#   "transformers==4.55.*",
 #   "torchvision",
 #   "num2words",
 # ]

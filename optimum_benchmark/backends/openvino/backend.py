@@ -118,13 +118,6 @@ class OpenVINOBackend(Backend[OpenVINOConfig]):
             if hasattr(self.pretrained_model, "input_names") and key not in self.pretrained_model.input_names:
                 inputs.pop(key)
 
-        for key, value in inputs.items():
-            if isinstance(value, torch.Tensor):
-                value = value.to(device=self.config.device)
-                if self.config.torch_dtype is not None and value.dtype.is_floating_point:
-                    value = value.to(dtype=getattr(torch, self.config.torch_dtype))
-                inputs[key] = value
-
         return inputs
 
     def forward(self, inputs: Dict[str, Any], kwargs: Dict[str, Any]) -> OrderedDict:
