@@ -322,7 +322,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         for key, value in inputs.items():
             if isinstance(value, torch.Tensor):
-                value = value.to(device=self.pretrained_model.device)
+                value = value.to(device=self.config.device)
                 if self.config.torch_dtype is not None and value.dtype.is_floating_point:
                     value = value.to(dtype=getattr(torch, self.config.torch_dtype))
                 inputs[key] = value
