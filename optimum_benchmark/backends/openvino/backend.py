@@ -88,13 +88,19 @@ class OpenVINOBackend(Backend[OpenVINOConfig]):
         if self.config.use_merged is not None:
             kwargs["use_merged"] = self.config.use_merged
 
+        if self.config.torch_dtype is not None:
+            kwargs["torch_dtype"] = getattr(torch, self.config.torch_dtype)
+
         if self.config.load_in_8bit is not None:
             kwargs["load_in_8bit"] = self.config.load_in_8bit
 
         if self.config.load_in_4bit is not None:
             kwargs["load_in_4bit"] = self.config.load_in_4bit
 
-        if self.config.ov_config:
+        if self.config.quantization_config is not None:
+            kwargs["quantization_config"] = self.config.quantization_config
+
+        if self.config.ov_config is not None:
             kwargs["ov_config"] = self.config.ov_config
 
         return kwargs

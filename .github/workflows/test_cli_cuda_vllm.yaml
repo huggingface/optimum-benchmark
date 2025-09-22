@@ -20,6 +20,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
 
 env:
+  VLLM_USE_V1: 0
   UV_SYSTEM_PYTHON: 1
   UV_TORCH_BACKEND: auto
 

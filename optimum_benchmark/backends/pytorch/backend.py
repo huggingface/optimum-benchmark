@@ -286,10 +286,7 @@ class PyTorchBackend(Backend[PyTorchConfig]):
         kwargs = {}
 
         if self.config.torch_dtype is not None:
-            if hasattr(torch, self.config.torch_dtype):
-                kwargs["torch_dtype"] = getattr(torch, self.config.torch_dtype)
-            else:
-                kwargs["torch_dtype"] = self.config.torch_dtype
+            kwargs["torch_dtype"] = getattr(torch, self.config.torch_dtype)
 
         if self.is_quantized:
             kwargs["quantization_config"] = self.quantization_config
@@ -325,7 +322,10 @@ class PyTorchBackend(Backend[PyTorchConfig]):
 
         for key, value in inputs.items():
             if isinstance(value, torch.Tensor):
-                inputs[key] = value.to(self.config.device)
+                value = value.to(device=self.config.device)
+                if self.config.torch_dtype is not None and value.dtype.is_floating_point:
+                    value = value.to(dtype=getattr(torch, self.config.torch_dtype))
+                inputs[key] = value
 
         if self.config.library == "timm":
             inputs = {"x": inputs["pixel_values"]}
