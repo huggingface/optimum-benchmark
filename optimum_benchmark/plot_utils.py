@@ -73,13 +73,10 @@ def _create_boxplot_with_overlay(
         )
 
 
-def _create_bar_plot(
-    ax: plt.Axes, names: List[str], values: List[float], colors: List[str], annotate: bool = True
-) -> None:
+def _create_bar_plot(ax: plt.Axes, names: List[str], values: List[float], colors: List[str]) -> None:
     """Create bar plot with optional value annotations."""
     bars = ax.bar(names, values, color=colors)
-    if annotate:
-        ax.bar_label(bars, padding=3, fmt="%.2f")
+    ax.bar_label(bars, padding=3, fmt="%.2f")
 
 
 def _extract_latency_data(
@@ -168,7 +165,7 @@ def plot_per_token_latencies(reports, figsize: Tuple[int, int] = (10, 6)):
     return fig, ax
 
 
-def plot_decode_throughputs(reports, figsize: Tuple[int, int] = (10, 6), annotate: bool = True):
+def plot_decode_throughputs(reports, figsize: Tuple[int, int] = (10, 6)):
     assert len(reports) > 1, "Need at least two reports to plot comparison."
     assert all(
         hasattr(report, "decode")
@@ -185,7 +182,7 @@ def plot_decode_throughputs(reports, figsize: Tuple[int, int] = (10, 6), annotat
     colors = _get_color_palette(len(names))
 
     # Create bar plot
-    _create_bar_plot(ax, names, values, colors, annotate)
+    _create_bar_plot(ax, names, values, colors)
 
     # Setup axes
     _setup_axes(ax, "Decoding Throughput", "Configurations", "Throughput (tokens/s)", rotate_xticks=30)
@@ -221,7 +218,7 @@ def plot_forward_latencies(reports, figsize: Tuple[int, int] = (10, 6)):
     return fig, ax
 
 
-def plot_forward_throughputs(reports, figsize: Tuple[int, int] = (10, 6), annotate: bool = True):
+def plot_forward_throughputs(reports, figsize: Tuple[int, int] = (10, 6)):
     assert len(reports) > 1, "Need at least two reports to plot comparison."
     assert all(
         hasattr(report, "forward")
@@ -238,7 +235,7 @@ def plot_forward_throughputs(reports, figsize: Tuple[int, int] = (10, 6), annota
     colors = _get_color_palette(len(names))
 
     # Create bar plot
-    _create_bar_plot(ax, names, values, colors, annotate)
+    _create_bar_plot(ax, names, values, colors)
 
     # Setup axes
     _setup_axes(ax, "Forward Pass Throughput", "Configurations", "Throughput (samples/s)", rotate_xticks=30)
