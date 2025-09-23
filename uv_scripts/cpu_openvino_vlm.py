@@ -1,6 +1,6 @@
 # /// script
 # dependencies = [
-#   "optimum-benchmark[openvino]@git+https://github.com/huggingface/optimum-benchmark.git@main",
+#   "optimum-benchmark[openvino]@git+https://github.com/huggingface/optimum-benchmark.git@uv-benchmarks",
 #   "optimum-intel@git+https://github.com/huggingface/optimum-intel.git@main",
 #   "transformers==4.55.*",
 #   "torchvision",
@@ -8,8 +8,9 @@
 # ]
 # ///
 
-import matplotlib.pyplot as plt
-from huggingface_hub import upload_file
+from argparse import ArgumentParser
+
+from huggingface_hub import create_repo, upload_file
 
 from optimum_benchmark import (
     Benchmark,
@@ -21,10 +22,24 @@ from optimum_benchmark import (
     PyTorchConfig,
 )
 from optimum_benchmark.logging_utils import setup_logging
-
-setup_logging(level="INFO", to_file=False, prefix="MAIN-PROCESS")
+from optimum_benchmark.plot_utils import plot_decode_throughputs, plot_prefill_latencies
 
 if __name__ == "__main__":
+    setup_logging(level="INFO", prefix="MAIN-PROCESS")
+
+    parser = ArgumentParser()
+    parser.add_argument("--model_id", type=str, default="HuggingFaceTB/SmolVLM2-500M-Video-Instruct")
+    parser.add_argument("--benchmark_repo_id", type=str, default=None)
+    args = parser.parse_args()
+
+    model_id = args.model_id
+    benchmark_repo_id = args.benchmark_repo_id
+
+    if benchmark_repo_id is not None:
+        # not needed but useful to error early if benchmark_repo_id is not valid
+        create_repo(benchmark_repo_id, repo_type="dataset", exist_ok=True)
+
+    # Defining benchmark configurations
     launcher_config = ProcessConfig()
     scenario_config = InferenceConfig(
         memory=True,
@@ -32,25 +47,24 @@ if __name__ == "__main__":
         generate_kwargs={"max_new_tokens": 16, "min_new_tokens": 16},
         input_shapes={"batch_size": 1, "sequence_length": 16, "num_images": 1},
     )
-
-    model = "HuggingFaceTB/SmolVLM2-500M-Video-Instruct"
     configs = {
-        "pytorch": PyTorchConfig(device="cpu", model=model, no_weights=True),
-        "openvino": OpenVINOConfig(device="cpu", model=model, no_weights=True),
+        "pytorch": PyTorchConfig(device="cpu", model=model_id, no_weights=True),
+        "openvino": OpenVINOConfig(device="cpu", model=model_id, no_weights=True),
         "openvino-8bit-woq": OpenVINOConfig(
             device="cpu",
-            model=model,
+            model=model_id,
             no_weights=True,
             quantization_config={"bits": 8, "num_samples": 1, "weight_only": True},
         ),
         "openvino-8bit-static": OpenVINOConfig(
             device="cpu",
-            model=model,
+            model=model_id,
             no_weights=True,
-            quantization_config={"bits": 8, "num_samples": 1, "dataset": "contextual"},
+            quantization_config={"bits": 8, "num_samples": 1, "weight_only": False, "dataset": "contextual"},
         ),
     }
 
+    # Running benchmarks (saved locally or pushed to the hub if benchmark_repo_id is not None)
     for config_name, backend_config in configs.items():
         benchmark_config = BenchmarkConfig(
             name=f"{config_name}",
@@ -59,90 +73,40 @@ if __name__ == "__main__":
             backend=backend_config,
         )
         benchmark_report = Benchmark.launch(benchmark_config)
-        benchmark_report.push_to_hub(repo_id="IlyasMoutawwakil/vlm_benchmark", filename=f"{config_name}_report")
-        benchmark_config.push_to_hub(repo_id="IlyasMoutawwakil/vlm_benchmark", filename=f"{config_name}_config")
 
+        if benchmark_repo_id is not None:
+            benchmark_report.push_to_hub(repo_id=benchmark_repo_id, filename=f"{config_name}_report.json")
+            benchmark_config.push_to_hub(repo_id=benchmark_repo_id, filename=f"{config_name}_config.json")
+        else:
+            benchmark_report.save_json(f"{config_name}_report.json")
+            benchmark_config.save_json(f"{config_name}_config.json")
+
+    # Loading reports (from local files or from the hub if benchmark_repo_id is not None)
     reports = {}
     for config_name in configs.keys():
-        reports[config_name] = BenchmarkReport.from_hub(
-            repo_id="IlyasMoutawwakil/vlm_benchmark", filename=f"{config_name}_report"
+        if benchmark_repo_id is not None:
+            reports[config_name] = BenchmarkReport.from_hub(
+                repo_id=benchmark_repo_id, filename=f"{config_name}_report.json"
+            )
+        else:
+            reports[config_name] = BenchmarkReport.from_json(f"{config_name}_report.json")
+
+    # Plotting results (saved locally and uploaded to the hub if benchmark_repo_id is not None)
+    fig1, ax1 = plot_prefill_latencies(reports)
+    fig2, ax2 = plot_decode_throughputs(reports)
+    fig1.savefig("prefill_latencies_boxplot.png")
+    fig2.savefig("decode_throughput_barplot.png")
+
+    if benchmark_repo_id is not None:
+        upload_file(
+            path_or_fileobj="prefill_latencies_boxplot.png",
+            path_in_repo="plots/prefill_latencies_boxplot.png",
+            repo_id=benchmark_repo_id,
+            repo_type="dataset",
         )
-
-    # Plotting results
-    _, ax = plt.subplots()
-    ax.boxplot(
-        [reports[config_name].prefill.latency.values for config_name in reports.keys()],
-        tick_labels=reports.keys(),
-        showfliers=False,
-    )
-    plt.xticks(rotation=10)
-    ax.set_ylabel("Latency (s)")
-    ax.set_xlabel("Configurations")
-    ax.set_title("Prefill Latencies")
-    plt.savefig("prefill_latencies_boxplot.png")
-
-    _, ax = plt.subplots()
-    ax.boxplot(
-        [reports[config_name].per_token.latency.values for config_name in reports.keys()],
-        tick_labels=reports.keys(),
-        showfliers=False,
-    )
-    plt.xticks(rotation=10)
-    ax.set_ylabel("Latency (s)")
-    ax.set_xlabel("Configurations")
-    ax.set_title("Per-token Latencies")
-    plt.savefig("per_token_latencies_boxplot.png")
-
-    _, ax = plt.subplots()
-    ax.bar(
-        list(reports.keys()),
-        [reports[config_name].generate.memory.max_ram for config_name in reports.keys()],
-        color=["C0", "C1", "C2", "C3", "C4", "C5"],
-    )
-    plt.xticks(rotation=10)
-    ax.set_title("Max RAM")
-    ax.set_ylabel("RAM (MB)")
-    ax.set_xlabel("Configurations")
-    plt.savefig("max_ram_barplot.png")
-
-    _, ax = plt.subplots()
-    ax.bar(
-        list(reports.keys()),
-        [reports[config_name].decode.throughput.value for config_name in reports.keys()],
-        color=["C0", "C1", "C2", "C3", "C4", "C5"],
-    )
-    plt.xticks(rotation=10)
-    ax.set_xlabel("Configurations")
-    ax.set_title("Decoding Throughput")
-    ax.set_ylabel("Throughput (tokens/s)")
-    plt.savefig("decode_throughput_barplot.png")
-
-    # Uploading plots to hub
-    upload_file(
-        path_or_fileobj="prefill_latencies_boxplot.png",
-        path_in_repo="prefill_latencies_boxplot.png",
-        repo_id="IlyasMoutawwakil/vlm_benchmark",
-        repo_type="dataset",
-        token=True,
-    )
-    upload_file(
-        path_or_fileobj="per_token_latencies_boxplot.png",
-        path_in_repo="per_token_latencies_boxplot.png",
-        repo_id="IlyasMoutawwakil/vlm_benchmark",
-        repo_type="dataset",
-        token=True,
-    )
-    upload_file(
-        path_or_fileobj="max_ram_barplot.png",
-        path_in_repo="max_ram_barplot.png",
-        repo_id="IlyasMoutawwakil/vlm_benchmark",
-        repo_type="dataset",
-        token=True,
-    )
-    upload_file(
-        path_or_fileobj="decode_throughput_barplot.png",
-        path_in_repo="decode_throughput_barplot.png",
-        repo_id="IlyasMoutawwakil/vlm_benchmark",
-        repo_type="dataset",
-        token=True,
-    )
+        upload_file(
+            path_or_fileobj="decode_throughput_barplot.png",
+            path_in_repo="plots/decode_throughput_barplot.png",
+            repo_id=benchmark_repo_id,
+            repo_type="dataset",
+        )
