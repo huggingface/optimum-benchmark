@@ -1,6 +1,6 @@
 # /// script
 # dependencies = [
-#   "optimum-benchmark[openvino,ipex]@git+https://github.com/huggingface/optimum-benchmark.git@main",
+#   "optimum-benchmark[openvino]@git+https://github.com/huggingface/optimum-benchmark.git@main",
 #   "optimum-intel@git+https://github.com/huggingface/optimum-intel.git@main",
 # ]
 # ///
@@ -14,27 +14,35 @@ from optimum_benchmark import (
     BenchmarkConfig,
     BenchmarkReport,
     InferenceConfig,
-    IPEXConfig,
     OpenVINOConfig,
     ProcessConfig,
     PyTorchConfig,
 )
 from optimum_benchmark.logging_utils import setup_logging
-from optimum_benchmark.plot_utils import plot_decode_throughputs, plot_prefill_latencies
+from optimum_benchmark.plot_utils import plot_latencies, plot_throughputs
 
 if __name__ == "__main__":
     setup_logging(level="INFO", prefix="MAIN-PROCESS")
 
     parser = ArgumentParser()
-    parser.add_argument("--model_id", type=str, default="gpt2")
-    parser.add_argument("--benchmark_repo_id", type=str, default=None)
+    parser.add_argument(
+        "--model_id",
+        type=str,
+        default="HuggingFaceTB/SmolLM2-360M-Instruct",
+        help="The model to benchmark.",
+    )
+    parser.add_argument(
+        "--benchmark_repo_id",
+        type=str,
+        default="optimum-benchmark/OpenVINO-LLM-Benchmark",
+        help="The repository to store the benchmark results. Pass an empty to disable pushing to the hub.",
+    )
     args = parser.parse_args()
 
     model_id = args.model_id
     benchmark_repo_id = args.benchmark_repo_id
 
-    if benchmark_repo_id is not None:
-        # not needed but useful to error early if benchmark_repo_id is not valid
+    if benchmark_repo_id:
         create_repo(benchmark_repo_id, repo_type="dataset", exist_ok=True)
 
     # Defining benchmark configurations
@@ -45,19 +53,13 @@ if __name__ == "__main__":
         generate_kwargs={"max_new_tokens": 16, "min_new_tokens": 16},
     )
     configs = {
-        "ipex": IPEXConfig(device="cpu", model=model_id, no_weights=True),
+        "pytorch": PyTorchConfig(device="cpu", model=model_id, no_weights=True),
         "openvino": OpenVINOConfig(device="cpu", model=model_id, no_weights=True),
-        "pytorch-compile": PyTorchConfig(device="cpu", model=model_id, no_weights=True, torch_compile=True),
-        "pytorch-compile-openvino": PyTorchConfig(
-            device="cpu",
-            model=model_id,
-            no_weights=True,
-            torch_compile=True,
-            torch_compile_config={"backend": "openvino"},
-        ),
+        "openvino-8bit-woq": OpenVINOConfig(device="cpu", model=model_id, no_weights=True, load_in_8bit=True),
+        "openvino-4bit-woq": OpenVINOConfig(device="cpu", model=model_id, no_weights=True, load_in_4bit=True),
     }
 
-    # Running benchmarks (saved locally or pushed to the hub if benchmark_repo_id is not None)
+    # Running benchmarks (saved locally and pushed to the hub if benchmark_repo_id is not None)
     for config_name, backend_config in configs.items():
         benchmark_config = BenchmarkConfig(
             name=f"{config_name}",
@@ -66,18 +68,20 @@ if __name__ == "__main__":
             backend=backend_config,
         )
         benchmark_report = Benchmark.launch(benchmark_config)
+        benchmark = Benchmark(config=benchmark_config, report=benchmark_report)
 
-        if benchmark_repo_id is not None:
+        benchmark_report.save_json(f"{config_name}_report.json")
+        benchmark_config.save_json(f"{config_name}_config.json")
+        benchmark.save_json(f"{config_name}_benchmark.json")
+        if benchmark_repo_id:
             benchmark_report.push_to_hub(repo_id=benchmark_repo_id, filename=f"{config_name}_report.json")
             benchmark_config.push_to_hub(repo_id=benchmark_repo_id, filename=f"{config_name}_config.json")
-        else:
-            benchmark_report.save_json(f"{config_name}_report.json")
-            benchmark_config.save_json(f"{config_name}_config.json")
+            benchmark.push_to_hub(repo_id=benchmark_repo_id, filename=f"{config_name}_benchmark.json")
 
     # Loading reports (from local files or from the hub if benchmark_repo_id is not None)
     reports = {}
     for config_name in configs.keys():
-        if benchmark_repo_id is not None:
+        if benchmark_repo_id:
             reports[config_name] = BenchmarkReport.from_hub(
                 repo_id=benchmark_repo_id, filename=f"{config_name}_report.json"
             )
@@ -85,12 +89,24 @@ if __name__ == "__main__":
             reports[config_name] = BenchmarkReport.from_json(f"{config_name}_report.json")
 
     # Plotting results (saved locally and uploaded to the hub if benchmark_repo_id is not None)
-    fig1, ax1 = plot_prefill_latencies(reports)
-    fig2, ax2 = plot_decode_throughputs(reports)
+    fig1, ax1 = plot_latencies(
+        reports,
+        target_name="prefill",
+        title=f"{model_id} - Prefill Latencies",
+        xlabel="Configurations",
+        ylabel="Latency",
+    )
     fig1.savefig("prefill_latencies_boxplot.png")
+    fig2, ax2 = plot_throughputs(
+        reports,
+        target_name="decode",
+        title=f"{model_id} - Decode Throughput",
+        xlabel="Configurations",
+        ylabel="Throughput",
+    )
     fig2.savefig("decode_throughput_barplot.png")
 
-    if benchmark_repo_id is not None:
+    if benchmark_repo_id:
         upload_file(
             path_or_fileobj="prefill_latencies_boxplot.png",
             path_in_repo="plots/prefill_latencies_boxplot.png",

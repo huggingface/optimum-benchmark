@@ -35,7 +35,7 @@ def _get_latency_unit_and_values(
         return "s", all_values, means
 
 
-def _setup_axes(ax: plt.Axes, title: str, xlabel: str, ylabel: str, rotate_xticks: int) -> None:
+def _setup_axes(ax: plt.Axes, title: str, xlabel: str, ylabel: str, rotate_xticks: int = 30) -> None:
     """Apply common axis styling: title, labels, and rotated x-tick labels."""
     ax.set_title(title)
     ax.set_xlabel(xlabel)
@@ -80,7 +80,7 @@ def _create_bar_plot(ax: plt.Axes, names: List[str], values: List[float], colors
 
 
 def _extract_latency_data(
-    reports: dict[str, BenchmarkReport], attr_path: str
+    reports: dict[str, BenchmarkReport], target_name: str
 ) -> Tuple[List[str], List[float], List[List[float]]]:
     """Extract latency data from reports for a given attribute path (e.g., 'prefill', 'per_token', 'forward')."""
     names = list(reports.keys())
@@ -88,38 +88,46 @@ def _extract_latency_data(
     values = []
 
     for name in names:
-        latency_obj = getattr(reports[name], attr_path).latency
+        latency_obj = getattr(reports[name], target_name).latency
         means.append(latency_obj.mean)
         values.append(latency_obj.values)
 
     return names, means, values
 
 
-def _extract_throughput_data(reports: dict[str, BenchmarkReport], attr_path: str) -> Tuple[List[str], List[float]]:
+def _extract_throughput_data(reports: dict[str, BenchmarkReport], target_name: str) -> Tuple[List[str], List[float]]:
     """Extract throughput data from reports for a given attribute path (e.g., 'decode', 'forward')."""
     names = list(reports.keys())
     values = []
 
     for name in names:
-        throughput_obj = getattr(reports[name], attr_path).throughput
+        throughput_obj = getattr(reports[name], target_name).throughput
         values.append(throughput_obj.value)
 
     return names, values
 
 
-def plot_prefill_latencies(
-    reports: dict[str, BenchmarkReport], figsize: Tuple[int, int] = (10, 6)
+## Latency Plots
+
+
+def plot_latencies(
+    reports: dict[str, BenchmarkReport],
+    target_name: str = "forward",
+    title: str = "Forward Pass Latencies",
+    xlabel: str = "Configurations",
+    ylabel: str = "Latency",
+    figsize: Tuple[int, int] = (10, 6),
 ) -> tuple[plt.Figure, plt.Axes]:
     assert len(reports) > 1, "Need at least two reports to plot comparison."
     assert all(
-        hasattr(report, "prefill")
-        and hasattr(report.prefill, "latency")
-        and isinstance(report.prefill.latency, Latency)
+        hasattr(report, target_name)
+        and hasattr(getattr(report, target_name), "latency")
+        and isinstance(getattr(report, target_name).latency, Latency)
         for report in reports.values()
-    ), "All reports must have prefill latency measurements."
+    ), f"All reports must have {target_name} latency measurements."
 
     # Extract data
-    names, means, values = _extract_latency_data(reports, "prefill")
+    names, means, values = _extract_latency_data(reports, target_name)
 
     # Determine appropriate unit and convert values
     unit, plot_values, plot_means = _get_latency_unit_and_values(values, means)
@@ -132,50 +140,33 @@ def plot_prefill_latencies(
     _create_boxplot_with_overlay(ax, plot_values, plot_means, names, colors)
 
     # Setup axes
-    _setup_axes(ax, "Prefill Latencies", "Configurations", f"Latency ({unit})", rotate_xticks=30)
+    _setup_axes(ax, title, xlabel, f"{ylabel} ({unit})")
 
     return fig, ax
 
 
-def plot_per_token_latencies(reports, figsize: Tuple[int, int] = (10, 6)):
+## Throughput Plots
+
+
+def plot_throughputs(
+    reports: dict[str, BenchmarkReport],
+    target_name: str = "forward",
+    title: str = "Forward Pass Throughput",
+    xlabel: str = "Configurations",
+    ylabel: str = "Throughput",
+    figsize: Tuple[int, int] = (10, 6),
+) -> tuple[plt.Figure, plt.Axes]:
     assert len(reports) > 1, "Need at least two reports to plot comparison."
     assert all(
-        hasattr(report, "per_token")
-        and hasattr(report.per_token, "latency")
-        and isinstance(report.per_token.latency, Latency)
+        hasattr(report, target_name)
+        and hasattr(getattr(report, target_name), "throughput")
+        and isinstance(getattr(report, target_name).throughput, Throughput)
         for report in reports.values()
-    ), "All reports must have per-token latency measurements."
+    ), f"All reports must have {target_name} throughput measurements."
 
     # Extract data
-    names, means, values = _extract_latency_data(reports, "per_token")
-
-    # Determine appropriate unit and convert values
-    unit, plot_values, plot_means = _get_latency_unit_and_values(values, means)
-
-    # Create plot
-    fig, ax = plt.subplots(figsize=figsize, constrained_layout=True)
-    colors = _get_color_palette(len(names))
-
-    # Create boxplot with overlay
-    _create_boxplot_with_overlay(ax, plot_values, plot_means, names, colors)
-
-    # Setup axes
-    _setup_axes(ax, "Per-Token Latencies", "Configurations", f"Latency ({unit})", rotate_xticks=30)
-
-    return fig, ax
-
-
-def plot_decode_throughputs(reports, figsize: Tuple[int, int] = (10, 6)):
-    assert len(reports) > 1, "Need at least two reports to plot comparison."
-    assert all(
-        hasattr(report, "decode")
-        and hasattr(report.decode, "throughput")
-        and isinstance(report.decode.throughput, Throughput)
-        for report in reports.values()
-    ), "All reports must have decode throughput measurements."
-
-    # Extract data
-    names, values = _extract_throughput_data(reports, "decode")
+    names, values = _extract_throughput_data(reports, target_name)
+    unit = next(iter(reports[name].forward.throughput.unit for name in names))
 
     # Create plot
     fig, ax = plt.subplots(figsize=figsize, constrained_layout=True)
@@ -185,59 +176,6 @@ def plot_decode_throughputs(reports, figsize: Tuple[int, int] = (10, 6)):
     _create_bar_plot(ax, names, values, colors)
 
     # Setup axes
-    _setup_axes(ax, "Decoding Throughput", "Configurations", "Throughput (tokens/s)", rotate_xticks=30)
-
-    return fig, ax
-
-
-def plot_forward_latencies(reports, figsize: Tuple[int, int] = (10, 6)):
-    assert len(reports) > 1, "Need at least two reports to plot comparison."
-    assert all(
-        hasattr(report, "forward")
-        and hasattr(report.forward, "latency")
-        and isinstance(report.forward.latency, Latency)
-        for report in reports.values()
-    ), "All reports must have forward latency measurements."
-
-    # Extract data
-    names, means, values = _extract_latency_data(reports, "forward")
-
-    # Determine appropriate unit and convert values
-    unit, plot_values, plot_means = _get_latency_unit_and_values(values, means)
-
-    # Create plot
-    fig, ax = plt.subplots(figsize=figsize, constrained_layout=True)
-    colors = _get_color_palette(len(names))
-
-    # Create boxplot with overlay
-    _create_boxplot_with_overlay(ax, plot_values, plot_means, names, colors)
-
-    # Setup axes
-    _setup_axes(ax, "Forward Pass Latencies", "Configurations", f"Latency ({unit})", rotate_xticks=30)
-
-    return fig, ax
-
-
-def plot_forward_throughputs(reports, figsize: Tuple[int, int] = (10, 6)):
-    assert len(reports) > 1, "Need at least two reports to plot comparison."
-    assert all(
-        hasattr(report, "forward")
-        and hasattr(report.forward, "throughput")
-        and isinstance(report.forward.throughput, Throughput)
-        for report in reports.values()
-    ), "All reports must have forward throughput measurements."
-
-    # Extract data
-    names, values = _extract_throughput_data(reports, "forward")
-
-    # Create plot
-    fig, ax = plt.subplots(figsize=figsize, constrained_layout=True)
-    colors = _get_color_palette(len(names))
-
-    # Create bar plot
-    _create_bar_plot(ax, names, values, colors)
-
-    # Setup axes
-    _setup_axes(ax, "Forward Pass Throughput", "Configurations", "Throughput (samples/s)", rotate_xticks=30)
+    _setup_axes(ax, title, xlabel, f"{ylabel} ({unit})")
 
     return fig, ax

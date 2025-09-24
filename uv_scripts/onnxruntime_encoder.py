@@ -18,21 +18,30 @@ from optimum_benchmark import (
     PyTorchConfig,
 )
 from optimum_benchmark.logging_utils import setup_logging
-from optimum_benchmark.plot_utils import plot_forward_latencies, plot_forward_throughputs
+from optimum_benchmark.plot_utils import plot_latencies, plot_throughputs
 
 if __name__ == "__main__":
     setup_logging(level="INFO", prefix="MAIN-PROCESS")
 
     parser = ArgumentParser()
-    parser.add_argument("--model_id", type=str, default="bert-base-uncased")
-    parser.add_argument("--benchmark_repo_id", type=str, default=None)
+    parser.add_argument(
+        "--model_id",
+        type=str,
+        default="bert-base-uncased",
+        help="The model to benchmark.",
+    )
+    parser.add_argument(
+        "--benchmark_repo_id",
+        type=str,
+        default="optimum-benchmark/OnnxRuntime-Encoder-Benchmark",
+        help="The repository to store the benchmark results. Pass an empty to disable pushing to the hub.",
+    )
     args = parser.parse_args()
 
     model_id = args.model_id
     benchmark_repo_id = args.benchmark_repo_id
 
-    if benchmark_repo_id is not None:
-        # not needed but useful to error early if benchmark_repo_id is not valid
+    if benchmark_repo_id:
         create_repo(benchmark_repo_id, repo_type="dataset", exist_ok=True)
 
     launcher_config = ProcessConfig()
@@ -72,7 +81,7 @@ if __name__ == "__main__":
         ),
     }
 
-    # Running benchmarks (saved locally or pushed to the hub if benchmark_repo_id is not None)
+    # Running benchmarks (saved locally and pushed to the hub if benchmark_repo_id is not None)
     for config_name, backend_config in configs.items():
         benchmark_config = BenchmarkConfig(
             name=f"{config_name}",
@@ -81,18 +90,20 @@ if __name__ == "__main__":
             backend=backend_config,
         )
         benchmark_report = Benchmark.launch(benchmark_config)
+        benchmark = Benchmark(config=benchmark_config, report=benchmark_report)
 
-        if benchmark_repo_id is not None:
+        benchmark_report.save_json(f"{config_name}_report.json")
+        benchmark_config.save_json(f"{config_name}_config.json")
+        benchmark.save_json(f"{config_name}_benchmark.json")
+        if benchmark_repo_id:
             benchmark_report.push_to_hub(repo_id=benchmark_repo_id, filename=f"{config_name}_report.json")
             benchmark_config.push_to_hub(repo_id=benchmark_repo_id, filename=f"{config_name}_config.json")
-        else:
-            benchmark_report.save_json(f"{config_name}_report.json")
-            benchmark_config.save_json(f"{config_name}_config.json")
+            benchmark.push_to_hub(repo_id=benchmark_repo_id, filename=f"{config_name}_benchmark.json")
 
     # Loading reports (from local files or from the hub if benchmark_repo_id is not None)
     reports = {}
     for config_name in configs.keys():
-        if benchmark_repo_id is not None:
+        if benchmark_repo_id:
             reports[config_name] = BenchmarkReport.from_hub(
                 repo_id=benchmark_repo_id, filename=f"{config_name}_report.json"
             )
@@ -100,12 +111,24 @@ if __name__ == "__main__":
             reports[config_name] = BenchmarkReport.from_json(f"{config_name}_report.json")
 
     # Plotting results (saved locally and uploaded to the hub if benchmark_repo_id is not None)
-    fig1, ax1 = plot_forward_latencies(reports)
-    fig2, ax2 = plot_forward_throughputs(reports)
+    fig1, ax1 = plot_latencies(
+        reports,
+        target_name="forward",
+        title=f"{model_id} - Forward Pass Latencies",
+        xlabel="Configurations",
+        ylabel="Latency",
+    )
     fig1.savefig("forward_latencies_boxplot.png")
+    fig2, ax2 = plot_throughputs(
+        reports,
+        target_name="forward",
+        title=f"{model_id} - Forward Pass Throughput",
+        xlabel="Configurations",
+        ylabel="Throughput",
+    )
     fig2.savefig("forward_throughput_barplot.png")
 
-    if benchmark_repo_id is not None:
+    if benchmark_repo_id:
         upload_file(
             path_or_fileobj="forward_latencies_boxplot.png",
             path_in_repo="plots/forward_latencies_boxplot.png",
