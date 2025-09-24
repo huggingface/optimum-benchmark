@@ -34,7 +34,7 @@ if __name__ == "__main__":
         "--benchmark_repo_id",
         type=str,
         default="optimum-benchmark/OnnxRuntime-Encoder-Benchmark",
-        help="The repository to store the benchmark results. Pass an empty to disable pushing to the hub.",
+        help="The repository to store the benchmark results. Pass an empty string to disable pushing to the hub.",
     )
     args = parser.parse_args()
 
