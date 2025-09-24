@@ -131,13 +131,13 @@ if __name__ == "__main__":
     if benchmark_repo_id:
         upload_file(
             path_or_fileobj="forward_latencies_boxplot.png",
-            path_in_repo="plots/forward_latencies_boxplot.png",
+            path_in_repo="forward_latencies_boxplot.png",
             repo_id=benchmark_repo_id,
             repo_type="dataset",
         )
         upload_file(
             path_or_fileobj="forward_throughput_barplot.png",
-            path_in_repo="plots/forward_throughput_barplot.png",
+            path_in_repo="forward_throughput_barplot.png",
             repo_id=benchmark_repo_id,
             repo_type="dataset",
         )
