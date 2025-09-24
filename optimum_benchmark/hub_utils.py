@@ -140,4 +140,4 @@ class PushToHubMixin:
 
     @classproperty
     def default_subfolder(self) -> str:
-        return "benchmarks"
+        return ""
