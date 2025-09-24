@@ -28,7 +28,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model_id",
         type=str,
-        default="Qwen/Qwen3-0.6B",
+        default="HuggingFaceTB/SmolLM2-360M-Instruct",
         help="The model to benchmark.",
     )
     parser.add_argument(

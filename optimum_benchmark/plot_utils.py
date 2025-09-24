@@ -166,7 +166,7 @@ def plot_throughputs(
 
     # Extract data
     names, values = _extract_throughput_data(reports, target_name)
-    unit = next(iter(reports[name].forward.throughput.unit for name in names))
+    unit = getattr(reports[names[0]], target_name).throughput.unit
 
     # Create plot
     fig, ax = plt.subplots(figsize=figsize, constrained_layout=True)
