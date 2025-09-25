@@ -79,6 +79,8 @@ class OpenVINOBackend(Backend[OpenVINOConfig]):
     def ovmodel_kwargs(self) -> Dict[str, Any]:
         kwargs = {}
 
+        kwargs["device"] = self.config.device
+
         if self.config.export is not None:
             kwargs["export"] = self.config.export
 
