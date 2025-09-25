@@ -34,9 +34,11 @@ class OpenVINOConfig(BackendConfig):
     def __post_init__(self):
         super().__post_init__()
 
-        self.device = self.device.lower()
-        if self.device not in ["cpu", "gpu"]:
-            raise ValueError(f"OpenVINOBackend only supports CPU devices, got {self.device}")
+        if self.device_ids is not None:
+            raise NotImplementedError(
+                "OpenVINOBackend does not support device_ids. "
+                "Please use the `device` argument with OpenVINO device notation, e.g. 'CPU', 'GPU.0'"
+            )
 
         if self.model_kwargs.get("torch_dtype", None) is not None:
             raise ValueError(
