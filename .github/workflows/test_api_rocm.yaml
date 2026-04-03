@@ -29,7 +29,7 @@ jobs:
       contains( github.event.pull_request.labels.*.name, 'api_rocm')
       }}
 
-    uses: huggingface/hf-workflows/.github/workflows/optimum_benchmark_instinct_ci.yaml@testing
+    uses: huggingface/hf-workflows/.github/workflows/optimum_benchmark_instinct_ci.yaml@4c2159877665785d8581195f590c98afc98966fd  # testing
     with:
       test_file: test_api.py
       machine_type: single-gpu
