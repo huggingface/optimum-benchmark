@@ -3,6 +3,7 @@ import os
 import platform
 import re
 import subprocess
+from pathlib import Path
 from typing import List, Optional
 
 import psutil
@@ -25,12 +26,11 @@ def get_cpu() -> Optional[str]:
         return platform.processor()
 
     elif platform.system() == "Darwin":
-        command = "sysctl -n machdep.cpu.brand_string"
-        return str(subprocess.check_output(command, shell=True).decode().strip())
+        command = ["sysctl", "-n", "machdep.cpu.brand_string"]
+        return subprocess.check_output(command, text=True).strip()
 
     elif platform.system() == "Linux":
-        command = "cat /proc/cpuinfo"
-        all_info = subprocess.check_output(command, shell=True).decode().strip()
+        all_info = Path("/proc/cpuinfo").read_text(encoding="utf-8").strip()
         for line in all_info.split("\n"):
             if "model name" in line:
                 return re.sub(".*model name.*:", "", line, 1)
@@ -45,14 +45,21 @@ def get_cpu_ram_mb():
 
 
 ## GPU related stuff
+def _command_succeeds(command: str) -> bool:
+    try:
+        return subprocess.call([command], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
+    except FileNotFoundError:
+        return False
+
+
 @functools.lru_cache(maxsize=1)
 def is_nvidia_system():
-    return subprocess.call("nvidia-smi", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
+    return _command_succeeds("nvidia-smi")
 
 
 @functools.lru_cache(maxsize=1)
 def is_rocm_system():
-    return subprocess.call("rocm-smi", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
+    return _command_succeeds("rocm-smi")
 
 
 if is_nvidia_system() and is_pynvml_available():
