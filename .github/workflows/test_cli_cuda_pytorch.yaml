@@ -22,8 +22,12 @@ concurrency:
 env:
   UV_TORCH_BACKEND: auto
 
+permissions: {}
+
 jobs:
   run_cli_cuda_pytorch_single_gpu_tests:
+    permissions:
+      contents: read
     if: ${{
       (github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch') ||
@@ -55,6 +59,8 @@ jobs:
           make test-cli-cuda-pytorch-single-examples
 
   run_cli_cuda_pytorch_multi_gpu_tests:
+    permissions:
+      contents: read
     if: ${{
       (github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch') ||
