@@ -22,8 +22,12 @@ concurrency:
 env:
   UV_TORCH_BACKEND: auto
 
+permissions: {}
+
 jobs:
   run_cli_cuda_onnxruntime_tests:
+    permissions:
+      contents: read
     if: ${{
       (github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch') ||
