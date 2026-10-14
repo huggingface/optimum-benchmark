@@ -15,8 +15,12 @@ concurrency:
 env:
   UV_TORCH_BACKEND: cpu
 
+permissions: {}
+
 jobs:
   quality:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
 
     steps:

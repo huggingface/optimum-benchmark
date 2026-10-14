@@ -23,8 +23,12 @@ env:
   UV_SYSTEM_PYTHON: 1
   UV_TORCH_BACKEND: auto
 
+permissions: {}
+
 jobs:
   cli_cuda_tensorrt_llm_single_gpu_tests:
+    permissions:
+      contents: read
     if: ${{
       (github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch') ||
@@ -58,6 +62,8 @@ jobs:
           make test-cli-cuda-tensorrt-llm-single-examples
 
   cli_cuda_tensorrt_llm_multi_gpu_tests:
+    permissions:
+      contents: read
     if: ${{
       (github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch') ||
