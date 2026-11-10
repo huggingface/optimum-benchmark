@@ -23,7 +23,6 @@ keywords = [
     "habana",
     "graphcore",
     "neural compressor",
-    "ipex",
     "ipu",
     "hpu",
     "llm-swarm",
@@ -94,11 +93,6 @@ dev = [
     "torchcodec ; sys_platform != 'win32'",
 ]
 # optimum backends
-ipex = [
-    "torch==2.8",
-    "optimum[ipex]>=1.27.0",
-    "intel-extension-for-pytorch==2.8",
-]
 openvino = ["optimum[openvino]>=1.27.0"]
 onnxruntime = ["optimum[onnxruntime]>=1.27.0"]
 onnxruntime-gpu = ["optimum[onnxruntime-gpu]>=1.27.0"]
@@ -159,7 +153,6 @@ dev-dependencies = [
 ]
 conflicts = [
     [
-        { extra = "ipex" },
         { extra = "openvino" },
         { extra = "onnxruntime" },
         { extra = "tensorrt-llm" },

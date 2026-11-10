@@ -12,7 +12,6 @@ from . import (
     EnergyStarConfig,
     InferenceConfig,
     InlineConfig,
-    IPEXConfig,
     LlamaCppConfig,
     ONNXRuntimeConfig,
     OpenVINOConfig,
@@ -34,7 +33,6 @@ cs = ConfigStore.instance()
 # benchmark configuration
 cs.store(name="benchmark", node=BenchmarkConfig)
 # backends configurations
-cs.store(group="backend", name=IPEXConfig.name, node=IPEXConfig)
 cs.store(group="backend", name=OpenVINOConfig.name, node=OpenVINOConfig)
 cs.store(group="backend", name=PyTorchConfig.name, node=PyTorchConfig)
 cs.store(group="backend", name=ONNXRuntimeConfig.name, node=ONNXRuntimeConfig)

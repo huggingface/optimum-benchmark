@@ -27,11 +27,7 @@ CUDA_VISIBLE_DEVICES = os.environ.get("CUDA_VISIBLE_DEVICES", None)
 
 @pytest.mark.parametrize("config_name", TEST_CONFIG_NAMES)
 def test_cli_configs(config_name):
-    if config_name == "cpu_ipex_bert":
-        model = "hf-internal-testing/tiny-random-BertModel"
-    elif config_name == "cpu_ipex_llama":
-        model = "hf-internal-testing/tiny-random-LlamaForCausalLM"
-    elif config_name == "cpu_llama_cpp_text_generation":
+    if config_name == "cpu_llama_cpp_text_generation":
         model = "TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF"
     elif config_name == "cpu_llama_cpp_embedding":
         model = "nomic-ai/nomic-embed-text-v1.5-GGUF"

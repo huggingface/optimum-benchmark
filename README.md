@@ -47,7 +47,6 @@ Optimum-Benchmark is continuously and intensively tested on a variety of devices
 
 ### CLI 📈
 
-[![CLI_CPU_IPEX](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_ipex.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_ipex.yaml)
 [![CLI_CPU_LLAMA_CPP](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_llama_cpp.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_llama_cpp.yaml)
 [![CLI_CPU_ONNXRUNTIME](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_onnxruntime.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_onnxruntime.yaml)
 [![CLI_CPU_OPENVINO](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_openvino.yaml/badge.svg)](https://github.com/huggingface/optimum-benchmark/actions/workflows/test_cli_cpu_openvino.yaml)
@@ -132,7 +131,6 @@ Depending on the backends you want to use, you can install `optimum-benchmark` w
 - ONNXRuntime-GPU: `uv add optimum-benchmark --extra onnxruntime-gpu`
 - Py-TXI (TGI & TEI): `uv add optimum-benchmark --extra py-txi`
 - vLLM: `uv add optimum-benchmark --extra vllm`
-- IPEX: `uv add optimum-benchmark --extra ipex`
 
 #### With pip:
 - PyTorch (default): `pip install optimum-benchmark`
@@ -142,7 +140,6 @@ Depending on the backends you want to use, you can install `optimum-benchmark` w
 - ONNXRuntime-GPU: `pip install optimum-benchmark[onnxruntime-gpu]`
 - Py-TXI (TGI & TEI): `pip install optimum-benchmark[py-txi]`
 - vLLM: `pip install optimum-benchmark[vllm]`
-- IPEX: `pip install optimum-benchmark[ipex]`
 
 We also support the following extra dependencies:
 
@@ -318,8 +315,6 @@ See [TrainingConfig](optimum_benchmark/scenarios/training/config.py) for more in
 - [x] vLLM backend for CUDA (`backend=vllm`, `backend.device=cuda`)
 - [x] vLLM backend for ROCM (`backend=vllm`, `backend.device=rocm`)
 - [x] vLLM backend for CPU (`backend=vllm`, `backend.device=cpu`)
-- [x] IPEX backend for CPU (`backend=ipex`, `backend.device=cpu`)
-- [x] IPEX backend for XPU (`backend=ipex`, `backend.device=xpu`)
 
 <details>
 <summary>General backend features 🧰</summary>
@@ -337,7 +332,6 @@ See [TrainingConfig](optimum_benchmark/scenarios/training/config.py) for more in
 For more information on the features of each backend, you can check their respective configuration files:
 
 - [VLLMConfig](optimum_benchmark/backends/vllm/config.py)
-- [IPEXConfig](optimum_benchmark/backends/ipex/config.py)
 - [OpenVINOConfig](optimum_benchmark/backends/openvino/config.py)
 - [PyTXIConfig](optimum_benchmark/backends/py_txi/config.py)
 - [PyTorchConfig](optimum_benchmark/backends/pytorch/config.py)

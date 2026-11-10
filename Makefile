@@ -6,12 +6,12 @@ GROUP_ID := $(shell id -g)
 
 # All targets are phony (don't create files)
 .PHONY: help setup install install-dev \
-	install-pytorch install-ipex install-vllm install-openvino install-llama-cpp install-onnxruntime install-onnxruntime-gpu \
+	install-pytorch install-vllm install-openvino install-llama-cpp install-onnxruntime install-onnxruntime-gpu \
 	lock update clean quality style check-format check-lint format lint-fix \
 	test test-verbose test-coverage \
 	test-api-cpu test-api-cuda test-api-rocm test-api-misc \
 	test-api-cpu-examples test-api-cuda-examples test-api-rocm-examples \
-	test-cli-cpu-pytorch test-cli-cpu-openvino test-cli-cpu-py-txi test-cli-cpu-onnxruntime test-cli-cpu-ipex test-cli-cpu-llama-cpp \
+	test-cli-cpu-pytorch test-cli-cpu-openvino test-cli-cpu-py-txi test-cli-cpu-onnxruntime test-cli-cpu-llama-cpp \
 	test-cli-cpu-pytorch-examples test-cli-cpu-openvino-examples test-cli-cpu-onnxruntime-examples test-cli-cpu-py-txi-examples test-cli-cpu-llama-cpp-examples \
 	test-cli-cuda-pytorch-single test-cli-cuda-pytorch-multi \
 	test-cli-cuda-vllm-single test-cli-cuda-vllm-multi \
@@ -33,7 +33,6 @@ help:
 	@echo ""
 	@echo "🎯 Backend-Specific Installation:"
 	@echo "  install-pytorch         - Install CPU PyTorch backend"
-	@echo "  install-ipex            - Install CPU IPEX backend"
 	@echo "  install-vllm            - Install vLLM backend"
 	@echo "  install-openvino        - Install CPU OpenVINO backend"
 	@echo "  install-llama-cpp       - Install CPU LLaMA-CPP backend"
@@ -65,7 +64,6 @@ help:
 	@echo "  test-cli-cpu-openvino                 - Test CLI for CPU OpenVINO backend"
 	@echo "  test-cli-cpu-py-txi                   - Test CLI for CPU Py-TXI backend"
 	@echo "  test-cli-cpu-onnxruntime              - Test CLI for CPU ONNXRuntime backend"
-	@echo "  test-cli-cpu-ipex                     - Test CLI for CPU Intel Extension for PyTorch"
 	@echo "  test-cli-cpu-llama-cpp                - Test CLI for CPU LLaMA-CPP backend"
 	@echo "  test-cli-cpu-pytorch-examples         - Test CLI examples for CPU PyTorch backend"
 	@echo "  test-cli-cpu-openvino-examples        - Test CLI examples for CPU OpenVINO backend"
@@ -173,9 +171,6 @@ clean:
 install-pytorch:
 	uv sync
 
-install-ipex:
-	uv sync --extra ipex
-
 install-vllm:
 	uv sync --extra vllm
 
@@ -232,9 +227,6 @@ test-cli-cpu-py-txi:
 test-cli-cpu-onnxruntime:
 	uv run --extra onnxruntime pytest tests/test_cli.py -s -v -k "cli and cpu and onnxruntime"
 
-test-cli-cpu-ipex:
-	uv run --extra ipex pytest tests/test_cli.py -s -v -k "cli and cpu and ipex"
-
 test-cli-cpu-llama-cpp:
 	uv run --extra llama-cpp pytest tests/test_cli.py -s -v -k "llama_cpp"
 
@@ -253,9 +245,6 @@ test-cli-cpu-py-txi-examples:
 
 test-cli-cpu-llama-cpp-examples:
 	uv run --extra llama-cpp pytest tests/test_examples.py -s -v -k "cli and cpu and llama-cpp"
-
-test-cli-cpu-ipex-examples:
-	uv run --extra ipex pytest tests/test_examples.py -s -v -k "cli and cpu and ipex"
 
 ### CUDA tests
 test-cli-cuda-onnxruntime:

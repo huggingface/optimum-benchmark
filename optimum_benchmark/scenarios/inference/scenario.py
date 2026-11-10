@@ -18,7 +18,7 @@ from ...trackers.memory import MemoryTracker
 from ..base import Scenario
 from .config import InferenceConfig
 
-PER_TOKEN_BACKENDS = ["pytorch", "onnxruntime", "openvino", "neural-compressor", "ipex"]
+PER_TOKEN_BACKENDS = ["pytorch", "onnxruntime", "openvino", "neural-compressor"]
 
 TEXT_GENERATION_DEFAULT_KWARGS = {
     "num_return_sequences": 1,
