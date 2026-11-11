@@ -16,8 +16,21 @@ from transformers import (
     ImageProcessingMixin,
     PretrainedConfig,
     ProcessorMixin,
-    SpecialTokensMixin,
 )
+
+# Handle transformers API changes across versions
+try:
+    # For transformers < 4.45.0
+    from transformers import SpecialTokensMixin
+except ImportError:
+    try:
+        # For 4.45.0 <= transformers < 5.0.0
+        from transformers.tokenization_utils_base import SpecialTokensMixin
+    except ImportError:
+        # For transformers >= 5.0.0 (Tokenization Overhaul)
+        # SpecialTokensMixin was removed and merged into PreTrainedTokenizerBase
+        from transformers import PreTrainedTokenizerBase
+        SpecialTokensMixin = PreTrainedTokenizerBase
 
 from ..task_utils import TASKS_TO_AUTO_MODEL_CLASS_NAMES, map_from_synonym_task
 
